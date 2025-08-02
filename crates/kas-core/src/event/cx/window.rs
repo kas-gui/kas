@@ -6,11 +6,11 @@
 //! Event state: window management
 
 use super::{EventCx, EventState, PopupState};
-use crate::Id;
-use crate::event::FocusSource;
-use crate::runner::Platform;
+use crate::event::{Event, FocusSource};
+use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId};
+use crate::{Action, Id, Tile, Widget};
 use winit::window::ResizeDirection;
 
 impl EventState {
@@ -50,6 +50,66 @@ impl EventState {
             if popup.id == id {
                 popup.is_sized = true;
             }
+        }
+    }
+
+    /// Handle all pending items before event loop sleeps
+    pub(crate) fn flush_pending<'a, A>(
+        &'a mut self,
+        runner: &'a mut dyn RunnerT,
+        window: &'a dyn WindowDataErased,
+        messages: &'a mut MessageStack,
+        win: &mut Window<A>,
+        data: &A,
+    ) -> Action {
+        self.with(runner, window, messages, |cx| {
+            while let Some((id, wid)) = cx.popup_removed.pop() {
+                cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
+            }
+
+            cx.mouse_handle_pending(win, data);
+            cx.touch_handle_pending(win, data);
+
+            if let Some(id) = cx.pending_update.take() {
+                win.as_node(data).find_node(&id, |node| cx.update(node));
+            }
+
+            if cx.pending_nav_focus.is_some() {
+                cx.handle_pending_nav_focus(win.as_node(data));
+            }
+
+            // Update sel focus after nav focus:
+            if let Some(pending) = cx.pending_sel_focus.take() {
+                cx.set_sel_focus(cx.window, win.as_node(data), pending);
+            }
+
+            while let Some((id, msg)) = cx.send_queue.pop_front() {
+                cx.send_or_replay(win.as_node(data), id, msg);
+            }
+
+            // Poll futures. TODO(opt): this does not need to happen so often,
+            // but just in frame_update is insufficient.
+            cx.poll_futures(win.as_node(data));
+
+            // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
+            if cx.action.contains(Action::REGION_MOVED) {
+                cx.action.remove(Action::REGION_MOVED);
+                cx.action.insert(Action::REDRAW);
+            }
+        });
+
+        if let Some(icon) = self.mouse.update_cursor_icon() {
+            window.set_cursor_icon(icon);
+        }
+
+        std::mem::take(&mut self.action)
+    }
+
+    /// Window has been closed: clean up state
+    pub(crate) fn suspended(&mut self, runner: &mut dyn RunnerT) {
+        while !self.popups.is_empty() {
+            let id = self.close_popup(self.popups.len() - 1);
+            runner.close_window(id);
         }
     }
 }
@@ -268,5 +328,58 @@ impl<'a> EventCx<'a> {
     /// This is a temporary API, allowing e.g. to minimize the window.
     pub fn winit_window(&self) -> Option<&winit::window::Window> {
         self.window.winit_window()
+    }
+
+    /// Handle a winit `WindowEvent`.
+    ///
+    /// Note that some event types are not handled, since for these
+    /// events the graphics backend must take direct action anyway:
+    /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
+    pub(crate) fn handle_winit<A>(
+        &mut self,
+        win: &mut Window<A>,
+        data: &A,
+        event: winit::event::WindowEvent,
+    ) {
+        use winit::event::WindowEvent::*;
+
+        match event {
+            CloseRequested => self.action(win.id(), Action::CLOSE),
+            /* Not yet supported: see #98
+            DroppedFile(path) => ,
+            HoveredFile(path) => ,
+            HoveredFileCancelled => ,
+            */
+            Focused(state) => {
+                self.window_has_focus = state;
+                if state {
+                    // Required to restart theme animations
+                    self.redraw(win.id());
+                } else {
+                    // Window focus lost: close all popups
+                    while let Some(id) = self.popups.last().map(|state| state.id) {
+                        self.close_window(id);
+                    }
+                }
+            }
+            KeyboardInput {
+                event,
+                is_synthetic,
+                ..
+            } => self.keyboard_input(win.as_node(data), event, is_synthetic),
+            ModifiersChanged(modifiers) => self.modifiers_changed(modifiers.state()),
+            Ime(event) => self.ime_event(win.as_node(data), event),
+            CursorMoved { position, .. } => self.handle_cursor_moved(win, data, position.into()),
+            CursorEntered { .. } => self.handle_cursor_entered(),
+            CursorLeft { .. } => self.handle_cursor_left(win.as_node(data)),
+            MouseWheel { delta, .. } => self.handle_mouse_wheel(win.as_node(data), delta),
+            MouseInput { state, button, .. } => {
+                self.handle_mouse_input(win.as_node(data), state, button)
+            }
+            // TouchpadPressure { pressure: f32, stage: i64, },
+            // AxisMotion { axis: AxisId, value: f64, },
+            Touch(touch) => self.handle_touch_event(win, data, touch),
+            _ => (),
+        }
     }
 }

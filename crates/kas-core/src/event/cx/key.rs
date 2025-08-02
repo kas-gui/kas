@@ -6,11 +6,13 @@
 //! Event context: key handling and selection focus
 
 use super::{EventCx, EventState};
+use crate::Action;
 #[allow(unused)] use crate::Events;
 use crate::event::{Command, Event, FocusSource};
 use crate::util::WidgetHierarchy;
 use crate::{Id, NavAdvance, Node, geom::Rect, runner::WindowDataErased};
 use std::collections::HashMap;
+use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
 use winit::window::ImePurpose;
 
@@ -300,6 +302,41 @@ impl EventState {
 }
 
 impl<'a> EventCx<'a> {
+    pub(super) fn keyboard_input(
+        &mut self,
+        mut widget: Node<'_>,
+        mut event: KeyEvent,
+        is_synthetic: bool,
+    ) {
+        if let Some(id) = self.key_focus() {
+            // TODO(winit): https://github.com/rust-windowing/winit/issues/3038
+            let mut mods = self.modifiers;
+            mods.remove(ModifiersState::SHIFT);
+            if !mods.is_empty()
+                || event
+                    .text
+                    .as_ref()
+                    .and_then(|t| t.chars().next())
+                    .map(|c| c.is_control())
+                    .unwrap_or(false)
+            {
+                event.text = None;
+            }
+
+            if self.send_event(widget.re(), id, Event::Key(&event, is_synthetic)) {
+                return;
+            }
+        }
+
+        if event.state == ElementState::Pressed && !is_synthetic {
+            self.start_key_event(widget, event.logical_key, event.physical_key);
+        } else if event.state == ElementState::Released
+            && let Some(id) = self.key_depress.remove(&event.physical_key)
+        {
+            self.redraw(id);
+        }
+    }
+
     pub(super) fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: PhysicalKey) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, physical_key={code:?}",
@@ -397,6 +434,55 @@ impl<'a> EventCx<'a> {
             && let Some(id) = self.popups.last().map(|desc| desc.id)
         {
             self.close_window(id);
+        }
+    }
+
+    pub(super) fn modifiers_changed(&mut self, state: ModifiersState) {
+        if state.alt_key() != self.modifiers.alt_key() {
+            // This controls drawing of access key indicators
+            self.window_action(Action::REDRAW);
+        }
+        self.modifiers = state;
+    }
+
+    pub(super) fn ime_event(&mut self, widget: Node<'_>, ime: Ime) {
+        match ime {
+            winit::event::Ime::Enabled => {
+                // We expect self.ime.is_some(), but it's possible that the request is outdated
+                if self.ime.is_some()
+                    && let Some(id) = self.sel_focus.clone()
+                {
+                    self.send_event(widget, id, Event::ImeFocus);
+                }
+            }
+            winit::event::Ime::Disabled => {
+                // We can only assume that this is received due to us disabling
+                // IME if self.old_ime_target is set, and is otherwise due to an
+                // external cause.
+                let mut target = self.old_ime_target.take();
+                if target.is_none() && self.ime.is_some() {
+                    target = self.sel_focus.clone();
+                    self.ime = None;
+                    self.ime_cursor_area = Rect::ZERO;
+                }
+                if let Some(id) = target {
+                    self.send_event(widget, id, Event::LostImeFocus);
+                }
+            }
+            winit::event::Ime::Preedit(text, cursor) => {
+                if self.ime.is_some()
+                    && let Some(id) = self.sel_focus.clone()
+                {
+                    self.send_event(widget, id, Event::ImePreedit(&text, cursor));
+                }
+            }
+            winit::event::Ime::Commit(text) => {
+                if self.ime.is_some()
+                    && let Some(id) = self.sel_focus.clone()
+                {
+                    self.send_event(widget, id, Event::ImeCommit(&text));
+                }
+            }
         }
     }
 

@@ -24,6 +24,13 @@ pub(super) enum PendingNavFocus {
     },
 }
 
+impl PendingNavFocus {
+    #[inline]
+    pub(super) fn is_some(&self) -> bool {
+        !matches!(self, PendingNavFocus::None)
+    }
+}
+
 impl EventState {
     /// Disable or enable navigation focus
     ///
@@ -153,6 +160,20 @@ impl<'a> EventCx<'a> {
         log::trace!(target: "kas_core::event", "nav_next: focus={focus:?}, advance={advance:?}");
 
         widget._nav_next(&mut self.config_cx(), focus, advance)
+    }
+
+    pub(super) fn handle_pending_nav_focus(&mut self, widget: Node<'_>) {
+        match std::mem::take(&mut self.pending_nav_focus) {
+            PendingNavFocus::None => (),
+            PendingNavFocus::Set { target, source } => {
+                self.set_nav_focus_impl(widget, target, source)
+            }
+            PendingNavFocus::Next {
+                target,
+                reverse,
+                source,
+            } => self.next_nav_focus_impl(widget, target, reverse, source),
+        }
     }
 
     /// Set navigation focus immediately
