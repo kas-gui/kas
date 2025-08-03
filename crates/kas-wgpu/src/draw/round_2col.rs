@@ -114,7 +114,7 @@ impl Window {
         let aa = rect.a;
         let bb = rect.b;
 
-        if !aa.lt(bb) || (col1.a == 0.0 && col2.a == 0.0) {
+        if !(aa < bb) || (col1.a == 0.0 && col2.a == 0.0) {
             // zero / negative size or transparent: nothing to draw
             return;
         }
@@ -151,17 +151,17 @@ impl Window {
         let mut cc = inner.a;
         let mut dd = inner.b;
 
-        if !aa.lt(bb) || (col1.a == 0.0 && col2.a == 0.0) {
+        if !(aa < bb) || (col1.a == 0.0 && col2.a == 0.0) {
             // zero / negative size or transparent: nothing to draw
             return;
         }
-        if !aa.le(cc) || !cc.le(bb) {
+        if !(aa <= cc) || !(cc <= bb) {
             cc = aa;
         }
-        if !aa.le(dd) || !dd.le(bb) {
+        if !(aa <= dd) || !(dd <= bb) {
             dd = bb;
         }
-        if !cc.le(dd) {
+        if !(cc <= dd) {
             dd = cc;
         }
 

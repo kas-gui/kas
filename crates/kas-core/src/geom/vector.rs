@@ -10,11 +10,12 @@
 use crate::cast::*;
 use crate::dir::Directional;
 use crate::geom::{Coord, Offset, Rect, Size};
+use std::cmp::{Ordering, PartialOrd};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 /// Axis-aligned 2D cuboid, specified via two corners `a` and `b`
 ///
-/// Typically it is expected that `a.le(b)`, although this is not required.
+/// Typically it is expected that `a <= b`, although this is not required.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -164,10 +165,10 @@ impl Conv<Rect> for Quad {
 /// Usually used as either a coordinate or a difference of coordinates, but
 /// may have some other uses.
 ///
-/// Vectors are partially ordered and support component-wise comparison via
-/// methods like `lhs.lt(rhs)`. The `PartialOrd` trait is not implemented since
-/// it implements `lhs ≤ rhs` as `lhs < rhs || lhs == rhs` which is wrong for
-/// vectors (consider for `lhs = (0, 1), rhs = (1, 0)`).
+/// `Vec2` implements [`PartialOrd`] such that the comparison must be true of
+/// all components: for example `a < b == a.0 < b.0 && a.1 < b.1`.
+/// If `c == Vec2(0, 1)` and `d == Vec2(1, 0)` then
+/// `c != d && !(c < d) && !(c > d)`. `Vec2` does not implement [`Ord`].
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -178,10 +179,10 @@ pub struct Vec2(pub f32, pub f32);
 /// Usually used as either a coordinate or a difference of coordinates, but
 /// may have some other uses.
 ///
-/// Vectors are partially ordered and support component-wise comparison via
-/// methods like `lhs.lt(rhs)`. The `PartialOrd` trait is not implemented since
-/// it implements `lhs ≤ rhs` as `lhs < rhs || lhs == rhs` which is wrong for
-/// vectors (consider for `lhs = (0, 1), rhs = (1, 0)`).
+/// `DVec2` implements [`PartialOrd`] such that the comparison must be true of
+/// all components: for example `a < b == a.0 < b.0 && a.1 < b.1`.
+/// If `c == DVec2(0, 1)` and `d == DVec2(1, 0)` then
+/// `c != d && !(c < d) && !(c > d)`. `DVec2` does not implement [`Ord`].
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -286,31 +287,6 @@ macro_rules! impl_vec2 {
                 let one: $f = 1.0;
                 $T(one.copysign(self.0), one.copysign(self.1))
             }
-
-            /// True when for all components, `lhs < rhs`
-            #[inline]
-            pub fn lt(self, rhs: Self) -> bool {
-                self.0 < rhs.0 && self.1 < rhs.1
-            }
-
-            /// True when for all components, `lhs ≤ rhs`
-            #[inline]
-            pub fn le(self, rhs: Self) -> bool {
-                self.0 <= rhs.0 && self.1 <= rhs.1
-            }
-
-            /// True when for all components, `lhs ≥ rhs`
-            #[inline]
-            pub fn ge(self, rhs: Self) -> bool {
-                self.0 >= rhs.0 && self.1 >= rhs.1
-            }
-
-            /// True when for all components, `lhs > rhs`
-            #[inline]
-            pub fn gt(self, rhs: Self) -> bool {
-                self.0 > rhs.0 && self.1 > rhs.1
-            }
-
             /// Multiply two vectors as if they are complex numbers
             #[inline]
             #[must_use = "method does not modify self but returns a new value"]
@@ -512,6 +488,40 @@ macro_rules! impl_vec2 {
             fn div_assign(&mut self, rhs: $f) {
                 self.0 /= rhs;
                 self.1 /= rhs;
+            }
+        }
+
+        impl PartialOrd for $T {
+            fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+                if self == rhs {
+                    Some(Ordering::Equal)
+                } else if self.0 < rhs.0 && self.1 < rhs.1 {
+                    Some(Ordering::Less)
+                } else if self.0 > rhs.0 && self.1 > rhs.1 {
+                    Some(Ordering::Greater)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn lt(&self, rhs: &Self) -> bool {
+                self.0 < rhs.0 && self.1 < rhs.1
+            }
+
+            #[inline]
+            fn le(&self, rhs: &Self) -> bool {
+                self.0 <= rhs.0 && self.1 <= rhs.1
+            }
+
+            #[inline]
+            fn ge(&self, rhs: &Self) -> bool {
+                self.0 >= rhs.0 && self.1 >= rhs.1
+            }
+
+            #[inline]
+            fn gt(&self, rhs: &Self) -> bool {
+                self.0 > rhs.0 && self.1 > rhs.1
             }
         }
 

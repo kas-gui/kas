@@ -121,11 +121,11 @@ impl Window {
         let aa = rect.a;
         let bb = rect.b;
 
-        if !aa.lt(bb) {
+        if !(aa < bb) {
             // zero / negative size: nothing to draw
             return;
         }
-        if !Vec2::splat(-1.0).le(norm) || !norm.le(Vec2::splat(1.0)) {
+        if !(Vec2::splat(-1.0) <= norm) || !(norm <= Vec2::splat(1.0)) {
             norm = Vec2::splat(0.0);
         }
 
@@ -173,20 +173,20 @@ impl Window {
         let mut cc = inner.a;
         let mut dd = inner.b;
 
-        if !aa.lt(bb) {
+        if !(aa < bb) {
             // zero / negative size: nothing to draw
             return;
         }
-        if !aa.le(cc) || !cc.le(bb) {
+        if !(aa <= cc) || !(cc <= bb) {
             cc = aa;
         }
-        if !aa.le(dd) || !dd.le(bb) {
+        if !(aa <= dd) || !(dd <= bb) {
             dd = bb;
         }
-        if !cc.le(dd) {
+        if !(cc <= dd) {
             dd = cc;
         }
-        if !Vec2::splat(-1.0).le(norm) || !norm.le(Vec2::splat(1.0)) {
+        if !(Vec2::splat(-1.0) <= norm) || !(norm <= Vec2::splat(1.0)) {
             norm = Vec2::splat(0.0);
         }
 

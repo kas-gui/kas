@@ -143,7 +143,7 @@ where
         let inner = outer.shrink(self.w.dims.frame as f32);
         #[cfg(debug_assertions)]
         {
-            if !inner.a.lt(inner.b) {
+            if !(inner.a < inner.b) {
                 log::warn!("draw_edit_box: frame too small: {outer:?}");
             }
         }
