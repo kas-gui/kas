@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::cast::traits::*;
-use crate::geom::{Coord, Offset, Rect, Size, Vec2};
+use crate::geom::{Coord, DVec2, Offset, Rect, Size, Vec2};
 #[allow(unused)]
 use crate::text::{SelectionAction, SelectionHelper};
 use crate::{Action, Id};
@@ -305,8 +305,8 @@ impl ScrollComponent {
         delta
     }
 
-    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Offset) {
-        let delta = self.scroll_self_by_delta(cx, id, d);
+    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: DVec2) {
+        let delta = self.scroll_self_by_delta(cx, id, d.cast_nearest());
         cx.set_scroll(if delta != Offset::ZERO {
             Scroll::Offset(delta)
         } else {
@@ -346,15 +346,16 @@ impl ScrollComponent {
                             Command::Right => ScrollDelta::Lines(1.0, 0.0),
                             Command::Up => ScrollDelta::Lines(0.0, 1.0),
                             Command::Down => ScrollDelta::Lines(0.0, -1.0),
-                            Command::PageUp => {
-                                ScrollDelta::Pixels(Offset(0, window_rect.size.1 / 2))
-                            }
-                            Command::PageDown => {
-                                ScrollDelta::Pixels(Offset(0, -(window_rect.size.1 / 2)))
+                            Command::PageUp | Command::PageDown => {
+                                let mut v = 0.5 * f64::conv(window_rect.size.1);
+                                if cmd == Command::PageDown {
+                                    v = -v;
+                                }
+                                ScrollDelta::PixelDelta(DVec2(0.0, v))
                             }
                             _ => return Unused,
                         };
-                        self.offset - delta.as_offset(cx)
+                        self.offset - delta.as_offset(cx).cast_nearest()
                     }
                 };
                 cx.action(id, self.set_offset(offset));
@@ -508,7 +509,7 @@ impl TextInput {
                     Action::Used
                 }
                 Phase::Pan(source) if *press == source => {
-                    cx.set_scroll(Scroll::Offset(delta));
+                    cx.set_scroll(Scroll::Offset(delta.cast_nearest()));
                     Action::Used
                 }
                 Phase::Cursor(source) if *press == source => Action::Focus {

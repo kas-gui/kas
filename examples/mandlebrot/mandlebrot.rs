@@ -398,8 +398,7 @@ mod Mandlebrot {
                 Event::Scroll(delta) => match delta.as_factor_or_offset(cx) {
                     Ok(factor) => self.transform *= Linear::scale(2f64.powf(factor)),
                     Err(offset) => {
-                        self.transform -=
-                            self.transform.alpha() * self.view_alpha * DVec2::conv(offset);
+                        self.transform -= self.transform.alpha() * self.view_alpha * offset;
                     }
                 },
                 Event::Pan(t) => {

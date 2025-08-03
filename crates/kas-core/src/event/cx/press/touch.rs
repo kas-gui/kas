@@ -360,7 +360,7 @@ impl<'a> EventCx<'a> {
 
                     let grab = &mut self.touch.touch_grab[index];
                     grab.over = over;
-                    let delta = coord - grab.last_coord;
+                    let delta = position - grab.last_position;
                     grab.last_coord = coord;
 
                     match grab.mode {

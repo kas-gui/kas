@@ -11,7 +11,7 @@ use crate::geom::{Affine, Coord, DVec2};
 use crate::window::Window;
 use crate::window::WindowErased;
 use crate::{Action, Id, NavAdvance, Node, TileExt, Widget};
-use cast::{Cast, CastApprox, ConvApprox};
+use cast::CastApprox;
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::window::CursorIcon;
@@ -352,7 +352,7 @@ impl<'a> EventCx<'a> {
                         id,
                         coord,
                     };
-                    let delta = coord - self.mouse.last_coord;
+                    let delta = position - self.mouse.last_position;
                     let event = Event::PressMove { press, delta };
                     self.send_event(window.re(), target, event);
                 }
@@ -408,12 +408,7 @@ impl<'a> EventCx<'a> {
 
         let event = Event::Scroll(match delta {
             MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines(x, y),
-            MouseScrollDelta::PixelDelta(pos) => {
-                // The delta is given as a PhysicalPosition, so we need
-                // to convert to our vector type (Offset) here.
-                let coord = Coord::conv_approx(pos);
-                ScrollDelta::Pixels(coord.cast())
-            }
+            MouseScrollDelta::PixelDelta(pos) => ScrollDelta::PixelDelta(pos.into()),
         });
         if let Some(id) = self.mouse.over.clone() {
             self.send_event(window, id, event);
