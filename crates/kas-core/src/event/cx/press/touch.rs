@@ -185,7 +185,7 @@ impl Touch {
         }
 
         if let Some(grab) = self.get_touch(touch_id) {
-            if grab.mode.is_pan() != mode.is_pan() || grab.cancel {
+            if grab.start_id != id || grab.mode != mode || grab.cancel {
                 return false;
             }
 
@@ -193,7 +193,7 @@ impl Touch {
             grab.cur_id = Some(id.clone());
             grab.last_move = coord;
             grab.coord = coord;
-            grab.mode = grab.mode.max(mode);
+            grab.last_position = coord.cast();
             grab.velocity = velocity;
             true
         } else if self.touch_grab.len() < MAX_TOUCHES {
