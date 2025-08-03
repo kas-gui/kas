@@ -594,13 +594,10 @@ impl Rect {
         self.pos + self.size
     }
 
-    /// Check whether the given coordinate is contained within this rect
+    /// Check whether `p` is contained within this rect
     #[inline]
-    pub fn contains(&self, c: Coord) -> bool {
-        c.0 >= self.pos.0
-            && c.0 < self.pos.0 + (self.size.0)
-            && c.1 >= self.pos.1
-            && c.1 < self.pos.1 + (self.size.1)
+    pub fn contains<P: PartialOrd<Coord>>(&self, p: P) -> bool {
+        p >= self.pos && p < self.pos2()
     }
 
     /// Calculate the intersection of two rects

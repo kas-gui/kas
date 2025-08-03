@@ -525,6 +525,38 @@ macro_rules! impl_vec2 {
             }
         }
 
+        impl PartialEq<Coord> for $T {
+            fn eq(&self, rhs: &Coord) -> bool {
+                DVec2::from(*self) == DVec2::conv(*rhs)
+            }
+        }
+
+        impl PartialOrd<Coord> for $T {
+            fn partial_cmp(&self, rhs: &Coord) -> Option<Ordering> {
+                DVec2::from(*self).partial_cmp(&DVec2::conv(*rhs))
+            }
+
+            #[inline]
+            fn lt(&self, rhs: &Coord) -> bool {
+                DVec2::from(*self) < DVec2::conv(*rhs)
+            }
+
+            #[inline]
+            fn le(&self, rhs: &Coord) -> bool {
+                DVec2::from(*self) <= DVec2::conv(*rhs)
+            }
+
+            #[inline]
+            fn ge(&self, rhs: &Coord) -> bool {
+                DVec2::from(*self) >= DVec2::conv(*rhs)
+            }
+
+            #[inline]
+            fn gt(&self, rhs: &Coord) -> bool {
+                DVec2::from(*self) > DVec2::conv(*rhs)
+            }
+        }
+
         impl From<($f, $f)> for $T {
             #[inline]
             fn from(arg: ($f, $f)) -> Self {
@@ -609,6 +641,18 @@ impl Conv<Vec2> for kas_text::Vec2 {
     }
 }
 
+impl From<Vec2> for DVec2 {
+    #[inline]
+    fn from(v: Vec2) -> DVec2 {
+        DVec2(v.0.into(), v.1.into())
+    }
+}
+impl Conv<Vec2> for DVec2 {
+    #[inline]
+    fn try_conv(v: Vec2) -> Result<DVec2> {
+        Ok(DVec2(v.0.into(), v.1.into()))
+    }
+}
 impl ConvApprox<DVec2> for Vec2 {
     fn try_conv_approx(size: DVec2) -> Result<Vec2> {
         Ok(Vec2(size.0.try_cast_approx()?, size.1.try_cast_approx()?))
