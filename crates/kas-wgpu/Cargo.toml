@@ -59,7 +59,7 @@ version = "0.2.4"
 features = ["scale"]
 
 [dependencies.wgpu]
-version = "25.0.0"
+version = "26.0.1"
 default-features = false
 features = ["spirv"]
 

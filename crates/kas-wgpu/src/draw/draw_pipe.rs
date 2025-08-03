@@ -224,6 +224,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let mut color_attachments = [Some(wgpu::RenderPassColorAttachment {
             view: frame_view,
+            depth_slice: None,
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(clear_color),
