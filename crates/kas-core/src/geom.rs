@@ -18,6 +18,7 @@
 
 use crate::cast::*;
 use crate::dir::Directional;
+use std::cmp::{Ordering, PartialOrd};
 
 mod transform;
 mod vector;
@@ -35,30 +36,6 @@ macro_rules! impl_common {
 
             /// The maximum value
             pub const MAX: Self = Self(i32::MAX, i32::MAX);
-
-            /// True when for all components, `lhs < rhs`
-            #[inline]
-            pub fn lt(self, rhs: Self) -> bool {
-                self.0 < rhs.0 && self.1 < rhs.1
-            }
-
-            /// True when for all components, `lhs ≤ rhs`
-            #[inline]
-            pub fn le(self, rhs: Self) -> bool {
-                self.0 <= rhs.0 && self.1 <= rhs.1
-            }
-
-            /// True when for all components, `lhs ≥ rhs`
-            #[inline]
-            pub fn ge(self, rhs: Self) -> bool {
-                self.0 >= rhs.0 && self.1 >= rhs.1
-            }
-
-            /// True when for all components, `lhs > rhs`
-            #[inline]
-            pub fn gt(self, rhs: Self) -> bool {
-                self.0 > rhs.0 && self.1 > rhs.1
-            }
 
             /// Return the minimum, componentwise
             #[inline]
@@ -78,7 +55,7 @@ macro_rules! impl_common {
             #[inline]
             #[must_use = "method does not modify self but returns a new value"]
             pub fn clamp(self, min: Self, max: Self) -> Self {
-                debug_assert!(min.le(max));
+                debug_assert!(min <= max);
                 self.min(max).max(min)
             }
 
@@ -139,6 +116,40 @@ macro_rules! impl_common {
             }
         }
 
+        impl PartialOrd for $T {
+            fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+                if self == rhs {
+                    Some(Ordering::Equal)
+                } else if self.0 < rhs.0 && self.1 < rhs.1 {
+                    Some(Ordering::Less)
+                } else if self.0 > rhs.0 && self.1 > rhs.1 {
+                    Some(Ordering::Greater)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn lt(&self, rhs: &Self) -> bool {
+                self.0 < rhs.0 && self.1 < rhs.1
+            }
+
+            #[inline]
+            fn le(&self, rhs: &Self) -> bool {
+                self.0 <= rhs.0 && self.1 <= rhs.1
+            }
+
+            #[inline]
+            fn ge(&self, rhs: &Self) -> bool {
+                self.0 >= rhs.0 && self.1 >= rhs.1
+            }
+
+            #[inline]
+            fn gt(&self, rhs: &Self) -> bool {
+                self.0 > rhs.0 && self.1 > rhs.1
+            }
+        }
+
         impl From<(i32, i32)> for $T {
             #[inline]
             fn from(v: (i32, i32)) -> Self {
@@ -162,6 +173,11 @@ macro_rules! impl_common {
 ///
 /// A coordinate (or point) is an absolute position. One cannot add a point to
 /// a point. The difference between two points is an [`Offset`].
+///
+/// `Coord` implements [`PartialOrd`] such that the comparison must be true of
+/// all components: for example `a < b == a.0 < b.0 && a.1 < b.1`.
+/// If `c == Coord(0, 1)` and `d == Coord(1, 0)` then
+/// `c != d && !(c < d) && !(c > d)`. `Coord` does not implement [`Ord`].
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Coord(pub i32, pub i32);
@@ -270,6 +286,11 @@ impl Conv<Coord> for kas_text::Vec2 {
 /// (similar to overflow checks on integers).
 ///
 /// Subtraction is defined to be saturating subtraction.
+///
+/// `Size` implements [`PartialOrd`] such that the comparison must be true of
+/// all components: for example `a < b == a.0 < b.0 && a.1 < b.1`.
+/// If `c == Size(0, 1)` and `d == Size(1, 0)` then
+/// `c != d && !(c < d) && !(c > d)`. `Size` does not implement [`Ord`].
 ///
 /// This may be converted to [`Offset`] with `from` / `into`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
@@ -441,6 +462,11 @@ impl Conv<Size> for kas_text::Vec2 {
 /// [`Coord`], and it can be added to or subtracted from itself. It can be
 /// negative. It can be multiplied by a scalar.
 ///
+/// `Offset` implements [`PartialOrd`] such that the comparison must be true of
+/// all components: for example `a < b == a.0 < b.0 && a.1 < b.1`.
+/// If `c == Offset(0, 1)` and `d == Offset(1, 0)` then
+/// `c != d && !(c < d) && !(c > d)`. `Offset` does not implement [`Ord`].
+///
 /// This may be converted to [`Size`] with `from` / `into`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -555,7 +581,7 @@ impl Rect {
 
     /// Construct from two coords
     ///
-    /// It is expected that `pos.le(pos2)`.
+    /// It is expected that `pos <= pos2`.
     #[inline]
     pub fn from_coords(pos: Coord, pos2: Coord) -> Self {
         let size = (pos2 - pos).cast();
@@ -584,7 +610,7 @@ impl Rect {
         let (r1, r2) = (rhs.pos, rhs.pos2());
         let pos = l1.max(r1);
         let pos2 = l2.min(r2);
-        if pos.le(pos2) {
+        if pos <= pos2 {
             Some(Rect::new(pos, (pos2 - pos).cast()))
         } else {
             None
