@@ -17,7 +17,7 @@ use winit::event::TouchPhase;
 
 const MAX_TOUCHES: usize = 10;
 const MAX_PANS: usize = 2;
-const MAX_VELOCITY: usize = 2;
+const VELOCITY_LEN: usize = 2;
 const MAX_PAN_GRABS: usize = 2;
 
 #[derive(Clone, Debug)]
@@ -25,23 +25,21 @@ pub(super) struct TouchGrab {
     id: u64,
     pub(super) start_id: Id,
     pub(super) depress: Option<Id>,
-    cur_id: Option<Id>,
-    last_move: Coord,
-    coord: Coord,
+    over: Option<Id>,
+    last_coord: Coord,
     last_position: Vec2,
     mode: GrabMode,
     pan_grab: (u16, u16),
-    velocity: u16,
+    vel_index: u16,
     cancel: bool,
 }
 
 impl TouchGrab {
     fn flush_click_move(&mut self) -> Action {
-        if self.mode == GrabMode::Click && self.last_move != self.coord {
-            self.last_move = self.coord;
-            if self.start_id == self.cur_id {
-                if self.depress != self.cur_id {
-                    self.depress = self.cur_id.clone();
+        if self.mode == GrabMode::Click {
+            if self.start_id == self.over {
+                if self.depress != self.over {
+                    self.depress = self.over.clone();
                     return Action::REDRAW;
                 }
             } else if self.depress.is_some() {
@@ -65,7 +63,7 @@ struct PanGrab {
 pub(crate) struct Touch {
     pub(super) touch_grab: SmallVec<[TouchGrab; MAX_TOUCHES]>,
     pan_grab: SmallVec<[PanGrab; MAX_PANS]>,
-    velocity: [velocity::Samples; MAX_VELOCITY],
+    velocity: [velocity::Samples; VELOCITY_LEN],
 }
 
 impl Touch {
@@ -130,8 +128,8 @@ impl Touch {
             if grab.pan_grab.0 == g.0 && grab.pan_grab.1 > g.1 {
                 grab.pan_grab.1 -= 1;
                 if usize::from(grab.pan_grab.1) == MAX_PAN_GRABS - 1 {
-                    let v = grab.coord;
-                    self.pan_grab[usize::from(g.0)].coords[usize::from(grab.pan_grab.1)] = (v, v);
+                    let p = grab.last_coord;
+                    self.pan_grab[usize::from(g.0)].coords[usize::from(grab.pan_grab.1)] = (p, p);
                 }
             }
         }
@@ -168,14 +166,14 @@ impl Touch {
     ) -> bool {
         let mut velocity = u16::MAX;
         if mode == GrabMode::Grab {
-            let mut used = [false; MAX_VELOCITY];
+            let mut used = [false; VELOCITY_LEN];
             for grab in &self.touch_grab {
-                if (grab.velocity as usize) < MAX_VELOCITY {
-                    used[grab.velocity as usize] = true;
+                if (grab.vel_index as usize) < VELOCITY_LEN {
+                    used[grab.vel_index as usize] = true;
                 }
             }
 
-            for i in 0..MAX_VELOCITY {
+            for i in 0..VELOCITY_LEN {
                 if !used[i] {
                     self.velocity[i].clear();
                     velocity = i as u16;
@@ -190,11 +188,10 @@ impl Touch {
             }
 
             grab.depress = Some(id.clone());
-            grab.cur_id = Some(id.clone());
-            grab.last_move = coord;
-            grab.coord = coord;
+            grab.over = Some(id.clone());
+            grab.last_coord = coord;
             grab.last_position = coord.cast();
-            grab.velocity = velocity;
+            grab.vel_index = velocity;
             true
         } else if self.touch_grab.len() < MAX_TOUCHES {
             let mut pan_grab = (u16::MAX, 0);
@@ -206,13 +203,12 @@ impl Touch {
                 id: touch_id,
                 start_id: id.clone(),
                 depress: Some(id.clone()),
-                cur_id: Some(id.clone()),
-                last_move: coord,
-                coord,
+                over: Some(id.clone()),
+                last_coord: coord,
                 last_position: coord.cast(),
                 mode,
                 pan_grab,
-                velocity,
+                vel_index: velocity,
                 cancel: false,
             });
             true
@@ -226,7 +222,7 @@ impl Touch {
             .touch_grab
             .iter()
             .find(|grab| grab.id == touch_id)
-            .map(|grab| grab.velocity)
+            .map(|grab| grab.vel_index)
             .unwrap_or(u16::MAX);
         self.velocity
             .get(v as usize)
@@ -264,8 +260,8 @@ impl<'a> EventCx<'a> {
 
                 let press = Press {
                     source: PressSource::Touch(grab.id),
-                    id: grab.cur_id,
-                    coord: grab.coord,
+                    id: grab.over,
+                    coord: grab.last_coord,
                 };
                 let event = Event::PressEnd {
                     press,
@@ -279,7 +275,7 @@ impl<'a> EventCx<'a> {
 
         if self.action.contains(Action::REGION_MOVED) {
             for grab in self.touch.touch_grab.iter_mut() {
-                grab.cur_id = win.try_probe(grab.coord);
+                grab.over = win.try_probe(grab.last_coord);
             }
         }
     }
@@ -320,10 +316,10 @@ impl<'a> EventCx<'a> {
         let coord = touch.location.cast_approx();
         match touch.phase {
             TouchPhase::Started => {
-                let start_id = win.try_probe(coord);
-                self.close_non_ancestors_of(start_id.as_ref());
+                let over = win.try_probe(coord);
+                self.close_non_ancestors_of(over.as_ref());
 
-                if let Some(id) = start_id {
+                if let Some(id) = over {
                     if self.config.event().touch_nav_focus()
                         && let Some(id) =
                             self.nav_next(win.as_node(data), Some(&id), NavAdvance::None)
@@ -341,9 +337,8 @@ impl<'a> EventCx<'a> {
                 }
             }
             TouchPhase::Moved => {
-                let cur_id = win.try_probe(coord);
+                let over = win.try_probe(coord);
 
-                let mut redraw = false;
                 let mut pan_grab = None;
                 let grab_index = self
                     .touch
@@ -352,45 +347,40 @@ impl<'a> EventCx<'a> {
                     .enumerate()
                     .find_map(|(i, grab)| (grab.id == touch.id).then_some(i));
                 if let Some(index) = grab_index {
-                    let v = self.touch.touch_grab[index].velocity as usize;
-                    if v < MAX_VELOCITY {
+                    let vi = self.touch.touch_grab[index].vel_index as usize;
+                    if vi < VELOCITY_LEN {
                         let position = DVec2::from(touch.location).cast_approx();
-                        let last_vel = std::mem::replace(
+                        let last_pos = std::mem::replace(
                             &mut self.touch.touch_grab[index].last_position,
                             position,
                         );
-                        self.touch.velocity[v].push_delta(position - last_vel);
+                        self.touch.velocity[vi].push_delta(position - last_pos);
                     }
 
                     let grab = &mut self.touch.touch_grab[index];
-                    if grab.mode == GrabMode::Grab {
-                        // Only when 'depressed' status changes:
-                        redraw = grab.cur_id != cur_id
-                            && (grab.start_id == grab.cur_id || grab.start_id == cur_id);
+                    grab.over = over;
+                    let delta = coord - grab.last_coord;
+                    grab.last_coord = coord;
 
-                        grab.cur_id = cur_id;
-                        grab.coord = coord;
-
-                        if grab.last_move != grab.coord {
-                            let delta = grab.coord - grab.last_move;
+                    match grab.mode {
+                        GrabMode::Click => {}
+                        GrabMode::Grab => {
                             let target = grab.start_id.clone();
                             let press = Press {
                                 source: PressSource::Touch(grab.id),
-                                id: grab.cur_id.clone(),
-                                coord: grab.coord,
+                                id: grab.over.clone(),
+                                coord,
                             };
                             let event = Event::PressMove { press, delta };
-                            grab.last_move = grab.coord;
                             self.send_event(win.as_node(data), target, event);
                         }
-                    } else {
-                        pan_grab = Some(grab.pan_grab);
+                        GrabMode::Pan { .. } => {
+                            pan_grab = Some(grab.pan_grab);
+                        }
                     }
                 }
 
-                if redraw {
-                    self.window_action(Action::REDRAW);
-                } else if let Some(pan_grab) = pan_grab {
+                if let Some(pan_grab) = pan_grab {
                     self.need_frame_update = true;
                     if usize::conv(pan_grab.1) < MAX_PAN_GRABS
                         && let Some(pan) = self.touch.pan_grab.get_mut(usize::conv(pan_grab.0))
@@ -405,7 +395,7 @@ impl<'a> EventCx<'a> {
                     if let Some(grab) = self.touch.touch_grab.get(index)
                         && !grab.mode.is_pan()
                     {
-                        let id = grab.cur_id.clone();
+                        let id = grab.over.clone();
                         let press = Press { source, id, coord };
                         let success = ev == TouchPhase::Ended;
 
