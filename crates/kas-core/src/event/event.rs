@@ -723,4 +723,5 @@ fn sizes() {
     assert_eq!(size_of::<TimerHandle>(), 8);
     assert_eq!(size_of::<WindowId>(), 4);
     assert_eq!(size_of::<FocusSource>(), 1);
+    assert_eq!(size_of::<Event>(), 48);
 }
