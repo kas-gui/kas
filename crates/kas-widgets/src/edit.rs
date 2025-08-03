@@ -906,7 +906,7 @@ mod EditField {
             draw.text_selected(rect, &self.text, self.selection.range());
 
             if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
-                draw.text_cursor(rect, &self.text, self.selection.edit_pos());
+                draw.text_cursor(rect, &self.text, self.selection.edit_index());
             }
         }
     }
@@ -920,8 +920,8 @@ mod EditField {
             Role::TextInput {
                 text: self.text.as_str(),
                 multi_line: self.multi_line(),
-                edit_pos: self.selection.edit_pos(),
-                sel_pos: self.selection.sel_pos(),
+                cursor: self.selection.edit_index(),
+                sel_index: self.selection.sel_index(),
             }
         }
 
@@ -971,7 +971,7 @@ mod EditField {
                 }
                 Event::KeyFocus => {
                     self.has_key_focus = true;
-                    self.set_view_offset_from_edit_pos(cx);
+                    self.set_view_offset_from_cursor(cx);
                     G::focus_gained(self, cx, data);
                     Used
                 }
@@ -1037,10 +1037,10 @@ mod EditField {
                     self.text.replace_range(range.clone(), text);
 
                     if let Some((start, end)) = cursor {
-                        self.selection.set_sel_pos_only(range.start + start);
-                        self.selection.set_edit_pos(range.start + end);
+                        self.selection.set_sel_index_only(range.start + start);
+                        self.selection.set_edit_index(range.start + end);
                     } else {
-                        self.selection.set_pos(range.start + text.len());
+                        self.selection.set_all(range.start + text.len());
                     }
                     self.edit_x_coord = None;
                     self.prepare_text(cx);
@@ -1055,7 +1055,7 @@ mod EditField {
                     let range = self.selection.anchor_to_edit_range();
                     self.text.replace_range(range.clone(), text);
 
-                    self.selection.set_pos(range.start + text.len());
+                    self.selection.set_all(range.start + text.len());
                     self.edit_x_coord = None;
                     self.prepare_text(cx);
                     Used
@@ -1065,19 +1065,19 @@ mod EditField {
                     .complete(cx),
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     if let Some(content) = cx.get_primary() {
-                        self.set_edit_pos_from_coord(cx, press.coord);
+                        self.set_cursor_from_coord(cx, press.coord);
                         self.current.clear_selection();
                         self.selection.set_empty();
-                        let pos = self.selection.edit_pos();
+                        let index = self.selection.edit_index();
                         let range = self.trim_paste(&content);
                         let len = range.len();
 
                         self.old_state =
-                            Some((self.text.clone_string(), pos, self.selection.sel_pos()));
+                            Some((self.text.clone_string(), index, self.selection.sel_index()));
                         self.last_edit = LastEdit::Paste;
 
-                        self.text.replace_range(pos..pos, &content[range]);
-                        self.selection.set_pos(pos + len);
+                        self.text.replace_range(index..index, &content[range]);
+                        self.selection.set_all(index + len);
                         self.edit_x_coord = None;
                         self.prepare_text(cx);
 
@@ -1095,7 +1095,7 @@ mod EditField {
                             cx.cancel_ime_focus(self.id());
                         }
                         self.current = CurrentAction::DragSelect;
-                        self.set_edit_pos_from_coord(cx, coord);
+                        self.set_cursor_from_coord(cx, coord);
                         self.selection.action(&self.text, action);
 
                         if self.has_key_focus {
@@ -1301,7 +1301,7 @@ impl<G: EditGuard> EditField<G> {
         let text = text.to_string();
         let len = text.len();
         self.text.set_string(text);
-        self.selection.set_pos(len);
+        self.selection.set_all(len);
         self
     }
 
@@ -1421,7 +1421,7 @@ impl<G: EditGuard> EditField<G> {
             cx.redraw(&self);
         }
 
-        self.set_view_offset_from_edit_pos(cx);
+        self.set_view_offset_from_cursor(cx);
     }
 
     fn trim_paste(&self, text: &str) -> Range<usize> {
@@ -1446,24 +1446,24 @@ impl<G: EditGuard> EditField<G> {
         }
 
         self.current.clear_selection();
-        let pos = self.selection.edit_pos();
+        let index = self.selection.edit_index();
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
         if self.last_edit != LastEdit::Insert || have_sel {
-            self.old_state = Some((self.text.clone_string(), pos, self.selection.sel_pos()));
+            self.old_state = Some((self.text.clone_string(), index, self.selection.sel_index()));
             self.last_edit = LastEdit::Insert;
         }
         if have_sel {
             self.text.replace_range(selection.clone(), text);
-            self.selection.set_pos(selection.start + text.len());
+            self.selection.set_all(selection.start + text.len());
         } else {
             // TODO(kas-text) support the following:
-            // self.text.insert_str(pos, text);
+            // self.text.insert_str(index, text);
             let mut s = self.text.clone_string();
-            s.insert_str(pos, text);
+            s.insert_str(index, text);
             self.text.set_text(s);
             // END workaround
-            self.selection.set_pos(pos + text.len());
+            self.selection.set_all(index + text.len());
         }
         self.edit_x_coord = None;
 
@@ -1481,7 +1481,7 @@ impl<G: EditGuard> EditField<G> {
         let editable = self.editable;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
-        let pos = self.selection.edit_pos();
+        let cursor = self.selection.edit_index();
         let len = self.text.str_len();
         let multi_line = self.multi_line();
         let selection = self.selection.range();
@@ -1517,27 +1517,27 @@ impl<G: EditGuard> EditField<G> {
             Command::Left | Command::Home if !shift && have_sel => {
                 Action::Move(selection.start, None)
             }
-            Command::Left if pos > 0 => {
-                let mut cursor = GraphemeCursor::new(pos, len, true);
+            Command::Left if cursor > 0 => {
+                let mut cursor = GraphemeCursor::new(cursor, len, true);
                 cursor
                     .prev_boundary(self.text.text(), 0)
                     .unwrap()
-                    .map(|pos| Action::Move(pos, None))
+                    .map(|index| Action::Move(index, None))
                     .unwrap_or(Action::None)
             }
             Command::Right | Command::End if !shift && have_sel => {
                 Action::Move(selection.end, None)
             }
-            Command::Right if pos < len => {
-                let mut cursor = GraphemeCursor::new(pos, len, true);
+            Command::Right if cursor < len => {
+                let mut cursor = GraphemeCursor::new(cursor, len, true);
                 cursor
                     .next_boundary(self.text.text(), 0)
                     .unwrap()
-                    .map(|pos| Action::Move(pos, None))
+                    .map(|index| Action::Move(index, None))
                     .unwrap_or(Action::None)
             }
-            Command::WordLeft if pos > 0 => {
-                let mut iter = self.text.text()[0..pos].split_word_bound_indices();
+            Command::WordLeft if cursor > 0 => {
+                let mut iter = self.text.text()[0..cursor].split_word_bound_indices();
                 let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
                 while self.text.text()[p..]
                     .chars()
@@ -1553,9 +1553,11 @@ impl<G: EditGuard> EditField<G> {
                 }
                 Action::Move(p, None)
             }
-            Command::WordRight if pos < len => {
-                let mut iter = self.text.text()[pos..].split_word_bound_indices().skip(1);
-                let mut p = iter.next().map(|(index, _)| pos + index).unwrap_or(len);
+            Command::WordRight if cursor < len => {
+                let mut iter = self.text.text()[cursor..]
+                    .split_word_bound_indices()
+                    .skip(1);
+                let mut p = iter.next().map(|(index, _)| cursor + index).unwrap_or(len);
                 while self.text.text()[p..]
                     .chars()
                     .next()
@@ -1563,7 +1565,7 @@ impl<G: EditGuard> EditField<G> {
                     .unwrap_or(false)
                 {
                     if let Some((index, _)) = iter.next() {
-                        p = pos + index;
+                        p = cursor + index;
                     } else {
                         break;
                     }
@@ -1575,12 +1577,12 @@ impl<G: EditGuard> EditField<G> {
                     Some(x) => x,
                     None => self
                         .text
-                        .text_glyph_pos(pos)?
+                        .text_glyph_pos(cursor)?
                         .next_back()
                         .map(|r| r.pos.0)
                         .unwrap_or(0.0),
                 };
-                let mut line = self.text.find_line(pos)?.map(|r| r.0).unwrap_or(0);
+                let mut line = self.text.find_line(cursor)?.map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
                 line = match cmd {
                     Command::Up => line.wrapping_sub(1),
@@ -1594,23 +1596,23 @@ impl<G: EditGuard> EditField<G> {
                 };
                 self.text
                     .line_index_nearest(line, x)?
-                    .map(|pos| Action::Move(pos, Some(x)))
+                    .map(|index| Action::Move(index, Some(x)))
                     .unwrap_or(Action::Move(nearest_end, None))
             }
-            Command::Home if pos > 0 => {
-                let pos = self.text.find_line(pos)?.map(|r| r.1.start).unwrap_or(0);
-                Action::Move(pos, None)
+            Command::Home if cursor > 0 => {
+                let index = self.text.find_line(cursor)?.map(|r| r.1.start).unwrap_or(0);
+                Action::Move(index, None)
             }
-            Command::End if pos < len => {
-                let pos = self.text.find_line(pos)?.map(|r| r.1.end).unwrap_or(len);
-                Action::Move(pos, None)
+            Command::End if cursor < len => {
+                let index = self.text.find_line(cursor)?.map(|r| r.1.end).unwrap_or(len);
+                Action::Move(index, None)
             }
-            Command::DocHome if pos > 0 => Action::Move(0, None),
-            Command::DocEnd if pos < len => Action::Move(len, None),
+            Command::DocHome if cursor > 0 => Action::Move(0, None),
+            Command::DocEnd if cursor < len => Action::Move(len, None),
             Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = self
                     .text
-                    .text_glyph_pos(pos)?
+                    .text_glyph_pos(cursor)?
                     .next_back()
                     .map(|r| r.pos.into())
                     .unwrap_or(Vec2::ZERO);
@@ -1628,41 +1630,38 @@ impl<G: EditGuard> EditField<G> {
             Command::Delete | Command::DelBack if editable && have_sel => {
                 Action::Delete(selection.clone())
             }
-            Command::Delete if editable => {
-                let mut cursor = GraphemeCursor::new(pos, len, true);
-                cursor
-                    .next_boundary(self.text.text(), 0)
-                    .unwrap()
-                    .map(|next| Action::Delete(pos..next))
-                    .unwrap_or(Action::None)
-            }
+            Command::Delete if editable => GraphemeCursor::new(cursor, len, true)
+                .next_boundary(self.text.text(), 0)
+                .unwrap()
+                .map(|next| Action::Delete(cursor..next))
+                .unwrap_or(Action::None),
             Command::DelBack if editable => {
                 // We always delete one code-point, not one grapheme cluster:
-                let prev = self.text.text()[0..pos]
+                let prev = self.text.text()[0..cursor]
                     .char_indices()
                     .next_back()
                     .map(|(i, _)| i)
                     .unwrap_or(0);
-                Action::Delete(prev..pos)
+                Action::Delete(prev..cursor)
             }
             Command::DelWord if editable => {
-                let next = self.text.text()[pos..]
+                let next = self.text.text()[cursor..]
                     .split_word_bound_indices()
                     .nth(1)
-                    .map(|(index, _)| pos + index)
+                    .map(|(index, _)| cursor + index)
                     .unwrap_or(len);
-                Action::Delete(pos..next)
+                Action::Delete(cursor..next)
             }
             Command::DelWordBack if editable => {
-                let prev = self.text.text()[0..pos]
+                let prev = self.text.text()[0..cursor]
                     .split_word_bound_indices()
                     .next_back()
                     .map(|(index, _)| index)
                     .unwrap_or(0);
-                Action::Delete(prev..pos)
+                Action::Delete(prev..cursor)
             }
             Command::SelectAll => {
-                self.selection.set_sel_pos(0);
+                self.selection.set_sel_index(0);
                 shift = true; // hack
                 Action::Move(len, None)
             }
@@ -1685,13 +1684,13 @@ impl<G: EditGuard> EditField<G> {
             }
             Command::Undo | Command::Redo if editable => {
                 // TODO: maintain full edit history (externally?)
-                if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
+                if let Some((state, c2, sel)) = self.old_state.as_mut() {
                     self.text.swap_string(state);
-                    self.selection.set_edit_pos(*pos2);
-                    *pos2 = pos;
-                    let pos = *sel_pos;
-                    *sel_pos = self.selection.sel_pos();
-                    self.selection.set_sel_pos(pos);
+                    self.selection.set_edit_index(*c2);
+                    *c2 = cursor;
+                    let index = *sel;
+                    *sel = self.selection.sel_index();
+                    self.selection.set_sel_index(index);
                     self.edit_x_coord = None;
                     self.last_edit = LastEdit::None;
                 }
@@ -1716,41 +1715,41 @@ impl<G: EditGuard> EditField<G> {
             Action::Activate => EditAction::Activate,
             Action::Edit => EditAction::Edit,
             Action::Insert(s, edit) => {
-                let mut pos = pos;
+                let mut index = cursor;
                 if have_sel {
                     self.old_state =
-                        Some((self.text.clone_string(), pos, self.selection.sel_pos()));
+                        Some((self.text.clone_string(), index, self.selection.sel_index()));
                     self.last_edit = edit;
 
                     self.text.replace_range(selection.clone(), s);
-                    pos = selection.start;
+                    index = selection.start;
                 } else {
                     if self.last_edit != edit {
                         self.old_state =
-                            Some((self.text.clone_string(), pos, self.selection.sel_pos()));
+                            Some((self.text.clone_string(), index, self.selection.sel_index()));
                         self.last_edit = edit;
                     }
 
-                    self.text.replace_range(pos..pos, s);
+                    self.text.replace_range(index..index, s);
                 }
-                self.selection.set_pos(pos + s.len());
+                self.selection.set_all(index + s.len());
                 self.edit_x_coord = None;
                 EditAction::Edit
             }
             Action::Delete(sel) => {
                 if self.last_edit != LastEdit::Delete {
                     self.old_state =
-                        Some((self.text.clone_string(), pos, self.selection.sel_pos()));
+                        Some((self.text.clone_string(), cursor, self.selection.sel_index()));
                     self.last_edit = LastEdit::Delete;
                 }
 
                 self.text.replace_range(sel.clone(), "");
-                self.selection.set_pos(sel.start);
+                self.selection.set_all(sel.start);
                 self.edit_x_coord = None;
                 EditAction::Edit
             }
-            Action::Move(pos, x_coord) => {
-                self.selection.set_edit_pos(pos);
+            Action::Move(index, x_coord) => {
+                self.selection.set_edit_index(index);
                 if !shift {
                     self.selection.set_empty();
                 } else {
@@ -1777,12 +1776,12 @@ impl<G: EditGuard> EditField<G> {
         })
     }
 
-    fn set_edit_pos_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
+    fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
         let rel_pos = (coord - self.rect().pos).cast();
-        if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
-            if pos != self.selection.edit_pos() {
-                self.selection.set_edit_pos(pos);
-                self.set_view_offset_from_edit_pos(cx);
+        if let Ok(index) = self.text.text_index_nearest(rel_pos) {
+            if index != self.selection.edit_index() {
+                self.selection.set_edit_index(index);
+                self.set_view_offset_from_cursor(cx);
                 self.edit_x_coord = None;
                 cx.redraw(self);
             }
@@ -1796,14 +1795,14 @@ impl<G: EditGuard> EditField<G> {
         }
     }
 
-    /// Update view_offset after edit_pos changes
+    /// Update view_offset after the cursor index changes
     ///
-    /// A redraw is assumed since edit_pos moved.
-    fn set_view_offset_from_edit_pos(&mut self, cx: &mut EventCx) {
-        let edit_pos = self.selection.edit_pos();
+    /// A redraw is assumed since the cursor moved.
+    fn set_view_offset_from_cursor(&mut self, cx: &mut EventCx) {
+        let cursor = self.selection.edit_index();
         if let Some(marker) = self
             .text
-            .text_glyph_pos(edit_pos)
+            .text_glyph_pos(cursor)
             .ok()
             .and_then(|mut m| m.next_back())
         {

@@ -47,8 +47,8 @@ mod SelectableText {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::TextLabel {
                 text: self.text.as_str(),
-                edit_pos: self.selection.edit_pos(),
-                sel_pos: self.selection.sel_pos(),
+                cursor: self.selection.edit_index(),
+                sel_index: self.selection.sel_index(),
             }
         }
     }
@@ -114,12 +114,12 @@ mod SelectableText {
             true
         }
 
-        fn set_edit_pos_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
+        fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
             let rel_pos = (coord - self.rect().pos).cast();
-            if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
-                if pos != self.selection.edit_pos() {
-                    self.selection.set_edit_pos(pos);
-                    self.set_view_offset_from_edit_pos(cx, pos);
+            if let Ok(index) = self.text.text_index_nearest(rel_pos) {
+                if index != self.selection.edit_index() {
+                    self.selection.set_edit_index(index);
+                    self.set_view_offset_from_cursor(cx, index);
                     cx.redraw(self);
                 }
             }
@@ -132,13 +132,13 @@ mod SelectableText {
             }
         }
 
-        /// Update view_offset from edit_pos
+        /// Update view_offset from `cursor`
         ///
         /// This method is mostly identical to its counterpart in `EditField`.
-        fn set_view_offset_from_edit_pos(&mut self, cx: &mut EventCx, edit_pos: usize) {
+        fn set_view_offset_from_cursor(&mut self, cx: &mut EventCx, cursor: usize) {
             if let Some(marker) = self
                 .text
-                .text_glyph_pos(edit_pos)
+                .text_glyph_pos(cursor)
                 .ok()
                 .and_then(|mut m| m.next_back())
             {
@@ -202,8 +202,8 @@ mod SelectableText {
                         Used
                     }
                     Command::SelectAll => {
-                        self.selection.set_sel_pos(0);
-                        self.selection.set_edit_pos(self.text.str_len());
+                        self.selection.set_sel_index(0);
+                        self.selection.set_edit_index(self.text.str_len());
                         self.set_primary(cx);
                         cx.redraw(self);
                         Used
@@ -232,7 +232,7 @@ mod SelectableText {
                     TextInputAction::Used | TextInputAction::Finish => Used,
                     TextInputAction::Unused => Unused,
                     TextInputAction::Focus { coord, action } => {
-                        self.set_edit_pos_from_coord(cx, coord);
+                        self.set_cursor_from_coord(cx, coord);
                         self.selection.action(&self.text, action);
 
                         if self.has_sel_focus {

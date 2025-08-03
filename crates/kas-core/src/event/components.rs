@@ -440,7 +440,7 @@ pub enum TextInputAction {
     ///
     /// To handle:
     ///
-    /// 1.  Translate `coord` to a text index and call [`SelectionHelper::set_edit_pos`].
+    /// 1.  Translate `coord` to a text index and call [`SelectionHelper::set_edit_index`].
     /// 2.  Call [`SelectionHelper::action`].
     /// 3.  If supporting the primary buffer (Unix), set its contents now if the
     ///     widget has selection focus or otherwise when handling
