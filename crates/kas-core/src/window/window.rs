@@ -5,56 +5,17 @@
 
 //! Window widgets
 
+use super::{Decorations, Icon, Popup, PopupDescriptor, ResizeDirection, WindowId};
 use crate::cast::Cast;
-use crate::decorations::{Border, Decorations, Label, TitleBar};
 use crate::dir::{Direction, Directional};
-use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Unused, Used};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Id, Layout, Popup, Role, RoleCx, Tile, TileExt, Widget};
+use crate::widgets::{Border, Label, TitleBar};
+use crate::{Action, Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
-use std::num::NonZeroU32;
-
-/// Identifier for a window or pop-up
-///
-/// Identifiers should always be unique.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct WindowId(NonZeroU32);
-
-impl WindowId {
-    pub(crate) fn get(self) -> u32 {
-        self.0.get()
-    }
-}
-
-/// Constructor for [`WindowId`]
-#[derive(Default)]
-pub(crate) struct WindowIdFactory(u32);
-
-impl WindowIdFactory {
-    /// Get the next identifier
-    ///
-    /// TODO(opt): this should recycle used identifiers since Id does not
-    /// efficiently represent large numbers.
-    pub(crate) fn make_next(&mut self) -> WindowId {
-        let id = self.0 + 1;
-        self.0 = id;
-        WindowId(NonZeroU32::new(id).unwrap())
-    }
-}
-
-/// Commands supported by the [`Window`]
-///
-/// This may be sent as a message from any widget in the window.
-#[derive(Clone, Debug)]
-pub enum WindowCommand {
-    /// Change the window's title
-    SetTitle(String),
-    /// Change the window's icon
-    SetIcon(Option<Icon>),
-}
 
 pub(crate) trait WindowErased {
     fn as_tile(&self) -> &dyn Tile;
@@ -69,8 +30,11 @@ mod Window {
     /// This widget is the root of any UI tree used as a window. It manages
     /// window decorations.
     ///
-    /// To change window properties at run-time, send a [`WindowCommand`] from a
-    /// child widget.
+    /// # Messages
+    ///
+    /// [`kas::messages::SetWindowTitle`] may be used to set the title.
+    ///
+    /// [`kas::messages::SetWindowIcon`] may be used to set the icon.
     #[widget]
     pub struct Window<Data: 'static> {
         core: widget_core!(),
@@ -82,7 +46,7 @@ mod Window {
         #[widget]
         inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
-        tooltip: Popup<Label>,
+        tooltip: Popup<Label<String>>,
         #[widget(&())]
         title_bar: TitleBar,
         #[widget(&())]
@@ -104,7 +68,7 @@ mod Window {
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
-        popups: SmallVec<[(WindowId, kas::PopupDescriptor, Offset); 16]>,
+        popups: SmallVec<[(WindowId, PopupDescriptor, Offset); 16]>,
     }
 
     impl Layout for Self {
@@ -283,26 +247,21 @@ mod Window {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(cmd) = cx.try_pop() {
-                match cmd {
-                    WindowCommand::SetTitle(title) => {
-                        self.title_bar.set_title(cx, title);
-                        if self.decorations == Decorations::Server
-                            && let Some(w) = cx.winit_window()
-                        {
-                            w.set_title(self.title());
-                        }
-                    }
-                    WindowCommand::SetIcon(icon) => {
-                        if self.decorations == Decorations::Server
-                            && let Some(w) = cx.winit_window()
-                        {
-                            w.set_window_icon(icon);
-                            return; // do not set self.icon
-                        }
-                        self.icon = icon;
-                    }
+            if let Some(kas::messages::SetWindowTitle(title)) = cx.try_pop() {
+                self.title_bar.set_title(cx, title);
+                if self.decorations == Decorations::Server
+                    && let Some(w) = cx.winit_window()
+                {
+                    w.set_title(self.title());
                 }
+            } else if let Some(kas::messages::SetWindowIcon(icon)) = cx.try_pop() {
+                if self.decorations == Decorations::Server
+                    && let Some(w) = cx.winit_window()
+                {
+                    w.set_window_icon(icon);
+                    return; // do not set self.icon
+                }
+                self.icon = icon;
             }
         }
 
@@ -480,7 +439,7 @@ impl<Data: 'static> Window<Data> {
         cx: &mut ConfigCx,
         data: &Data,
         id: WindowId,
-        popup: kas::PopupDescriptor,
+        popup: PopupDescriptor,
     ) {
         let index = 'index: {
             for i in 0..self.popups.len() {
@@ -526,7 +485,7 @@ impl<Data: 'static> Window<Data> {
 
     /// Iterate over popups
     #[cfg(feature = "accesskit")]
-    pub(crate) fn iter_popups(&self) -> impl Iterator<Item = &kas::PopupDescriptor> {
+    pub(crate) fn iter_popups(&self) -> impl Iterator<Item = &PopupDescriptor> {
         self.popups.iter().map(|(_, popup, _)| popup)
     }
 }

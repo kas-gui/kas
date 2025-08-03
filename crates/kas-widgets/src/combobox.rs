@@ -7,12 +7,12 @@
 
 use crate::adapt::AdaptEvents;
 use crate::{Column, Label, Mark, menu::MenuEntry};
-use kas::Popup;
 use kas::event::{Command, FocusSource};
 use kas::messages::{Collapse, Expand, SetIndex};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
 use kas::theme::{MarkStyle, TextClass};
+use kas::window::Popup;
 use std::fmt::Debug;
 
 #[impl_self]

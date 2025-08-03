@@ -18,6 +18,7 @@ use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::MarginStyle;
 use kas::widgets::{column, *};
+use kas::window::Popup;
 use std::ops::Range;
 
 #[derive(Debug, Default)]
@@ -26,7 +27,6 @@ struct AppData {
 }
 
 fn widgets() -> Box<dyn Widget<Data = AppData>> {
-    use kas::Popup;
     use kas::widgets::dialog::{TextEdit, TextEditResult};
 
     // A real app might use async loading of resources here (Svg permits loading
@@ -823,7 +823,7 @@ fn main() -> kas::runner::Result<()> {
             ("Can&vas", canvas()),
             ("Confi&g", config()),
         ])
-        .with_msg(|_, title| WindowCommand::SetTitle(format!("Gallery — {}", title))),
+        .with_msg(|_, title| kas::messages::SetWindowTitle(format!("Gallery — {}", title))),
     ];
 
     let ui = ui

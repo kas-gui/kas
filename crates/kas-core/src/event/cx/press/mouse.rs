@@ -8,8 +8,9 @@
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta, TimerHandle};
 use crate::geom::{Affine, Coord, DVec2};
-use crate::root::WindowErased;
-use crate::{Action, Id, NavAdvance, Node, TileExt, Widget, Window};
+use crate::window::Window;
+use crate::window::WindowErased;
+use crate::{Action, Id, NavAdvance, Node, TileExt, Widget};
 use cast::{Cast, CastApprox, ConvApprox};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};

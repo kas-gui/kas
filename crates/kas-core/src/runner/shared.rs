@@ -6,13 +6,13 @@
 //! Shared state
 
 use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform};
-use crate::WindowIdFactory;
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
-use crate::{Action, WindowId, draw};
+use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
+use crate::{Action, draw};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -137,10 +137,10 @@ pub(crate) trait RunnerT {
     ///
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
-    fn add_popup(&mut self, parent_id: WindowId, popup: crate::PopupDescriptor) -> WindowId;
+    fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId;
 
     /// Resize and reposition an existing pop-up
-    fn reposition_popup(&mut self, id: WindowId, popup: kas::PopupDescriptor);
+    fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor);
 
     /// Add a window
     ///
@@ -156,7 +156,7 @@ pub(crate) trait RunnerT {
     /// type accepted by the widget as input). As an alternative we require the
     /// caller to type-cast `Window<Data>` to `Window<()>` and pass in
     /// `TypeId::of::<Data>()`.
-    unsafe fn add_window(&mut self, window: kas::Window<()>, data_type_id: TypeId) -> WindowId;
+    unsafe fn add_window(&mut self, window: WindowWidget<()>, data_type_id: TypeId) -> WindowId;
 
     /// Close a window
     fn close_window(&mut self, id: WindowId);
@@ -209,24 +209,24 @@ pub(crate) trait RunnerT {
 }
 
 impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
-    fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
+    fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId {
         let id = self.window_id_factory.make_next();
         self.pending
             .push_back(Pending::AddPopup(parent_id, id, popup));
         id
     }
 
-    fn reposition_popup(&mut self, id: WindowId, popup: kas::PopupDescriptor) {
+    fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor) {
         self.pending.push_back(Pending::RepositionPopup(id, popup));
     }
 
-    unsafe fn add_window(&mut self, window: kas::Window<()>, data_type_id: TypeId) -> WindowId {
+    unsafe fn add_window(&mut self, window: WindowWidget<()>, data_type_id: TypeId) -> WindowId {
         // Safety: the window should be `Window<Data>`. We cast to that.
         if data_type_id != TypeId::of::<Data>() {
             // If this fails it is not safe to add the window (though we could just return).
             panic!("add_window: window has wrong Data type!");
         }
-        let window: kas::Window<Data> = unsafe { std::mem::transmute(window) };
+        let window: WindowWidget<Data> = unsafe { std::mem::transmute(window) };
 
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
