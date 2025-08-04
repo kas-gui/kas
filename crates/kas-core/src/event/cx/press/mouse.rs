@@ -264,6 +264,8 @@ impl<'a> EventCx<'a> {
                 "remove_mouse_grab: start_id={}, success={success}",
                 grab.start_id
             );
+            debug_assert!(self.mouse.last_position.is_finite());
+
             self.window.set_cursor_icon(self.mouse.icon);
             redraw = grab.depress.clone();
             if let GrabDetails::Pan(details) = &grab.details {
@@ -320,12 +322,7 @@ impl<'a> EventCx<'a> {
         data: &A,
         position: DVec2,
     ) {
-        let delta = position - self.mouse.last_position;
-        self.mouse.samples.push_delta(delta.cast_approx());
-        self.mouse.last_position = position;
-        self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
         let coord = position.cast_nearest();
-
         let id = win.try_probe(coord);
         self.tooltip_motion(win, &id);
         self.handle_cursor_moved_(id, win.as_node(data), coord, position);
@@ -338,6 +335,13 @@ impl<'a> EventCx<'a> {
         coord: Coord,
         position: DVec2,
     ) {
+        let delta = position - self.mouse.last_position;
+        if delta.is_finite() {
+            self.mouse.samples.push_delta(delta.cast_approx());
+        }
+        self.mouse.last_position = position;
+        self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
+
         self.set_over(window.re(), id.clone());
 
         if let Some(grab) = self.mouse.grab.as_mut() {
@@ -350,7 +354,7 @@ impl<'a> EventCx<'a> {
                         id,
                         coord,
                     };
-                    let delta = position - self.mouse.last_position;
+                    debug_assert!(delta.is_finite());
                     let event = Event::PressMove { press, delta };
                     self.send_event(window.re(), target, event);
                 }
@@ -457,6 +461,7 @@ impl<'a> EventCx<'a> {
                     id: Some(id.clone()),
                     position: self.mouse.last_position,
                 };
+                debug_assert!(press.position.is_finite());
                 let event = Event::PressStart(press);
                 self.send_event(window, id, event);
             }
