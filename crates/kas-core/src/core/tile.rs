@@ -205,8 +205,8 @@ pub trait Tile: Layout {
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
     /// *and* child widgets need to implement this.
-    /// Such widgets must also implement [`Events::handle_scroll`] and
-    /// [`Tile::probe`].
+    /// Such widgets must also implement [`Tile::probe`] and (if they scroll)
+    /// [`Events::handle_scroll`].
     ///
     /// Affects event handling via [`Tile::probe`] and affects the positioning
     /// of pop-up menus. [`Layout::draw`] must be implemented directly using
