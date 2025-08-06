@@ -11,7 +11,7 @@ use crate::geom::{Affine, Coord, DVec2};
 use crate::window::Window;
 use crate::window::WindowErased;
 use crate::{Action, Id, NavAdvance, Node, TileExt, Widget};
-use cast::{Cast, CastApprox, ConvApprox};
+use cast::{Cast, CastApprox, Conv, ConvApprox};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::window::CursorIcon;
@@ -179,8 +179,9 @@ impl Mouse {
             GrabMode::Click => GrabDetails::Click,
             GrabMode::Grab => GrabDetails::Grab,
             GrabMode::Pan { scale, rotate } => {
-                let position = self.last_position;
-                debug_assert_eq!(coord, position.cast_approx());
+                // coord may have been offset by a scroll region; we must keep
+                // that but should try to preserve fractional precision.
+                let position = DVec2::conv(coord) + self.last_position.fract();
 
                 // Do we have a pin?
                 if matches!(&self.last_pin, Some((id2, _)) if id == *id2) {
