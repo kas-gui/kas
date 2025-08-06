@@ -219,6 +219,18 @@ impl PressStart {
             cursor: None,
         }
     }
+
+    /// Convenience wrapper for [`Self::grab`] using [`GrabMode::Click`]
+    #[inline]
+    pub fn grab_click(&self, id: Id) -> GrabBuilder {
+        self.grab(id, GrabMode::Click)
+    }
+
+    /// Convenience wrapper for [`Self::grab`] using [`GrabMode::Grab`]
+    #[inline]
+    pub fn grab_move(&self, id: Id) -> GrabBuilder {
+        self.grab(id, GrabMode::Grab)
+    }
 }
 
 /// Details of press events

@@ -807,9 +807,7 @@ mod GridView {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press
-                        .grab(self.id(), kas::event::GrabMode::Click)
-                        .complete(cx)
+                    press.grab_click(self.id()).complete(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {

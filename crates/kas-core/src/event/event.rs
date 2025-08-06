@@ -250,9 +250,7 @@ impl<'a> Event<'a> {
                 cx.depress_with_key(id, code);
                 f(cx)
             }
-            Event::PressStart(press) if press.is_primary() => {
-                press.grab(id, GrabMode::Click).complete(cx)
-            }
+            Event::PressStart(press) if press.is_primary() => press.grab_click(id).complete(cx),
             Event::PressEnd { press, success, .. } => {
                 if success && id == press.id {
                     f(cx)

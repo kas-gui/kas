@@ -151,9 +151,7 @@ mod MenuBar {
                             let press_in_the_bar = self.rect().contains(press.coord);
 
                             if !press_in_the_bar || !any_menu_open {
-                                press
-                                    .grab(self.id(), kas::event::GrabMode::Grab)
-                                    .complete(cx);
+                                press.grab_move(self.id()).complete(cx);
                             }
                             cx.set_grab_depress(*press, press.id.clone());
                             if press_in_the_bar {

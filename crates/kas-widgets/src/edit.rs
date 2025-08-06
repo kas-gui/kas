@@ -1060,9 +1060,9 @@ mod EditField {
                     self.prepare_text(cx);
                     Used
                 }
-                Event::PressStart(press) if press.is_tertiary() => press
-                    .grab(self.id(), kas::event::GrabMode::Click)
-                    .complete(cx),
+                Event::PressStart(press) if press.is_tertiary() => {
+                    press.grab_click(self.id()).complete(cx)
+                }
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     if let Some(content) = cx.get_primary() {
                         self.set_cursor_from_coord(cx, press.coord);

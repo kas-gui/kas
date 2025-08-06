@@ -156,9 +156,7 @@ mod ComboBox {
                         .unwrap_or(false)
                     {
                         if press.is_primary() {
-                            press
-                                .grab(self.id(), kas::event::GrabMode::Grab)
-                                .complete(cx);
+                            press.grab_move(self.id()).complete(cx);
                             cx.set_grab_depress(*press, press.id);
                             self.opening = !self.popup.is_open();
                         }
