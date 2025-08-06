@@ -15,7 +15,7 @@ use std::mem::transmute;
 use super::{EventCx, IsUsed};
 #[allow(unused)] use crate::Events; // for doc-links
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
-use crate::geom::{Coord, Vec2};
+use crate::geom::{Coord, Offset, Vec2};
 use crate::{Action, Id};
 pub(crate) use mouse::Mouse;
 pub(crate) use touch::Touch;
@@ -184,10 +184,23 @@ pub struct PressStart {
     /// Identifier of the widget currently under the press
     pub id: Option<Id>,
     /// Current coordinate
-    pub coord: Coord,
+    coord: Coord,
+}
+
+impl std::ops::AddAssign<Offset> for PressStart {
+    #[inline]
+    fn add_assign(&mut self, offset: Offset) {
+        self.coord += offset;
+    }
 }
 
 impl PressStart {
+    /// Get the current press coordinate
+    #[inline]
+    pub fn coord(&self) -> Coord {
+        self.coord
+    }
+
     /// Grab pan/move/press-end events for widget `id`
     ///
     /// There are three types of grab ([`GrabMode`]):

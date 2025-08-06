@@ -148,7 +148,7 @@ mod MenuBar {
                     {
                         if press.is_primary() {
                             let any_menu_open = self.widgets.iter().any(|w| w.menu_is_open());
-                            let press_in_the_bar = self.rect().contains(press.coord);
+                            let press_in_the_bar = self.rect().contains(press.coord());
 
                             if !press_in_the_bar || !any_menu_open {
                                 press.grab_move(self.id()).complete(cx);

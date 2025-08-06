@@ -216,7 +216,7 @@ impl<'a> std::ops::AddAssign<Offset> for Event<'a> {
                 press.coord += offset;
             }
             Event::PressStart(press) => {
-                press.coord += offset;
+                *press += offset;
             }
             Event::PressMove { press, .. } => {
                 press.coord += offset;

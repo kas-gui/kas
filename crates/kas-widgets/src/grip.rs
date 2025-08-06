@@ -119,7 +119,7 @@ mod GripPart {
                         .complete(cx);
 
                     // Event delivery implies coord is over the grip.
-                    self.press_coord = press.coord - self.offset();
+                    self.press_coord = press.coord() - self.offset();
                     Used
                 }
                 Event::PressMove { press, .. } => {
@@ -233,9 +233,10 @@ mod GripPart {
                 .with_icon(CursorIcon::Grabbing)
                 .complete(cx);
 
-            let offset = press.coord - self.track.pos - Offset::conv(self.rect.size / 2);
+            let coord = press.coord();
+            let offset = coord - self.track.pos - Offset::conv(self.rect.size / 2);
             let offset = offset.clamp(Offset::ZERO, self.max_offset());
-            self.press_coord = press.coord - offset;
+            self.press_coord = coord - offset;
             offset
         }
     }

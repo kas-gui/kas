@@ -469,7 +469,7 @@ impl TextInput {
             Event::PressStart(press) if press.is_primary() => {
                 let mut action = Action::Used;
                 let icon = if press.is_touch() {
-                    self.phase = Phase::Start(*press, press.coord);
+                    self.phase = Phase::Start(*press, press.coord());
                     let delay = cx.config().event().touch_select_delay();
                     cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
                     None
@@ -480,7 +480,7 @@ impl TextInput {
                     } else {
                         self.phase = Phase::Cursor(*press);
                         action = Action::Focus {
-                            coord: press.coord,
+                            coord: press.coord(),
                             action: SelectionAction {
                                 anchor: true,
                                 clear: !cx.modifiers().shift_key(),
