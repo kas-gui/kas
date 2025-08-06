@@ -282,7 +282,7 @@ impl<'a> EventCx<'a> {
             } else {
                 last_pin = None;
                 let press = Press {
-                    source: PressSource::Mouse(grab.button, grab.repetitions),
+                    source: PressSource::mouse(grab.button, grab.repetitions),
                     id: self.mouse.over.clone(),
                     coord: self.mouse.last_coord,
                 };
@@ -352,7 +352,7 @@ impl<'a> EventCx<'a> {
                 GrabDetails::Grab => {
                     let target = grab.start_id.clone();
                     let press = Press {
-                        source: PressSource::Mouse(grab.button, grab.repetitions),
+                        source: PressSource::mouse(grab.button, grab.repetitions),
                         id,
                         coord,
                     };
@@ -373,7 +373,7 @@ impl<'a> EventCx<'a> {
             .map(|state| state.desc.id.clone())
         {
             let press = Press {
-                source: PressSource::Mouse(FAKE_MOUSE_BUTTON, 0),
+                source: PressSource::mouse(FAKE_MOUSE_BUTTON, 0),
                 id,
                 coord,
             };
@@ -467,7 +467,7 @@ impl<'a> EventCx<'a> {
                     self.set_nav_focus(id, FocusSource::Pointer);
                 }
 
-                let source = PressSource::Mouse(button, self.mouse.last_click_repetitions);
+                let source = PressSource::mouse(button, self.mouse.last_click_repetitions);
                 let press = Press {
                     source,
                     id: Some(id.clone()),

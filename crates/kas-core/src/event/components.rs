@@ -468,29 +468,29 @@ impl TextInput {
         match event {
             Event::PressStart { press } if press.is_primary() => {
                 let mut action = Action::Used;
-                let icon = match *press {
-                    PressSource::Touch(_) => {
-                        self.phase = Phase::Start(*press, press.coord);
-                        let delay = cx.config().event().touch_select_delay();
-                        cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
-                        None
-                    }
-                    PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
+                let icon = if press.is_touch() {
+                    self.phase = Phase::Start(*press, press.coord);
+                    let delay = cx.config().event().touch_select_delay();
+                    cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
+                    None
+                } else if press.is_mouse() {
+                    if cx.config_enable_mouse_text_pan() {
                         self.phase = Phase::Pan(*press);
                         Some(CursorIcon::Grabbing)
-                    }
-                    PressSource::Mouse(_, repeats) => {
+                    } else {
                         self.phase = Phase::Cursor(*press);
                         action = Action::Focus {
                             coord: press.coord,
                             action: SelectionAction {
                                 anchor: true,
                                 clear: !cx.modifiers().shift_key(),
-                                repeats,
+                                repeats: press.repetitions(),
                             },
                         };
                         None
                     }
+                } else {
+                    unreachable!()
                 };
                 press
                     .grab(w_id, GrabMode::Grab)
@@ -511,16 +511,10 @@ impl TextInput {
                     cx.set_scroll(Scroll::Offset(delta));
                     Action::Used
                 }
-                Phase::Cursor(source) if *press == source => {
-                    let repeats = match *press {
-                        PressSource::Touch(_) => 1,
-                        PressSource::Mouse(_, n) => n,
-                    };
-                    Action::Focus {
-                        coord: press.coord,
-                        action: SelectionAction::new(false, false, repeats),
-                    }
-                }
+                Phase::Cursor(source) if *press == source => Action::Focus {
+                    coord: press.coord,
+                    action: SelectionAction::new(false, false, press.repetitions()),
+                },
                 _ => Action::Used,
             },
             Event::PressEnd { press, .. } => {

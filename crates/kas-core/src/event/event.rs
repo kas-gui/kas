@@ -719,9 +719,9 @@ fn sizes() {
     assert_eq!(size_of::<KeyEvent>(), 128);
     assert_eq!(size_of::<ScrollDelta>(), 12);
     assert_eq!(size_of::<Affine>(), 32);
-    assert_eq!(size_of::<Press>(), 32);
+    assert_eq!(size_of::<Press>(), 24);
     assert_eq!(size_of::<TimerHandle>(), 8);
     assert_eq!(size_of::<WindowId>(), 4);
     assert_eq!(size_of::<FocusSource>(), 1);
-    assert_eq!(size_of::<Event>(), 48);
+    assert_eq!(size_of::<Event>(), 40);
 }

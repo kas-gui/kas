@@ -259,7 +259,7 @@ impl<'a> EventCx<'a> {
                 let grab = self.remove_touch(i);
 
                 let press = Press {
-                    source: PressSource::Touch(grab.id),
+                    source: PressSource::touch(grab.id),
                     id: grab.over,
                     coord: grab.last_coord,
                 };
@@ -312,7 +312,7 @@ impl<'a> EventCx<'a> {
         data: &A,
         touch: winit::event::Touch,
     ) {
-        let source = PressSource::Touch(touch.id);
+        let source = PressSource::touch(touch.id);
         let coord = touch.location.cast_approx();
         match touch.phase {
             TouchPhase::Started => {
@@ -367,7 +367,7 @@ impl<'a> EventCx<'a> {
                         GrabMode::Grab => {
                             let target = grab.start_id.clone();
                             let press = Press {
-                                source: PressSource::Touch(grab.id),
+                                source: PressSource::touch(grab.id),
                                 id: grab.over.clone(),
                                 coord,
                             };
