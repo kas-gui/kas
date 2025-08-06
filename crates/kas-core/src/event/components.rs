@@ -106,10 +106,8 @@ impl Kinetic {
 
         if let Some(source) = self.press {
             let decay_sub = evc.kinetic_grab_sub();
-            let grab_vel = cx.press_velocity(source).unwrap_or_default() + self.vel;
-
-            let v = self.vel - grab_vel;
-            self.vel -= v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
+            let v = cx.press_velocity(source).unwrap_or_default();
+            self.vel -= v.abs().min(Vec2::splat(decay_sub * dur)) * -v.sign();
         }
 
         let (decay_mul, decay_sub) = evc.kinetic_decay();
