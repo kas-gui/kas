@@ -11,7 +11,7 @@ use crate::geom::{Affine, Coord, DVec2};
 use crate::window::Window;
 use crate::window::WindowErased;
 use crate::{Action, Id, NavAdvance, Node, TileExt, Widget};
-use cast::CastApprox;
+use cast::{CastApprox, CastFloat};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::window::CursorIcon;
@@ -66,7 +66,6 @@ pub(crate) struct Mouse {
     pub(super) over: Option<Id>, // widget under the mouse
     pub(super) icon: CursorIcon,
     old_icon: CursorIcon,
-    last_coord: Coord,
     last_click_button: MouseButton,
     last_click_repetitions: u32,
     last_click_timeout: Instant,
@@ -83,7 +82,6 @@ impl Default for Mouse {
             over: None,
             icon: CursorIcon::Default,
             old_icon: CursorIcon::Default,
-            last_coord: Coord::ZERO,
             last_click_button: FAKE_MOUSE_BUTTON,
             last_click_repetitions: 0,
             last_click_timeout: Instant::now(),
@@ -280,7 +278,7 @@ impl<'a> EventCx<'a> {
                 let press = Press {
                     source: PressSource::mouse(grab.button, grab.repetitions),
                     id: self.mouse.over.clone(),
-                    coord: self.mouse.last_coord,
+                    coord: self.mouse.last_position.cast_nearest(),
                 };
                 let event = Event::PressEnd { press, success };
                 to_send = Some((grab.start_id.clone(), event));
@@ -310,7 +308,7 @@ impl<'a> EventCx<'a> {
         }
 
         if self.action.contains(Action::REGION_MOVED) {
-            let over = win.try_probe(self.mouse.last_coord);
+            let over = win.try_probe(self.mouse.last_position.cast_nearest());
             self.set_over(win.as_node(data), over);
         }
     }
@@ -326,7 +324,7 @@ impl<'a> EventCx<'a> {
         self.mouse.samples.push_delta(delta.cast_approx());
         self.mouse.last_position = position;
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
-        let coord = position.cast_approx();
+        let coord = position.cast_nearest();
 
         let id = win.try_probe(coord);
         self.tooltip_motion(win, &id);
@@ -378,8 +376,6 @@ impl<'a> EventCx<'a> {
         } else {
             // We don't forward move events without a grab
         }
-
-        self.mouse.last_coord = coord;
     }
 
     /// Handle mouse cursor entering the app.
@@ -391,9 +387,6 @@ impl<'a> EventCx<'a> {
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
 
         if self.mouse.grab.is_none() {
-            // If there's a mouse grab, we will continue to receive
-            // coordinates; if not, set a fake coordinate off the window
-            self.mouse.last_coord = Coord(-1, -1);
             self.set_over(window, None);
         }
     }

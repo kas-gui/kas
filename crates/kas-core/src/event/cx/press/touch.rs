@@ -8,10 +8,10 @@
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::config::EventWindowConfig;
 use crate::event::{Event, EventCx, EventState, FocusSource, PressStart};
-use crate::geom::{Affine, Coord, DVec2, Vec2};
+use crate::geom::{Affine, DVec2, Vec2};
 use crate::window::Window;
 use crate::{Action, Id, NavAdvance, Node, Widget};
-use cast::{Cast, CastApprox, Conv};
+use cast::{Cast, CastApprox, CastFloat, Conv};
 use smallvec::SmallVec;
 use winit::event::TouchPhase;
 
@@ -26,7 +26,6 @@ pub(super) struct TouchGrab {
     pub(super) start_id: Id,
     pub(super) depress: Option<Id>,
     over: Option<Id>,
-    last_coord: Coord,
     last_position: DVec2,
     mode: GrabMode,
     pan_grab: (u16, u16),
@@ -189,7 +188,6 @@ impl Touch {
 
             grab.depress = Some(id.clone());
             grab.over = Some(id.clone());
-            grab.last_coord = position.cast_approx();
             grab.last_position = position;
             grab.vel_index = velocity;
             true
@@ -204,7 +202,6 @@ impl Touch {
                 start_id: id.clone(),
                 depress: Some(id.clone()),
                 over: Some(id.clone()),
-                last_coord: position.cast_approx(),
                 last_position: position,
                 mode,
                 pan_grab,
@@ -261,7 +258,7 @@ impl<'a> EventCx<'a> {
                 let press = Press {
                     source: PressSource::touch(grab.id),
                     id: grab.over,
-                    coord: grab.last_coord,
+                    coord: grab.last_position.cast_nearest(),
                 };
                 let event = Event::PressEnd {
                     press,
@@ -275,7 +272,7 @@ impl<'a> EventCx<'a> {
 
         if self.action.contains(Action::REGION_MOVED) {
             for grab in self.touch.touch_grab.iter_mut() {
-                grab.over = win.try_probe(grab.last_coord);
+                grab.over = win.try_probe(grab.last_position.cast_nearest());
             }
         }
     }
@@ -314,7 +311,7 @@ impl<'a> EventCx<'a> {
     ) {
         let source = PressSource::touch(touch.id);
         let position: DVec2 = touch.location.into();
-        let coord = position.cast_approx();
+        let coord = position.cast_nearest();
         match touch.phase {
             TouchPhase::Started => {
                 let over = win.try_probe(coord);
@@ -361,7 +358,6 @@ impl<'a> EventCx<'a> {
                     let grab = &mut self.touch.touch_grab[index];
                     grab.over = over;
                     let delta = position - grab.last_position;
-                    grab.last_coord = coord;
 
                     match grab.mode {
                         GrabMode::Click => {}
