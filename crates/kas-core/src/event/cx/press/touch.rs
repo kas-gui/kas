@@ -27,7 +27,7 @@ pub(super) struct TouchGrab {
     pub(super) depress: Option<Id>,
     over: Option<Id>,
     last_coord: Coord,
-    last_position: Vec2,
+    last_position: DVec2,
     mode: GrabMode,
     pan_grab: (u16, u16),
     vel_index: u16,
@@ -56,7 +56,7 @@ struct PanGrab {
     id: Id,
     mode: (bool, bool), // (scale, rotate)
     n: u16,
-    coords: [(Coord, Coord); MAX_PAN_GRABS],
+    coords: [(DVec2, DVec2); MAX_PAN_GRABS],
 }
 
 #[derive(Default)]
@@ -68,14 +68,14 @@ pub(crate) struct Touch {
 
 impl Touch {
     /// `mode` is `(scale, rotate)`
-    pub(super) fn set_pan_on(&mut self, id: Id, mode: (bool, bool), coord: Coord) -> (u16, u16) {
+    pub(super) fn set_pan_on(&mut self, id: Id, mode: (bool, bool), p: DVec2) -> (u16, u16) {
         for (gi, grab) in self.pan_grab.iter_mut().enumerate() {
             if grab.id == id {
                 debug_assert_eq!(grab.mode, mode);
 
                 let index = grab.n;
                 if usize::from(index) < MAX_PAN_GRABS {
-                    grab.coords[usize::from(index)] = (coord, coord);
+                    grab.coords[usize::from(index)] = (p, p);
                 }
                 grab.n = index + 1;
                 return (gi.cast(), index);
@@ -88,8 +88,8 @@ impl Touch {
 
         let gj = self.pan_grab.len().cast();
         let n = 1;
-        let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
-        coords[0] = (coord, coord);
+        let mut coords: [(DVec2, DVec2); MAX_PAN_GRABS] = Default::default();
+        coords[0] = (p, p);
         log::trace!("set_pan_on: index={}, id={id}", self.pan_grab.len());
         self.pan_grab.push(PanGrab {
             id,
@@ -128,7 +128,7 @@ impl Touch {
             if grab.pan_grab.0 == g.0 && grab.pan_grab.1 > g.1 {
                 grab.pan_grab.1 -= 1;
                 if usize::from(grab.pan_grab.1) == MAX_PAN_GRABS - 1 {
-                    let p = grab.last_coord;
+                    let p = grab.last_position;
                     self.pan_grab[usize::from(g.0)].coords[usize::from(grab.pan_grab.1)] = (p, p);
                 }
             }
@@ -161,7 +161,7 @@ impl Touch {
         &mut self,
         touch_id: u64,
         id: Id,
-        coord: Coord,
+        position: DVec2,
         mode: GrabMode,
     ) -> bool {
         let mut velocity = u16::MAX;
@@ -189,14 +189,14 @@ impl Touch {
 
             grab.depress = Some(id.clone());
             grab.over = Some(id.clone());
-            grab.last_coord = coord;
-            grab.last_position = coord.cast();
+            grab.last_coord = position.cast_approx();
+            grab.last_position = position;
             grab.vel_index = velocity;
             true
         } else if self.touch_grab.len() < MAX_TOUCHES {
             let mut pan_grab = (u16::MAX, 0);
             if let GrabMode::Pan { scale, rotate } = mode {
-                pan_grab = self.set_pan_on(id.clone(), (scale, rotate), coord);
+                pan_grab = self.set_pan_on(id.clone(), (scale, rotate), position);
             }
 
             self.touch_grab.push(TouchGrab {
@@ -204,8 +204,8 @@ impl Touch {
                 start_id: id.clone(),
                 depress: Some(id.clone()),
                 over: Some(id.clone()),
-                last_coord: coord,
-                last_position: coord.cast(),
+                last_coord: position.cast_approx(),
+                last_position: position,
                 mode,
                 pan_grab,
                 vel_index: velocity,
@@ -286,14 +286,14 @@ impl<'a> EventCx<'a> {
             assert!(grab.n > 0);
 
             // Terminology: pi are old coordinates, qi are new coords
-            let (p1, q1) = (DVec2::conv(grab.coords[0].0), DVec2::conv(grab.coords[0].1));
+            let (p1, q1) = (grab.coords[0].0, grab.coords[0].1);
             grab.coords[0].0 = grab.coords[0].1;
 
             let transform = if grab.n == 1 {
                 Affine::translate(q1 - p1)
             } else {
                 // Only use the first two touches (we don't need more info)
-                let (p2, q2) = (DVec2::conv(grab.coords[1].0), DVec2::conv(grab.coords[1].1));
+                let (p2, q2) = (grab.coords[1].0, grab.coords[1].1);
                 grab.coords[1].0 = grab.coords[1].1;
                 Affine::pan(p1, q1, p2, q2, grab.mode)
             };
@@ -313,7 +313,8 @@ impl<'a> EventCx<'a> {
         touch: winit::event::Touch,
     ) {
         let source = PressSource::touch(touch.id);
-        let coord = touch.location.cast_approx();
+        let position: DVec2 = touch.location.into();
+        let coord = position.cast_approx();
         match touch.phase {
             TouchPhase::Started => {
                 let over = win.try_probe(coord);
@@ -330,7 +331,7 @@ impl<'a> EventCx<'a> {
                     let press = PressStart {
                         source,
                         id: Some(id.clone()),
-                        coord,
+                        position,
                     };
                     let event = Event::PressStart(press);
                     self.send_event(win.as_node(data), id, event);
@@ -349,12 +350,12 @@ impl<'a> EventCx<'a> {
                 if let Some(index) = grab_index {
                     let vi = self.touch.touch_grab[index].vel_index as usize;
                     if vi < VELOCITY_LEN {
-                        let position = DVec2::from(touch.location).cast_approx();
                         let last_pos = std::mem::replace(
                             &mut self.touch.touch_grab[index].last_position,
                             position,
                         );
-                        self.touch.velocity[vi].push_delta(position - last_pos);
+                        let delta = position - last_pos;
+                        self.touch.velocity[vi].push_delta(delta.cast_approx());
                     }
 
                     let grab = &mut self.touch.touch_grab[index];
@@ -385,7 +386,7 @@ impl<'a> EventCx<'a> {
                     if usize::conv(pan_grab.1) < MAX_PAN_GRABS
                         && let Some(pan) = self.touch.pan_grab.get_mut(usize::conv(pan_grab.0))
                     {
-                        pan.coords[usize::conv(pan_grab.1)].1 = coord;
+                        pan.coords[usize::conv(pan_grab.1)].1 = position;
                     }
                 }
             }

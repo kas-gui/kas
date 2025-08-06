@@ -15,8 +15,9 @@ use std::mem::transmute;
 use super::{EventCx, IsUsed};
 #[allow(unused)] use crate::Events; // for doc-links
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
-use crate::geom::{Coord, Offset, Vec2};
+use crate::geom::{Coord, DVec2, Offset, Vec2};
 use crate::{Action, Id};
+use cast::{CastApprox, Conv};
 pub(crate) use mouse::Mouse;
 pub(crate) use touch::Touch;
 
@@ -177,20 +178,20 @@ impl PressSource {
 ///
 /// This type dereferences to [`PressSource`].
 #[crate::autoimpl(Deref using self.source)]
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PressStart {
     /// Source of the press
     pub source: PressSource,
     /// Identifier of the widget currently under the press
     pub id: Option<Id>,
     /// Current coordinate
-    coord: Coord,
+    position: DVec2,
 }
 
 impl std::ops::AddAssign<Offset> for PressStart {
     #[inline]
     fn add_assign(&mut self, offset: Offset) {
-        self.coord += offset;
+        self.position += DVec2::conv(offset);
     }
 }
 
@@ -198,7 +199,7 @@ impl PressStart {
     /// Get the current press coordinate
     #[inline]
     pub fn coord(&self) -> Coord {
-        self.coord
+        self.position.cast_approx()
     }
 
     /// Grab pan/move/press-end events for widget `id`
@@ -227,7 +228,7 @@ impl PressStart {
         GrabBuilder {
             id,
             source: self.source,
-            coord: self.coord,
+            position: self.position,
             mode,
             cursor: None,
         }
@@ -267,7 +268,7 @@ pub struct Press {
 pub struct GrabBuilder {
     id: Id,
     source: PressSource,
-    coord: Coord,
+    position: DVec2,
     mode: GrabMode,
     cursor: Option<CursorIcon>,
 }
@@ -306,7 +307,7 @@ impl GrabBuilder {
         let GrabBuilder {
             id,
             source,
-            coord,
+            position,
             mode,
             cursor,
         } = self;
@@ -315,12 +316,12 @@ impl GrabBuilder {
         if let Some(button) = source.mouse_button() {
             success = cx
                 .mouse
-                .start_grab(button, source.repetitions(), id.clone(), coord, mode);
+                .start_grab(button, source.repetitions(), id.clone(), position, mode);
             if success && let Some(icon) = cursor {
                 cx.window.set_cursor_icon(icon);
             }
         } else if let Some(touch_id) = source.touch_id() {
-            success = cx.touch.start_grab(touch_id, id.clone(), coord, mode)
+            success = cx.touch.start_grab(touch_id, id.clone(), position, mode)
         } else {
             unreachable!()
         };
