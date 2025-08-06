@@ -238,6 +238,30 @@ macro_rules! impl_vec2 {
                 $T(self.0.max(other.0), self.1.max(other.1))
             }
 
+            /// Restrict a value to a certain interval unless it is NaN
+            ///
+            /// Returns `max` if `self` is greater than `max`, and `min` if
+            /// `self` is less than `min`. Otherwise this returns `self`.
+            ///
+            /// Note that this function returns NaN if the initial value was NaN
+            /// as well.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `min > max`, `min` is NaN, or `max` is NaN.
+            #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
+            pub fn clamp(mut self, min: Self, max: Self) -> Self {
+                assert!(min <= max);
+                if self < min {
+                    self = min;
+                }
+                if self > max {
+                    self = max;
+                }
+                self
+            }
+
             /// Take the absolute value of each component
             #[inline]
             #[must_use = "method does not modify self but returns a new value"]
