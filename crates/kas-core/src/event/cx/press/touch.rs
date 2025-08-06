@@ -345,19 +345,19 @@ impl<'a> EventCx<'a> {
                     .enumerate()
                     .find_map(|(i, grab)| (grab.id == touch.id).then_some(i));
                 if let Some(index) = grab_index {
+                    let last_pos = std::mem::replace(
+                        &mut self.touch.touch_grab[index].last_position,
+                        position,
+                    );
+                    let delta: Vec2 = (position - last_pos).cast_approx();
+
                     let vi = self.touch.touch_grab[index].vel_index as usize;
                     if vi < VELOCITY_LEN {
-                        let last_pos = std::mem::replace(
-                            &mut self.touch.touch_grab[index].last_position,
-                            position,
-                        );
-                        let delta = position - last_pos;
-                        self.touch.velocity[vi].push_delta(delta.cast_approx());
+                        self.touch.velocity[vi].push_delta(delta);
                     }
 
                     let grab = &mut self.touch.touch_grab[index];
                     grab.over = over;
-                    let delta = position - grab.last_position;
 
                     match grab.mode {
                         GrabMode::Click => {}

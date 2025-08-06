@@ -7,7 +7,7 @@
 
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::event::{Event, EventCx, EventState, FocusSource, PressStart, ScrollDelta, TimerHandle};
-use crate::geom::{Affine, Coord, DVec2};
+use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::Window;
 use crate::window::WindowErased;
 use crate::{Action, Id, NavAdvance, Node, TileExt, Widget};
@@ -335,9 +335,9 @@ impl<'a> EventCx<'a> {
         coord: Coord,
         position: DVec2,
     ) {
-        let delta = position - self.mouse.last_position;
+        let delta: Vec2 = (position - self.mouse.last_position).cast_approx();
         if delta.is_finite() {
-            self.mouse.samples.push_delta(delta.cast_approx());
+            self.mouse.samples.push_delta(delta);
         }
         self.mouse.last_position = position;
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
@@ -405,7 +405,9 @@ impl<'a> EventCx<'a> {
 
         let event = Event::Scroll(match delta {
             MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines(x, y),
-            MouseScrollDelta::PixelDelta(pos) => ScrollDelta::PixelDelta(pos.into()),
+            MouseScrollDelta::PixelDelta(pos) => {
+                ScrollDelta::PixelDelta(DVec2::from(pos).cast_approx())
+            }
         });
         if let Some(id) = self.mouse.over.clone() {
             self.send_event(window, id, event);

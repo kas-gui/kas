@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::cast::traits::*;
-use crate::geom::{Coord, DVec2, Offset, Rect, Size, Vec2};
+use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)]
 use crate::text::{SelectionAction, SelectionHelper};
 use crate::{Action, Id};
@@ -130,7 +130,6 @@ impl Kinetic {
     #[inline]
     pub fn stop(&mut self) {
         self.vel = Vec2::ZERO;
-        self.rest = Vec2::ZERO;
     }
 
     /// Stop scrolling on any axis were `delta` is non-zero
@@ -303,8 +302,11 @@ impl ScrollComponent {
         delta
     }
 
-    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: DVec2) {
-        let delta = self.scroll_self_by_delta(cx, id, d.cast_nearest());
+    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Vec2) {
+        let delta = d + self.kinetic.rest;
+        let offset = delta.cast_nearest();
+        self.kinetic.rest = delta - Vec2::conv(offset);
+        let delta = self.scroll_self_by_delta(cx, id, offset);
         cx.set_scroll(if delta != Offset::ZERO {
             Scroll::Offset(delta)
         } else {
@@ -345,15 +347,16 @@ impl ScrollComponent {
                             Command::Up => ScrollDelta::Lines(0.0, 1.0),
                             Command::Down => ScrollDelta::Lines(0.0, -1.0),
                             Command::PageUp | Command::PageDown => {
-                                let mut v = 0.5 * f64::conv(window_rect.size.1);
+                                let mut v = 0.5 * f32::conv(window_rect.size.1);
                                 if cmd == Command::PageDown {
                                     v = -v;
                                 }
-                                ScrollDelta::PixelDelta(DVec2(0.0, v))
+                                ScrollDelta::PixelDelta(Vec2(0.0, v))
                             }
                             _ => return Unused,
                         };
-                        self.offset - delta.as_offset(cx).cast_nearest()
+                        self.scroll_by_delta(cx, id, delta.as_offset(cx));
+                        return Used;
                     }
                 };
                 cx.action(id, self.set_offset(offset));
