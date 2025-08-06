@@ -1060,7 +1060,7 @@ mod EditField {
                     self.prepare_text(cx);
                     Used
                 }
-                Event::PressStart { press } if press.is_tertiary() => press
+                Event::PressStart(press) if press.is_tertiary() => press
                     .grab(self.id(), kas::event::GrabMode::Click)
                     .complete(cx),
                 Event::PressEnd { press, .. } if press.is_tertiary() => {

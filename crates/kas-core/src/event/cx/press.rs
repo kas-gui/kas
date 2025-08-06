@@ -20,7 +20,7 @@ use crate::{Action, Id};
 pub(crate) use mouse::Mouse;
 pub(crate) use touch::Touch;
 
-/// Controls the types of events delivered by [`Press::grab`]
+/// Controls the types of events delivered by [`PressStart::grab`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GrabMode {
     /// Deliver [`Event::PressEnd`] only for each grabbed press
@@ -173,19 +173,21 @@ impl PressSource {
     }
 }
 
-/// Details of press events
+/// Details of press start events
+///
+/// This type dereferences to [`PressSource`].
 #[crate::autoimpl(Deref using self.source)]
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Press {
-    /// Source
+pub struct PressStart {
+    /// Source of the press
     pub source: PressSource,
-    /// Identifier of current widget
+    /// Identifier of the widget currently under the press
     pub id: Option<Id>,
     /// Current coordinate
     pub coord: Coord,
 }
 
-impl Press {
+impl PressStart {
     /// Grab pan/move/press-end events for widget `id`
     ///
     /// There are three types of grab ([`GrabMode`]):
@@ -219,7 +221,21 @@ impl Press {
     }
 }
 
-/// Bulider pattern (see [`Press::grab`])
+/// Details of press events
+///
+/// This type dereferences to [`PressSource`].
+#[crate::autoimpl(Deref using self.source)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Press {
+    /// Source of the press
+    pub source: PressSource,
+    /// Identifier of the widget currently under the press
+    pub id: Option<Id>,
+    /// Current coordinate
+    pub coord: Coord,
+}
+
+/// Bulider pattern (see [`PressStart::grab`])
 ///
 /// Conclude by calling [`Self::complete`].
 #[must_use]
@@ -337,7 +353,7 @@ impl EventState {
     /// automatically "unset" when the widget is no longer under the mouse.
     ///
     /// See also [`EventCx::set_grab_cursor`]: if a mouse grab
-    /// ([`Press::grab`]) is active, its icon takes precedence.
+    /// ([`PressStart::grab`]) is active, its icon takes precedence.
     pub fn set_mouse_over_icon(&mut self, icon: CursorIcon) {
         // Note: this is acted on by EventState::update
         self.mouse.icon = icon;
@@ -346,7 +362,7 @@ impl EventState {
     /// Set a grab's depress target
     ///
     /// When a grab on mouse or touch input is in effect
-    /// ([`Press::grab`]), the widget owning the grab may set itself
+    /// ([`PressStart::grab`]), the widget owning the grab may set itself
     /// or any other widget as *depressed* ("pushed down"). Each grab depresses
     /// at most one widget, thus setting a new depress target clears any
     /// existing target. Initially a grab depresses its owner.
@@ -427,7 +443,7 @@ impl<'a> EventCx<'a> {
     /// Update the mouse cursor used during a grab
     ///
     /// This only succeeds if widget `id` has an active mouse-grab (see
-    /// [`Press::grab`]). The cursor will be reset when the mouse-grab
+    /// [`PressStart::grab`]). The cursor will be reset when the mouse-grab
     /// ends.
     pub fn set_grab_cursor(&mut self, id: &Id, icon: CursorIcon) {
         if let Some(ref grab) = self.mouse.grab

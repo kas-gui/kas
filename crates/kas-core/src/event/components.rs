@@ -364,7 +364,7 @@ impl ScrollComponent {
                 self.kinetic.stop();
                 self.scroll_by_delta(cx, id, delta.as_offset(cx));
             }
-            Event::PressStart { press, .. }
+            Event::PressStart(press)
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 let _ = press
@@ -466,7 +466,7 @@ impl TextInput {
     pub fn handle(&mut self, cx: &mut EventCx, w_id: Id, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
-            Event::PressStart { press } if press.is_primary() => {
+            Event::PressStart(press) if press.is_primary() => {
                 let mut action = Action::Used;
                 let icon = if press.is_touch() {
                     self.phase = Phase::Start(*press, press.coord);

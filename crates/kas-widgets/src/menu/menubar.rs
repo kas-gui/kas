@@ -139,7 +139,7 @@ mod MenuBar {
                     }
                     Used
                 }
-                Event::PressStart { press } => {
+                Event::PressStart(press) => {
                     if press
                         .id
                         .as_ref()

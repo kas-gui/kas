@@ -7,7 +7,7 @@
 
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::config::EventWindowConfig;
-use crate::event::{Event, EventCx, EventState, FocusSource};
+use crate::event::{Event, EventCx, EventState, FocusSource, PressStart};
 use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::Window;
 use crate::{Action, Id, NavAdvance, Node, Widget};
@@ -327,12 +327,12 @@ impl<'a> EventCx<'a> {
                         self.set_nav_focus(id, FocusSource::Pointer);
                     }
 
-                    let press = Press {
+                    let press = PressStart {
                         source,
                         id: Some(id.clone()),
                         coord,
                     };
-                    let event = Event::PressStart { press };
+                    let event = Event::PressStart(press);
                     self.send_event(win.as_node(data), id, event);
                 }
             }

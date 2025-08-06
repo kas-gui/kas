@@ -418,7 +418,7 @@ mod Mandlebrot {
                         + (self.transform.alpha() - new_alpha) * self.view_delta;
                     self.transform = Affine::new(new_alpha, new_delta);
                 }
-                Event::PressStart { press } => {
+                Event::PressStart(press) => {
                     return press
                         .grab(self.id(), event::GrabMode::PAN_FULL)
                         .with_icon(event::CursorIcon::Grabbing)

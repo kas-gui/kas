@@ -6,7 +6,7 @@
 //! Event handling: mouse events
 
 use super::{GrabMode, Press, PressSource, velocity};
-use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta, TimerHandle};
+use crate::event::{Event, EventCx, EventState, FocusSource, PressStart, ScrollDelta, TimerHandle};
 use crate::geom::{Affine, Coord, DVec2};
 use crate::window::Window;
 use crate::window::WindowErased;
@@ -468,12 +468,12 @@ impl<'a> EventCx<'a> {
                 }
 
                 let source = PressSource::mouse(button, self.mouse.last_click_repetitions);
-                let press = Press {
+                let press = PressStart {
                     source,
                     id: Some(id.clone()),
                     coord: self.mouse.last_coord,
                 };
-                let event = Event::PressStart { press };
+                let event = Event::PressStart(press);
                 self.send_event(window, id, event);
             }
         }

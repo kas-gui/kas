@@ -360,7 +360,7 @@ mod ScrollBar {
                     }
                     Used
                 }
-                Event::PressStart { press } => {
+                Event::PressStart(press) => {
                     let offset = self.grip.handle_press_on_track(cx, &press);
                     self.apply_grip_offset(cx, offset);
                     Used

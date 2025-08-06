@@ -821,7 +821,7 @@ mod ListView {
                         Unused
                     };
                 }
-                Event::PressStart { ref press }
+                Event::PressStart(ref press)
                     if press.is_primary() && cx.config().event().mouse_nav_focus() =>
                 {
                     if let Some(index) = cx.last_child() {

@@ -148,7 +148,7 @@ mod ComboBox {
                         Unused
                     }
                 }
-                Event::PressStart { press } => {
+                Event::PressStart(press) => {
                     if press
                         .id
                         .as_ref()

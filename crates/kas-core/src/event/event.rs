@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{EventCx, IsUsed, TimerHandle, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
-use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press};
+use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press, PressStart};
 use crate::geom::{Affine, Offset};
 #[allow(unused)] use crate::{Events, window::Popup};
 use crate::{Id, dir::Direction, window::WindowId};
@@ -81,7 +81,7 @@ pub enum Event<'a> {
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
     ///
-    /// This event is sent for certain types of grab ([`Press::grab`]),
+    /// This event is sent for certain types of grab ([`PressStart::grab`]),
     /// enabling two-finger scale/rotate gestures as well as translation.
     ///
     /// Mouse-grabs generate translation (`delta` component) only. Touch grabs
@@ -91,7 +91,7 @@ pub enum Event<'a> {
     /// Movement of mouse cursor without press
     ///
     /// This event is only sent one case: when the mouse is moved while a
-    /// [`Popup`] is open and there is not an active [`Press::grab`] on the
+    /// [`Popup`] is open and there is not an active [`PressStart::grab`] on the
     /// mouse cursor.
     ///
     /// This event may be sent 10+ times per frame, thus it is important that
@@ -101,15 +101,15 @@ pub enum Event<'a> {
     CursorMove { press: Press },
     /// A mouse button was pressed or touch event started
     ///
-    /// Call [`Press::grab`] in order to "grab" corresponding motion
+    /// Call [`PressStart::grab`] in order to "grab" corresponding motion
     /// and release events.
     ///
     /// This event is sent to the widget under the mouse or touch position. If
     /// no such widget is found, this event is not sent.
-    PressStart { press: Press },
+    PressStart(PressStart),
     /// Movement of mouse or a touch press
     ///
-    /// This event is only sent when a ([`Press::grab`]) is active.
+    /// This event is only sent when a ([`PressStart::grab`]) is active.
     /// Motion events for the grabbed mouse pointer or touched finger are sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
@@ -129,7 +129,7 @@ pub enum Event<'a> {
     /// when cancelling: the panned item or slider should be released as is, or
     /// the menu should remain open.
     ///
-    /// This event is only sent when a ([`Press::grab`]) is active.
+    /// This event is only sent when a ([`PressStart::grab`]) is active.
     /// Release/cancel events for the same mouse button or touched finger are
     /// sent.
     ///
@@ -215,7 +215,7 @@ impl<'a> std::ops::AddAssign<Offset> for Event<'a> {
             Event::CursorMove { press } => {
                 press.coord += offset;
             }
-            Event::PressStart { press, .. } => {
+            Event::PressStart(press) => {
                 press.coord += offset;
             }
             Event::PressMove { press, .. } => {
@@ -250,7 +250,7 @@ impl<'a> Event<'a> {
                 cx.depress_with_key(id, code);
                 f(cx)
             }
-            Event::PressStart { press, .. } if press.is_primary() => {
+            Event::PressStart(press) if press.is_primary() => {
                 press.grab(id, GrabMode::Click).complete(cx)
             }
             Event::PressEnd { press, success, .. } => {
@@ -279,7 +279,7 @@ impl<'a> Event<'a> {
         match self {
             Command(_, _) => false,
             Key(_, _) | ImePreedit(_, _) | ImeCommit(_) | Scroll(_) => false,
-            CursorMove { .. } | PressStart { .. } => false,
+            CursorMove { .. } | PressStart(_) => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
             NavFocus { .. } | SelFocus(_) | KeyFocus | ImeFocus | MouseOver(true) => false,
@@ -310,7 +310,7 @@ impl<'a> Event<'a> {
 
             // Events sent to mouse focus
             Scroll(_) | Pan { .. } => true,
-            CursorMove { .. } | PressStart { .. } => true,
+            CursorMove { .. } | PressStart(_) => true,
 
             // Events sent to requester
             Key(_, _) | ImePreedit(_, _) | ImeCommit(_) => false,
