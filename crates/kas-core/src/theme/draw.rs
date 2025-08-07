@@ -437,7 +437,7 @@ pub trait ThemeDraw {
     /// If `effects` is empty or all [`Effect::flags`] are default then it is
     /// equivalent (and faster) to call [`Self::text`] instead.
     ///
-    /// Special effect: if `class` is [`TextClass::AccessLabel(_)`] then
+    /// Special effect: if `class` is [`TextClass::AccessLabel`] then
     /// underline and strikethrough are only drawn if
     /// [`EventState::show_access_labels`].
     ///

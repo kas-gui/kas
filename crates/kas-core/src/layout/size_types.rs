@@ -230,7 +230,7 @@ impl_scope! {
         ///
         /// Default: `1.0`
         pub ideal_factor: f32 = 1.0,
-        /// If true, aspect ratio is fixed relative to [`Self.size`]
+        /// If true, aspect ratio is fixed relative to [`Self::size`]
         ///
         /// Default: `true`
         pub fix_aspect: bool = true,
