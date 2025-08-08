@@ -202,9 +202,12 @@ impl ScrollComponent {
     /// change in offset. In practice the caller will likely be performing all
     /// required updates regardless and the return value can be safely ignored.
     pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> Action {
-        self.max_offset =
-            (Offset::conv(content_size) - Offset::conv(window_size)).max(Offset::ZERO);
-        self.set_offset(self.offset)
+        let max_offset = (Offset::conv(content_size) - Offset::conv(window_size)).max(Offset::ZERO);
+        if max_offset == self.max_offset {
+            return Action::empty();
+        }
+        self.max_offset = max_offset;
+        Action::SCROLLED | self.set_offset(self.offset)
     }
 
     /// Set the scroll offset
