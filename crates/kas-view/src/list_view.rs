@@ -426,8 +426,10 @@ mod ListView {
             }
         }
 
-        // If full, call cx.update on all view widgets
-        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, full: bool) {
+        // Assign view widgets to data as required and set their rects
+        //
+        // View widgets are configured and sized if assigned a new data item.
+        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let time = Instant::now();
 
             let offset = u64::conv(self.scroll_offset().extract(self.direction));
@@ -467,8 +469,6 @@ mod ListView {
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
-                } else if full && let Some(item) = self.clerk.item(data, &key) {
-                    cx.update(w.item.as_node(item));
                 }
 
                 if w.key.is_some() {
@@ -477,7 +477,7 @@ mod ListView {
             }
 
             let dur = (Instant::now() - time).as_micros();
-            log::trace!(target: "kas_perf::view::list_view", "update_widgets: {dur}μs");
+            log::debug!(target: "kas_perf::view::list_view", "map_view_widgets: {dur}μs");
         }
 
         fn update_content_size(&mut self, cx: &mut ConfigCx) {
@@ -722,11 +722,15 @@ mod ListView {
 
         #[inline]
         fn make_child_id(&mut self, _: usize) -> Id {
-            // We configure children in update_widgets and do not want this method to be called
+            // We configure children in map_view_widgets and do not want this method to be called
             unimplemented!()
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
+        }
+
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
@@ -739,21 +743,14 @@ mod ListView {
                     item: ListItem::new(self.driver.make(&key)),
                 });
                 self.alloc_len = len.cast();
-            }
-
-            cx.register_nav_fallback(self.id());
-        }
-
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            let id = self.id();
-            for w in &mut self.widgets {
-                if let Some(ref key) = w.key
-                    && let Some(item) = self.clerk.item(data, key)
-                {
-                    let id = key.make_id(&id);
-                    cx.configure(w.item.as_node(item), id);
+            } else {
+                // Force reconfiguration:
+                for w in &mut self.widgets {
+                    w.key = None;
                 }
             }
+
+            self.map_view_widgets(cx, data);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
@@ -761,16 +758,28 @@ mod ListView {
             let data_len = self.clerk.len(data).cast();
             if data_len != self.data_len {
                 self.data_len = data_len;
-                // We must call at least SET_RECT to update scrollable region
-                // RESIZE allows recalculation of child widget size which may
-                // have been zero if no data was initially available!
-                // TODO(opt): we may not need to resize here.
-                cx.resize(&self);
+                self.update_content_size(cx);
+
+                if self.scroll_offset() == self.max_scroll_offset() {
+                    // We may be able to request additional screen space.
+                    // We may need to map new view widgets.
+                    cx.resize(&self);
+                    return;
+                }
             }
 
-            self.update_widgets(cx, data, true);
+            let first_data: usize = self.first_data.cast();
+            let cur_len = self.cur_len.cast();
+            let range = first_data..(first_data + cur_len);
+            self.clerk.prepare_range(cx, self.id(), data, range);
 
-            self.update_content_size(cx);
+            for child in &mut self.widgets[..cur_len] {
+                if let Some(key) = child.key.as_ref()
+                    && let Some(item) = self.clerk.item(data, key)
+                {
+                    cx.update(child.item.as_node(item));
+                }
+            }
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
@@ -809,7 +818,7 @@ mod ListView {
                         let act = self.scroll.focus_rect(cx, solver.rect(i_data), self.rect());
                         if !act.is_empty() {
                             cx.action(&self, act);
-                            self.update_widgets(&mut cx.config_cx(), data, false);
+                            self.map_view_widgets(&mut cx.config_cx(), data);
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         let w = &self.widgets[index];
@@ -853,7 +862,7 @@ mod ListView {
                     Used
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
-                    self.update_widgets(&mut cx.config_cx(), data, false);
+                    self.map_view_widgets(&mut cx.config_cx(), data);
                     Used
                 }
                 _ => Unused, // fall through to scroll handler
@@ -923,7 +932,7 @@ mod ListView {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
             self.scroll.scroll(cx, self.id(), self.rect(), scroll);
-            self.update_widgets(&mut cx.config_cx(), data, false);
+            self.map_view_widgets(&mut cx.config_cx(), data);
         }
     }
 
@@ -997,7 +1006,7 @@ mod ListView {
                     .self_focus_rect(solver.rect(data_index), self.rect());
                 if !act.is_empty() {
                     cx.action(&self, act);
-                    self.update_widgets(cx, data, false);
+                    self.map_view_widgets(cx, data);
                 }
 
                 let index = data_index % usize::conv(self.cur_len);
