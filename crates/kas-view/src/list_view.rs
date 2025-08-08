@@ -579,23 +579,15 @@ mod ListView {
             });
             axis = AxisInfo::new(axis.is_vertical(), other);
 
-            self.child_size_min = i32::MAX;
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
                 if w.key.is_some() {
                     let child_rules = w.item.size_rules(sizer.re(), axis);
-                    if axis.is_vertical() == self.direction.is_vertical() {
-                        self.child_size_min = self.child_size_min.min(child_rules.min_size());
-                    }
                     rules = rules.max(child_rules);
                 }
             }
-            if self.child_size_min == i32::MAX {
-                self.child_size_min = 1;
-            }
-            self.child_size_min = self.child_size_min.max(1);
-
             if axis.is_vertical() == self.direction.is_vertical() {
+                self.child_size_min = rules.min_size().max(1);
                 self.child_size_ideal = rules.ideal_size().max(sizer.min_element_size());
                 let m = rules.margins();
                 self.child_inter_margin =

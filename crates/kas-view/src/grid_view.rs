@@ -515,20 +515,15 @@ mod GridView {
             });
             axis = AxisInfo::new(axis.is_vertical(), other);
 
-            let mut child_size_min = i32::MAX;
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
                 if w.key.is_some() {
                     let child_rules = w.item.size_rules(sizer.re(), axis);
-                    child_size_min = child_size_min.min(child_rules.min_size());
                     rules = rules.max(child_rules);
                 }
             }
-            if child_size_min == i32::MAX {
-                child_size_min = 1;
-            }
-            child_size_min = child_size_min.max(1);
-            self.child_size_min.set_component(axis, child_size_min);
+            self.child_size_min
+                .set_component(axis, rules.min_size().max(1));
             self.child_size_ideal
                 .set_component(axis, rules.ideal_size().max(sizer.min_element_size()));
 
@@ -591,28 +586,20 @@ mod GridView {
             // except that the Layout::set_rect specification requires this
             // action and we cannot guarantee that the requested
             // TIMER_UPDATE_WIDGETS event will be immediately.)
-
-            let col_len = self.cur_len.col;
-            let row_len = self.cur_len.row;
-
-            let pos_start = self.rect().pos + self.frame_offset + self.virtual_offset;
-            let skip = self.child_size + self.child_inter_margin;
-
-            for rn in 0..row_len {
-                let ri = self.first_data.row + rn;
-                for cn in 0..col_len {
-                    let ci = self.first_data.col + cn;
-                    let i = usize::conv(ci % col_len)
-                        + usize::conv(ri % row_len) * usize::conv(col_len);
-
+            let solver = self.position_solver();
+            for row in solver.first_data.row..solver.first_data.row + solver.cur_len.row {
+                for col in solver.first_data.col..solver.first_data.col + solver.cur_len.col {
+                    let cell = GridIndex { col, row };
+                    let i = solver.data_to_child(cell);
                     let w = &mut self.widgets[i];
                     if w.key.is_some() {
-                        let pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
-                        w.item
-                            .set_rect(cx, Rect::new(pos, child_size), self.align_hints);
+                        w.item.set_rect(cx, solver.rect(cell), self.align_hints);
                     }
                 }
             }
+
+            // Also queue a call to map_view_widgets since ranges may have changed
+            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
         fn draw(&self, mut draw: DrawCx) {
