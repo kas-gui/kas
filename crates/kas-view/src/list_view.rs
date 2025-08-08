@@ -426,18 +426,32 @@ mod ListView {
             }
         }
 
+        // Call after scrolling to re-map widgets (if required)
+        fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
+            let offset = self.scroll_offset().extract(self.direction);
+            let first_data = u64::conv(offset) / u64::conv(self.skip);
+
+            let view_end_offset =
+                offset + (self.rect().size - self.frame_size).extract(self.direction);
+            let last_data =
+                u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1).min(self.data_len);
+
+            if u32::conv(first_data) < self.first_data || last_data > self.first_data + self.cur_len
+            {
+                self.map_view_widgets(cx, data, first_data.cast());
+            }
+        }
+
         // Assign view widgets to data as required and set their rects
         //
         // View widgets are configured and sized if assigned a new data item.
-        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data) {
+        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, first_data: usize) {
             let time = Instant::now();
-
-            let offset = u64::conv(self.scroll_offset().extract(self.direction));
-            let mut first_data = usize::conv(offset / u64::conv(self.skip));
 
             let data_len: usize = self.data_len.cast();
             let cur_len: usize = data_len.min(self.alloc_len.cast());
-            first_data = first_data.min(data_len - cur_len);
+
+            let first_data = usize::conv(first_data).min(data_len - cur_len);
             self.cur_len = cur_len.cast();
             debug_assert!(usize::conv(self.cur_len) <= self.widgets.len());
             self.first_data = first_data.cast();
@@ -750,7 +764,9 @@ mod ListView {
                 }
             }
 
-            self.map_view_widgets(cx, data);
+            let offset = self.scroll_offset().extract(self.direction);
+            let first_data = u64::conv(offset) / u64::conv(self.skip);
+            self.map_view_widgets(cx, data, first_data.cast());
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
@@ -818,7 +834,7 @@ mod ListView {
                         let act = self.scroll.focus_rect(cx, solver.rect(i_data), self.rect());
                         if !act.is_empty() {
                             cx.action(&self, act);
-                            self.map_view_widgets(&mut cx.config_cx(), data);
+                            self.post_scroll(&mut cx.config_cx(), data);
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         let w = &self.widgets[index];
@@ -862,7 +878,7 @@ mod ListView {
                     Used
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
-                    self.map_view_widgets(&mut cx.config_cx(), data);
+                    self.post_scroll(&mut cx.config_cx(), data);
                     Used
                 }
                 _ => Unused, // fall through to scroll handler
@@ -932,7 +948,7 @@ mod ListView {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
             self.scroll.scroll(cx, self.id(), self.rect(), scroll);
-            self.map_view_widgets(&mut cx.config_cx(), data);
+            self.post_scroll(&mut cx.config_cx(), data);
         }
     }
 
@@ -1006,7 +1022,7 @@ mod ListView {
                     .self_focus_rect(solver.rect(data_index), self.rect());
                 if !act.is_empty() {
                     cx.action(&self, act);
-                    self.map_view_widgets(cx, data);
+                    self.post_scroll(cx, data);
                 }
 
                 let index = data_index % usize::conv(self.cur_len);
