@@ -261,24 +261,18 @@ impl ScrollComponent {
         match scroll {
             Scroll::None | Scroll::Scrolled => (),
             Scroll::Offset(delta) => {
-                let old_offset = self.offset;
-                let action = self.set_offset(old_offset - delta);
-                cx.action(id, action);
-                cx.set_scroll(match delta - old_offset + self.offset {
-                    delta if delta == Offset::ZERO => Scroll::Scrolled,
-                    delta => Scroll::Offset(delta),
-                });
+                self.scroll_by_delta(cx, id, delta);
             }
             Scroll::Kinetic(start) => {
                 let delta = self.kinetic.start(start);
                 let delta = self.scroll_self_by_delta(cx, id.clone(), delta);
                 if delta == Offset::ZERO {
-                    if self.kinetic.is_scrolling() {
-                        cx.request_frame_timer(id, TIMER_KINETIC);
-                    }
                     cx.set_scroll(Scroll::Scrolled);
                 } else {
                     cx.set_scroll(Scroll::Kinetic(self.kinetic.stop_with_residual(delta)));
+                }
+                if self.kinetic.is_scrolling() {
+                    cx.request_frame_timer(id, TIMER_KINETIC);
                 }
             }
             Scroll::Rect(rect) => {
@@ -308,7 +302,7 @@ impl ScrollComponent {
         self.kinetic.rest = delta - Vec2::conv(offset);
         let delta = self.scroll_self_by_delta(cx, id, offset);
         cx.set_scroll(if delta != Offset::ZERO {
-            Scroll::Offset(delta)
+            Scroll::Offset(delta.cast())
         } else {
             Scroll::Scrolled
         });
@@ -505,12 +499,12 @@ impl TextInput {
                     let delta = press.coord - start_coord;
                     if cx.config_test_pan_thresh(delta) {
                         self.phase = Phase::Pan(source);
-                        cx.set_scroll(Scroll::Offset(delta));
+                        cx.set_scroll(Scroll::Offset(delta.cast()));
                     }
                     Action::Used
                 }
                 Phase::Pan(source) if *press == source => {
-                    cx.set_scroll(Scroll::Offset(delta.cast_nearest()));
+                    cx.set_scroll(Scroll::Offset(delta));
                     Action::Used
                 }
                 Phase::Cursor(source) if *press == source => Action::Focus {
