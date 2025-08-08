@@ -952,7 +952,8 @@ mod ListView {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
-            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
+            self.scroll
+                .scroll(cx, self.id(), self.rect(), scroll - self.virtual_offset());
             self.post_scroll(&mut cx.config_cx(), data);
         }
     }

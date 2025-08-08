@@ -912,7 +912,8 @@ mod GridView {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
-            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
+            self.scroll
+                .scroll(cx, self.id(), self.rect(), scroll - self.virtual_offset);
             self.map_view_widgets(&mut cx.config_cx(), data, false);
         }
     }

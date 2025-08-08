@@ -5,7 +5,7 @@
 
 //! Event handling: IsUsed and Scroll types
 
-use crate::geom::{Rect, Vec2};
+use crate::geom::{Offset, Rect, Vec2};
 
 pub use IsUsed::{Unused, Used};
 
@@ -101,4 +101,16 @@ pub enum Scroll {
     /// any parent with non-zero translation will intercept this value and
     /// either consume or translate it.
     Rect(Rect),
+}
+
+impl std::ops::Sub<Offset> for Scroll {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, rhs: Offset) -> Self {
+        match self {
+            Scroll::Rect(rect) => Scroll::Rect(rect - rhs),
+            other => other,
+        }
+    }
 }
