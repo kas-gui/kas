@@ -146,6 +146,8 @@ mod ListView {
         skip: i32,
         child_size: Size,
         scroll: ScrollComponent,
+        // Widget translation is scroll.offset() + virtual_offset
+        virtual_offset: i32,
         sel_mode: SelectionMode,
         sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
@@ -219,6 +221,7 @@ mod ListView {
                 skip: 1,
                 child_size: Size::ZERO,
                 scroll: Default::default(),
+                virtual_offset: 0,
                 sel_mode: SelectionMode::None,
                 sel_style: SelectionStyle::Highlight,
                 selection: Default::default(),
@@ -403,6 +406,14 @@ mod ListView {
             self
         }
 
+        #[inline]
+        fn virtual_offset(&self) -> Offset {
+            match self.direction.is_vertical() {
+                false => Offset(self.virtual_offset, 0),
+                true => Offset(0, self.virtual_offset),
+            }
+        }
+
         fn position_solver(&self) -> PositionSolver {
             let data_len: usize = self.data_len.cast();
             let cur_len: usize = self.cur_len.cast();
@@ -410,7 +421,7 @@ mod ListView {
             let mut skip = Offset::ZERO;
             skip.set_component(self.direction, self.skip);
 
-            let mut pos_start = self.rect().pos + self.frame_offset;
+            let mut pos_start = self.rect().pos + self.frame_offset + self.virtual_offset();
             if self.direction.is_reversed() {
                 first_data = (data_len - first_data).saturating_sub(cur_len);
                 pos_start += skip * i32::conv(data_len.saturating_sub(1));
@@ -459,6 +470,7 @@ mod ListView {
             let range = first_data..(first_data + cur_len);
             self.clerk.prepare_range(cx, self.id(), data, range);
 
+            self.virtual_offset = -self.scroll_offset().extract(self.direction);
             let solver = self.position_solver();
             for i in solver.data_range() {
                 let Some(key) = self.clerk.key(data, i) else {
@@ -659,7 +671,7 @@ mod ListView {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            let offset = self.scroll_offset();
+            let offset = self.scroll_offset() + self.virtual_offset();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
                 for child in &self.widgets[..self.cur_len.cast()] {
                     if let Some(ref key) = child.key {
@@ -707,7 +719,7 @@ mod ListView {
 
         #[inline]
         fn translation(&self, _: usize) -> Offset {
-            self.scroll_offset()
+            self.scroll_offset() + self.virtual_offset()
         }
 
         fn probe(&self, coord: Coord) -> Id {
@@ -715,7 +727,7 @@ mod ListView {
                 return self.id();
             }
 
-            let coord = coord + self.scroll.offset();
+            let coord = coord + self.translation(0);
             for child in &self.widgets[..self.cur_len.cast()] {
                 if child.key.is_some()
                     && let Some(id) = child.item.try_probe(coord)
@@ -831,7 +843,8 @@ mod ListView {
                     };
                     return if let Some(i_data) = data_index {
                         // Set nav focus to i_data and update scroll position
-                        let act = self.scroll.focus_rect(cx, solver.rect(i_data), self.rect());
+                        let rect = solver.rect(i_data) - self.virtual_offset();
+                        let act = self.scroll.focus_rect(cx, rect, self.rect());
                         if !act.is_empty() {
                             cx.action(&self, act);
                             self.post_scroll(&mut cx.config_cx(), data);
@@ -870,7 +883,7 @@ mod ListView {
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_kinetic_scrolling()
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
-                            && w.item.rect().contains(press.coord + self.scroll.offset())
+                            && w.item.rect().contains(press.coord + self.translation(0))
                         {
                             cx.push(kas::messages::Select);
                         }
@@ -1017,9 +1030,8 @@ mod ListView {
                     last_data
                 };
 
-                let act = self
-                    .scroll
-                    .self_focus_rect(solver.rect(data_index), self.rect());
+                let rect = solver.rect(data_index) - self.virtual_offset();
+                let act = self.scroll.self_focus_rect(rect, self.rect());
                 if !act.is_empty() {
                     cx.action(&self, act);
                     self.post_scroll(cx, data);

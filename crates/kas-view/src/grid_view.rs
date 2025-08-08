@@ -177,6 +177,8 @@ mod GridView {
         child_inter_margin: Size,
         child_size: Size,
         scroll: ScrollComponent,
+        // Widget translation is scroll.offset() + virtual_offset
+        virtual_offset: Offset,
         sel_mode: SelectionMode,
         sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
@@ -205,6 +207,7 @@ mod GridView {
                 child_inter_margin: Size::ZERO,
                 child_size: Size::ZERO,
                 scroll: Default::default(),
+                virtual_offset: Offset::ZERO,
                 sel_mode: SelectionMode::None,
                 sel_style: SelectionStyle::Highlight,
                 selection: Default::default(),
@@ -352,7 +355,7 @@ mod GridView {
 
         fn position_solver(&self) -> PositionSolver {
             PositionSolver {
-                pos_start: self.rect().pos + self.frame_offset,
+                pos_start: self.rect().pos + self.frame_offset + self.virtual_offset,
                 skip: self.child_size + self.child_inter_margin,
                 size: self.child_size,
                 first_data: self.first_data,
@@ -413,6 +416,7 @@ mod GridView {
             };
             self.clerk.prepare_range(cx, self.id(), data, start..end);
 
+            self.virtual_offset = -offset;
             let solver = self.position_solver();
             for row in start.row..end.row {
                 for col in start.col..end.col {
@@ -591,7 +595,7 @@ mod GridView {
             let col_len = self.cur_len.col;
             let row_len = self.cur_len.row;
 
-            let pos_start = self.rect().pos + self.frame_offset;
+            let pos_start = self.rect().pos + self.frame_offset + self.virtual_offset;
             let skip = self.child_size + self.child_inter_margin;
 
             for rn in 0..row_len {
@@ -612,7 +616,7 @@ mod GridView {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            let offset = self.scroll_offset();
+            let offset = self.scroll_offset() + self.virtual_offset;
             let rect = self.rect() + offset;
             let num = self.cur_end();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
@@ -666,7 +670,7 @@ mod GridView {
 
         #[inline]
         fn translation(&self, _: usize) -> Offset {
-            self.scroll_offset()
+            self.scroll_offset() + self.virtual_offset
         }
 
         fn probe(&self, coord: Coord) -> Id {
@@ -675,7 +679,7 @@ mod GridView {
             }
 
             let num = self.cur_end();
-            let coord = coord + self.scroll.offset();
+            let coord = coord + self.translation(0);
             for child in &self.widgets[..num] {
                 if child.key.is_some()
                     && let Some(id) = child.item.try_probe(coord)
@@ -798,7 +802,8 @@ mod GridView {
                     return if let Some((col, row)) = data_index {
                         let cell = GridIndex { col, row };
                         // Set nav focus and update scroll position
-                        let action = self.scroll.focus_rect(cx, solver.rect(cell), self.rect());
+                        let rect = solver.rect(cell) - self.virtual_offset;
+                        let action = self.scroll.focus_rect(cx, rect, self.rect());
                         if !action.is_empty() {
                             cx.action(&self, action);
                             self.map_view_widgets(&mut cx.config_cx(), data, false);
@@ -845,7 +850,7 @@ mod GridView {
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_kinetic_scrolling()
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
-                            && w.item.rect().contains(press.coord + self.scroll.offset())
+                            && w.item.rect().contains(press.coord + self.translation(0))
                         {
                             cx.push(kas::messages::Select);
                         }
@@ -1010,7 +1015,8 @@ mod GridView {
                     };
                 }
 
-                let action = self.scroll.self_focus_rect(solver.rect(cell), self.rect());
+                let rect = solver.rect(cell) - self.virtual_offset;
+                let action = self.scroll.self_focus_rect(rect, self.rect());
                 if !action.is_empty() {
                     cx.action(&self, action);
                     self.map_view_widgets(cx, data, false);
