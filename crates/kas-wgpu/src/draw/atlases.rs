@@ -237,7 +237,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         let tex_size = Vec2::conv(Size::from(tex_size));
         let a = to_vec2(alloc.rectangle.min) / tex_size;
         let b = to_vec2(alloc.rectangle.max) / tex_size;
-        debug_assert!(Vec2::ZERO.le(a) && a.le(b) && b.le(Vec2::splat(1.0)));
+        debug_assert!(Vec2::ZERO <= a && a <= b && b <= Vec2::splat(1.0));
         let tex_quad = Quad { a, b };
 
         Ok((atlas, alloc.id, origin, tex_quad))

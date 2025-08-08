@@ -33,26 +33,30 @@ impl SelectionAction {
 
 /// Text-selection logic
 ///
-/// This struct holds an "edit pos" and a "selection pos", which together form
-/// a range. There is no requirement on the order of these two positions. Each
-/// may be adjusted independently.
+/// This struct holds the index of the edit cursor and selection position, which
+/// together form a range. There is no requirement on the order of these two
+/// positions. Each may be adjusted independently.
+///
+/// Additionally, this struct holds the selection anchor index. This usually
+/// equals the selection index, but when using double-click or triple-click
+/// selection, the anchor represents the initially-clicked position while the
+/// selection index represents the expanded position.
 #[derive(Clone, Debug, Default)]
 pub struct SelectionHelper {
-    edit_pos: usize,
-    sel_pos: usize,
-    anchor_pos: usize,
+    edit: usize,
+    sel: usize,
+    anchor: usize,
 }
 
 impl SelectionHelper {
     /// Construct from `(edit, selection)` positions
     ///
     /// The anchor position is set to the selection position.
-    pub fn new(edit_pos: usize, sel_pos: usize) -> Self {
-        let anchor_pos = sel_pos;
+    pub fn new(edit: usize, selection: usize) -> Self {
         SelectionHelper {
-            edit_pos,
-            sel_pos,
-            anchor_pos,
+            edit,
+            sel: selection,
+            anchor: selection,
         }
     }
 
@@ -63,48 +67,48 @@ impl SelectionHelper {
         *self = Self::default();
     }
 
-    /// True if the edit pos equals the selection pos
+    /// True if the selection index equals the cursor index
     pub fn is_empty(&self) -> bool {
-        self.edit_pos == self.sel_pos
+        self.edit == self.sel
     }
-    /// Clear selection without changing edit pos
+    /// Clear selection without changing the edit index
     pub fn set_empty(&mut self) {
-        self.sel_pos = self.edit_pos;
-        self.anchor_pos = self.edit_pos;
+        self.sel = self.edit;
+        self.anchor = self.edit;
     }
 
-    /// Set all positions to this value
-    pub fn set_pos(&mut self, pos: usize) {
-        self.edit_pos = pos;
-        self.sel_pos = pos;
-        self.anchor_pos = pos;
+    /// Set the cursor index and clear the selection
+    pub fn set_all(&mut self, index: usize) {
+        self.edit = index;
+        self.sel = index;
+        self.anchor = index;
     }
 
-    /// Get the edit pos
-    pub fn edit_pos(&self) -> usize {
-        self.edit_pos
+    /// Get the cursor index
+    pub fn edit_index(&self) -> usize {
+        self.edit
     }
-    /// Set the edit pos without adjusting the selection pos
-    pub fn set_edit_pos(&mut self, pos: usize) {
-        self.edit_pos = pos;
+    /// Set the cursor index without adjusting the selection index
+    pub fn set_edit_index(&mut self, index: usize) {
+        self.edit = index;
     }
 
-    /// Get the selection pos
-    pub fn sel_pos(&self) -> usize {
-        self.sel_pos
+    /// Get the selection index
+    pub fn sel_index(&self) -> usize {
+        self.sel
     }
-    /// Set the selection pos without adjusting the edit pos
+    /// Set the selection index without adjusting the edit index
     ///
-    /// The anchor position is also set to the selection position.
-    pub fn set_sel_pos(&mut self, pos: usize) {
-        self.sel_pos = pos;
-        self.anchor_pos = pos;
+    /// The anchor index is also set to the selection index.
+    pub fn set_sel_index(&mut self, index: usize) {
+        self.sel = index;
+        self.anchor = index;
     }
-    /// Set the selection pos only
+    /// Set the selection index only
     ///
-    /// Prefer [`Self::set_sel_pos`] unless you know you don't want to set the anchor.
-    pub fn set_sel_pos_only(&mut self, pos: usize) {
-        self.sel_pos = pos;
+    /// Prefer [`Self::set_sel_index`] unless you know you don't want to set the anchor.
+    pub fn set_sel_index_only(&mut self, index: usize) {
+        self.sel = index;
     }
 
     /// Apply new limit to the maximum length
@@ -112,17 +116,17 @@ impl SelectionHelper {
     /// Call this method if the string changes under the selection to ensure
     /// that the selection does not exceed the length of the new string.
     pub fn set_max_len(&mut self, len: usize) {
-        self.edit_pos = self.edit_pos.min(len);
-        self.sel_pos = self.sel_pos.min(len);
-        self.anchor_pos = self.anchor_pos.min(len);
+        self.edit = self.edit.min(len);
+        self.sel = self.sel.min(len);
+        self.anchor = self.anchor.min(len);
     }
 
-    /// Construct a range from the edit pos and selection pos
+    /// Get the selection range
     ///
-    /// The range is from the minimum of (edit pos, selection pos) to the
-    /// maximum of the two.
+    /// This range is from the edit index to the selection index or reversed,
+    /// whichever is increasing.
     pub fn range(&self) -> Range<usize> {
-        let mut range = self.edit_pos..self.sel_pos;
+        let mut range = self.edit..self.sel;
         if range.start > range.end {
             std::mem::swap(&mut range.start, &mut range.end);
         }
@@ -131,7 +135,7 @@ impl SelectionHelper {
 
     /// Set the anchor position to the start of the selection range
     pub fn set_anchor_to_range_start(&mut self) {
-        self.anchor_pos = self.range().start;
+        self.anchor = self.range().start;
     }
 
     /// Get the range from the anchor position to the edit position
@@ -139,13 +143,13 @@ impl SelectionHelper {
     /// This is used following [`Self::set_anchor_to_range_start`] to get the
     /// IME pre-edit range.
     pub fn anchor_to_edit_range(&self) -> Range<usize> {
-        debug_assert!(self.anchor_pos <= self.edit_pos);
-        self.anchor_pos..self.edit_pos
+        debug_assert!(self.anchor <= self.edit);
+        self.anchor..self.edit
     }
 
-    /// Expand the selection from the range between edit pos and anchor pos
+    /// Expand the selection from the range between edit index and anchor index
     ///
-    /// This moves both edit pos and sel pos. To obtain repeatable behaviour,
+    /// This moves both edit index and selection index. To obtain repeatable behaviour,
     /// first set `self.anchor_pos`.
     /// then before each time this method is called set the edit position.
     ///
@@ -154,7 +158,7 @@ impl SelectionHelper {
     /// (layout has been solved).
     fn expand<T: FormattableText>(&mut self, text: &Text<T>, repeats: u32) {
         let string = text.as_str();
-        let mut range = self.edit_pos..self.anchor_pos;
+        let mut range = self.edit..self.anchor;
         if range.start > range.end {
             std::mem::swap(&mut range.start, &mut range.end);
         }
@@ -188,17 +192,17 @@ impl SelectionHelper {
             };
         }
 
-        if self.edit_pos < self.sel_pos {
+        if self.edit < self.sel {
             std::mem::swap(&mut start, &mut end);
         }
-        self.sel_pos = start;
-        self.edit_pos = end;
+        self.sel = start;
+        self.edit = end;
     }
 
     /// Handle an action
     pub fn action<T: FormattableText>(&mut self, text: &Text<T>, action: SelectionAction) {
         if action.anchor {
-            self.anchor_pos = self.edit_pos;
+            self.anchor = self.edit;
         }
         if action.clear {
             self.set_empty();
@@ -211,16 +215,16 @@ impl SelectionHelper {
     /// Return a [`Rect`] encompassing the cursor(s) and selection
     pub fn cursor_rect(&self, text: &TextDisplay) -> Option<Rect> {
         let (m1, m2);
-        if self.sel_pos == self.edit_pos {
-            let mut iter = text.text_glyph_pos(self.edit_pos);
+        if self.sel == self.edit {
+            let mut iter = text.text_glyph_pos(self.edit);
             m1 = iter.next();
             m2 = iter.next();
-        } else if self.sel_pos < self.edit_pos {
-            m1 = text.text_glyph_pos(self.sel_pos).next_back();
-            m2 = text.text_glyph_pos(self.edit_pos).next();
+        } else if self.sel < self.edit {
+            m1 = text.text_glyph_pos(self.sel).next_back();
+            m2 = text.text_glyph_pos(self.edit).next();
         } else {
-            m1 = text.text_glyph_pos(self.edit_pos).next_back();
-            m2 = text.text_glyph_pos(self.sel_pos).next();
+            m1 = text.text_glyph_pos(self.edit).next_back();
+            m2 = text.text_glyph_pos(self.sel).next();
         }
 
         if let Some((c1, c2)) = m1.zip(m2) {

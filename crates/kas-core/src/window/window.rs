@@ -234,7 +234,7 @@ mod Window {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::PressStart { .. } if self.drag_anywhere => {
+                Event::PressStart(_) if self.drag_anywhere => {
                     cx.drag_window();
                     Used
                 }

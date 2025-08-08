@@ -69,3 +69,4 @@ glob = "0.3"
 [lints.clippy]
 needless_lifetimes = "allow"
 unit_arg = "allow"
+neg_cmp_op_on_partial_ord = "allow"

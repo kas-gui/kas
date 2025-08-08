@@ -8,6 +8,7 @@
 use super::{EventCx, EventState, PopupState};
 use crate::event::{Event, FocusSource};
 use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
+#[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId};
 use crate::{Action, Id, Tile, Widget};

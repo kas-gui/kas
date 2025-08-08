@@ -471,7 +471,7 @@ mod List {
 
         /// Access layout storage
         ///
-        /// The number of columns/rows is [`Self.len`].
+        /// The number of columns/rows is [`Self::len`].
         #[inline]
         pub fn layout_storage(&mut self) -> &mut (impl RowStorage + use<C, D>) {
             &mut self.layout

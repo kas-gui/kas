@@ -396,10 +396,10 @@ mod Mandlebrot {
                     }
                 },
                 Event::Scroll(delta) => match delta.as_factor_or_offset(cx) {
-                    Ok(factor) => self.transform *= Linear::scale(2f64.powf(factor)),
+                    Ok(factor) => self.transform *= Linear::scale(2f64.powf(factor.cast())),
                     Err(offset) => {
-                        self.transform -=
-                            self.transform.alpha() * self.view_alpha * DVec2::conv(offset);
+                        let offset: DVec2 = offset.cast();
+                        self.transform -= self.transform.alpha() * self.view_alpha * offset;
                     }
                 },
                 Event::Pan(t) => {
@@ -418,7 +418,7 @@ mod Mandlebrot {
                         + (self.transform.alpha() - new_alpha) * self.view_delta;
                     self.transform = Affine::new(new_alpha, new_delta);
                 }
-                Event::PressStart { press } => {
+                Event::PressStart(press) => {
                     return press
                         .grab(self.id(), event::GrabMode::PAN_FULL)
                         .with_icon(event::CursorIcon::Grabbing)

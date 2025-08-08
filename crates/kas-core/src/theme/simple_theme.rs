@@ -122,7 +122,7 @@ where
         let inner = outer.shrink(self.w.dims.button_frame as f32);
         #[cfg(debug_assertions)]
         {
-            if !inner.a.lt(inner.b) {
+            if !(inner.a < inner.b) {
                 log::warn!("button_frame: frame too small: {outer:?}");
             }
         }

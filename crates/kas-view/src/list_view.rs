@@ -821,7 +821,7 @@ mod ListView {
                         Unused
                     };
                 }
-                Event::PressStart { ref press }
+                Event::PressStart(ref press)
                     if press.is_primary() && cx.config().event().mouse_nav_focus() =>
                 {
                     if let Some(index) = cx.last_child() {
@@ -836,9 +836,7 @@ mod ListView {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press
-                        .grab(self.id(), kas::event::GrabMode::Click)
-                        .complete(cx)
+                    press.grab_click(self.id()).complete(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {

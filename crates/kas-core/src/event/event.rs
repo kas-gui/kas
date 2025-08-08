@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 
 use super::{EventCx, IsUsed, TimerHandle, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
-use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press};
-use crate::geom::{Affine, Offset};
+use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press, PressStart};
+use crate::geom::{Affine, Offset, Vec2};
 #[allow(unused)] use crate::{Events, window::Popup};
 use crate::{Id, dir::Direction, window::WindowId};
 
@@ -81,7 +81,7 @@ pub enum Event<'a> {
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
     ///
-    /// This event is sent for certain types of grab ([`Press::grab`]),
+    /// This event is sent for certain types of grab ([`PressStart::grab`]),
     /// enabling two-finger scale/rotate gestures as well as translation.
     ///
     /// Mouse-grabs generate translation (`delta` component) only. Touch grabs
@@ -91,7 +91,7 @@ pub enum Event<'a> {
     /// Movement of mouse cursor without press
     ///
     /// This event is only sent one case: when the mouse is moved while a
-    /// [`Popup`] is open and there is not an active [`Press::grab`] on the
+    /// [`Popup`] is open and there is not an active [`PressStart::grab`] on the
     /// mouse cursor.
     ///
     /// This event may be sent 10+ times per frame, thus it is important that
@@ -101,15 +101,15 @@ pub enum Event<'a> {
     CursorMove { press: Press },
     /// A mouse button was pressed or touch event started
     ///
-    /// Call [`Press::grab`] in order to "grab" corresponding motion
+    /// Call [`PressStart::grab`] in order to "grab" corresponding motion
     /// and release events.
     ///
     /// This event is sent to the widget under the mouse or touch position. If
     /// no such widget is found, this event is not sent.
-    PressStart { press: Press },
+    PressStart(PressStart),
     /// Movement of mouse or a touch press
     ///
-    /// This event is only sent when a ([`Press::grab`]) is active.
+    /// This event is only sent when a ([`PressStart::grab`]) is active.
     /// Motion events for the grabbed mouse pointer or touched finger are sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
@@ -119,7 +119,7 @@ pub enum Event<'a> {
     /// the handler be fast. It may be useful to schedule a pre-draw update
     /// with [`EventState::request_frame_timer`] to handle any post-move
     /// updates.
-    PressMove { press: Press, delta: Offset },
+    PressMove { press: Press, delta: Vec2 },
     /// End of a click/touch press
     ///
     /// If `success`, this is a button-release or touch finish; otherwise this
@@ -129,7 +129,7 @@ pub enum Event<'a> {
     /// when cancelling: the panned item or slider should be released as is, or
     /// the menu should remain open.
     ///
-    /// This event is only sent when a ([`Press::grab`]) is active.
+    /// This event is only sent when a ([`PressStart::grab`]) is active.
     /// Release/cancel events for the same mouse button or touched finger are
     /// sent.
     ///
@@ -215,8 +215,8 @@ impl<'a> std::ops::AddAssign<Offset> for Event<'a> {
             Event::CursorMove { press } => {
                 press.coord += offset;
             }
-            Event::PressStart { press, .. } => {
-                press.coord += offset;
+            Event::PressStart(press) => {
+                *press += offset;
             }
             Event::PressMove { press, .. } => {
                 press.coord += offset;
@@ -250,9 +250,7 @@ impl<'a> Event<'a> {
                 cx.depress_with_key(id, code);
                 f(cx)
             }
-            Event::PressStart { press, .. } if press.is_primary() => {
-                press.grab(id, GrabMode::Click).complete(cx)
-            }
+            Event::PressStart(press) if press.is_primary() => press.grab_click(id).complete(cx),
             Event::PressEnd { press, success, .. } => {
                 if success && id == press.id {
                     f(cx)
@@ -279,7 +277,7 @@ impl<'a> Event<'a> {
         match self {
             Command(_, _) => false,
             Key(_, _) | ImePreedit(_, _) | ImeCommit(_) | Scroll(_) => false,
-            CursorMove { .. } | PressStart { .. } => false,
+            CursorMove { .. } | PressStart(_) => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
             NavFocus { .. } | SelFocus(_) | KeyFocus | ImeFocus | MouseOver(true) => false,
@@ -310,7 +308,7 @@ impl<'a> Event<'a> {
 
             // Events sent to mouse focus
             Scroll(_) | Pan { .. } => true,
-            CursorMove { .. } | PressStart { .. } => true,
+            CursorMove { .. } | PressStart(_) => true,
 
             // Events sent to requester
             Key(_, _) | ImePreedit(_, _) | ImeCommit(_) => false,
@@ -626,7 +624,7 @@ pub enum ScrollDelta {
     /// For a ‘natural scrolling’ touch pad (that acts like a touch screen) this
     /// means moving your fingers right and down should give positive values,
     /// and move the content right and down (to reveal more things left and up).
-    Pixels(Offset),
+    PixelDelta(Vec2),
 }
 
 impl ScrollDelta {
@@ -634,7 +632,7 @@ impl ScrollDelta {
     pub fn is_vertical(self) -> bool {
         match self {
             ScrollDelta::Lines(0.0, _) => true,
-            ScrollDelta::Pixels(Offset(0, _)) => true,
+            ScrollDelta::PixelDelta(Vec2(0.0, _)) => true,
             _ => false,
         }
     }
@@ -643,7 +641,7 @@ impl ScrollDelta {
     pub fn is_horizontal(self) -> bool {
         match self {
             ScrollDelta::Lines(_, 0.0) => true,
-            ScrollDelta::Pixels(Offset(_, 0)) => true,
+            ScrollDelta::PixelDelta(Vec2(_, 0.0)) => true,
             _ => false,
         }
     }
@@ -651,19 +649,19 @@ impl ScrollDelta {
     /// Convert to a pan offset
     ///
     /// Line deltas are converted to a distance based on `scroll_distance` configuration.
-    pub fn as_offset(self, cx: &EventState) -> Offset {
+    pub fn as_offset(self, cx: &EventState) -> Vec2 {
         match self {
             ScrollDelta::Lines(x, y) => cx.config().event().scroll_distance((x, y)),
-            ScrollDelta::Pixels(d) => d,
+            ScrollDelta::PixelDelta(d) => d,
         }
     }
 
     /// Convert to a zoom factor
-    pub fn as_factor(self, _: &EventState) -> f64 {
+    pub fn as_factor(self, _: &EventState) -> f32 {
         // TODO: this should be configurable?
         match self {
-            ScrollDelta::Lines(_, y) => -0.5 * y as f64,
-            ScrollDelta::Pixels(Offset(_, y)) => -0.01 * y as f64,
+            ScrollDelta::Lines(_, y) => -0.5 * y,
+            ScrollDelta::PixelDelta(Vec2(_, y)) => -0.01 * y,
         }
     }
 
@@ -672,7 +670,7 @@ impl ScrollDelta {
     /// This is used for surfaces where panning/scrolling is preferred over
     /// zooming, though both are supported (for example, a web page).
     /// The <kbd>Ctrl</kbd> key is used to select between the two modes.
-    pub fn as_offset_or_factor(self, cx: &EventState) -> Result<Offset, f64> {
+    pub fn as_offset_or_factor(self, cx: &EventState) -> Result<Vec2, f32> {
         if cx.modifiers().control_key() {
             Err(self.as_factor(cx))
         } else {
@@ -686,7 +684,7 @@ impl ScrollDelta {
     /// though both are supported (for example, a map view where click-and-drag
     /// may also be used to pan). Mouse wheel actions always zoom while the
     /// touchpad scrolling may cause either effect.
-    pub fn as_factor_or_offset(self, cx: &EventState) -> Result<f64, Offset> {
+    pub fn as_factor_or_offset(self, cx: &EventState) -> Result<f32, Vec2> {
         if matches!(self, ScrollDelta::Lines(_, _)) || cx.modifiers().control_key() {
             Ok(self.as_factor(cx))
         } else {
@@ -719,8 +717,9 @@ fn sizes() {
     assert_eq!(size_of::<KeyEvent>(), 128);
     assert_eq!(size_of::<ScrollDelta>(), 12);
     assert_eq!(size_of::<Affine>(), 32);
-    assert_eq!(size_of::<Press>(), 32);
+    assert_eq!(size_of::<Press>(), 24);
     assert_eq!(size_of::<TimerHandle>(), 8);
     assert_eq!(size_of::<WindowId>(), 4);
     assert_eq!(size_of::<FocusSource>(), 1);
+    assert_eq!(size_of::<Event>(), 40);
 }

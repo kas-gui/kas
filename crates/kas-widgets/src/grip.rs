@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::event::{CursorIcon, Press};
+use kas::event::{CursorIcon, PressStart};
 use kas::prelude::*;
 
 /// A message from a [`GripPart`]
@@ -111,15 +111,15 @@ mod GripPart {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::PressStart { press, .. } => {
+                Event::PressStart(press) => {
                     cx.push(GripMsg::PressStart);
                     press
-                        .grab(self.id(), kas::event::GrabMode::Grab)
+                        .grab_move(self.id())
                         .with_icon(CursorIcon::Grabbing)
                         .complete(cx);
 
                     // Event delivery implies coord is over the grip.
-                    self.press_coord = press.coord - self.offset();
+                    self.press_coord = press.coord() - self.offset();
                     Used
                 }
                 Event::PressMove { press, .. } => {
@@ -227,15 +227,16 @@ mod GripPart {
         /// The grip position is not adjusted; the caller should also call
         /// [`Self::set_offset`] to do so. This is separate to allow adjustment of
         /// the posision; e.g. `Slider` pins the position to the nearest detent.
-        pub fn handle_press_on_track(&mut self, cx: &mut EventCx, press: &Press) -> Offset {
+        pub fn handle_press_on_track(&mut self, cx: &mut EventCx, press: &PressStart) -> Offset {
             press
-                .grab(self.id(), kas::event::GrabMode::Grab)
+                .grab_move(self.id())
                 .with_icon(CursorIcon::Grabbing)
                 .complete(cx);
 
-            let offset = press.coord - self.track.pos - Offset::conv(self.rect.size / 2);
+            let coord = press.coord();
+            let offset = coord - self.track.pos - Offset::conv(self.rect.size / 2);
             let offset = offset.clamp(Offset::ZERO, self.max_offset());
-            self.press_coord = press.coord - offset;
+            self.press_coord = coord - offset;
             offset
         }
     }

@@ -35,7 +35,7 @@ mod send;
 mod timer;
 mod window;
 
-pub use press::{GrabBuilder, GrabMode, Press, PressSource};
+pub use press::{GrabBuilder, GrabMode, Press, PressSource, PressStart};
 pub use timer::TimerHandle;
 
 struct PopupState {

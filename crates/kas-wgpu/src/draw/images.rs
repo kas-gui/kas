@@ -328,7 +328,7 @@ impl Window {
 
     /// Add a rectangle to the buffer
     pub fn rect(&mut self, pass: PassId, atlas: u32, tex: Quad, rect: Quad) {
-        if !rect.a.lt(rect.b) {
+        if !(rect.a < rect.b) {
             // zero / negative size: nothing to draw
             return;
         }

@@ -6,12 +6,12 @@
 //! Event handling: mouse events
 
 use super::{GrabMode, Press, PressSource, velocity};
-use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta, TimerHandle};
-use crate::geom::{Affine, Coord, DVec2};
+use crate::event::{Event, EventCx, EventState, FocusSource, PressStart, ScrollDelta, TimerHandle};
+use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::Window;
 use crate::window::WindowErased;
 use crate::{Action, Id, NavAdvance, Node, TileExt, Widget};
-use cast::{Cast, CastApprox, ConvApprox};
+use cast::{CastApprox, CastFloat};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::window::CursorIcon;
@@ -66,7 +66,6 @@ pub(crate) struct Mouse {
     pub(super) over: Option<Id>, // widget under the mouse
     pub(super) icon: CursorIcon,
     old_icon: CursorIcon,
-    last_coord: Coord,
     last_click_button: MouseButton,
     last_click_repetitions: u32,
     last_click_timeout: Instant,
@@ -83,7 +82,6 @@ impl Default for Mouse {
             over: None,
             icon: CursorIcon::Default,
             old_icon: CursorIcon::Default,
-            last_coord: Coord::ZERO,
             last_click_button: FAKE_MOUSE_BUTTON,
             last_click_repetitions: 0,
             last_click_timeout: Instant::now(),
@@ -172,16 +170,13 @@ impl Mouse {
         button: MouseButton,
         repetitions: u32,
         id: Id,
-        coord: Coord,
+        position: DVec2,
         mode: GrabMode,
     ) -> bool {
         let details = match mode {
             GrabMode::Click => GrabDetails::Click,
             GrabMode::Grab => GrabDetails::Grab,
             GrabMode::Pan { scale, rotate } => {
-                let position = self.last_position;
-                debug_assert_eq!(coord, position.cast_approx());
-
                 // Do we have a pin?
                 if matches!(&self.last_pin, Some((id2, _)) if id == *id2) {
                     GrabDetails::pan(position, (scale, rotate))
@@ -269,6 +264,8 @@ impl<'a> EventCx<'a> {
                 "remove_mouse_grab: start_id={}, success={success}",
                 grab.start_id
             );
+            debug_assert!(self.mouse.last_position.is_finite());
+
             self.window.set_cursor_icon(self.mouse.icon);
             redraw = grab.depress.clone();
             if let GrabDetails::Pan(details) = &grab.details {
@@ -281,9 +278,9 @@ impl<'a> EventCx<'a> {
             } else {
                 last_pin = None;
                 let press = Press {
-                    source: PressSource::Mouse(grab.button, grab.repetitions),
+                    source: PressSource::mouse(grab.button, grab.repetitions),
                     id: self.mouse.over.clone(),
-                    coord: self.mouse.last_coord,
+                    coord: self.mouse.last_position.cast_nearest(),
                 };
                 let event = Event::PressEnd { press, success };
                 to_send = Some((grab.start_id.clone(), event));
@@ -313,7 +310,7 @@ impl<'a> EventCx<'a> {
         }
 
         if self.action.contains(Action::REGION_MOVED) {
-            let over = win.try_probe(self.mouse.last_coord);
+            let over = win.try_probe(self.mouse.last_position.cast_nearest());
             self.set_over(win.as_node(data), over);
         }
     }
@@ -325,12 +322,7 @@ impl<'a> EventCx<'a> {
         data: &A,
         position: DVec2,
     ) {
-        let delta = position - self.mouse.last_position;
-        self.mouse.samples.push_delta(delta.cast_approx());
-        self.mouse.last_position = position;
-        self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
-        let coord = position.cast_approx();
-
+        let coord = position.cast_nearest();
         let id = win.try_probe(coord);
         self.tooltip_motion(win, &id);
         self.handle_cursor_moved_(id, win.as_node(data), coord, position);
@@ -343,6 +335,13 @@ impl<'a> EventCx<'a> {
         coord: Coord,
         position: DVec2,
     ) {
+        let delta: Vec2 = (position - self.mouse.last_position).cast_approx();
+        if delta.is_finite() {
+            self.mouse.samples.push_delta(delta);
+        }
+        self.mouse.last_position = position;
+        self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
+
         self.set_over(window.re(), id.clone());
 
         if let Some(grab) = self.mouse.grab.as_mut() {
@@ -351,11 +350,11 @@ impl<'a> EventCx<'a> {
                 GrabDetails::Grab => {
                     let target = grab.start_id.clone();
                     let press = Press {
-                        source: PressSource::Mouse(grab.button, grab.repetitions),
+                        source: PressSource::mouse(grab.button, grab.repetitions),
                         id,
                         coord,
                     };
-                    let delta = coord - self.mouse.last_coord;
+                    debug_assert!(delta.is_finite());
                     let event = Event::PressMove { press, delta };
                     self.send_event(window.re(), target, event);
                 }
@@ -372,7 +371,7 @@ impl<'a> EventCx<'a> {
             .map(|state| state.desc.id.clone())
         {
             let press = Press {
-                source: PressSource::Mouse(FAKE_MOUSE_BUTTON, 0),
+                source: PressSource::mouse(FAKE_MOUSE_BUTTON, 0),
                 id,
                 coord,
             };
@@ -381,8 +380,6 @@ impl<'a> EventCx<'a> {
         } else {
             // We don't forward move events without a grab
         }
-
-        self.mouse.last_coord = coord;
     }
 
     /// Handle mouse cursor entering the app.
@@ -394,9 +391,6 @@ impl<'a> EventCx<'a> {
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
 
         if self.mouse.grab.is_none() {
-            // If there's a mouse grab, we will continue to receive
-            // coordinates; if not, set a fake coordinate off the window
-            self.mouse.last_coord = Coord(-1, -1);
             self.set_over(window, None);
         }
     }
@@ -412,10 +406,7 @@ impl<'a> EventCx<'a> {
         let event = Event::Scroll(match delta {
             MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines(x, y),
             MouseScrollDelta::PixelDelta(pos) => {
-                // The delta is given as a PhysicalPosition, so we need
-                // to convert to our vector type (Offset) here.
-                let coord = Coord::conv_approx(pos);
-                ScrollDelta::Pixels(coord.cast())
+                ScrollDelta::PixelDelta(DVec2::from(pos).cast_approx())
             }
         });
         if let Some(id) = self.mouse.over.clone() {
@@ -466,13 +457,14 @@ impl<'a> EventCx<'a> {
                     self.set_nav_focus(id, FocusSource::Pointer);
                 }
 
-                let source = PressSource::Mouse(button, self.mouse.last_click_repetitions);
-                let press = Press {
+                let source = PressSource::mouse(button, self.mouse.last_click_repetitions);
+                let press = PressStart {
                     source,
                     id: Some(id.clone()),
-                    coord: self.mouse.last_coord,
+                    position: self.mouse.last_position,
                 };
-                let event = Event::PressStart { press };
+                debug_assert!(press.position.is_finite());
+                let event = Event::PressStart(press);
                 self.send_event(window, id, event);
             }
         }

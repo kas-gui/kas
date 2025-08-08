@@ -162,7 +162,7 @@ where
     ) -> Quad {
         #[cfg(debug_assertions)]
         {
-            if !inner.a.lt(inner.b) {
+            if !(inner.a < inner.b) {
                 log::warn!("button_frame: frame too small: {outer:?}");
             }
         }

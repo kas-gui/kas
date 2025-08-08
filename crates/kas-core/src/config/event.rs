@@ -6,10 +6,10 @@
 //! Event handling configuration
 
 use crate::Action;
-use crate::cast::{Cast, CastFloat};
+use crate::cast::Cast;
 #[allow(unused)] use crate::event::Event;
 use crate::event::ModifiersState;
-use crate::geom::Offset;
+use crate::geom::Vec2;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::cell::Ref;
@@ -214,10 +214,10 @@ impl<'a> EventWindowConfig<'a> {
     /// Get distance in pixels to scroll due to mouse wheel
     ///
     /// Calculates scroll distance from `(horiz, vert)` lines.
-    pub fn scroll_distance(&self, lines: (f32, f32)) -> Offset {
-        let x = (self.0.scroll_dist * lines.0).cast_nearest();
-        let y = (self.0.scroll_dist * lines.1).cast_nearest();
-        Offset(x, y)
+    pub fn scroll_distance(&self, lines: (f32, f32)) -> Vec2 {
+        let x = self.0.scroll_dist * lines.0;
+        let y = self.0.scroll_dist * lines.1;
+        Vec2(x, y)
     }
 
     /// Drag distance threshold before panning (scrolling) starts

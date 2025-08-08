@@ -106,10 +106,8 @@ impl Kinetic {
 
         if let Some(source) = self.press {
             let decay_sub = evc.kinetic_grab_sub();
-            let grab_vel = cx.press_velocity(source).unwrap_or_default() + self.vel;
-
-            let v = self.vel - grab_vel;
-            self.vel -= v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
+            let v = cx.press_velocity(source).unwrap_or_default();
+            self.vel -= v.abs().min(Vec2::splat(decay_sub * dur)) * -v.sign();
         }
 
         let (decay_mul, decay_sub) = evc.kinetic_decay();
@@ -132,7 +130,6 @@ impl Kinetic {
     #[inline]
     pub fn stop(&mut self) {
         self.vel = Vec2::ZERO;
-        self.rest = Vec2::ZERO;
     }
 
     /// Stop scrolling on any axis were `delta` is non-zero
@@ -264,24 +261,18 @@ impl ScrollComponent {
         match scroll {
             Scroll::None | Scroll::Scrolled => (),
             Scroll::Offset(delta) => {
-                let old_offset = self.offset;
-                let action = self.set_offset(old_offset - delta);
-                cx.action(id, action);
-                cx.set_scroll(match delta - old_offset + self.offset {
-                    delta if delta == Offset::ZERO => Scroll::Scrolled,
-                    delta => Scroll::Offset(delta),
-                });
+                self.scroll_by_delta(cx, id, delta);
             }
             Scroll::Kinetic(start) => {
                 let delta = self.kinetic.start(start);
                 let delta = self.scroll_self_by_delta(cx, id.clone(), delta);
                 if delta == Offset::ZERO {
-                    if self.kinetic.is_scrolling() {
-                        cx.request_frame_timer(id, TIMER_KINETIC);
-                    }
                     cx.set_scroll(Scroll::Scrolled);
                 } else {
                     cx.set_scroll(Scroll::Kinetic(self.kinetic.stop_with_residual(delta)));
+                }
+                if self.kinetic.is_scrolling() {
+                    cx.request_frame_timer(id, TIMER_KINETIC);
                 }
             }
             Scroll::Rect(rect) => {
@@ -305,10 +296,13 @@ impl ScrollComponent {
         delta
     }
 
-    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Offset) {
-        let delta = self.scroll_self_by_delta(cx, id, d);
+    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Vec2) {
+        let delta = d + self.kinetic.rest;
+        let offset = delta.cast_nearest();
+        self.kinetic.rest = delta - Vec2::conv(offset);
+        let delta = self.scroll_self_by_delta(cx, id, offset);
         cx.set_scroll(if delta != Offset::ZERO {
-            Scroll::Offset(delta)
+            Scroll::Offset(delta.cast())
         } else {
             Scroll::Scrolled
         });
@@ -346,15 +340,17 @@ impl ScrollComponent {
                             Command::Right => ScrollDelta::Lines(1.0, 0.0),
                             Command::Up => ScrollDelta::Lines(0.0, 1.0),
                             Command::Down => ScrollDelta::Lines(0.0, -1.0),
-                            Command::PageUp => {
-                                ScrollDelta::Pixels(Offset(0, window_rect.size.1 / 2))
-                            }
-                            Command::PageDown => {
-                                ScrollDelta::Pixels(Offset(0, -(window_rect.size.1 / 2)))
+                            Command::PageUp | Command::PageDown => {
+                                let mut v = 0.5 * f32::conv(window_rect.size.1);
+                                if cmd == Command::PageDown {
+                                    v = -v;
+                                }
+                                ScrollDelta::PixelDelta(Vec2(0.0, v))
                             }
                             _ => return Unused,
                         };
-                        self.offset - delta.as_offset(cx)
+                        self.scroll_by_delta(cx, id, delta.as_offset(cx));
+                        return Used;
                     }
                 };
                 cx.action(id, self.set_offset(offset));
@@ -364,7 +360,7 @@ impl ScrollComponent {
                 self.kinetic.stop();
                 self.scroll_by_delta(cx, id, delta.as_offset(cx));
             }
-            Event::PressStart { press, .. }
+            Event::PressStart(press)
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 let _ = press
@@ -440,7 +436,7 @@ pub enum TextInputAction {
     ///
     /// To handle:
     ///
-    /// 1.  Translate `coord` to a text index and call [`SelectionHelper::set_edit_pos`].
+    /// 1.  Translate `coord` to a text index and call [`SelectionHelper::set_edit_index`].
     /// 2.  Call [`SelectionHelper::action`].
     /// 3.  If supporting the primary buffer (Unix), set its contents now if the
     ///     widget has selection focus or otherwise when handling
@@ -466,31 +462,31 @@ impl TextInput {
     pub fn handle(&mut self, cx: &mut EventCx, w_id: Id, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
-            Event::PressStart { press } if press.is_primary() => {
+            Event::PressStart(press) if press.is_primary() => {
                 let mut action = Action::Used;
-                let icon = match *press {
-                    PressSource::Touch(_) => {
-                        self.phase = Phase::Start(*press, press.coord);
-                        let delay = cx.config().event().touch_select_delay();
-                        cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
-                        None
-                    }
-                    PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
+                let icon = if press.is_touch() {
+                    self.phase = Phase::Start(*press, press.coord());
+                    let delay = cx.config().event().touch_select_delay();
+                    cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
+                    None
+                } else if press.is_mouse() {
+                    if cx.config_enable_mouse_text_pan() {
                         self.phase = Phase::Pan(*press);
                         Some(CursorIcon::Grabbing)
-                    }
-                    PressSource::Mouse(_, repeats) => {
+                    } else {
                         self.phase = Phase::Cursor(*press);
                         action = Action::Focus {
-                            coord: press.coord,
+                            coord: press.coord(),
                             action: SelectionAction {
                                 anchor: true,
                                 clear: !cx.modifiers().shift_key(),
-                                repeats,
+                                repeats: press.repetitions(),
                             },
                         };
                         None
                     }
+                } else {
+                    unreachable!()
                 };
                 press
                     .grab(w_id, GrabMode::Grab)
@@ -503,7 +499,7 @@ impl TextInput {
                     let delta = press.coord - start_coord;
                     if cx.config_test_pan_thresh(delta) {
                         self.phase = Phase::Pan(source);
-                        cx.set_scroll(Scroll::Offset(delta));
+                        cx.set_scroll(Scroll::Offset(delta.cast()));
                     }
                     Action::Used
                 }
@@ -511,16 +507,10 @@ impl TextInput {
                     cx.set_scroll(Scroll::Offset(delta));
                     Action::Used
                 }
-                Phase::Cursor(source) if *press == source => {
-                    let repeats = match *press {
-                        PressSource::Touch(_) => 1,
-                        PressSource::Mouse(_, n) => n,
-                    };
-                    Action::Focus {
-                        coord: press.coord,
-                        action: SelectionAction::new(false, false, repeats),
-                    }
-                }
+                Phase::Cursor(source) if *press == source => Action::Focus {
+                    coord: press.coord,
+                    action: SelectionAction::new(false, false, press.repetitions()),
+                },
                 _ => Action::Used,
             },
             Event::PressEnd { press, .. } => {
