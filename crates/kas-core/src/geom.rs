@@ -721,7 +721,7 @@ mod accesskit_impls {
 mod winit_impls {
     use super::{Coord, Size};
     use crate::cast::{Cast, CastApprox, Conv, ConvApprox, Result};
-    use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
+    use winit::dpi::{PhysicalPosition, PhysicalSize};
 
     impl<X: CastApprox<i32>> ConvApprox<PhysicalPosition<X>> for Coord {
         #[inline]
@@ -759,15 +759,6 @@ mod winit_impls {
         pub fn as_physical(self) -> winit::dpi::Size {
             let (w, h): (u32, u32) = self.cast();
             winit::dpi::Size::Physical(PhysicalSize::new(w, h))
-        }
-
-        /// Convert to a "logical" [`winit::dpi::Size`]
-        ///
-        /// This implies that the [`Size`] was calculated using `scale_factor = 1`.
-        #[inline]
-        pub fn as_logical(self) -> winit::dpi::Size {
-            let (w, h) = (self.0 as f64, self.1 as f64);
-            winit::dpi::Size::Logical(LogicalSize::new(w, h))
         }
     }
 }
