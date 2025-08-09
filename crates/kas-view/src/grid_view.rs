@@ -453,7 +453,12 @@ mod GridView {
             }
 
             let dur = (Instant::now() - time).as_micros();
-            log::debug!(target: "kas_perf::view::grid_view", "map_view_widgets: {dur}μs");
+            log::debug!(
+                target: "kas_perf::view::grid_view",
+                "map_view_widgets {}×{} widgets in {dur}μs",
+                cur_len.col,
+                cur_len.row,
+            );
         }
 
         fn update_content_size(&mut self, cx: &mut ConfigCx) {

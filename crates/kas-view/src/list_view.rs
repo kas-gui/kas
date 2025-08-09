@@ -503,7 +503,10 @@ mod ListView {
             }
 
             let dur = (Instant::now() - time).as_micros();
-            log::debug!(target: "kas_perf::view::list_view", "map_view_widgets: {dur}μs");
+            log::debug!(
+                target: "kas_perf::view::list_view",
+                "map_view_widgets {cur_len} view widgets in {dur}μs",
+            );
         }
 
         fn update_content_size(&mut self, cx: &mut ConfigCx) {
