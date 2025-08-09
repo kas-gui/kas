@@ -1060,7 +1060,7 @@ impl PositionSolver {
         let col_len = self.cur_len.col;
         let row_len = self.cur_len.row;
         let ci: u32 = (index % usize::conv(col_len)).cast();
-        let ri: u32 = (index / usize::conv(row_len)).cast();
+        let ri: u32 = (index / usize::conv(col_len)).cast();
         let mut col = (self.first_data.col / col_len) * col_len + ci;
         let mut row = (self.first_data.row / row_len) * row_len + ri;
         if col < self.first_data.col {
