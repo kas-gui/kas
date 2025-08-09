@@ -491,9 +491,8 @@ mod EditBox {
     }
 
     impl Scrollable for Self {
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            let max = self.max_scroll_offset();
-            (max.0 > size.0, max.1 > size.1)
+        fn content_size(&self) -> Size {
+            self.inner.rect().size
         }
 
         fn max_scroll_offset(&self) -> Offset {

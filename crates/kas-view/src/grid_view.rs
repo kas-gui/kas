@@ -463,20 +463,17 @@ mod GridView {
 
         fn update_content_size(&mut self, cx: &mut ConfigCx) {
             let view_size = self.rect().size - self.frame_size;
-            let skip = self.child_size + self.child_inter_margin;
-            let content_size =
-                (skip.cwise_mul(self.data_len) - self.child_inter_margin).max(Size::ZERO);
+            let content_size = self.content_size();
             let action = self.scroll.set_sizes(view_size, content_size);
             cx.action(self, action);
         }
     }
 
     impl Scrollable for Self {
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+        fn content_size(&self) -> Size {
             let m = self.child_inter_margin;
             let step = self.child_size + m;
-            let content_size = (step.cwise_mul(self.data_len) - m).max(Size::ZERO);
-            (content_size.0 > size.0, content_size.1 > size.1)
+            (step.cwise_mul(self.data_len) - m).max(Size::ZERO)
         }
 
         #[inline]

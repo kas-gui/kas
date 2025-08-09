@@ -68,11 +68,9 @@ mod ScrollRegion {
     }
 
     impl Scrollable for Self {
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            (
-                self.min_child_size.0 > size.0,
-                self.min_child_size.1 > size.1,
-            )
+        #[inline]
+        fn content_size(&self) -> Size {
+            self.min_child_size
         }
 
         #[inline]

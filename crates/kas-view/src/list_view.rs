@@ -523,21 +523,13 @@ mod ListView {
     }
 
     impl Scrollable for Self {
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            // TODO: support scrolling on the other axis by clamping the min size like ScrollRegion?
-
+        fn content_size(&self) -> Size {
             let data_len: i32 = self.data_len.cast();
-            let inner_size = (size - self.frame_size).extract(self.direction());
-            let child_size =
-                (inner_size / self.ideal_visible).clamp(self.child_size_min, self.child_size_ideal);
             let m = self.child_inter_margin;
-            let step = child_size + m;
-            let content_size = (step * data_len - m).max(0);
-            if self.direction.is_horizontal() {
-                (content_size > inner_size, false)
-            } else {
-                (false, content_size > inner_size)
-            }
+            let step = self.child_size_ideal + m;
+            let mut content_size = Size::ZERO;
+            content_size.set_component(self.direction, (step * data_len - m).max(0));
+            content_size
         }
 
         #[inline]
