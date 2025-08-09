@@ -146,6 +146,8 @@ mod ListView {
         skip: i32,
         child_size: Size,
         scroll: ScrollComponent,
+        // Widget translation is scroll.offset() + virtual_offset
+        virtual_offset: i32,
         sel_mode: SelectionMode,
         sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
@@ -219,6 +221,7 @@ mod ListView {
                 skip: 1,
                 child_size: Size::ZERO,
                 scroll: Default::default(),
+                virtual_offset: 0,
                 sel_mode: SelectionMode::None,
                 sel_style: SelectionStyle::Highlight,
                 selection: Default::default(),
@@ -403,6 +406,14 @@ mod ListView {
             self
         }
 
+        #[inline]
+        fn virtual_offset(&self) -> Offset {
+            match self.direction.is_vertical() {
+                false => Offset(self.virtual_offset, 0),
+                true => Offset(0, self.virtual_offset),
+            }
+        }
+
         fn position_solver(&self) -> PositionSolver {
             let data_len: usize = self.data_len.cast();
             let cur_len: usize = self.cur_len.cast();
@@ -410,7 +421,7 @@ mod ListView {
             let mut skip = Offset::ZERO;
             skip.set_component(self.direction, self.skip);
 
-            let mut pos_start = self.rect().pos + self.frame_offset;
+            let mut pos_start = self.rect().pos + self.frame_offset + self.virtual_offset();
             if self.direction.is_reversed() {
                 first_data = (data_len - first_data).saturating_sub(cur_len);
                 pos_start += skip * i32::conv(data_len.saturating_sub(1));
@@ -426,16 +437,32 @@ mod ListView {
             }
         }
 
-        // If full, call cx.update on all view widgets
-        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, full: bool) {
-            let time = Instant::now();
+        // Call after scrolling to re-map widgets (if required)
+        fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
+            let offset = self.scroll_offset().extract(self.direction);
+            let first_data = u64::conv(offset) / u64::conv(self.skip);
 
-            let offset = u64::conv(self.scroll_offset().extract(self.direction));
-            let mut first_data = usize::conv(offset / u64::conv(self.skip));
+            let view_end_offset =
+                offset + (self.rect().size - self.frame_size).extract(self.direction);
+            let last_data =
+                u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1).min(self.data_len);
+
+            if u32::conv(first_data) < self.first_data || last_data > self.first_data + self.cur_len
+            {
+                self.map_view_widgets(cx, data, first_data.cast());
+            }
+        }
+
+        // Assign view widgets to data as required and set their rects
+        //
+        // View widgets are configured and sized if assigned a new data item.
+        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, first_data: usize) {
+            let time = Instant::now();
 
             let data_len: usize = self.data_len.cast();
             let cur_len: usize = data_len.min(self.alloc_len.cast());
-            first_data = first_data.min(data_len - cur_len);
+
+            let first_data = usize::conv(first_data).min(data_len - cur_len);
             self.cur_len = cur_len.cast();
             debug_assert!(usize::conv(self.cur_len) <= self.widgets.len());
             self.first_data = first_data.cast();
@@ -443,6 +470,7 @@ mod ListView {
             let range = first_data..(first_data + cur_len);
             self.clerk.prepare_range(cx, self.id(), data, range);
 
+            self.virtual_offset = -self.scroll_offset().extract(self.direction);
             let solver = self.position_solver();
             for i in solver.data_range() {
                 let Some(key) = self.clerk.key(data, i) else {
@@ -467,8 +495,6 @@ mod ListView {
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
-                } else if full && let Some(item) = self.clerk.item(data, &key) {
-                    cx.update(w.item.as_node(item));
                 }
 
                 if w.key.is_some() {
@@ -477,7 +503,10 @@ mod ListView {
             }
 
             let dur = (Instant::now() - time).as_micros();
-            log::trace!(target: "kas_perf::view::list_view", "update_widgets: {dur}μs");
+            log::debug!(
+                target: "kas_perf::view::list_view",
+                "map_view_widgets {cur_len} view widgets in {dur}μs",
+            );
         }
 
         fn update_content_size(&mut self, cx: &mut ConfigCx) {
@@ -553,23 +582,15 @@ mod ListView {
             });
             axis = AxisInfo::new(axis.is_vertical(), other);
 
-            self.child_size_min = i32::MAX;
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
                 if w.key.is_some() {
                     let child_rules = w.item.size_rules(sizer.re(), axis);
-                    if axis.is_vertical() == self.direction.is_vertical() {
-                        self.child_size_min = self.child_size_min.min(child_rules.min_size());
-                    }
                     rules = rules.max(child_rules);
                 }
             }
-            if self.child_size_min == i32::MAX {
-                self.child_size_min = 1;
-            }
-            self.child_size_min = self.child_size_min.max(1);
-
             if axis.is_vertical() == self.direction.is_vertical() {
+                self.child_size_min = rules.min_size().max(1);
                 self.child_size_ideal = rules.ideal_size().max(sizer.min_element_size());
                 let m = rules.margins();
                 self.child_inter_margin =
@@ -645,7 +666,7 @@ mod ListView {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            let offset = self.scroll_offset();
+            let offset = self.scroll_offset() + self.virtual_offset();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
                 for child in &self.widgets[..self.cur_len.cast()] {
                     if let Some(ref key) = child.key {
@@ -693,7 +714,7 @@ mod ListView {
 
         #[inline]
         fn translation(&self, _: usize) -> Offset {
-            self.scroll_offset()
+            self.scroll_offset() + self.virtual_offset()
         }
 
         fn probe(&self, coord: Coord) -> Id {
@@ -701,7 +722,7 @@ mod ListView {
                 return self.id();
             }
 
-            let coord = coord + self.scroll.offset();
+            let coord = coord + self.translation(0);
             for child in &self.widgets[..self.cur_len.cast()] {
                 if child.key.is_some()
                     && let Some(id) = child.item.try_probe(coord)
@@ -722,11 +743,15 @@ mod ListView {
 
         #[inline]
         fn make_child_id(&mut self, _: usize) -> Id {
-            // We configure children in update_widgets and do not want this method to be called
+            // We configure children in map_view_widgets and do not want this method to be called
             unimplemented!()
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
+        }
+
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
@@ -739,21 +764,16 @@ mod ListView {
                     item: ListItem::new(self.driver.make(&key)),
                 });
                 self.alloc_len = len.cast();
-            }
-
-            cx.register_nav_fallback(self.id());
-        }
-
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            let id = self.id();
-            for w in &mut self.widgets {
-                if let Some(ref key) = w.key
-                    && let Some(item) = self.clerk.item(data, key)
-                {
-                    let id = key.make_id(&id);
-                    cx.configure(w.item.as_node(item), id);
+            } else {
+                // Force reconfiguration:
+                for w in &mut self.widgets {
+                    w.key = None;
                 }
             }
+
+            let offset = self.scroll_offset().extract(self.direction);
+            let first_data = u64::conv(offset) / u64::conv(self.skip);
+            self.map_view_widgets(cx, data, first_data.cast());
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
@@ -761,16 +781,28 @@ mod ListView {
             let data_len = self.clerk.len(data).cast();
             if data_len != self.data_len {
                 self.data_len = data_len;
-                // We must call at least SET_RECT to update scrollable region
-                // RESIZE allows recalculation of child widget size which may
-                // have been zero if no data was initially available!
-                // TODO(opt): we may not need to resize here.
-                cx.resize(&self);
+                self.update_content_size(cx);
+
+                if self.scroll_offset() == self.max_scroll_offset() {
+                    // We may be able to request additional screen space.
+                    // We may need to map new view widgets.
+                    cx.resize(&self);
+                    return;
+                }
             }
 
-            self.update_widgets(cx, data, true);
+            let first_data: usize = self.first_data.cast();
+            let cur_len = self.cur_len.cast();
+            let range = first_data..(first_data + cur_len);
+            self.clerk.prepare_range(cx, self.id(), data, range);
 
-            self.update_content_size(cx);
+            for child in &mut self.widgets[..cur_len] {
+                if let Some(key) = child.key.as_ref()
+                    && let Some(item) = self.clerk.item(data, key)
+                {
+                    cx.update(child.item.as_node(item));
+                }
+            }
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
@@ -806,10 +838,11 @@ mod ListView {
                     };
                     return if let Some(i_data) = data_index {
                         // Set nav focus to i_data and update scroll position
-                        let act = self.scroll.focus_rect(cx, solver.rect(i_data), self.rect());
+                        let rect = solver.rect(i_data) - self.virtual_offset();
+                        let act = self.scroll.focus_rect(cx, rect, self.rect());
                         if !act.is_empty() {
                             cx.action(&self, act);
-                            self.update_widgets(&mut cx.config_cx(), data, false);
+                            self.post_scroll(&mut cx.config_cx(), data);
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         let w = &self.widgets[index];
@@ -845,7 +878,7 @@ mod ListView {
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_kinetic_scrolling()
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
-                            && w.item.rect().contains(press.coord + self.scroll.offset())
+                            && w.item.rect().contains(press.coord + self.translation(0))
                         {
                             cx.push(kas::messages::Select);
                         }
@@ -853,7 +886,7 @@ mod ListView {
                     Used
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
-                    self.update_widgets(&mut cx.config_cx(), data, false);
+                    self.post_scroll(&mut cx.config_cx(), data);
                     Used
                 }
                 _ => Unused, // fall through to scroll handler
@@ -922,8 +955,9 @@ mod ListView {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
-            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
-            self.update_widgets(&mut cx.config_cx(), data, false);
+            self.scroll
+                .scroll(cx, self.id(), self.rect(), scroll - self.virtual_offset());
+            self.post_scroll(&mut cx.config_cx(), data);
         }
     }
 
@@ -992,12 +1026,11 @@ mod ListView {
                     last_data
                 };
 
-                let act = self
-                    .scroll
-                    .self_focus_rect(solver.rect(data_index), self.rect());
+                let rect = solver.rect(data_index) - self.virtual_offset();
+                let act = self.scroll.self_focus_rect(rect, self.rect());
                 if !act.is_empty() {
                     cx.action(&self, act);
-                    self.update_widgets(cx, data, false);
+                    self.post_scroll(cx, data);
                 }
 
                 let index = data_index % usize::conv(self.cur_len);

@@ -488,6 +488,15 @@ impl Offset {
     }
 }
 
+impl std::ops::Neg for Offset {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self {
+        Offset(-self.0, -self.1)
+    }
+}
+
 impl std::ops::Add for Offset {
     type Output = Self;
 

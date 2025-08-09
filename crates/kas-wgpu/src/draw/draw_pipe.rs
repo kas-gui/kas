@@ -397,7 +397,11 @@ impl<CW: CustomWindow> DrawImpl for DrawWindow<CW> {
     ) -> PassId {
         let parent = match class {
             PassType::Clip => &self.clip_regions[parent_pass.pass()],
-            PassType::Overlay => &self.clip_regions[0],
+            PassType::Overlay => {
+                // NOTE: parent_pass.pass() is always zero in this case since
+                // this is only invoked from the Window (root).
+                &self.clip_regions[0]
+            }
         };
         let rect = rect - parent.1;
         let offset = offset + parent.1;
