@@ -132,7 +132,8 @@ mod ListView {
         driver: V,
         widgets: Vec<WidgetData<C::Key, C::Item, V>>,
         alloc_len: u32,
-        data_len: u32,
+        min_data_len: u32,
+        data_len: Option<u32>,
         /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
         cur_len: u32,
         /// First data item mapped to a widget
@@ -209,7 +210,8 @@ mod ListView {
                 driver,
                 widgets: Default::default(),
                 alloc_len: 0,
-                data_len: 0,
+                min_data_len: 0,
+                data_len: None,
                 cur_len: 0,
                 first_data: 0,
                 direction,
@@ -415,14 +417,16 @@ mod ListView {
         }
 
         fn position_solver(&self) -> PositionSolver {
-            let data_len: usize = self.data_len.cast();
             let cur_len: usize = self.cur_len.cast();
             let mut first_data: usize = self.first_data.cast();
             let mut skip = Offset::ZERO;
             skip.set_component(self.direction, self.skip);
 
             let mut pos_start = self.rect().pos + self.frame_offset + self.virtual_offset();
-            if self.direction.is_reversed() {
+            if self.direction.is_reversed()
+                && let Some(len) = self.data_len
+            {
+                let data_len: usize = len.cast();
                 first_data = (data_len - first_data).saturating_sub(cur_len);
                 pos_start += skip * i32::conv(data_len.saturating_sub(1));
                 skip = skip * -1;
@@ -444,8 +448,8 @@ mod ListView {
 
             let view_end_offset =
                 offset + (self.rect().size - self.frame_size).extract(self.direction);
-            let last_data =
-                u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1).min(self.data_len);
+            let last_data = u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1)
+                .min(self.min_data_len);
 
             if u32::conv(first_data) < self.first_data || last_data > self.first_data + self.cur_len
             {
@@ -459,10 +463,19 @@ mod ListView {
         fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, first_data: usize) {
             let time = Instant::now();
 
-            let data_len: usize = self.data_len.cast();
-            let cur_len: usize = data_len.min(self.alloc_len.cast());
+            let alloc_len = self.alloc_len.cast();
+            let min_data_len = if let Some(len) = self.data_len {
+                usize::conv(len)
+            } else {
+                self.clerk.min_len(data, first_data + 2 * alloc_len)
+            };
+            if min_data_len != self.min_data_len.cast() {
+                self.min_data_len = min_data_len.cast();
+                self.update_content_size(cx);
+            }
+            let cur_len: usize = min_data_len.min(alloc_len);
 
-            let first_data = usize::conv(first_data).min(data_len - cur_len);
+            let first_data = usize::conv(first_data).min(min_data_len - cur_len);
             self.cur_len = cur_len.cast();
             debug_assert!(usize::conv(self.cur_len) <= self.widgets.len());
             self.first_data = first_data.cast();
@@ -510,7 +523,7 @@ mod ListView {
         }
 
         fn update_content_size(&mut self, cx: &mut ConfigCx) {
-            let data_len: i32 = self.data_len.cast();
+            let data_len: i32 = self.data_len.unwrap_or(self.min_data_len).cast();
             let view_size = self.rect().size - self.frame_size;
             let mut content_size = view_size;
             content_size.set_component(
@@ -524,7 +537,7 @@ mod ListView {
 
     impl Scrollable for Self {
         fn content_size(&self) -> Size {
-            let data_len: i32 = self.data_len.cast();
+            let data_len: i32 = self.data_len.unwrap_or(self.min_data_len).cast();
             let m = self.child_inter_margin;
             let step = self.child_size_ideal + m;
             let mut content_size = Size::ZERO;
@@ -676,7 +689,7 @@ mod ListView {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_scroll_offset(self.scroll_offset(), self.max_scroll_offset());
             Role::OptionList {
-                len: Some(self.data_len.cast()),
+                len: self.data_len.map(|len| len.cast()),
                 direction: self.direction.as_direction(),
             }
         }
@@ -770,9 +783,13 @@ mod ListView {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             self.clerk.update(cx, self.id(), data);
-            let data_len = self.clerk.len(data).cast();
-            if data_len != self.data_len {
-                self.data_len = data_len;
+            self.data_len = self.clerk.len(data).map(|len| len.cast());
+            let min_data_len = self.data_len.unwrap_or_else(|| {
+                let len = self.first_data + 2 * self.alloc_len;
+                self.clerk.min_len(data, len.cast()).cast()
+            });
+            if min_data_len != self.min_data_len {
+                self.min_data_len = min_data_len;
                 self.update_content_size(cx);
 
                 if self.scroll_offset() == self.max_scroll_offset() {
@@ -802,7 +819,7 @@ mod ListView {
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
             let mut is_used = match event {
                 Event::Command(cmd, _) => {
-                    let last = usize::conv(self.data_len).wrapping_sub(1);
+                    let last = usize::conv(self.min_data_len).wrapping_sub(1);
                     if last == usize::MAX {
                         return Unused;
                     }
@@ -1002,7 +1019,7 @@ mod ListView {
             let mut starting_child = child;
             loop {
                 let solver = self.position_solver();
-                let last_data = usize::conv(self.data_len).wrapping_sub(1);
+                let last_data = usize::conv(self.min_data_len).wrapping_sub(1);
                 let data_index = if let Some(index) = child {
                     let data = solver.child_to_data(index);
                     if !reverse && data < last_data {

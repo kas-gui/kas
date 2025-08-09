@@ -561,8 +561,8 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             self.months = months;
         }
 
-        fn len(&self, _: &Self::Data) -> usize {
-            self.end
+        fn len(&self, _: &Self::Data) -> Option<usize> {
+            Some(self.end)
         }
 
         fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, range: Range<usize>) {

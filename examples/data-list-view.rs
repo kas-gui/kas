@@ -152,8 +152,14 @@ impl DataClerk<usize> for Clerk {
     type Key = usize;
     type Item = Item;
 
-    fn len(&self, data: &Self::Data) -> usize {
-        data.len
+    fn len(&self, _: &Self::Data) -> Option<usize> {
+        None
+    }
+
+    fn min_len(&self, data: &Self::Data, expected: usize) -> usize {
+        // We deliberately report the minimum expected len in order to minimise
+        // the size of scroll bars.
+        expected.min(data.len)
     }
 
     fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {
