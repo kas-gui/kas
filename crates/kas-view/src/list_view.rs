@@ -802,7 +802,7 @@ mod ListView {
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
             let mut is_used = match event {
                 Event::Command(cmd, _) => {
-                    let last = self.clerk.len(data).wrapping_sub(1);
+                    let last = usize::conv(self.data_len).wrapping_sub(1);
                     if last == usize::MAX {
                         return Unused;
                     }
@@ -1002,7 +1002,7 @@ mod ListView {
             let mut starting_child = child;
             loop {
                 let solver = self.position_solver();
-                let last_data = self.clerk.len(data) - 1;
+                let last_data = usize::conv(self.data_len).wrapping_sub(1);
                 let data_index = if let Some(index) = child {
                     let data = solver.child_to_data(index);
                     if !reverse && data < last_data {

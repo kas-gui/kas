@@ -169,7 +169,7 @@ mod GridView {
         align_hints: AlignHints,
         ideal_len: Dim,
         alloc_len: Dim,
-        data_len: Size,
+        data_len: GridIndex,
         cur_len: GridIndex,
         first_data: GridIndex,
         child_size_min: Size,
@@ -199,7 +199,7 @@ mod GridView {
                 align_hints: Default::default(),
                 ideal_len: Dim { cols: 3, rows: 5 },
                 alloc_len: Dim::default(),
-                data_len: Size::ZERO,
+                data_len: GridIndex::ZERO,
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
                 child_size_min: Size::ZERO,
@@ -373,7 +373,7 @@ mod GridView {
 
             let offset = self.scroll_offset();
             let skip = (self.child_size + self.child_inter_margin).max(Size(1, 1));
-            let data_len = self.clerk.len(data);
+            let data_len = self.data_len;
             let col_len = data_len.col.min(self.alloc_len.cols.cast());
             let row_len = data_len.row.min(self.alloc_len.rows.cast());
 
@@ -473,7 +473,11 @@ mod GridView {
         fn content_size(&self) -> Size {
             let m = self.child_inter_margin;
             let step = self.child_size + m;
-            (step.cwise_mul(self.data_len) - m).max(Size::ZERO)
+            Size(
+                step.0 * i32::conv(self.data_len.col) - m.0,
+                step.1 * i32::conv(self.data_len.row) - m.1,
+            )
+            .max(Size::ZERO)
         }
 
         #[inline]
@@ -629,8 +633,8 @@ mod GridView {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_scroll_offset(self.scroll_offset(), self.max_scroll_offset());
             Role::Grid {
-                columns: Some(self.data_len.0.cast()),
-                rows: Some(self.data_len.1.cast()),
+                columns: Some(self.data_len.col.cast()),
+                rows: Some(self.data_len.row.cast()),
             }
         }
 
@@ -721,8 +725,7 @@ mod GridView {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             self.clerk.update(cx, self.id(), data);
-            let len = self.clerk.len(data);
-            let data_len = Size(len.col.cast(), len.row.cast());
+            let data_len = self.clerk.len(data);
             if data_len != self.data_len {
                 self.data_len = data_len;
                 self.update_content_size(cx);
@@ -757,10 +760,10 @@ mod GridView {
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
             let mut is_used = match event {
                 Event::Command(cmd, _) => {
-                    if self.data_len == Size::ZERO {
+                    if self.data_len == GridIndex::ZERO {
                         return Unused;
                     }
-                    let len = self.clerk.len(data);
+                    let len = self.data_len;
                     let (last_col, last_row) = (len.col.wrapping_sub(1), len.row.wrapping_sub(1));
 
                     let row_len = self.cur_len.row;
@@ -969,14 +972,13 @@ mod GridView {
             let mut starting_child = child;
             loop {
                 let mut solver = self.position_solver();
-                let len = self.clerk.len(data);
                 let mut cell;
                 if let Some(index) = child {
                     cell = solver.child_to_data(index);
                     if !reverse {
-                        if cell.col + 1 < len.col {
+                        if cell.col + 1 < self.data_len.col {
                             cell.col += 1;
-                        } else if cell.row + 1 < len.row {
+                        } else if cell.row + 1 < self.data_len.row {
                             cell = GridIndex {
                                 col: 0,
                                 row: cell.row + 1,
@@ -989,7 +991,7 @@ mod GridView {
                             cell.col -= 1;
                         } else if cell.row > 0 {
                             cell = GridIndex {
-                                col: len.col - 1,
+                                col: self.data_len.col - 1,
                                 row: cell.row - 1,
                             };
                         } else {
@@ -1000,8 +1002,8 @@ mod GridView {
                     cell = GridIndex::ZERO;
                 } else {
                     cell = GridIndex {
-                        col: len.col - 1,
-                        row: len.row - 1,
+                        col: self.data_len.col - 1,
+                        row: self.data_len.row - 1,
                     };
                 }
 
