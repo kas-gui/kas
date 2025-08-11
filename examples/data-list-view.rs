@@ -249,7 +249,9 @@ fn main() -> kas::runner::Result<()> {
         "Demonstration of dynamic widget creation / deletion",
         CheckButton::new("Explicit row limit:", |_, data: &Data| data.row_limit)
             .with_msg(Control::SetRowLimit),
-        controls.map(|data: &Data| &data.len),
+        controls
+            .map(|data: &Data| &data.len)
+            .on_update(|cx, _, data: &Data| cx.set_disabled(!data.row_limit)),
         "Contents of selected entry:",
         Text::new(|_, data: &Data| data.active_string.clone()),
         Separator::new(),
