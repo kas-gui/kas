@@ -19,12 +19,6 @@ use std::time::Instant;
 
 const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
 
-#[derive(Clone, Copy, Debug, Default)]
-struct Dim {
-    rows: i32,
-    cols: i32,
-}
-
 #[impl_self]
 mod GridCell {
     /// A wrapper for selectable items
@@ -167,8 +161,8 @@ mod GridView {
         driver: V,
         widgets: Vec<WidgetData<C::Key, C::Item, V>>,
         align_hints: AlignHints,
-        ideal_len: Dim,
-        alloc_len: Dim,
+        ideal_len: GridIndex,
+        alloc_len: GridIndex,
         min_data_len: GridIndex,
         data_len: Option<GridIndex>,
         cur_len: GridIndex,
@@ -198,8 +192,8 @@ mod GridView {
                 driver,
                 widgets: Default::default(),
                 align_hints: Default::default(),
-                ideal_len: Dim { cols: 3, rows: 5 },
-                alloc_len: Dim::default(),
+                ideal_len: GridIndex { col: 3, row: 5 },
+                alloc_len: GridIndex::ZERO,
                 min_data_len: GridIndex::ZERO,
                 data_len: None,
                 cur_len: GridIndex::ZERO,
@@ -344,8 +338,11 @@ mod GridView {
         /// This affects the (ideal) size request and whether children are sized
         /// according to their ideal or minimum size but not the minimum size.
         #[must_use]
-        pub fn with_num_visible(mut self, cols: i32, rows: i32) -> Self {
-            self.ideal_len = Dim { cols, rows };
+        pub fn with_num_visible(mut self, cols: u32, rows: u32) -> Self {
+            self.ideal_len = GridIndex {
+                col: cols,
+                row: rows,
+            };
             self
         }
 
@@ -382,8 +379,8 @@ mod GridView {
                 len
             } else {
                 let expected = GridIndex {
-                    col: first_col + 2 * u32::conv(self.alloc_len.cols),
-                    row: first_row + 2 * u32::conv(self.alloc_len.rows),
+                    col: first_col + 2 * self.alloc_len.col,
+                    row: first_row + 2 * self.alloc_len.row,
                 };
                 self.clerk.min_len(data, expected)
             };
@@ -393,8 +390,8 @@ mod GridView {
                 force = true;
             }
 
-            let col_len = min_data_len.col.min(self.alloc_len.cols.cast());
-            let row_len = min_data_len.row.min(self.alloc_len.rows.cast());
+            let col_len = min_data_len.col.min(self.alloc_len.col);
+            let row_len = min_data_len.row.min(self.alloc_len.row);
 
             let first_col = first_col.min(min_data_len.col - col_len);
             let first_row = first_row.min(min_data_len.row - row_len);
@@ -532,7 +529,8 @@ mod GridView {
                 // Use same logic as in set_rect to find per-child size:
                 let other_axis = axis.flipped();
                 size -= self.frame_size.extract(other_axis);
-                let div = Size(self.ideal_len.cols, self.ideal_len.rows).extract(other_axis);
+                let (cols, rows) = (self.ideal_len.col.cast(), self.ideal_len.row.cast());
+                let div = Size(cols, rows).extract(other_axis);
                 (size / div)
                     .min(self.child_size_ideal.extract(other_axis))
                     .max(self.child_size_min.extract(other_axis))
@@ -558,10 +556,10 @@ mod GridView {
             );
 
             let ideal_len = match axis.is_vertical() {
-                false => self.ideal_len.cols,
-                true => self.ideal_len.rows,
+                false => self.ideal_len.col,
+                true => self.ideal_len.row,
             };
-            rules.multiply_with_margin(2, ideal_len);
+            rules.multiply_with_margin(2, ideal_len.cast());
             rules.set_stretch(rules.stretch().max(Stretch::High));
 
             let (rules, offset, size) = frame.surround(rules);
@@ -575,22 +573,23 @@ mod GridView {
             self.align_hints = hints;
 
             let avail = rect.size - self.frame_size;
-            let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
+            let (cols, rows): (i32, i32) = (self.ideal_len.col.cast(), self.ideal_len.row.cast());
+            let child_size = Size(avail.0 / cols, avail.1 / rows)
                 .clamp(self.child_size_min, self.child_size_ideal);
             self.child_size = child_size;
             self.update_content_size(cx);
 
             let skip = self.child_size + self.child_inter_margin;
             if skip.0 == 0 || skip.1 == 0 {
-                self.alloc_len = Dim { cols: 0, rows: 0 };
+                self.alloc_len = GridIndex::ZERO;
                 return;
             }
             let vis_len = (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1);
             let req_widgets = usize::conv(vis_len.0) * usize::conv(vis_len.1);
 
-            self.alloc_len = Dim {
-                cols: vis_len.0,
-                rows: vis_len.1,
+            self.alloc_len = GridIndex {
+                col: vis_len.0.cast(),
+                row: vis_len.1.cast(),
             };
 
             let avail_widgets = self.widgets.len();
@@ -725,7 +724,7 @@ mod GridView {
                 // better sizing of self.
                 self.child_size = Size::splat(1); // hack: avoid div by 0
 
-                let len = self.ideal_len.cols * self.ideal_len.rows;
+                let len = self.ideal_len.col * self.ideal_len.row;
                 self.widgets.resize_with(len.cast(), || WidgetData {
                     key: None,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
