@@ -444,14 +444,16 @@ mod ListView {
         // Call after scrolling to re-map widgets (if required)
         fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let offset = self.scroll_offset().extract(self.direction);
-            let first_data = u64::conv(offset) / u64::conv(self.skip);
+            let first_data = u32::conv(u64::conv(offset) / u64::conv(self.skip));
 
             let view_end_offset =
                 offset + (self.rect().size - self.frame_size).extract(self.direction);
             let last_data = u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1)
                 .min(self.min_data_len);
 
-            if u32::conv(first_data) < self.first_data || last_data > self.first_data + self.cur_len
+            if first_data < self.first_data
+                || last_data > self.first_data + self.cur_len
+                || self.cur_len > self.min_data_len
             {
                 self.map_view_widgets(cx, data, first_data.cast());
             }
@@ -469,7 +471,7 @@ mod ListView {
             } else {
                 self.clerk.min_len(data, first_data + 2 * alloc_len)
             };
-            if min_data_len != self.min_data_len.cast() {
+            if min_data_len != usize::conv(self.min_data_len) {
                 self.min_data_len = min_data_len.cast();
                 self.update_content_size(cx);
             }
@@ -522,7 +524,8 @@ mod ListView {
             );
         }
 
-        fn update_content_size(&mut self, cx: &mut ConfigCx) {
+        /// Returns true if anything changed
+        fn update_content_size(&mut self, cx: &mut ConfigCx) -> bool {
             let data_len: i32 = self.data_len.unwrap_or(self.min_data_len).cast();
             let view_size = self.rect().size - self.frame_size;
             let mut content_size = view_size;
@@ -532,6 +535,7 @@ mod ListView {
             );
             let action = self.scroll.set_sizes(view_size, content_size);
             cx.action(self, action);
+            !action.is_empty()
         }
     }
 
@@ -652,8 +656,6 @@ mod ListView {
                     let item = ListItem::new(self.driver.make(&key));
                     self.widgets.push(WidgetData { key: None, item });
                 }
-
-                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
 
             // Call set_rect on children. (This might sometimes be unnecessary,
@@ -668,6 +670,8 @@ mod ListView {
                     w.item.set_rect(cx, solver.rect(i), self.align_hints);
                 }
             }
+
+            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
         fn draw(&self, mut draw: DrawCx) {
@@ -783,16 +787,16 @@ mod ListView {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             self.clerk.update(cx, self.id(), data);
-            self.data_len = self.clerk.len(data).map(|len| len.cast());
-            let min_data_len = self.data_len.unwrap_or_else(|| {
+            let data_len = self.clerk.len(data).map(|len| len.cast());
+            let min_data_len = data_len.unwrap_or_else(|| {
                 let len = self.first_data + 2 * self.alloc_len;
                 self.clerk.min_len(data, len.cast()).cast()
             });
-            if min_data_len != self.min_data_len {
+            if data_len != self.data_len || min_data_len != self.min_data_len {
+                self.data_len = data_len;
                 self.min_data_len = min_data_len;
-                self.update_content_size(cx);
 
-                if self.scroll_offset() == self.max_scroll_offset() {
+                if self.update_content_size(cx) {
                     // We may be able to request additional screen space.
                     // We may need to map new view widgets.
                     cx.resize(&self);

@@ -402,11 +402,13 @@ mod GridView {
             let end_row = u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1)
                 .min(min_data_len.row);
 
-            if !(force
-                || first_col < self.first_data.col
-                || first_row < self.first_data.row
-                || end_col > self.first_data.col + self.cur_len.col
-                || end_row > self.first_data.row + self.cur_len.row)
+            if !force
+                && first_col >= self.first_data.col
+                && first_row >= self.first_data.row
+                && end_col <= self.first_data.col + self.cur_len.col
+                && end_row <= self.first_data.row + self.cur_len.row
+                && self.cur_len.col <= min_data_len.col
+                && self.cur_len.row <= min_data_len.row
             {
                 return;
             }
@@ -475,11 +477,13 @@ mod GridView {
             );
         }
 
-        fn update_content_size(&mut self, cx: &mut ConfigCx) {
+        /// Returns true if anything changed
+        fn update_content_size(&mut self, cx: &mut ConfigCx) -> bool {
             let view_size = self.rect().size - self.frame_size;
             let content_size = self.content_size();
             let action = self.scroll.set_sizes(view_size, content_size);
             cx.action(self, action);
+            !action.is_empty()
         }
     }
 
@@ -601,8 +605,6 @@ mod GridView {
                     key: None,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
-
-                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
 
             // Call set_rect on children. (This might sometimes be unnecessary,
@@ -743,11 +745,18 @@ mod GridView {
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             self.clerk.update(cx, self.id(), data);
             let data_len = self.clerk.len(data);
-            if data_len != self.data_len {
+            let min_data_len = data_len.unwrap_or_else(|| {
+                let expected = GridIndex {
+                    col: self.first_data.col + 2 * self.alloc_len.col,
+                    row: self.first_data.row + 2 * self.alloc_len.row,
+                };
+                self.clerk.min_len(data, expected)
+            });
+            if data_len != self.data_len || min_data_len != self.min_data_len {
                 self.data_len = data_len;
-                self.update_content_size(cx);
+                self.min_data_len = min_data_len;
 
-                if self.scroll_offset() == self.max_scroll_offset() {
+                if self.update_content_size(cx) {
                     // We may be able to request additional screen space.
                     // We may need to map new view widgets.
                     cx.resize(&self);
