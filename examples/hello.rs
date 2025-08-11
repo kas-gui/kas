@@ -5,10 +5,15 @@
 
 //! Hello world example
 
-use kas::widgets::dialog::MessageBox;
+use kas::window::Window;
+use kas_widgets::{Button, column};
 
 fn main() -> kas::runner::Result<()> {
-    let window = MessageBox::new("Message").into_window("Hello world");
+    let ui = column![
+        "Hello, world!",
+        Button::label("&Close").with(|cx, _| cx.exit())
+    ];
+    let window = Window::new(ui, "Hello");
 
     kas::runner::Runner::new(())?.with(window).run()
 }
