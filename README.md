@@ -6,18 +6,53 @@ KAS GUI
 [![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
 
-KAS is a stateful, pure-Rust GUI toolkit supporting:
+The Kas GUI system strives to be both fast and follow Alan Kay's slogan:
 
-- [x] Mostly declarative UI descriptions
-- [x] Stateful widgets (e.g. selection range or a pure-UI counter)
+> Simple things should be simple, complex things should be possible.
+
+An excerpt from examples/hello.rs:
+```rust
+let hello_ui = column![
+    "Hello, world!",
+    Button::label("&Close").with(|cx, _| cx.exit())
+];
+```
+
+An excerpt from examples/counter.rs:
+```rust
+#[derive(Clone, Debug)]
+struct Increment(i32);
+
+fn counter() -> impl Widget<Data = ()> {
+    let tree = column![
+        format_value!("{}").align(AlignHints::CENTER),
+        row![
+            Button::label_msg("−", Increment(-1)),
+            Button::label_msg("+", Increment(1)),
+        ]
+        .map_any(),
+    ];
+
+    tree.with_state(0)
+        .on_message(|_, count, Increment(add)| *count += add)
+}
+```
+For further declarative examples see e.g. [`examples/stopwatch.rs`](https://github.com/kas-gui/kas/blob/master/examples/stopwatch.rs), [`examples/calculator.rs`](https://github.com/kas-gui/kas/blob/master/examples/calculator.rs).
+
+Concerning making complex things possible, the Kas widget library is built using custom widgets. Check the [`Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html) API docs or browse the [widget library](https://docs.rs/kas/latest/kas/widgets/index.html) and click the "Source" link.
+
 - [x] Virtual scrolling (list or grid), including support for external data sources
 - [x] Theme abstraction including theme-driven animations and sizing
-- [ ] Multiple renderer backends
-- [ ] Integrated i18n support
-- [ ] Accessibility tool integration
-- [ ] Platform integration: persistent configuration, theme discovery, external menus, IME
+- [ ] Integrated i18n support (#7)
+- [x] Accessibility tools and IME (#509, #508)
 - [x] Most of the basics you'd expect: complex text, fractional scaling, automatic margins
-- [x] Extremely fast, monolithic binaries
+- [x] Extremely fast, monolithic Rust binaries
+
+Every approach has its limitations. Ours are:
+
+-   Custom widgets are stateful, supporting custom caches and minimal state updates but no protection from bad-state bugs.
+-   Custom widgets have a lot of flexibility over management of child widgets; this comes with some expectations. Violating these expectations will result in a panic in debug builds.
+-   Custom widget definitions require the use of macros; the latest versions of these have a low learning curve (except maybe `impl_anon!`) but unfortunately `impl_scope!` does not work with `rustfmt` and `#[impl_self]` causes `rust-analyzer` to inject `use` statements in the wrong location ([impl-tools#57](https://github.com/kas-gui/impl-tools/issues/57)).
 
 ### More
 
@@ -52,24 +87,9 @@ Significant external dependencies:
 
 The `kas` crate enables most important features by default, excepting those
 requiring nightly `rustc`. Other crates enable fewer features by default.
-See [Cargo.toml](https://github.com/kas-gui/kas/blob/master/Cargo.toml#L22).
+See [Cargo.toml](https://github.com/kas-gui/kas/blob/master/Cargo.toml#L29).
 
 [kas]: https://docs.rs/kas
-
-
-Size
-----
-
-To reduce binary size, add this to your `Cargo.toml`:
-```toml
-[profile.release]
-strip = true
-opt-level = "z"
-```
-
-You might also consider using feature `dynamic` if wishing to ship multiple
-binaries with shared libraries (Rust's `libstd` and `libkas_dylib`); note
-however that these are not ABI-stable.
 
 
 Copyright and Licence
