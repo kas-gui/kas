@@ -642,14 +642,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         const SECOND: Duration = Duration::from_secs(1);
         window.frame_count.1 += 1;
-        let now = Instant::now();
-        if window.frame_count.0 + SECOND <= now {
+        if window.frame_count.0 + SECOND <= end {
             log::debug!(
                 "Window {:?}: {} frames in last second",
                 window.window_id,
                 window.frame_count.1
             );
-            window.frame_count.0 = now;
+            window.frame_count.0 = end;
             window.frame_count.1 = 0;
         }
 
