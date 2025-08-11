@@ -501,8 +501,8 @@ mod ScrollBars {
 
     impl Scrollable for Self {
         #[inline]
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            self.inner.scroll_axes(size)
+        fn content_size(&self) -> Size {
+            self.inner.content_size()
         }
         #[inline]
         fn max_scroll_offset(&self) -> Offset {
@@ -545,7 +545,8 @@ mod ScrollBars {
 
             let bar_width = cx.size_cx().scroll_bar_width();
             if self.mode == ScrollBarMode::Auto {
-                self.show_bars = self.inner.scroll_axes(child_size);
+                let max_offset = self.inner.max_scroll_offset();
+                self.show_bars = (max_offset.0 > 0, max_offset.1 > 0);
             }
             if self.show_bars.0 && !self.horiz_bar.invisible {
                 child_size.1 -= bar_width;

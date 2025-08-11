@@ -35,8 +35,8 @@ impl DataClerk<GridIndex> for TableCache {
         self.dim = *dim;
     }
 
-    fn len(&self, _: &Self::Data) -> GridIndex {
-        GridIndex::splat(self.dim)
+    fn len(&self, _: &Self::Data) -> Option<GridIndex> {
+        Some(GridIndex::splat(self.dim))
     }
 
     fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, range: Range<GridIndex>) {

@@ -19,12 +19,6 @@ use std::time::Instant;
 
 const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
 
-#[derive(Clone, Copy, Debug, Default)]
-struct Dim {
-    rows: i32,
-    cols: i32,
-}
-
 #[impl_self]
 mod GridCell {
     /// A wrapper for selectable items
@@ -167,9 +161,10 @@ mod GridView {
         driver: V,
         widgets: Vec<WidgetData<C::Key, C::Item, V>>,
         align_hints: AlignHints,
-        ideal_len: Dim,
-        alloc_len: Dim,
-        data_len: Size,
+        ideal_len: GridIndex,
+        alloc_len: GridIndex,
+        min_data_len: GridIndex,
+        data_len: Option<GridIndex>,
         cur_len: GridIndex,
         first_data: GridIndex,
         child_size_min: Size,
@@ -197,9 +192,10 @@ mod GridView {
                 driver,
                 widgets: Default::default(),
                 align_hints: Default::default(),
-                ideal_len: Dim { cols: 3, rows: 5 },
-                alloc_len: Dim::default(),
-                data_len: Size::ZERO,
+                ideal_len: GridIndex { col: 3, row: 5 },
+                alloc_len: GridIndex::ZERO,
+                min_data_len: GridIndex::ZERO,
+                data_len: None,
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
                 child_size_min: Size::ZERO,
@@ -342,8 +338,11 @@ mod GridView {
         /// This affects the (ideal) size request and whether children are sized
         /// according to their ideal or minimum size but not the minimum size.
         #[must_use]
-        pub fn with_num_visible(mut self, cols: i32, rows: i32) -> Self {
-            self.ideal_len = Dim { cols, rows };
+        pub fn with_num_visible(mut self, cols: u32, rows: u32) -> Self {
+            self.ideal_len = GridIndex {
+                col: cols,
+                row: rows,
+            };
             self
         }
 
@@ -368,31 +367,48 @@ mod GridView {
         // View widgets are configured and sized if assigned a new data item.
         //
         // This auto-detects whether remapping is required, unless `force` is set.
-        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, force: bool) {
+        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, mut force: bool) {
             let time = Instant::now();
 
             let offset = self.scroll_offset();
             let skip = (self.child_size + self.child_inter_margin).max(Size(1, 1));
-            let data_len = self.clerk.len(data);
-            let col_len = data_len.col.min(self.alloc_len.cols.cast());
-            let row_len = data_len.row.min(self.alloc_len.rows.cast());
+            let first_col = u32::conv(u64::conv(offset.0) / u64::conv(skip.0));
+            let first_row = u32::conv(u64::conv(offset.1) / u64::conv(skip.1));
 
-            let first_col =
-                u32::conv(u64::conv(offset.0) / u64::conv(skip.0)).min(data_len.col - col_len);
-            let first_row =
-                u32::conv(u64::conv(offset.1) / u64::conv(skip.1)).min(data_len.row - row_len);
+            let min_data_len = if let Some(len) = self.data_len {
+                len
+            } else {
+                let expected = GridIndex {
+                    col: first_col + 2 * self.alloc_len.col,
+                    row: first_row + 2 * self.alloc_len.row,
+                };
+                self.clerk.min_len(data, expected)
+            };
+            if min_data_len != self.min_data_len {
+                self.min_data_len = min_data_len;
+                self.update_content_size(cx);
+                force = true;
+            }
+
+            let col_len = min_data_len.col.min(self.alloc_len.col);
+            let row_len = min_data_len.row.min(self.alloc_len.row);
+
+            let first_col = first_col.min(min_data_len.col - col_len);
+            let first_row = first_row.min(min_data_len.row - row_len);
 
             let view_end_offset = offset + Offset::conv(self.rect().size - self.frame_size);
-            let end_col =
-                u32::conv(u64::conv(view_end_offset.0) / u64::conv(skip.0) + 1).min(data_len.col);
-            let end_row =
-                u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1).min(data_len.row);
+            let end_col = u32::conv(u64::conv(view_end_offset.0) / u64::conv(skip.0) + 1)
+                .min(min_data_len.col);
+            let end_row = u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1)
+                .min(min_data_len.row);
 
-            if !(force
-                || first_col < self.first_data.col
-                || first_row < self.first_data.row
-                || end_col > self.first_data.col + self.cur_len.col
-                || end_row > self.first_data.row + self.cur_len.row)
+            if !force
+                && first_col >= self.first_data.col
+                && first_row >= self.first_data.row
+                && end_col <= self.first_data.col + self.cur_len.col
+                && end_row <= self.first_data.row + self.cur_len.row
+                && self.cur_len.col <= min_data_len.col
+                && self.cur_len.row <= min_data_len.row
             {
                 return;
             }
@@ -461,22 +477,26 @@ mod GridView {
             );
         }
 
-        fn update_content_size(&mut self, cx: &mut ConfigCx) {
+        /// Returns true if anything changed
+        fn update_content_size(&mut self, cx: &mut ConfigCx) -> bool {
             let view_size = self.rect().size - self.frame_size;
-            let skip = self.child_size + self.child_inter_margin;
-            let content_size =
-                (skip.cwise_mul(self.data_len) - self.child_inter_margin).max(Size::ZERO);
+            let content_size = self.content_size();
             let action = self.scroll.set_sizes(view_size, content_size);
             cx.action(self, action);
+            !action.is_empty()
         }
     }
 
     impl Scrollable for Self {
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+        fn content_size(&self) -> Size {
+            let data_len = self.data_len.unwrap_or(self.min_data_len);
             let m = self.child_inter_margin;
             let step = self.child_size + m;
-            let content_size = (step.cwise_mul(self.data_len) - m).max(Size::ZERO);
-            (content_size.0 > size.0, content_size.1 > size.1)
+            Size(
+                step.0 * i32::conv(data_len.col) - m.0,
+                step.1 * i32::conv(data_len.row) - m.1,
+            )
+            .max(Size::ZERO)
         }
 
         #[inline]
@@ -513,7 +533,8 @@ mod GridView {
                 // Use same logic as in set_rect to find per-child size:
                 let other_axis = axis.flipped();
                 size -= self.frame_size.extract(other_axis);
-                let div = Size(self.ideal_len.cols, self.ideal_len.rows).extract(other_axis);
+                let (cols, rows) = (self.ideal_len.col.cast(), self.ideal_len.row.cast());
+                let div = Size(cols, rows).extract(other_axis);
                 (size / div)
                     .min(self.child_size_ideal.extract(other_axis))
                     .max(self.child_size_min.extract(other_axis))
@@ -539,10 +560,10 @@ mod GridView {
             );
 
             let ideal_len = match axis.is_vertical() {
-                false => self.ideal_len.cols,
-                true => self.ideal_len.rows,
+                false => self.ideal_len.col,
+                true => self.ideal_len.row,
             };
-            rules.multiply_with_margin(2, ideal_len);
+            rules.multiply_with_margin(2, ideal_len.cast());
             rules.set_stretch(rules.stretch().max(Stretch::High));
 
             let (rules, offset, size) = frame.surround(rules);
@@ -556,22 +577,23 @@ mod GridView {
             self.align_hints = hints;
 
             let avail = rect.size - self.frame_size;
-            let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
+            let (cols, rows): (i32, i32) = (self.ideal_len.col.cast(), self.ideal_len.row.cast());
+            let child_size = Size(avail.0 / cols, avail.1 / rows)
                 .clamp(self.child_size_min, self.child_size_ideal);
             self.child_size = child_size;
             self.update_content_size(cx);
 
             let skip = self.child_size + self.child_inter_margin;
             if skip.0 == 0 || skip.1 == 0 {
-                self.alloc_len = Dim { cols: 0, rows: 0 };
+                self.alloc_len = GridIndex::ZERO;
                 return;
             }
             let vis_len = (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1);
             let req_widgets = usize::conv(vis_len.0) * usize::conv(vis_len.1);
 
-            self.alloc_len = Dim {
-                cols: vis_len.0,
-                rows: vis_len.1,
+            self.alloc_len = GridIndex {
+                col: vis_len.0.cast(),
+                row: vis_len.1.cast(),
             };
 
             let avail_widgets = self.widgets.len();
@@ -583,8 +605,6 @@ mod GridView {
                     key: None,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
-
-                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
 
             // Call set_rect on children. (This might sometimes be unnecessary,
@@ -632,8 +652,8 @@ mod GridView {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_scroll_offset(self.scroll_offset(), self.max_scroll_offset());
             Role::Grid {
-                columns: Some(self.data_len.0.cast()),
-                rows: Some(self.data_len.1.cast()),
+                columns: self.data_len.map(|len| len.col.cast()),
+                rows: self.data_len.map(|len| len.row.cast()),
             }
         }
 
@@ -706,7 +726,7 @@ mod GridView {
                 // better sizing of self.
                 self.child_size = Size::splat(1); // hack: avoid div by 0
 
-                let len = self.ideal_len.cols * self.ideal_len.rows;
+                let len = self.ideal_len.col * self.ideal_len.row;
                 self.widgets.resize_with(len.cast(), || WidgetData {
                     key: None,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
@@ -724,13 +744,19 @@ mod GridView {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             self.clerk.update(cx, self.id(), data);
-            let len = self.clerk.len(data);
-            let data_len = Size(len.col.cast(), len.row.cast());
-            if data_len != self.data_len {
+            let data_len = self.clerk.len(data);
+            let min_data_len = data_len.unwrap_or_else(|| {
+                let expected = GridIndex {
+                    col: self.first_data.col + 2 * self.alloc_len.col,
+                    row: self.first_data.row + 2 * self.alloc_len.row,
+                };
+                self.clerk.min_len(data, expected)
+            });
+            if data_len != self.data_len || min_data_len != self.min_data_len {
                 self.data_len = data_len;
-                self.update_content_size(cx);
+                self.min_data_len = min_data_len;
 
-                if self.scroll_offset() == self.max_scroll_offset() {
+                if self.update_content_size(cx) {
                     // We may be able to request additional screen space.
                     // We may need to map new view widgets.
                     cx.resize(&self);
@@ -760,10 +786,10 @@ mod GridView {
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
             let mut is_used = match event {
                 Event::Command(cmd, _) => {
-                    if self.data_len == Size::ZERO {
+                    let len = self.min_data_len;
+                    if len == GridIndex::ZERO {
                         return Unused;
                     }
-                    let len = self.clerk.len(data);
                     let (last_col, last_row) = (len.col.wrapping_sub(1), len.row.wrapping_sub(1));
 
                     let row_len = self.cur_len.row;
@@ -972,14 +998,13 @@ mod GridView {
             let mut starting_child = child;
             loop {
                 let mut solver = self.position_solver();
-                let len = self.clerk.len(data);
                 let mut cell;
                 if let Some(index) = child {
                     cell = solver.child_to_data(index);
                     if !reverse {
-                        if cell.col + 1 < len.col {
+                        if cell.col + 1 < self.min_data_len.col {
                             cell.col += 1;
-                        } else if cell.row + 1 < len.row {
+                        } else if cell.row + 1 < self.min_data_len.row {
                             cell = GridIndex {
                                 col: 0,
                                 row: cell.row + 1,
@@ -992,7 +1017,7 @@ mod GridView {
                             cell.col -= 1;
                         } else if cell.row > 0 {
                             cell = GridIndex {
-                                col: len.col - 1,
+                                col: self.min_data_len.col - 1,
                                 row: cell.row - 1,
                             };
                         } else {
@@ -1003,8 +1028,8 @@ mod GridView {
                     cell = GridIndex::ZERO;
                 } else {
                     cell = GridIndex {
-                        col: len.col - 1,
-                        row: len.row - 1,
+                        col: self.min_data_len.col - 1,
+                        row: self.min_data_len.row - 1,
                     };
                 }
 
@@ -1060,7 +1085,7 @@ impl PositionSolver {
         let col_len = self.cur_len.col;
         let row_len = self.cur_len.row;
         let ci: u32 = (index % usize::conv(col_len)).cast();
-        let ri: u32 = (index / usize::conv(row_len)).cast();
+        let ri: u32 = (index / usize::conv(col_len)).cast();
         let mut col = (self.first_data.col / col_len) * col_len + ci;
         let mut row = (self.first_data.row / row_len) * row_len + ri;
         if col < self.first_data.col {

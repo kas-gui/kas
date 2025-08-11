@@ -202,18 +202,34 @@ pub trait DataClerk<Index> {
         let _ = (cx, id, data);
     }
 
-    /// Get the number of indexable items
+    /// Get the number of indexable items, if known
     ///
-    /// The result should be one larger than the largest `index` yielding a
-    /// result from [`Self::key`]. This number may therefore be affected by
-    /// input `data` such as filters.
+    /// If known, the result should be one larger than the largest `index`
+    /// yielding a result from [`Self::key`]. This number may therefore be
+    /// affected by input `data` such as filters.
     ///
     /// The result may change after a call to [`Self::update`] due to changes in
     /// the data set query or filter. The result should not depend on `range`.
     ///
-    /// TODO: revise how scrolling works and remove this method or make optional
-    /// since the result is sometimes expensive to calculate.
-    fn len(&self, data: &Self::Data) -> Index;
+    /// This method may return [`None`], in which case [`Self::min_len`] must be
+    /// implemented instead. This will affect the appearance of scroll bars.
+    fn len(&self, data: &Self::Data) -> Option<Index>;
+
+    /// Get a lower bound on the number of indexable items
+    ///
+    /// This method is only called when [`Self::len`] returns [`None`].
+    ///
+    /// If the return value is less than `expected`, then scrolling and querying
+    /// will be limited to indices less than the return value. If the return
+    /// value is at least `expected`, then scrolling and item querying will be
+    /// unimpeded.
+    ///
+    /// In case [`Self::len`] returns [`None`], this value is used to size
+    /// scroll bar grips.
+    fn min_len(&self, data: &Self::Data, expected: Index) -> Index {
+        let _ = expected;
+        self.len(data).unwrap()
+    }
 
     /// Prepare a range
     ///

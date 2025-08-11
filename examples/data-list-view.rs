@@ -21,6 +21,7 @@ struct SelectEntry(usize);
 
 #[derive(Clone, Debug)]
 enum Control {
+    SetRowLimit(bool),
     SetLen(usize),
     DecrLen,
     IncrLen,
@@ -32,6 +33,7 @@ enum Control {
 #[derive(Debug)]
 struct Data {
     ver: u64,
+    row_limit: bool,
     len: usize,
     active: usize,
     dir: Direction,
@@ -39,9 +41,10 @@ struct Data {
     strings: HashMap<usize, String>,
 }
 impl Data {
-    fn new(len: usize) -> Self {
+    fn new(row_limit: bool, len: usize) -> Self {
         Data {
             ver: 0,
+            row_limit,
             len,
             active: 0,
             dir: Direction::Down,
@@ -58,6 +61,10 @@ impl Data {
     fn handle(&mut self, control: Control) {
         self.ver = self.ver.wrapping_add(1);
         let len = match control {
+            Control::SetRowLimit(row_limit) => {
+                self.row_limit = row_limit;
+                return;
+            }
             Control::SetLen(len) => len,
             Control::DecrLen => self.len.saturating_sub(1),
             Control::IncrLen => self.len.saturating_add(1),
@@ -152,8 +159,13 @@ impl DataClerk<usize> for Clerk {
     type Key = usize;
     type Item = Item;
 
-    fn len(&self, data: &Self::Data) -> usize {
-        data.len
+    fn len(&self, data: &Self::Data) -> Option<usize> {
+        data.row_limit.then_some(data.len)
+    }
+
+    fn min_len(&self, _: &Self::Data, expected: usize) -> usize {
+        // This method is only called when len returns None, i.e. when we don't use data.len
+        expected
     }
 
     fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {
@@ -228,13 +240,15 @@ fn main() -> kas::runner::Result<()> {
         .map_any(),
     ];
 
-    let data = Data::new(5);
+    let data = Data::new(false, 5);
 
     let list = ListView::new(Clerk::default(), MyDriver).on_update(|cx, list, data: &Data| {
         list.set_direction(cx, data.dir);
     });
     let tree = column![
         "Demonstration of dynamic widget creation / deletion",
+        CheckButton::new("Explicit row limit:", |_, data: &Data| data.row_limit)
+            .with_msg(Control::SetRowLimit),
         controls.map(|data: &Data| &data.len),
         "Contents of selected entry:",
         Text::new(|_, data: &Data| data.active_string.clone()),

@@ -17,11 +17,14 @@ use crate::geom::{Offset, Size};
 ///
 /// If the widget scrolls itself it should set a scroll action via [`EventCx::set_scroll`].
 pub trait Scrollable: Widget {
-    /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
+    /// Get the content size (the inner size of the scrolled pane)
+    ///
+    /// This is used to determine the amount of scrolling required, hence it is
+    /// acceptable to return 0 on non-scrolled dimensions.
     ///
     /// Note: this is called *before* [`Layout::set_rect`], thus must may need
     /// to perform independent calculation of the content size.
-    fn scroll_axes(&self, size: Size) -> (bool, bool);
+    fn content_size(&self) -> Size;
 
     /// Get the maximum scroll offset
     ///

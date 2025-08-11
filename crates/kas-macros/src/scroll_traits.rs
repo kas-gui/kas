@@ -27,8 +27,8 @@ impl ImplTrait for ImplScrollable {
         if let Some(using) = args.using_member() {
             let methods = quote! {
                 #[inline]
-                fn scroll_axes(&self, size: ::kas::geom::Size) -> (bool, bool) {
-                    self.#using.scroll_axes(size)
+                fn content_size(&self) -> ::kas::geom::Size {
+                    self.#using.content_size()
                 }
                 #[inline]
                 fn max_scroll_offset(&self) -> ::kas::geom::Offset {

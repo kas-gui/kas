@@ -8,7 +8,7 @@
 use super::common::WindowSurface;
 use super::shared::State;
 use super::{AppData, GraphicsInstance, MessageStack, Platform};
-use crate::cast::{Cast, Conv};
+use crate::cast::{Cast, CastApprox};
 use crate::config::{Config, WindowConfig};
 use crate::draw::PassType;
 use crate::draw::{AnimationState, color::Rgba};
@@ -23,6 +23,7 @@ use std::mem::take;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{ImePurpose, WindowAttributes};
@@ -88,10 +89,23 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     ) -> super::Result<winit::window::WindowId> {
         let time = Instant::now();
 
-        // We cannot reliably determine the scale factor before window creation.
-        // A factor of 1.0 lets us estimate the size requirements (logical).
-        self.ev_state.update_config(1.0);
+        // We use the logical size and scale factor of the largest monitor as
+        // an upper bound on window size and guessed scale factor.
+        let mut max_physical_size = PhysicalSize::new(800, 600);
+        let mut scale_factor = 1.0;
+        let mut product = 0;
+        for monitor in el.available_monitors() {
+            let size = monitor.size();
+            let p = size.width * size.height;
+            if p > product {
+                product = p;
+                max_physical_size = size;
+                scale_factor = monitor.scale_factor();
+            }
+        }
+        let max_size = max_physical_size.to_logical::<f64>(scale_factor);
 
+        self.ev_state.update_config(scale_factor.cast_approx());
         let config = self.ev_state.config();
         let mut theme_window = state.shared.theme.new_window(config);
 
@@ -104,18 +118,20 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let min_size = Size(1, 1);
-        let mut max_size = Size::splat(512);
-        for monitor in el.available_monitors() {
-            max_size = max_size.max(monitor.size().cast());
+        let mut ideal = solve_cache
+            .ideal(true)
+            .max(min_size)
+            .as_physical()
+            .to_logical(scale_factor);
+        if ideal.width > max_size.width {
+            ideal.width = max_size.width;
+        }
+        if ideal.height > max_size.height {
+            ideal.height = max_size.height;
         }
 
-        let ideal = solve_cache
-            .ideal(true)
-            .clamp(min_size, max_size)
-            .as_logical();
-
         let mut attrs = WindowAttributes::default();
-        attrs.inner_size = Some(ideal);
+        attrs.inner_size = Some(ideal.into());
         attrs.title = self.widget.title().to_string();
         attrs.visible = false;
         attrs.transparent = self.widget.transparent();
@@ -123,17 +139,23 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         attrs.window_icon = self.widget.icon();
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {
-            let min = solve_cache.min(true).as_logical();
-            attrs.min_inner_size = Some(min);
+            let min = solve_cache
+                .min(true)
+                .as_physical()
+                .to_logical::<f64>(scale_factor);
+            attrs.min_inner_size = Some(min.into());
         }
         if restrict_max {
-            attrs.max_inner_size = Some(ideal);
+            attrs.max_inner_size = Some(ideal.into());
+        } else {
+            attrs.max_inner_size = Some(max_size.into());
         }
         let window = el.create_window(attrs)?;
 
         // Now that we have a scale factor, we may need to resize:
-        let scale_factor = window.scale_factor();
-        if scale_factor != 1.0 {
+        let new_factor = window.scale_factor();
+        if new_factor != scale_factor {
+            scale_factor = new_factor;
             self.ev_state.update_config(scale_factor as f32);
 
             let config = self.ev_state.config();
@@ -147,14 +169,22 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             let sizer = SizeCx::new(theme_window.size());
             solve_cache = SolveCache::find_constraints(node, sizer);
 
-            // NOTE: we would use .as_physical(), but we need to ensure rounding
-            // doesn't result in anything exceeding max_size which can happen
-            // otherwise (default rounding mode is to nearest, away from zero).
-            let ideal = solve_cache.ideal(true).max(min_size);
-            let ub = (f64::conv(max_size.0) / scale_factor).floor();
-            let w = ub.min(f64::conv(ideal.0) / scale_factor);
-            let h = ub.min(f64::conv(ideal.1) / scale_factor);
-            let ideal = winit::dpi::LogicalSize::new(w, h);
+            if let Some(monitor) = window.current_monitor() {
+                max_physical_size = monitor.size();
+            }
+            let max_size = max_physical_size.to_logical::<f64>(scale_factor);
+
+            let mut ideal = solve_cache
+                .ideal(true)
+                .max(min_size)
+                .as_physical()
+                .to_logical(scale_factor);
+            if ideal.width > max_size.width {
+                ideal.width = max_size.width;
+            }
+            if ideal.height > max_size.height {
+                ideal.height = max_size.height;
+            }
 
             if let Some(size) = window.request_inner_size(ideal) {
                 debug_assert_eq!(size, window.inner_size());
