@@ -92,6 +92,26 @@ impl WindowCommon {
     pub fn report_dur_text(&mut self, dur: Duration) {
         self.dur_text += dur;
     }
+
+    /// Check whether immediate redraw is required, and if so clear it
+    pub fn immediate_redraw(&mut self) -> bool {
+        match self.anim {
+            AnimationState::None => return false,
+            // AnimationState::Timed(_) => return false,
+            AnimationState::Timed(when) if when > Instant::now() => return false,
+            _ => (),
+        }
+        self.anim = AnimationState::None;
+        true
+    }
+
+    /// Get the next resume time due to animation
+    pub fn next_resume(&self) -> Option<Instant> {
+        match self.anim {
+            AnimationState::Timed(when) => Some(when),
+            _ => None,
+        }
+    }
 }
 
 /// Draw pass identifier

@@ -11,7 +11,7 @@ use super::{AppData, GraphicsInstance, MessageStack, Platform};
 use crate::cast::{Cast, CastApprox};
 use crate::config::{Config, WindowConfig};
 use crate::draw::PassType;
-use crate::draw::{AnimationState, color::Rgba};
+use crate::draw::color::Rgba;
 use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
@@ -354,8 +354,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
         self.handle_action(state, action);
 
-        let resume = self.ev_state.next_resume();
         let window = self.window.as_mut().unwrap();
+        let resume = match (
+            self.ev_state.next_resume(),
+            window.surface.common_mut().next_resume(),
+        ) {
+            (None, None) => None,
+            (Some(a), None) => Some(a),
+            (None, Some(b)) => Some(b),
+            (Some(a), Some(b)) => Some(a.min(b)),
+        };
 
         // NOTE: need_frame_update() does not imply a need to redraw, but other
         // approaches do not yield good frame timing for e.g. kinetic scrolling.
@@ -442,6 +450,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let Some(ref mut window) = self.window else {
             return;
         };
+
+        if window.surface.common_mut().immediate_redraw() {
+            window.need_redraw = true;
+            window.request_redraw();
+        }
 
         let mut messages = MessageStack::new();
         let widget = self.widget.as_node(&state.data);
@@ -600,8 +613,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
         let time2 = Instant::now();
 
-        let anim = take(&mut window.surface.common_mut().anim);
-        window.need_redraw = anim != AnimationState::None;
+        window.need_redraw = window.surface.common_mut().immediate_redraw();
         self.ev_state.action -= Action::REDRAW;
         // NOTE: we used to return Err(()) if !action.is_empty() here, e.g. if a
         // widget requested a resize during draw. Likely it's better not to do
@@ -630,14 +642,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         const SECOND: Duration = Duration::from_secs(1);
         window.frame_count.1 += 1;
-        let now = Instant::now();
-        if window.frame_count.0 + SECOND <= now {
+        if window.frame_count.0 + SECOND <= end {
             log::debug!(
                 "Window {:?}: {} frames in last second",
                 window.window_id,
                 window.frame_count.1
             );
-            window.frame_count.0 = now;
+            window.frame_count.0 = end;
             window.frame_count.1 = 0;
         }
 
