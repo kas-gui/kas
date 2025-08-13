@@ -130,7 +130,9 @@ pub trait Widget: Tile {
     /// assumed.
     ///
     /// [`#widget`]: macros::widget
-    type Data;
+    //
+    // SAFETY: the unsafe_node feature requires Data: Sized.
+    type Data: Sized;
 
     /// Erase type
     ///
