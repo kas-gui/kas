@@ -13,7 +13,7 @@ Stable vs nightly
 -----------------
 
 Note that proc macros may emit error messages on stable rust, but currently can
-only emit warnings with nightly `rustc`.
+only emit warnings with nightly `rustc`, using the `nightly` feature.
 
 
 Copyright and Licence

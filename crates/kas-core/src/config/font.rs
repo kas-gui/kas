@@ -65,7 +65,7 @@ pub struct RasterConfig {
     ///
     /// -   `mode == 0`: use `ab_glyph` for rastering
     /// -   `mode == 1`: use `ab_glyph` and align glyphs to side bearings
-    /// -   `mode == 2`: use `fontdue` for rastering
+    /// -   `mode == 2`: deprecated
     /// -   `mode == 3`: use `swash` for rastering
     /// -   `mode == 4`: use `swash` for rastering with hinting
     #[cfg_attr(feature = "serde", serde(default = "defaults::mode"))]

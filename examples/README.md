@@ -1,30 +1,17 @@
 KAS Examples
 ==========
 
-Examples are listed below in alphabetical order.
+Examples are grouped by complexity.
 
-If learning KAS, the Hello, Counter, Calculator, and perhaps Filter-list
-examples may be the most accessible. Also see
-[the tutorials](https://kas-gui.github.io/tutorials/).
 
-### Async event
+Simplest examples
+-----------------
 
-Demonstrates updating the UI in response to events from a background thread.
+### Hello
 
-![Async-event](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/async-event.png)
+A simple custom message box.
 
-### Calculator
-
-A simple calculator show-casing the grid layout and keyboard support.
-
-![Calculator](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/calculator.png)
-
-### Clock
-
-A simple clock. An example of a custom widget using mid-level draw routines and
-timer updates.
-
-![Clock](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/clock.png)
+![Hello](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/hello.png)
 
 ### Counter
 
@@ -39,6 +26,52 @@ timer updates.
 Curious what each mouse cursor available on your desktop (via winit) looks like?
 
 ![Cursors](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/cursors.png)
+
+### Layout
+
+Demonstration of complex layout and multi-paragraph text.
+
+![Layout](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/layout.png)
+
+### Splitter
+
+Demonstrates resizable panes.
+
+![Splitter](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/splitter.png)
+
+
+More complex examples
+---------------------
+
+### Calculator
+
+A simple calculator show-casing the grid layout and keyboard support.
+
+![Calculator](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/calculator.png)
+
+### Stopwatch
+
+Ready? Set! Go!
+
+![Stopwatch](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/stopwatch.png)
+
+### Sync-counter
+
+A variant of [Counter](#Counter), demonstrating multiple windows and the
+`SingleView` widget (the simplest shared data widget).
+
+### Clock
+
+A simple clock. An example of a custom widget using mid-level draw routines and
+timer updates.
+
+![Clock](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/clock.png)
+
+### Times-tables
+
+A simple demonstration of the `GridView` widget.
+
+![Times-tables](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/times-tables.png)
 
 ### Data list
 
@@ -55,6 +88,16 @@ same UI, but different internals:
 
 ![Data list](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/data-list.png)
 
+### Proxy
+
+Demonstrates updating the UI in response to events from a background thread.
+
+![Async-event](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/async-event.png)
+
+
+Most-complex examples
+---------------------
+
 ### Gallery
 
 A testbed demoing most widgets, animations, data models, canvas and configuration.
@@ -62,46 +105,23 @@ A testbed demoing most widgets, animations, data models, canvas and configuratio
 ![Gallery](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/gallery.png)
 ![Gallery](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/video/gallery.apng)
 
-### Hello
-
-A message box.
-
-![Hello](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/hello.png)
-
-### Layout
-
-Demonstration of complex layout and multi-paragraph text.
-
-![Layout](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/layout.png)
-
 ### Mandlebrot
 
 GPU-accelerated fractals via a custom embedded WGPU graphics pipeline.
 
 ![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/mandlebrot.png)
 
-### Splitter
 
-Demonstrates resizable panes.
+Tools
+-----
 
-![Splitter](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/splitter.png)
+### Reformat Id
 
-### Stopwatch
-
-Ready? Set! Go!
-
-![Stopwatch](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/stopwatch.png)
-
-### Sync-counter
-
-A variant of [Counter](#Counter), demonstrating multiple windows and the
-`SingleView` widget (the simplest shared data widget).
-
-### Times-tables
-
-A simple demonstration of the `GridView` widget.
-
-![Times-tables](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/times-tables.png)
+A [`kas::Id`](https://docs.rs/kas/latest/kas/struct.Id.html) is a path. This tool can decode both an `Id` displayed with a leading `#` (as below) and codes converted to a `u64` (where this is a compressed full path, not where this is a hash of a longer stack-allocated path).
+```
+$ cargo run --example reformat-id '#1001970'
+[1, 0, 0, 1, 15, 0]
+```
 
 
 Copyright and Licence

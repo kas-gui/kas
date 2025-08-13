@@ -30,21 +30,19 @@ Optional features
 
 This crate has the following feature flags:
 
--   `raster` (enabled by default): use [kas-text]'s default backend for glyph
-    rastering (alternatively, specify `kas-text/ab_glyph` or `kas-text/fontdue`)
 -   `shaping` (enabled by default): use [kas-text]'s default backend (Rustybuzz)
     for text shaping (alternatively, specify `kas-text/harfbuzz` or do not use
     shaping)
 
-Note: at least one of `ab_glyph`, `fontdue` is required. If both are enabled,
-the choice of raster engine is controlled at run-time via theme configuration:
+By default, this crate uses [Swash] to raster fonts. This is usually the best
+choice. As an alternative, fonts can be rastered using [ab_glyph]; this requires
+both that the `ab_glyph` feature is enabled and that the configuration item
+`font.raster.mode`  is set (see [Run-time configuration], [`RasterConfig::mode`]).
 
--   `mode = 0`: use `ab_glyph`
--   `mode = 1`: use `ab_glyph` and align glyphs to side-bearing
--   `mode = 2`: use `fontdue`
-
+[Swash]: https://github.com/dfrg/swash
 [ab_glyph]: https://crates.io/crates/ab_glyph
-[fontdue]: https://crates.io/crates/fontdue
+[`RasterConfig::mode`]: https://docs.rs/kas/latest/kas/config/struct.RasterConfig.html#structfield.mode
+[Run-time configuration]: https://github.com/kas-gui/kas/wiki/Run%E2%80%90time-configuration
 
 Copyright and Licence
 -------
