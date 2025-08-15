@@ -465,6 +465,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                     cx.update_timer(widget);
                 });
         } else {
+            #[allow(clippy::drop_non_drop)]
             drop(widget); // make the borrow checker happy
         }
 

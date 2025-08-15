@@ -129,6 +129,7 @@ impl<'a> Node<'a> {
                 // We ensure here that the type of `data` matches that used by `widget`.
                 // NOTE: This makes assumptions beyond Rust's specification.
                 use std::mem::transmute;
+                #[allow(clippy::missing_transmute_annotations)]
                 unsafe { Node(transmute(widget), transmute(data)) }
             } else {
                 Node(Box::new((widget, data)))
