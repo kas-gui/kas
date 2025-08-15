@@ -97,7 +97,7 @@ impl<'a> DrawCx<'a> {
     /// Construct from a [`DrawCx`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn ThemeDraw, id: Id) -> Self {
+    pub(crate) fn new(h: &'a mut dyn ThemeDraw, id: Id) -> Self {
         DrawCx { h, id }
     }
 
