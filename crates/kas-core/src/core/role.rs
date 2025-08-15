@@ -82,6 +82,8 @@ pub enum Role<'a> {
     ///
     /// [`kas::messages::Activate`] may be used to activate the tab.
     Tab,
+    /// A stack / tab page
+    TabPage,
     /// A visible border surrounding or between other items
     Border,
     /// A scrollable region
@@ -351,6 +353,7 @@ impl<'a> Role<'a> {
             Role::CheckBox(_) => R::CheckBox,
             Role::RadioButton(_) => R::RadioButton,
             Role::Tab => R::Tab,
+            Role::TabPage => R::TabPanel,
             Role::ScrollRegion { .. } => R::ScrollView,
             Role::ScrollBar { .. } => R::ScrollBar,
             Role::Indicator => R::Unknown,
@@ -397,6 +400,7 @@ impl<'a> Role<'a> {
             Role::Button | Role::Tab => {
                 node.add_action(Action::Click);
             }
+            Role::TabPage => (),
             Role::Indicator | Role::Image | Role::Canvas => (),
             Role::MenuBar | Role::Window | Role::TitleBar => (),
             Role::Label(text) | Role::TextLabel { text, .. } => node.set_value(text),

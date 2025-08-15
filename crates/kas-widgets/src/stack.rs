@@ -22,6 +22,12 @@ mod Page {
         pub inner: Box<dyn Widget<Data = A>>,
     }
 
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::TabPage
+        }
+    }
+
     impl Events for Self {
         type Data = A;
     }
