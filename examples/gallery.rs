@@ -26,7 +26,7 @@ struct AppData {
     disabled: bool,
 }
 
-fn widgets() -> Box<dyn Widget<Data = AppData>> {
+fn widgets() -> Page<AppData> {
     use kas::widgets::dialog::{TextEdit, TextEditResult};
 
     // A real app might use async loading of resources here (Svg permits loading
@@ -258,10 +258,10 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
     let ui = adapt::AdaptEvents::new(ui)
         .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
 
-    Box::new(ScrollBarRegion::new(ui))
+    Page::new(ScrollBarRegion::new(ui))
 }
 
-fn editor() -> Box<dyn Widget<Data = AppData>> {
+fn editor() -> Page<AppData> {
     use kas::text::format::Markdown;
 
     #[derive(Clone, Debug)]
@@ -349,10 +349,10 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         })
         .on_message(|_, data, SetLabelId(id)| data.label_id = id);
 
-    Box::new(ui)
+    Page::new(ui)
 }
 
-fn filter_list() -> Box<dyn Widget<Data = AppData>> {
+fn filter_list() -> Page<AppData> {
     use kas::view::{DataClerk, ListView, SelectionMode, SelectionMsg, driver};
 
     const MONTHS: &[&str] = &[
@@ -642,10 +642,10 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         .on_message(|_, data, mode| data.mode = mode);
     let ui = adapt::AdaptEvents::new(ui)
         .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
-    Box::new(ui)
+    Page::new(ui)
 }
 
-fn canvas() -> Box<dyn Widget<Data = AppData>> {
+fn canvas() -> Page<AppData> {
     use kas::geom::Vec2;
     use kas_resvg::tiny_skia::*;
     use kas_resvg::{Canvas, CanvasProgram};
@@ -725,10 +725,10 @@ fn canvas() -> Box<dyn Widget<Data = AppData>> {
         ),
         Canvas::new(Program(Instant::now())),
     ];
-    Box::new(ui.map_any())
+    Page::new(ui.map_any())
 }
 
-fn config() -> Box<dyn Widget<Data = AppData>> {
+fn config() -> Page<AppData> {
     let desc = kas::text::format::Markdown::new(
         "\
 Event configuration editor
@@ -748,7 +748,7 @@ KAS_CONFIG_MODE=readwrite
     let ui = column![ScrollLabel::new(desc), Separator::new(), EventConfig::new()]
         .map_any()
         .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
-    Box::new(ui)
+    Page::new(ui)
 }
 
 fn main() -> kas::runner::Result<()> {

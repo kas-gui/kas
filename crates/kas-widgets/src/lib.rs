@@ -117,6 +117,6 @@ pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
 pub use spin_box::{SpinBox, SpinValue};
 pub use splitter::Splitter;
-pub use stack::{BoxStack, Stack};
+pub use stack::{Page, Stack};
 pub use tab_stack::{BoxTabStack, Tab, TabStack};
 pub use text::Text;

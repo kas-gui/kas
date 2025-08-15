@@ -6,7 +6,7 @@
 //! A tabbed stack
 
 use crate::adapt::{AdaptEvents, AdaptWidget};
-use crate::{AccessLabel, Row, Stack};
+use crate::{AccessLabel, Page, Row, Stack};
 use kas::messages::{Select, SetIndex};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
@@ -115,14 +115,14 @@ mod TabStack {
     #[impl_default(Self::new())]
     #[widget]
     #[layout(list![self.stack, self.tabs].with_direction(self.direction))]
-    pub struct TabStack<W: Widget> {
+    pub struct TabStack<A> {
         core: widget_core!(),
         direction: Direction,
         #[widget(&())]
         tabs: AdaptEvents<Row<Vec<Tab>>>, // TODO: want a TabBar widget for scrolling support?
         #[widget]
-        stack: Stack<W>,
-        on_change: Option<Box<dyn Fn(&mut EventCx, &W::Data, usize, &str)>>,
+        stack: Stack<A>,
+        on_change: Option<Box<dyn Fn(&mut EventCx, &A, usize, &str)>>,
     }
 
     impl Self {
@@ -157,7 +157,7 @@ mod TabStack {
         /// `f` receives as parameters input data, page index and tab title.
         #[inline]
         #[must_use]
-        pub fn with(mut self, f: impl Fn(&mut EventCx, &W::Data, usize, &str) + 'static) -> Self {
+        pub fn with(mut self, f: impl Fn(&mut EventCx, &A, usize, &str) + 'static) -> Self {
             debug_assert!(self.on_change.is_none());
             self.on_change = Some(Box::new(f));
             self
@@ -184,9 +184,9 @@ mod TabStack {
     }
 
     impl Events for Self {
-        type Data = W::Data;
+        type Data = A;
 
-        fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if let Some(SetIndex(index)) = cx.try_pop() {
                 self.set_active(&mut cx.config_cx(), data, index);
                 if let Some(ref f) = self.on_change {
@@ -198,7 +198,7 @@ mod TabStack {
     }
 }
 
-impl<W: Widget> TabStack<W> {
+impl<A> TabStack<A> {
     /// Limit the number of pages considered and sized
     ///
     /// By default, this is `usize::MAX`: all pages are configured and affect
@@ -239,12 +239,12 @@ impl<W: Widget> TabStack<W> {
     }
 
     /// Set the active page
-    pub fn set_active(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize) {
+    pub fn set_active(&mut self, cx: &mut ConfigCx, data: &A, index: usize) {
         self.stack.set_active(cx, data, index);
     }
 
     /// Get a direct reference to the active child widget, if any
-    pub fn get_active(&self) -> Option<&W> {
+    pub fn get_active(&self) -> Option<&Page<A>> {
         self.stack.get_active()
     }
 
@@ -267,12 +267,12 @@ impl<W: Widget> TabStack<W> {
     }
 
     /// Get a page
-    pub fn get(&self, index: usize) -> Option<&W> {
+    pub fn get(&self, index: usize) -> Option<&Page<A>> {
         self.stack.get(index)
     }
 
     /// Get a page
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Page<A>> {
         self.stack.get_mut(index)
     }
 
@@ -292,9 +292,9 @@ impl<W: Widget> TabStack<W> {
     /// avoid this). Consider calling [`Self::set_active`].
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, tab: Tab, widget: W) -> usize {
+    pub fn push(&mut self, cx: &mut ConfigCx, data: &A, tab: Tab, page: Page<A>) -> usize {
         let ti = self.tabs.inner.push(cx, &(), tab);
-        let si = self.stack.push(cx, data, widget);
+        let si = self.stack.push(cx, data, page);
         debug_assert_eq!(ti, si);
         si
     }
@@ -303,7 +303,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
-    pub fn pop(&mut self, cx: &mut EventState) -> Option<(Tab, W)> {
+    pub fn pop(&mut self, cx: &mut EventState) -> Option<(Tab, Page<A>)> {
         let tab = self.tabs.inner.pop(cx);
         let w = self.stack.pop(cx);
         debug_assert_eq!(tab.is_some(), w.is_some());
@@ -315,9 +315,9 @@ impl<W: Widget> TabStack<W> {
     /// Panics if `index > len`.
     ///
     /// The active page does not change (the index of the active page may change instead).
-    pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, tab: Tab, widget: W) {
+    pub fn insert(&mut self, cx: &mut ConfigCx, data: &A, index: usize, tab: Tab, page: Page<A>) {
         self.tabs.inner.insert(cx, &(), index, tab);
-        self.stack.insert(cx, data, index, widget);
+        self.stack.insert(cx, data, index, page);
     }
 
     /// Removes the child widget at position `index`
@@ -326,7 +326,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
-    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> (Tab, W) {
+    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> (Tab, Page<A>) {
         let tab = self.tabs.inner.remove(cx, index);
         let stack = self.stack.remove(cx, index);
         (tab, stack)
@@ -337,18 +337,18 @@ impl<W: Widget> TabStack<W> {
     /// Panics if `index` is out of bounds.
     ///
     /// If the new child replaces the active page then [`Action::RESIZE`] is triggered.
-    pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, w: W) -> W {
-        self.stack.replace(cx, data, index, w)
+    pub fn replace(&mut self, cx: &mut ConfigCx, data: &A, index: usize, page: Page<A>) -> Page<A> {
+        self.stack.replace(cx, data, index, page)
     }
 
     /// Append child widgets from an iterator
     ///
     /// The new pages are not made active (the active index may be changed to
     /// avoid this). Consider calling [`Self::set_active`].
-    pub fn extend<T: IntoIterator<Item = (Tab, W)>>(
+    pub fn extend<T: IntoIterator<Item = (Tab, Page<A>)>>(
         &mut self,
         cx: &mut ConfigCx,
-        data: &W::Data,
+        data: &A,
         iter: T,
     ) {
         let iter = iter.into_iter();
@@ -362,10 +362,10 @@ impl<W: Widget> TabStack<W> {
     }
 }
 
-impl<W: Widget, T, I> From<I> for TabStack<W>
+impl<A, T, I> From<I> for TabStack<A>
 where
     Tab: From<T>,
-    I: IntoIterator<Item = (T, W)>,
+    I: IntoIterator<Item = (T, Page<A>)>,
 {
     #[inline]
     fn from(iter: I) -> Self {
