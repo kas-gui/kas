@@ -136,7 +136,7 @@ mod Button {
                 if let Some(f) = self.on_press.as_ref() {
                     f(cx, data);
                 }
-                cx.depress_with_key(self.id(), code);
+                cx.depress_with_key(&self, code);
             }
         }
     }

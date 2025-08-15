@@ -6,10 +6,10 @@
 //! Event context: key handling and selection focus
 
 use super::{EventCx, EventState};
-use crate::Action;
 #[allow(unused)] use crate::Events;
 use crate::event::{Command, Event, FocusSource};
 use crate::util::WidgetHierarchy;
+use crate::{Action, HasId};
 use crate::{Id, NavAdvance, Node, geom::Rect, runner::WindowDataErased};
 use std::collections::HashMap;
 use winit::event::{ElementState, Ime, KeyEvent};
@@ -173,7 +173,7 @@ impl EventState {
     /// may be changed by modifier keys.
     ///
     /// Does nothing when `code` is `None`.
-    pub fn depress_with_key(&mut self, id: Id, code: impl Into<Option<PhysicalKey>>) {
+    pub fn depress_with_key(&mut self, id: impl HasId, code: impl Into<Option<PhysicalKey>>) {
         fn inner(state: &mut EventState, id: Id, code: PhysicalKey) {
             if state
                 .key_depress
@@ -189,7 +189,7 @@ impl EventState {
         }
 
         if let Some(code) = code.into() {
-            inner(self, id, code);
+            inner(self, id.has_id(), code);
         }
     }
 

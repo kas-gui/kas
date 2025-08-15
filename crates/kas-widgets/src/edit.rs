@@ -1765,7 +1765,7 @@ impl<G: EditGuard> EditField<G> {
         Ok(match result {
             EditAction::None => Used,
             EditAction::Activate => {
-                cx.depress_with_key(self.id(), code);
+                cx.depress_with_key(&self, code);
                 G::activate(self, cx, data)
             }
             EditAction::Edit => {

@@ -144,7 +144,7 @@ mod SubMenu {
             match event {
                 Event::Command(cmd, code) if cmd.is_activate() => {
                     self.open_menu(cx, data, true);
-                    cx.depress_with_key(self.id(), code);
+                    cx.depress_with_key(&self, code);
                     Used
                 }
                 Event::Command(cmd, _) => self.handle_dir_key(cx, data, cmd),
@@ -155,7 +155,7 @@ mod SubMenu {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(Activate(code)) = cx.try_pop() {
                 self.popup.open(cx, data, self.id(), true);
-                cx.depress_with_key(self.id(), code);
+                cx.depress_with_key(&self, code);
             } else if let Some(Expand) = cx.try_pop() {
                 self.popup.open(cx, data, self.id(), true);
             } else if let Some(Collapse) = cx.try_pop() {

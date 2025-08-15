@@ -74,7 +74,7 @@ mod Tab {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {
                 cx.push(Select);
-                cx.depress_with_key(self.id(), code);
+                cx.depress_with_key(&self, code);
             }
         }
     }
