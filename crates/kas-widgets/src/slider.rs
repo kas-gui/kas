@@ -370,7 +370,7 @@ mod Slider {
                         _ => return Unused,
                     };
 
-                    cx.depress_with_key(self.id(), code);
+                    cx.depress_with_key(&self, code);
 
                     if self.set_value(cx, value) {
                         if let Some(ref f) = self.on_move {

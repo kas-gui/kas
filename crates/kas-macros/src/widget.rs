@@ -284,7 +284,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         };
         emit_error!(
             span,
-            "expected a definition of Data in Widget, Events or via #[widget(type Data = ...)]",
+            "expected a definition of type Data in impl for Widget or impl for Events",
         );
     };
 

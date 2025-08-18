@@ -391,10 +391,10 @@ mod ser {
             Key::Named(named) => Ok(SimpleKey::Named(named)),
             Key::Character(c) => {
                 let mut iter = c.chars();
-                if let Some(c) = iter.next() {
-                    if iter.next().is_none() {
-                        return Ok(SimpleKey::Char(c));
-                    }
+                if let Some(c) = iter.next()
+                    && iter.next().is_none()
+                {
+                    return Ok(SimpleKey::Char(c));
                 }
                 Err(ComplexKey::Character(c))
             }

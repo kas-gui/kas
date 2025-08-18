@@ -79,7 +79,7 @@ mod GridCell {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(cmd, code) if cmd.is_activate() => {
-                    cx.depress_with_key(self.id(), code);
+                    cx.depress_with_key(&self, code);
                     cx.push(kas::messages::Select);
                     Used
                 }

@@ -403,8 +403,6 @@ impl<'a> DerefMut for EventCx<'a> {
 impl<'a> EventCx<'a> {
     /// Configure a widget
     ///
-    /// Note that, when handling events, this method returns the *old* state.
-    ///
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {

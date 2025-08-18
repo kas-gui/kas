@@ -11,10 +11,43 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 
-/// A stack of boxed widgets
-///
-/// This is a parametrisation of [`Stack`].
-pub type BoxStack<Data> = Stack<Box<dyn Widget<Data = Data>>>;
+#[impl_self]
+mod Page {
+    /// A stack page (also known as a tab page)
+    #[widget]
+    #[layout(self.inner)]
+    pub struct Page<A> {
+        core: widget_core!(),
+        #[widget]
+        pub inner: Box<dyn Widget<Data = A>>,
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::TabPage
+        }
+    }
+
+    impl Events for Self {
+        type Data = A;
+    }
+
+    impl Self {
+        /// Construct from a widget
+        pub fn new(widget: impl Widget<Data = A> + 'static) -> Self {
+            Page::new_boxed(Box::new(widget))
+        }
+
+        /// Construct from a boxed widget
+        #[inline]
+        pub fn new_boxed(inner: Box<dyn Widget<Data = A>>) -> Self {
+            Page {
+                core: Default::default(),
+                inner,
+            }
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 enum State {
@@ -37,9 +70,6 @@ mod Stack {
     /// Only a single page is visible at a time. The page is "turned" by calling
     /// [`Self::set_active`].
     ///
-    /// This may only be parametrised with a single widget type, thus usually
-    /// it will be necessary to box children (this is what [`BoxStack`] is).
-    ///
     /// By default, all pages are configured and sized. To avoid configuring
     /// hidden pages (thus preventing these pages from affecting size)
     /// call [`Self::set_size_limit`] or [`Self::with_size_limit`].
@@ -47,12 +77,11 @@ mod Stack {
     /// # Messages
     ///
     /// [`kas::messages::SetIndex`] may be used to change the page.
-    #[derive(Clone, Debug)]
     #[widget]
-    pub struct Stack<W: Widget> {
+    pub struct Stack<A> {
         core: widget_core!(),
         align_hints: AlignHints,
-        widgets: Vec<(W, State)>,
+        widgets: Vec<(Page<A>, State)>,
         active: usize,
         size_limit: usize,
         next: usize,
@@ -74,9 +103,9 @@ mod Stack {
     }
 
     impl Widget for Self {
-        type Data = W::Data;
+        type Data = A;
 
-        fn child_node<'n>(&'n mut self, data: &'n W::Data, index: usize) -> Option<Node<'n>> {
+        fn child_node<'n>(&'n mut self, data: &'n A, index: usize) -> Option<Node<'n>> {
             self.widgets.get_mut(index).map(|(w, _)| w.as_node(data))
         }
     }
@@ -218,7 +247,7 @@ mod Stack {
             }
         }
 
-        fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if let Some(kas::messages::SetIndex(index)) = cx.try_pop() {
                 self.set_active(&mut cx.config_cx(), data, index);
             }
@@ -226,7 +255,7 @@ mod Stack {
     }
 
     impl Index<usize> for Self {
-        type Output = W;
+        type Output = Page<A>;
 
         fn index(&self, index: usize) -> &Self::Output {
             &self.widgets[index].0
@@ -240,7 +269,7 @@ mod Stack {
     }
 }
 
-impl<W: Widget> Stack<W> {
+impl<A> Stack<A> {
     /// Construct a new, empty instance
     ///
     /// See also [`Stack::from`].
@@ -295,7 +324,7 @@ impl<W: Widget> Stack<W> {
     }
 
     /// Set the active page
-    pub fn set_active(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize) {
+    pub fn set_active(&mut self, cx: &mut ConfigCx, data: &A, index: usize) {
         let old_index = self.active;
         if old_index == index {
             return;
@@ -333,8 +362,8 @@ impl<W: Widget> Stack<W> {
         }
     }
 
-    /// Get a direct reference to the active child widget, if any
-    pub fn get_active(&self) -> Option<&W> {
+    /// Get a direct reference to the active child page, if any
+    pub fn get_active(&self) -> Option<&Page<A>> {
         if self.active < self.widgets.len() {
             Some(&self.widgets[self.active].0)
         } else {
@@ -360,17 +389,17 @@ impl<W: Widget> Stack<W> {
     }
 
     /// Returns a reference to the page, if any
-    pub fn get(&self, index: usize) -> Option<&W> {
+    pub fn get(&self, index: usize) -> Option<&Page<A>> {
         self.widgets.get(index).map(|e| &e.0)
     }
 
     /// Returns a mutable reference to the page, if any
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Page<A>> {
         self.widgets.get_mut(index).map(|e| &mut e.0)
     }
 
     /// Configure and size the page at index
-    fn configure_and_size(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize) {
+    fn configure_and_size(&mut self, cx: &mut ConfigCx, data: &A, index: usize) {
         let Size(w, h) = self.rect().size;
         let id = self.make_child_id(index);
         if let Some(entry) = self.widgets.get_mut(index) {
@@ -386,12 +415,12 @@ impl<W: Widget> Stack<W> {
     /// avoid this). Consider calling [`Self::set_active`].
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, widget: W) -> usize {
+    pub fn push(&mut self, cx: &mut ConfigCx, data: &A, page: Page<A>) -> usize {
         let index = self.widgets.len();
         if index == self.active {
             self.active = usize::MAX;
         }
-        self.widgets.push((widget, State::None));
+        self.widgets.push((page, State::None));
 
         if index < self.size_limit {
             self.configure_and_size(cx, data, index);
@@ -403,7 +432,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
-    pub fn pop(&mut self, cx: &mut EventState) -> Option<W> {
+    pub fn pop(&mut self, cx: &mut EventState) -> Option<Page<A>> {
         let result = self.widgets.pop().map(|(w, _)| w);
         if let Some(w) = result.as_ref() {
             if self.active > 0 && self.active == self.widgets.len() {
@@ -424,12 +453,12 @@ impl<W: Widget> Stack<W> {
     /// Panics if `index > len`.
     ///
     /// The active page does not change (the index of the active page may change instead).
-    pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, widget: W) {
+    pub fn insert(&mut self, cx: &mut ConfigCx, data: &A, index: usize, page: Page<A>) {
         if self.active >= index {
             self.active = self.active.saturating_add(1);
         }
 
-        self.widgets.insert(index, (widget, State::None));
+        self.widgets.insert(index, (page, State::None));
 
         for v in self.id_map.values_mut() {
             if *v >= index {
@@ -448,7 +477,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
-    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> W {
+    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> Page<A> {
         let (w, _) = self.widgets.remove(index);
         if w.id_ref().is_valid() {
             if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -474,13 +503,19 @@ impl<W: Widget> Stack<W> {
     /// Panics if `index` is out of bounds.
     ///
     /// If the new child replaces the active page then [`Action::RESIZE`] is triggered.
-    pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut widget: W) -> W {
+    pub fn replace(
+        &mut self,
+        cx: &mut ConfigCx,
+        data: &A,
+        index: usize,
+        mut page: Page<A>,
+    ) -> Page<A> {
         let entry = &mut self.widgets[index];
-        std::mem::swap(&mut widget, &mut entry.0);
+        std::mem::swap(&mut page, &mut entry.0);
         entry.1 = State::None;
 
-        if widget.id_ref().is_valid() {
-            if let Some(key) = widget.id_ref().next_key_after(self.id_ref()) {
+        if page.id_ref().is_valid() {
+            if let Some(key) = page.id_ref().next_key_after(self.id_ref()) {
                 self.id_map.remove(&key);
             }
         }
@@ -493,17 +528,17 @@ impl<W: Widget> Stack<W> {
             cx.resize(self);
         }
 
-        widget
+        page
     }
 
     /// Append child widgets from an iterator
     ///
     /// The new pages are not made active (the active index may be changed to
     /// avoid this). Consider calling [`Self::set_active`].
-    pub fn extend<T: IntoIterator<Item = W>>(
+    pub fn extend<T: IntoIterator<Item = Page<A>>>(
         &mut self,
         cx: &mut ConfigCx,
-        data: &W::Data,
+        data: &A,
         iter: T,
     ) {
         let old_len = self.widgets.len();
@@ -528,10 +563,10 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new pages are not made active (the active index may be changed to
     /// avoid this). Consider calling [`Self::set_active`].
-    pub fn resize_with<F: Fn(usize) -> W>(
+    pub fn resize_with<F: Fn(usize) -> Page<A>>(
         &mut self,
         cx: &mut ConfigCx,
-        data: &W::Data,
+        data: &A,
         len: usize,
         f: F,
     ) {
@@ -567,9 +602,9 @@ impl<W: Widget> Stack<W> {
     }
 }
 
-impl<W: Widget, I> From<I> for Stack<W>
+impl<A, I> From<I> for Stack<A>
 where
-    I: IntoIterator<Item = W>,
+    I: IntoIterator<Item = Page<A>>,
 {
     #[inline]
     fn from(iter: I) -> Self {

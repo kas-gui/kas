@@ -191,11 +191,11 @@ impl ConfigFactory for ReadWriteFactory {
             ConfigMode::WriteDefault => Default::default(),
         };
 
-        if self.mode == ConfigMode::WriteDefault {
-            if let Err(error) = Format::guess_and_write_path(&self.path, &config) {
-                self.mode = ConfigMode::Read;
-                warn_about_error_with_path("failed to write default config: ", &error, &self.path);
-            }
+        if self.mode == ConfigMode::WriteDefault
+            && let Err(error) = Format::guess_and_write_path(&self.path, &config)
+        {
+            self.mode = ConfigMode::Read;
+            warn_about_error_with_path("failed to write default config: ", &error, &self.path);
         }
 
         Ok(Rc::new(RefCell::new(config)))

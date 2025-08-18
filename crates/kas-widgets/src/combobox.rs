@@ -109,7 +109,7 @@ mod ComboBox {
                         match cmd {
                             cmd if cmd.is_activate() => {
                                 self.popup.close(cx);
-                                cx.depress_with_key(self.id(), code);
+                                cx.depress_with_key(&self, code);
                             }
                             Command::Up => next(cx, false, true),
                             Command::Down => next(cx, false, false),
@@ -122,7 +122,7 @@ mod ComboBox {
                         match cmd {
                             cmd if cmd.is_activate() => {
                                 self.open_popup(cx, FocusSource::Key);
-                                cx.depress_with_key(self.id(), code);
+                                cx.depress_with_key(&self, code);
                             }
                             Command::Up => self.set_active(cx, self.active.saturating_sub(1)),
                             Command::Down => self.set_active(cx, (self.active + 1).min(last)),
