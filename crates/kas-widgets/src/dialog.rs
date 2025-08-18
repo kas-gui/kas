@@ -14,7 +14,7 @@
 //! and their design is likely to change.
 
 use crate::{Button, EditBox, Filler, Label, adapt::AdaptWidgetAny};
-use kas::event::{Command, NamedKey};
+use kas::event::NamedKey;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 

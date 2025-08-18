@@ -7,7 +7,7 @@
 
 use super::{ScrollBar, ScrollMsg};
 use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, FocusSource, Scroll};
+use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
 use kas::text::SelectionHelper;
 use kas::text::format::FormattableText;

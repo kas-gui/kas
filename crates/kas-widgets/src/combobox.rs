@@ -7,7 +7,7 @@
 
 use crate::adapt::AdaptEvents;
 use crate::{Column, Label, Mark, menu::MenuEntry};
-use kas::event::{Command, FocusSource};
+use kas::event::FocusSource;
 use kas::messages::{Collapse, Expand, SetIndex};
 use kas::prelude::*;
 use kas::theme::FrameStyle;

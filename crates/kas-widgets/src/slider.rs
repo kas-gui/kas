@@ -6,7 +6,7 @@
 //! `Slider` control
 
 use super::{GripMsg, GripPart};
-use kas::event::{Command, FocusSource};
+use kas::event::FocusSource;
 use kas::messages::{DecrementStep, IncrementStep, SetValueF64};
 use kas::prelude::*;
 use kas::theme::Feature;

@@ -7,7 +7,7 @@
 
 use super::{BoxedMenu, Menu, SubItems};
 use crate::{AccessLabel, Mark};
-use kas::event::{Command, FocusSource};
+use kas::event::FocusSource;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::messages::{Activate, Collapse, Expand};
 use kas::prelude::*;

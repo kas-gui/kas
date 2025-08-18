@@ -7,7 +7,7 @@
 
 use crate::{DataClerk, DataKey, Driver, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
-use kas::event::{Command, CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
+use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;

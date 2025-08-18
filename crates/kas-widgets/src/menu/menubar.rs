@@ -6,7 +6,7 @@
 //! Menubar
 
 use super::{Menu, SubMenu, SubMenuBuilder};
-use kas::event::{Command, FocusSource, TimerHandle};
+use kas::event::{FocusSource, TimerHandle};
 use kas::layout::{self, RowPositionSolver, RowSetter, RowSolver, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::FrameStyle;

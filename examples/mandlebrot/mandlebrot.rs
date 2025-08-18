@@ -8,7 +8,7 @@
 //! Demonstrates use of a custom draw pipe.
 
 use kas::draw::{Draw, DrawIface, PassId};
-use kas::event::{self, Command};
+use kas::event::{CursorIcon, GrabMode};
 use kas::geom::{Affine, DVec2, Linear, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widgets::adapt::Reserve;
@@ -420,8 +420,8 @@ mod Mandlebrot {
                 }
                 Event::PressStart(press) => {
                     return press
-                        .grab(self.id(), event::GrabMode::PAN_FULL)
-                        .with_icon(event::CursorIcon::Grabbing)
+                        .grab(self.id(), GrabMode::PAN_FULL)
+                        .with_icon(CursorIcon::Grabbing)
                         .complete(cx);
                 }
                 _ => return Unused,
