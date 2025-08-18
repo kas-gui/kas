@@ -65,10 +65,7 @@ mod Tab {
         type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
-            event.on_activate(cx, self.id(), |cx| {
-                cx.push(Select);
-                Used
-            })
+            event.on_click(cx, self.id(), |cx| cx.push(Select))
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {

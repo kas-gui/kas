@@ -45,10 +45,7 @@ mod RadioBox {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
-            event.on_activate(cx, self.id(), |cx| {
-                self.select(cx, data);
-                Used
-            })
+            event.on_click(cx, self.id(), |cx| self.select(cx, data))
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {

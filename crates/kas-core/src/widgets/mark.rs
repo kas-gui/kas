@@ -130,10 +130,7 @@ mod MarkButton {
         type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            event.on_activate(cx, self.id(), |cx| {
-                cx.push(self.msg.clone());
-                Used
-            })
+            event.on_click(cx, self.id(), |cx| cx.push(self.msg.clone()))
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
