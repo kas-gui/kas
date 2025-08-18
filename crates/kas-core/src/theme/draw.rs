@@ -5,11 +5,14 @@
 
 //! Widget-facing high-level draw API
 
+use winit::keyboard::Key;
+
 use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, TextClass, ThemeSize};
 #[allow(unused)] use crate::Layout;
 use crate::dir::Direction;
 use crate::draw::color::{ParseError, Rgb};
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
+#[allow(unused)] use crate::event::{Command, Event};
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{Effect, TextDisplay, format::FormattableText};
@@ -206,6 +209,30 @@ impl<'a> DrawCx<'a> {
         self.h.get_clip_rect()
     }
 
+    /// Register `id` as handler of an access `key`
+    ///
+    /// An *access key* (also known as mnemonic) is a shortcut key able to
+    /// directly open menus, activate buttons, etc. By default, when the user
+    /// presses (and holds) key <kbd>Alt</kbd>, access keys in labels will be
+    /// underlined and when the user presses the corresponding key then the
+    /// widget registered as handler for that access key will receive navigation
+    /// focus and [`Command::Activate`].
+    ///
+    /// If `id` itself cannot support navigation focus or handle
+    /// [`Command::Activate`], then ancestors of `id` will have the opportunity
+    /// to receive navigation focus and handle this [`Event::Command`].
+    ///
+    /// If multiple widgets attempt to register themselves as handlers of the
+    /// same `key`, then only the first succeeds.
+    ///
+    /// Note that access keys may be automatically derived from labels:
+    /// see [`crate::text::AccessString`].
+    ///
+    /// Returns `true` when the key should be underlined.
+    pub fn access_key(&mut self, id: &Id, key: &Key) -> bool {
+        self.ev_state().show_access_labels()
+    }
+
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions are given by [`SizeCx::frame`].
@@ -239,6 +266,19 @@ impl<'a> DrawCx<'a> {
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
         let effects = text.effect_tokens();
+        self.text_with_effects(rect, text, effects);
+    }
+
+    /// Draw text with a given effect list
+    ///
+    /// This method is similar to [`Self::text`] except that an effect list is
+    /// passed explicitly instead of inferred from `text`.
+    pub fn text_with_effects<T: FormattableText>(
+        &mut self,
+        rect: Rect,
+        text: &Text<T>,
+        effects: &[Effect<()>],
+    ) {
         let class = text.class();
         if let Ok(display) = text.display() {
             if effects.is_empty() {
@@ -436,10 +476,6 @@ pub trait ThemeDraw {
     ///
     /// If `effects` is empty or all [`Effect::flags`] are default then it is
     /// equivalent (and faster) to call [`Self::text`] instead.
-    ///
-    /// Special effect: if `class` is [`TextClass::AccessLabel`] then
-    /// underline and strikethrough are only drawn if
-    /// [`EventState::show_access_labels`].
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).

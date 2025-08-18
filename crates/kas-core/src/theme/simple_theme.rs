@@ -334,18 +334,14 @@ where
         rect: Rect,
         text: &TextDisplay,
         effects: &[Effect<()>],
-        class: TextClass,
+        _: TextClass,
     ) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
-        if class.is_access_key() && !self.ev.show_access_labels() {
-            self.draw.text(rect, text, col);
-        } else {
-            self.draw.text_effects(rect, text, col, effects);
-        }
+        self.draw.text_effects(rect, text, col, effects);
     }
 
     fn text_selected_range(
