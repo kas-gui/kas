@@ -117,7 +117,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
     /// Process window resize
     pub fn resize(&self, window: &mut DrawWindow<C::Window>, size: Size) {
-        window.clip_regions[0].0.size = size;
+        window.clip_regions[0].rect.size = size;
 
         let vsize = Vec2::conv(size);
         let off = vsize * -0.5;
@@ -143,7 +143,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let mut scale = window.scale;
         let base_offset = (scale[0], scale[1]);
         for (region, bg) in window.clip_regions.iter().zip(self.bg_common.iter()) {
-            let offset = Vec2::conv(region.1);
+            let offset = Vec2::conv(region.offset);
             scale[0] = base_offset.0 - offset.0;
             scale[1] = base_offset.1 - offset.1;
             self.queue
@@ -155,7 +155,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             let (bgl_common, light_norm_buf) = (&self.bgl_common, &self.light_norm_buf);
             self.bg_common
                 .extend(window.clip_regions[bg_len..].iter().map(|region| {
-                    let offset = Vec2::conv(region.1);
+                    let offset = Vec2::conv(region.offset);
                     scale[0] = base_offset.0 - offset.0;
                     scale[1] = base_offset.1 - offset.1;
                     let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -232,8 +232,19 @@ impl<C: CustomPipe> DrawPipe<C> {
             },
         })];
 
+        // Order passes to ensure overlays are drawn after other content
+        let mut passes: Vec<_> = window
+            .clip_regions
+            .iter()
+            .map(|pass| pass.order)
+            .enumerate()
+            .collect();
+        // Note that sorting is stable (does not re-order equal elements):
+        passes.sort_by_key(|pass| pass.1);
+
         // We use a separate render pass for each clipped region.
-        for (pass, (rect, _)) in window.clip_regions.iter().enumerate() {
+        for pass in passes.drain(..).map(|pass| pass.0) {
+            let rect = window.clip_regions[pass].rect;
             if rect.size.0 == 0 || rect.size.1 == 0 {
                 continue;
             }
@@ -276,7 +287,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             color_attachments[0].as_mut().unwrap().ops.load = wgpu::LoadOp::Load;
         }
 
-        let size = window.clip_regions[0].0.size;
+        let size = window.clip_regions[0].rect.size;
 
         self.custom.render_final(
             &mut window.custom,
@@ -403,18 +414,26 @@ impl<CW: CustomWindow> DrawImpl for DrawWindow<CW> {
                 &self.clip_regions[0]
             }
         };
-        let rect = rect - parent.1;
-        let offset = offset + parent.1;
-        let rect = rect.intersection(&parent.0).unwrap_or(Rect::ZERO);
+        let order = match class {
+            PassType::Clip => (parent.order << 4) + 1,
+            PassType::Overlay => (parent.order << 16) + 1,
+        };
+        let rect = rect - parent.offset;
+        let offset = offset + parent.offset;
+        let rect = rect.intersection(&parent.rect).unwrap_or(Rect::ZERO);
         let pass = self.clip_regions.len().cast();
-        self.clip_regions.push((rect, offset));
+        self.clip_regions.push(ClipRegion {
+            rect,
+            offset,
+            order,
+        });
         PassId::new(pass)
     }
 
     #[inline]
     fn get_clip_rect(&self, pass: PassId) -> Rect {
         let region = &self.clip_regions[pass.pass()];
-        region.0 + region.1
+        region.rect + region.offset
     }
 
     #[inline]

@@ -161,13 +161,7 @@ mod Window {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            if self.dec_size != Size::ZERO {
-                draw.frame(self.rect(), FrameStyle::Window, Default::default());
-                if self.bar_h > 0 {
-                    self.title_bar.draw(draw.re());
-                }
-            }
-            self.inner.draw(draw.re());
+            // Draw access keys first to prioritise their access key bindings
             for (_, popup, translation) in &self.popups {
                 if let Some(child) = self.find_tile(&popup.id) {
                     let clip_rect = child.rect() - *translation;
@@ -176,6 +170,14 @@ mod Window {
                     });
                 }
             }
+
+            if self.dec_size != Size::ZERO {
+                draw.frame(self.rect(), FrameStyle::Window, Default::default());
+                if self.bar_h > 0 {
+                    self.title_bar.draw(draw.re());
+                }
+            }
+            self.inner.draw(draw.re());
         }
     }
 
