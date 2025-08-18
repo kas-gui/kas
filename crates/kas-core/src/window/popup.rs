@@ -7,6 +7,7 @@
 
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
+#[allow(unused)] use crate::geom::Rect;
 use crate::layout::Align;
 use crate::window::WindowId;
 use crate::{ChildIndices, Events, Id, Tile, Widget};
@@ -116,11 +117,14 @@ mod Popup {
 
     impl Self {
         /// Construct a popup over a `W: Widget`
-        pub fn new(inner: W, direction: Direction, align: Align) -> Self {
+        ///
+        /// Popup placement is determined by `direction` and alignment (see
+        /// [`Self::align`]).
+        pub fn new(inner: W, direction: Direction) -> Self {
             Popup {
                 core: Default::default(),
                 direction,
-                align,
+                align: Align::Default,
                 inner,
                 win_id: None,
             }
@@ -132,18 +136,35 @@ mod Popup {
         }
 
         /// Set direction
+        ///
+        /// The popup is placed next to a reference [`Rect`] in this
+        /// `direction`, if possible; otherwise it is placed in the opposite
+        /// direction. See also [`Self::align`].
         pub fn set_direction(&mut self, direction: Direction) {
             self.direction = direction;
         }
 
         /// Get alignment
+        #[inline]
         pub fn alignment(&self) -> Align {
             self.align
         }
 
-        /// Set alignment
-        pub fn set_alignment(&mut self, align: Align) {
+        /// Set alignment (inline)
+        ///
+        /// After the popup is placed to one side of a reference [`Rect`] (see
+        /// [`Self::set_direction`]), it is aligned according to `align`:
+        ///
+        /// - [`Align::Default`], [`Align::TL`]: align with the top/left edge of the reference [`Rect`]
+        /// - [`Align::BR`]: align with the bottom/right edge of the reference [`Rect`]
+        /// - [`Align::Center`]: center relative to the reference [`Rect`]
+        /// - [`Align::Stretch`]: align like [`Align::Default`] but ensuring the popup is no shorter
+        ///   than the reference [`Rect`] on the touching side
+        #[must_use]
+        #[inline]
+        pub fn align(mut self, align: Align) -> Self {
             self.align = align;
+            self
         }
 
         /// Query whether the popup is open
@@ -153,8 +174,8 @@ mod Popup {
 
         /// Open or reposition the popup
         ///
-        /// The popup is positioned next to the `parent`'s rect in the specified
-        /// direction (if this is not possible, the direction may be reversed).
+        /// The popup is positioned next to the `parent`'s rect (see [`Self::set_direction`],
+        /// [`Self::align`]).
         ///
         /// The `parent` is marked as depressed (pushed down) while the popup is
         /// open.

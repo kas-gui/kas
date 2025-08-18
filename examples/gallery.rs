@@ -113,7 +113,7 @@ fn widgets() -> Page<AppData> {
         struct {
             core: widget_core!(),
             #[widget] text: Text<Data, String> = format_data!(data: &Data, "{}", &data.text),
-            #[widget(&())] popup: Popup<TextEdit> = Popup::new(TextEdit::new("", true), Direction::Down, Align::TL),
+            #[widget(&())] popup: Popup<TextEdit> = Popup::new(TextEdit::new("", true), Direction::Down),
         }
         impl Events for Self {
             type Data = Data;

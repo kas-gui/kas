@@ -274,7 +274,6 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
                     }
                 }),
                 Direction::Down,
-                Align::TL,
             ),
             active: 0,
             opening: false,

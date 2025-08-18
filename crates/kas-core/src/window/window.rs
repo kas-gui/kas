@@ -303,7 +303,7 @@ impl<Data: 'static> Window<Data> {
             drag_anywhere: true,
             transparent: false,
             inner: ui,
-            tooltip: Popup::new(Label::default(), Direction::Down, Align::Center),
+            tooltip: Popup::new(Label::default(), Direction::Down).align(Align::Center),
             title_bar: TitleBar::new(title),
             b_w: Border::new(ResizeDirection::West),
             b_e: Border::new(ResizeDirection::East),
