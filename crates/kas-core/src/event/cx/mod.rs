@@ -7,7 +7,7 @@
 
 use linear_map::{LinearMap, set::LinearSet};
 use smallvec::SmallVec;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -23,7 +23,7 @@ use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
 use crate::window::{PopupDescriptor, Window, WindowId};
 use crate::{Action, HasId, Id, Node};
-use key::{AccessLayer, PendingSelFocus};
+use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
 #[cfg(feature = "accesskit")] mod accessibility;
@@ -85,7 +85,6 @@ pub struct EventState {
     key_depress: LinearMap<PhysicalKey, Id>,
     mouse: Mouse,
     touch: Touch,
-    access_layers: BTreeMap<Id, AccessLayer>,
     access_keys: HashMap<Key, Id>,
     popups: SmallVec<[PopupState; 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
@@ -128,7 +127,6 @@ impl EventState {
             key_depress: Default::default(),
             mouse: Default::default(),
             touch: Default::default(),
-            access_layers: Default::default(),
             access_keys: Default::default(),
             popups: Default::default(),
             popup_removed: Default::default(),
@@ -169,10 +167,7 @@ impl EventState {
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
 
         // These are recreated during configure:
-        self.access_layers.clear();
         self.nav_fallback = None;
-
-        self.new_access_layer(id.clone(), false);
 
         ConfigCx::new(sizer, self).configure(win.as_node(data), id);
         self.action |= Action::REGION_MOVED;

@@ -125,12 +125,6 @@ mod Button {
 
         type Data = W::Data;
 
-        fn configure(&mut self, cx: &mut ConfigCx) {
-            if let Some(key) = self.key.clone() {
-                cx.add_access_key(self.id_ref(), key);
-            }
-        }
-
         fn handle_event(&mut self, cx: &mut EventCx, data: &W::Data, event: Event) -> IsUsed {
             event.on_click(cx, self.id(), |cx| {
                 if let Some(f) = self.on_press.as_ref() {

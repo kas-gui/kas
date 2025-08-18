@@ -159,10 +159,6 @@ mod AccessLabel {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);
-
-            if let Some(key) = self.text.text().key() {
-                cx.add_access_key(self.id_ref(), key.clone());
-            }
         }
     }
 }

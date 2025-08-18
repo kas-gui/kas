@@ -11,7 +11,6 @@ use crate::event::{Command, Event, FocusSource};
 use crate::util::WidgetHierarchy;
 use crate::{Action, HasId};
 use crate::{Id, Node, geom::Rect, runner::WindowDataErased};
-use std::collections::HashMap;
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
 use winit::window::ImePurpose;
@@ -23,8 +22,6 @@ pub(super) struct PendingSelFocus {
     ime: Option<ImePurpose>,
     source: FocusSource,
 }
-
-pub(super) type AccessLayer = (bool, HashMap<Key, Id>);
 
 impl EventState {
     pub(crate) fn clear_access_key_bindings(&mut self) {
@@ -200,17 +197,6 @@ impl EventState {
         }
     }
 
-    fn access_layer_for_id(&mut self, id: &Id) -> Option<&mut AccessLayer> {
-        let root = &Id::ROOT;
-        for (k, v) in self.access_layers.range_mut(root..=id).rev() {
-            if k.is_ancestor_of(id) {
-                return Some(v);
-            };
-        }
-        debug_assert!(false, "expected ROOT access layer");
-        None
-    }
-
     /// Add a new access key layer
     ///
     /// This method constructs a new "layer" for access keys: any keys
@@ -222,9 +208,7 @@ impl EventState {
     ///
     /// If `alt_bypass` is true, then this layer's access keys will be
     /// active even without Alt pressed (but only highlighted with Alt pressed).
-    pub fn new_access_layer(&mut self, id: Id, alt_bypass: bool) {
-        self.access_layers.insert(id, (alt_bypass, HashMap::new()));
-    }
+    pub fn new_access_layer(&mut self, id: Id, alt_bypass: bool) {}
 
     /// Enable `alt_bypass` for layer
     ///
@@ -233,44 +217,7 @@ impl EventState {
     /// This allows access keys to be used as shortcuts without the Alt
     /// key held. See also [`EventState::new_access_layer`].
     pub fn enable_alt_bypass(&mut self, id: &Id, alt_bypass: bool) {
-        if let Some(layer) = self.access_layer_for_id(id) {
-            layer.0 = alt_bypass;
-        }
-    }
-
-    /// Register `id` as handler of an access `key`
-    ///
-    /// An *access key* (also known as mnemonic) is a shortcut key able to
-    /// directly open menus, activate buttons, etc. By default, when the user
-    /// presses (and holds) key <kbd>Alt</kbd>, access keys in labels will be
-    /// underlined and when the user presses the corresponding key then the
-    /// widget registered as handler for that access key will receive navigation
-    /// focus and [`Command::Activate`].
-    ///
-    /// If `id` itself cannot support navigation focus or handle
-    /// [`Command::Activate`], then ancestors of `id` will have the opportunity
-    /// to receive navigation focus and handle this [`Event::Command`].
-    ///
-    /// If multiple widgets attempt to register themselves as handlers of the
-    /// same `key`, then only the first succeeds.
-    ///
-    /// [`Self::enable_alt_bypass`] allows usage of access keys without
-    /// <kbd>Alt</kbd>.
-    ///
-    /// Note that access keys may be automatically derived from labels:
-    /// see [`crate::text::AccessString`].
-    ///
-    /// Access keys are added to the layer with the longest path which is
-    /// an ancestor of `id`. This usually means that if the widget is part of a
-    /// pop-up, the key is only active when that pop-up is open.
-    /// See [`EventState::new_access_layer`].
-    ///
-    /// This should only be called from [`Events::configure`].
-    #[inline]
-    pub fn add_access_key(&mut self, id: &Id, key: Key) {
-        if let Some(layer) = self.access_layer_for_id(id) {
-            layer.1.entry(key).or_insert_with(|| id.clone());
-        }
+        // TODO
     }
 
     /// End Input Method Editor focus on `target`, if present
@@ -410,23 +357,7 @@ impl<'a> EventCx<'a> {
         }
 
         // Next priority goes to access keys when Alt is held or alt_bypass is true
-        let mut target = None;
-        for id in (self.popups.iter().rev())
-            .filter(|popup| popup.is_sized)
-            .map(|state| state.desc.id.clone())
-            .chain(std::iter::once(widget.id()))
-        {
-            if let Some(layer) = self.access_layers.get(&id) {
-                // but only when Alt is held or alt-bypass is enabled:
-                if (self.modifiers == ModifiersState::ALT
-                    || layer.0 && self.modifiers == ModifiersState::empty())
-                    && let Some(id) = layer.1.get(&vkey).cloned()
-                {
-                    target = Some(id);
-                    break;
-                }
-            }
-        }
+        let target = self.access_keys.get(&vkey).cloned();
 
         if let Some(id) = target {
             self.close_non_ancestors_of(Some(&id));
