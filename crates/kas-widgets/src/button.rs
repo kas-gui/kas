@@ -97,6 +97,15 @@ mod Button {
         }
     }
 
+    impl Layout for Self {
+        fn draw(&self, mut draw: DrawCx) {
+            if let Some(key) = self.key.as_ref() {
+                let _ = draw.access_key(self.id_ref(), key);
+            }
+            kas::MacroDefinedLayout::draw(self, draw);
+        }
+    }
+
     impl Tile for Self {
         fn navigable(&self) -> bool {
             true

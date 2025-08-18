@@ -27,14 +27,21 @@ pub(super) struct PendingSelFocus {
 pub(super) type AccessLayer = (bool, HashMap<Key, Id>);
 
 impl EventState {
-    /// True when access key labels should be shown
-    ///
-    /// (True when Alt is held and no widget has character focus.)
-    ///
-    /// This is a fast check.
-    #[inline]
-    pub fn show_access_labels(&self) -> bool {
-        self.modifiers.alt_key()
+    pub(crate) fn clear_access_key_bindings(&mut self) {
+        self.access_keys.clear();
+    }
+
+    pub(crate) fn add_access_key_binding(&mut self, id: &Id, key: &Key) -> bool {
+        if !self.modifiers.alt_key() {
+            return false;
+        }
+
+        if self.access_keys.contains_key(key) {
+            false
+        } else {
+            self.access_keys.insert(key.clone(), id.clone());
+            true
+        }
     }
 
     /// Get the current modifier state

@@ -7,7 +7,7 @@
 
 use linear_map::{LinearMap, set::LinearSet};
 use smallvec::SmallVec;
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -86,6 +86,7 @@ pub struct EventState {
     mouse: Mouse,
     touch: Touch,
     access_layers: BTreeMap<Id, AccessLayer>,
+    access_keys: HashMap<Key, Id>,
     popups: SmallVec<[PopupState; 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
     time_updates: Vec<(Instant, Id, TimerHandle)>,
@@ -128,6 +129,7 @@ impl EventState {
             mouse: Default::default(),
             touch: Default::default(),
             access_layers: Default::default(),
+            access_keys: Default::default(),
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],

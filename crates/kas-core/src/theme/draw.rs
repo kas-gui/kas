@@ -230,7 +230,7 @@ impl<'a> DrawCx<'a> {
     ///
     /// Returns `true` when the key should be underlined.
     pub fn access_key(&mut self, id: &Id, key: &Key) -> bool {
-        self.ev_state().show_access_labels()
+        self.ev_state().add_access_key_binding(id, key)
     }
 
     /// Draw a frame inside the given `rect`
