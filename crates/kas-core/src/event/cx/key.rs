@@ -29,7 +29,7 @@ impl EventState {
     }
 
     pub(crate) fn add_access_key_binding(&mut self, id: &Id, key: &Key) -> bool {
-        if !self.modifiers.alt_key() {
+        if !self.modifiers.alt_key() && !self.config.alt_bypass {
             return false;
         }
 
@@ -37,7 +37,7 @@ impl EventState {
             false
         } else {
             self.access_keys.insert(key.clone(), id.clone());
-            true
+            self.modifiers.alt_key()
         }
     }
 
@@ -195,29 +195,6 @@ impl EventState {
         if let Some(code) = code.into() {
             inner(self, id.has_id(), code);
         }
-    }
-
-    /// Add a new access key layer
-    ///
-    /// This method constructs a new "layer" for access keys: any keys
-    /// added via [`EventState::add_access_key`] to a widget which is a descentant
-    /// of (or equal to) `id` will only be active when that layer is active.
-    ///
-    /// This method should only be called by parents of a pop-up: layers over
-    /// the base layer are *only* activated by an open pop-up.
-    ///
-    /// If `alt_bypass` is true, then this layer's access keys will be
-    /// active even without Alt pressed (but only highlighted with Alt pressed).
-    pub fn new_access_layer(&mut self, id: Id, alt_bypass: bool) {}
-
-    /// Enable `alt_bypass` for layer
-    ///
-    /// This may be called by a child widget during configure to enable or
-    /// disable alt-bypass for the access-key layer containing its access keys.
-    /// This allows access keys to be used as shortcuts without the Alt
-    /// key held. See also [`EventState::new_access_layer`].
-    pub fn enable_alt_bypass(&mut self, id: &Id, alt_bypass: bool) {
-        // TODO
     }
 
     /// End Input Method Editor focus on `target`, if present

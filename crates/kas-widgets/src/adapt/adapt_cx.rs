@@ -103,17 +103,6 @@ impl<'a: 'b, 'b> AdaptConfigCx<'a, 'b> {
         self.cx.set_disabled(self.id.clone(), state);
     }
 
-    /// Enable `alt_bypass` for layer
-    ///
-    /// This may be called by a child widget during configure to enable or
-    /// disable alt-bypass for the access-key layer containing its access keys.
-    /// This allows access keys to be used as shortcuts without the Alt
-    /// key held. See also [`EventState::new_access_layer`].
-    #[inline]
-    pub fn enable_alt_bypass(&mut self, alt_bypass: bool) {
-        self.cx.enable_alt_bypass(&self.id, alt_bypass);
-    }
-
     /// Schedule a timed update
     ///
     /// Widget updates may be used for delayed action. For animation, prefer to

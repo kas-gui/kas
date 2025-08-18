@@ -51,6 +51,7 @@ mod MessageBox {
         }
     }
 
+    // TODO: call register_nav_fallback and close on Command::Escape, Enter
     impl Events for Self {
         type Data = ();
 
@@ -58,10 +59,6 @@ mod MessageBox {
             if let Some(MessageBoxOk) = cx.try_pop() {
                 cx.action(self, Action::CLOSE);
             }
-        }
-
-        fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.enable_alt_bypass(self.id_ref(), true);
         }
     }
 }

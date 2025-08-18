@@ -65,7 +65,7 @@ struct PopupState {
 // `SmallVec` is used to keep contents in local memory.
 pub struct EventState {
     pub(crate) window_id: WindowId,
-    config: WindowConfig,
+    pub(crate) config: WindowConfig,
     platform: Platform,
     disabled: Vec<Id>,
     window_has_focus: bool,

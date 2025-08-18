@@ -43,6 +43,8 @@ mod Window {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
+        alt_bypass: bool,
+        disable_nav_focus: bool,
         #[widget]
         inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
@@ -223,6 +225,14 @@ mod Window {
                 // usually preferred where supported (e.g. KDE).
                 self.decorations = Decorations::Toolkit;
             }
+
+            if self.alt_bypass {
+                cx.config.alt_bypass = true;
+            }
+
+            if self.disable_nav_focus {
+                cx.config.nav_focus = false;
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
@@ -304,6 +314,8 @@ impl<Data: 'static> Window<Data> {
             restrictions: (true, false),
             drag_anywhere: true,
             transparent: false,
+            alt_bypass: false,
+            disable_nav_focus: false,
             inner: ui,
             tooltip: Popup::new(Label::default(), Direction::Down).align(Align::Center),
             title_bar: TitleBar::new(title),
@@ -421,6 +433,24 @@ impl<Data: 'static> Window<Data> {
     /// Default: `false`.
     pub fn with_transparent(mut self, transparent: bool) -> Self {
         self.transparent = transparent;
+        self
+    }
+
+    /// Enable <kbd>Alt</kbd> bypass
+    ///
+    /// Access keys usually require that <kbd>Alt</kbd> be held. This method
+    /// allows access keys to be activated without holding <kbd>Alt</kbd>.
+    pub fn with_alt_bypass(mut self) -> Self {
+        self.alt_bypass = true;
+        self
+    }
+
+    /// Disable navigation focus
+    ///
+    /// Usually, widgets may be focussed and this focus may be navigated using
+    /// the <kbd>Tab</kbd> key. This method prevents widgets from gaining focus.
+    pub fn without_nav_focus(mut self) -> Self {
+        self.disable_nav_focus = true;
         self
     }
 

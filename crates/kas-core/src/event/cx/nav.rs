@@ -49,23 +49,6 @@ impl PendingNavFocus {
 }
 
 impl EventState {
-    /// Disable or enable navigation focus
-    ///
-    /// When nav focus is disabled, [`EventState::nav_focus`] always returns
-    /// `None`. Any existing focus is immediately cleared. Both
-    /// [`EventState::request_nav_focus`] and [`EventState::next_nav_focus`]
-    /// will fail to do anything. Input such as the <kbd>Tab</kbd> key and mouse
-    /// click will not set navigation focus.
-    pub fn disable_nav_focus(&mut self, disabled: bool) {
-        self.config.nav_focus = !disabled;
-        if disabled {
-            self.pending_nav_focus = PendingNavFocus::Set {
-                target: None,
-                source: FocusSource::Synthetic,
-            };
-        }
-    }
-
     /// Get whether this widget has navigation focus
     #[inline]
     pub fn has_nav_focus(&self, w_id: &Id) -> bool {

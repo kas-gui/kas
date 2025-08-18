@@ -80,10 +80,6 @@ mod Popup {
     impl Events for Self {
         type Data = W::Data;
 
-        fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.new_access_layer(self.id(), true);
-        }
-
         fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
             if self.win_id.is_some() {
                 let id = self.make_child_id(widget_index!(self.inner));
