@@ -160,42 +160,7 @@ mod Window {
             self.inner.set_rect(cx, Rect::new(p_in, s_in), hints);
         }
 
-        fn draw(&self, _: DrawCx) {
-            unimplemented!()
-        }
-    }
-
-    impl Self {
-        pub(crate) fn try_probe(&self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            for (_, popup, translation) in self.popups.iter().rev() {
-                if let Some(widget) = self.inner.find_tile(&popup.id)
-                    && let Some(id) = widget.try_probe(coord + *translation)
-                {
-                    return Some(id);
-                }
-            }
-            if self.bar_h > 0
-                && let Some(id) = self.title_bar.try_probe(coord)
-            {
-                return Some(id);
-            }
-            self.inner
-                .try_probe(coord)
-                .or_else(|| self.b_w.try_probe(coord))
-                .or_else(|| self.b_e.try_probe(coord))
-                .or_else(|| self.b_n.try_probe(coord))
-                .or_else(|| self.b_s.try_probe(coord))
-                .or_else(|| self.b_nw.try_probe(coord))
-                .or_else(|| self.b_ne.try_probe(coord))
-                .or_else(|| self.b_sw.try_probe(coord))
-                .or_else(|| self.b_se.try_probe(coord))
-                .or_else(|| Some(self.id()))
-        }
-
-        pub(crate) fn draw(&self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.rect(), FrameStyle::Window, Default::default());
                 if self.bar_h > 0 {
@@ -217,6 +182,32 @@ mod Window {
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Window
+        }
+
+        fn probe(&self, coord: Coord) -> Id {
+            for (_, popup, translation) in self.popups.iter().rev() {
+                if let Some(widget) = self.inner.find_tile(&popup.id)
+                    && let Some(id) = widget.try_probe(coord + *translation)
+                {
+                    return id;
+                }
+            }
+            if self.bar_h > 0
+                && let Some(id) = self.title_bar.try_probe(coord)
+            {
+                return id;
+            }
+            self.inner
+                .try_probe(coord)
+                .or_else(|| self.b_w.try_probe(coord))
+                .or_else(|| self.b_e.try_probe(coord))
+                .or_else(|| self.b_n.try_probe(coord))
+                .or_else(|| self.b_s.try_probe(coord))
+                .or_else(|| self.b_nw.try_probe(coord))
+                .or_else(|| self.b_ne.try_probe(coord))
+                .or_else(|| self.b_sw.try_probe(coord))
+                .or_else(|| self.b_se.try_probe(coord))
+                .unwrap_or_else(|| self.id())
         }
     }
 
