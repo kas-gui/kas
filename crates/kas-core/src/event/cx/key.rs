@@ -422,9 +422,12 @@ impl<'a> EventCx<'a> {
         }
 
         if let Some(id) = target {
+            self.close_non_ancestors_of(Some(&id));
+
             if let Some(id) = self.nav_next(widget.re(), Some(&id), NavAdvance::None) {
                 self.set_nav_focus(id, FocusSource::Key);
             }
+
             let event = Event::Command(Command::Activate, Some(code));
             self.send_event(widget, id, event);
         } else if self.config.nav_focus && opt_cmd == Some(Command::Tab) {
