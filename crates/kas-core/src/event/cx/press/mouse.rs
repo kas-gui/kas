@@ -6,11 +6,13 @@
 //! Event handling: mouse events
 
 use super::{GrabMode, Press, PressSource, velocity};
-use crate::event::{Event, EventCx, EventState, FocusSource, PressStart, ScrollDelta, TimerHandle};
+use crate::event::{
+    Event, EventCx, EventState, FocusSource, NavAdvance, PressStart, ScrollDelta, TimerHandle,
+};
 use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::Window;
 use crate::window::WindowErased;
-use crate::{Action, Id, Layout, NavAdvance, Node, TileExt, Widget};
+use crate::{Action, Id, Layout, Node, TileExt, Widget};
 use cast::{CastApprox, CastFloat};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};

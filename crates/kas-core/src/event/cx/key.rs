@@ -5,12 +5,12 @@
 
 //! Event context: key handling and selection focus
 
-use super::{EventCx, EventState};
+use super::{EventCx, EventState, NavAdvance};
 #[allow(unused)] use crate::Events;
 use crate::event::{Command, Event, FocusSource};
 use crate::util::WidgetHierarchy;
 use crate::{Action, HasId};
-use crate::{Id, NavAdvance, Node, geom::Rect, runner::WindowDataErased};
+use crate::{Id, Node, geom::Rect, runner::WindowDataErased};
 use std::collections::HashMap;
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};

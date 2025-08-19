@@ -366,7 +366,7 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
             cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
             focus: Option<&::kas::Id>,
-            advance: ::kas::NavAdvance,
+            advance: ::kas::event::NavAdvance,
         ) -> Option<::kas::Id> {
             #map_data
             self.#inner._nav_next(cx, data, focus, advance)

@@ -6,7 +6,6 @@
 //! Event context state
 
 use linear_map::{LinearMap, set::LinearSet};
-pub(crate) use press::{Mouse, Touch};
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, VecDeque};
 use std::future::Future;
@@ -35,7 +34,9 @@ mod send;
 mod timer;
 mod window;
 
+pub use nav::NavAdvance;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource, PressStart};
+pub(crate) use press::{Mouse, Touch};
 pub use timer::TimerHandle;
 
 struct PopupState {

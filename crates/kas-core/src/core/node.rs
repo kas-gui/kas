@@ -6,12 +6,12 @@
 //! Node API for widgets
 
 use super::Widget;
-use crate::event::{ConfigCx, Event, EventCx, IsUsed};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed, NavAdvance};
 use crate::geom::Rect;
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::SizeCx;
 use crate::util::IdentifyWidget;
-use crate::{Id, NavAdvance, Tile};
+use crate::{Id, Tile};
 
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeT {

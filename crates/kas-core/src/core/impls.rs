@@ -5,8 +5,8 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused};
-use crate::{Events, Id, NavAdvance, Node, Tile, Widget};
+use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, NavAdvance, Scroll, Unused};
+use crate::{Events, Id, Node, Tile, Widget};
 
 /// Generic implementation of [`Widget::_send`]
 #[inline(always)]
