@@ -393,7 +393,9 @@ mod Slider {
             }
 
             match cx.try_pop() {
-                Some(GripMsg::PressStart) => cx.set_nav_focus(self.id(), FocusSource::Synthetic),
+                Some(GripMsg::PressStart) => {
+                    cx.request_nav_focus(self.id(), FocusSource::Synthetic)
+                }
                 Some(GripMsg::PressMove(pos)) => {
                     self.apply_grip_offset(cx, data, pos);
                 }

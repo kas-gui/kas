@@ -425,14 +425,14 @@ impl<'a> EventCx<'a> {
             self.close_non_ancestors_of(Some(&id));
 
             if let Some(id) = self.nav_next(widget.re(), Some(&id), NavAdvance::None) {
-                self.set_nav_focus(id, FocusSource::Key);
+                self.request_nav_focus(id, FocusSource::Key);
             }
 
             let event = Event::Command(Command::Activate, Some(code));
             self.send_event(widget, id, event);
         } else if self.config.nav_focus && opt_cmd == Some(Command::Tab) {
             let shift = self.modifiers.shift_key();
-            self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
+            self.next_nav_focus(None, shift, FocusSource::Key);
         } else if opt_cmd == Some(Command::Escape)
             && let Some(id) = self.popups.last().map(|desc| desc.id)
         {

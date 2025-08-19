@@ -171,7 +171,7 @@ mod ComboBox {
                     let target = if cond { press.id } else { None };
                     cx.set_grab_depress(press.source, target.clone());
                     if let Some(id) = target {
-                        cx.set_nav_focus(id, FocusSource::Pointer);
+                        cx.request_nav_focus(id, FocusSource::Pointer);
                     }
                     Used
                 }
