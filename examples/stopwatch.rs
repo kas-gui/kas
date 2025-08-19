@@ -24,7 +24,7 @@ struct Timer {
 
 const TIMER: TimerHandle = TimerHandle::new(0, true);
 
-fn make_window() -> impl Widget<Data = ()> {
+fn make_ui() -> impl Widget<Data = ()> {
     let ui = row![
         format_data!(timer: &Timer, "{}.{:03}", timer.elapsed.as_secs(), timer.elapsed.subsec_millis()),
         Button::label_msg("&reset", MsgReset).map_any(),
@@ -32,7 +32,6 @@ fn make_window() -> impl Widget<Data = ()> {
     ];
 
     ui.with_state(Timer::default())
-        .on_configure(|cx, _| cx.enable_alt_bypass(true))
         .on_message(|_, timer, MsgReset| *timer = Timer::default())
         .on_message(|cx, timer, MsgStart| {
             let now = Instant::now();
@@ -56,7 +55,8 @@ fn make_window() -> impl Widget<Data = ()> {
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let window = Window::new(make_window(), "Stopwatch")
+    let window = Window::new(make_ui(), "Stopwatch")
+        .with_alt_bypass()
         .with_decorations(kas::window::Decorations::Border)
         .with_transparent(true)
         .with_restrictions(true, true);

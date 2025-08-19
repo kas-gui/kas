@@ -591,6 +591,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 .update_if_active(|| self.ev_state.accesskit_tree_update(&self.widget))
         }
 
+        self.ev_state.clear_access_key_bindings();
+
         {
             let rect = Rect::new(Coord::ZERO, window.surface.size());
             let draw = window

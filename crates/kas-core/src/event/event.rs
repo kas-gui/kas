@@ -230,33 +230,32 @@ impl<'a> std::ops::AddAssign<Offset> for Event<'a> {
 }
 
 impl<'a> Event<'a> {
-    /// Call `f` on any "activation" event
+    /// Call `f` on "click" or any "activation" event
     ///
-    /// Activation is considered:
+    /// This is a convenience method which calls `f` on any of the following:
     ///
     /// -   Mouse click and release on the same widget
     /// -   Touchscreen press and release on the same widget
     /// -   `Event::Command(cmd, _)` where [`cmd.is_activate()`](Command::is_activate)
     ///
-    /// The method calls [`EventState::depress_with_key`] on activation.
-    pub fn on_activate<F: FnOnce(&mut EventCx) -> IsUsed>(
-        self,
-        cx: &mut EventCx,
-        id: Id,
-        f: F,
-    ) -> IsUsed {
+    /// This method has some side effects:
+    ///
+    /// -   [`Event::PressStart`] is grabbed using [`GrabMode::Click`]
+    /// -   [`Event::Command`] with a key will cause `id` to be depressed until
+    ///     that key is released (see [`EventState::depress_with_key`]).
+    pub fn on_click<F: FnOnce(&mut EventCx)>(self, cx: &mut EventCx, id: Id, f: F) -> IsUsed {
         match self {
             Event::Command(cmd, code) if cmd.is_activate() => {
                 cx.depress_with_key(id, code);
-                f(cx)
+                f(cx);
+                Used
             }
             Event::PressStart(press) if press.is_primary() => press.grab_click(id).complete(cx),
             Event::PressEnd { press, success, .. } => {
                 if success && id == press.id {
-                    f(cx)
-                } else {
-                    Used
+                    f(cx);
                 }
+                Used
             }
             _ => Unused,
         }
@@ -355,7 +354,7 @@ pub enum Command {
     /// Programmatic activation
     ///
     /// A synthetic event to activate widgets. Consider matching
-    /// [`Command::is_activate`] or using using [`Event::on_activate`]
+    /// [`Command::is_activate`] or using using [`Event::on_click`]
     /// instead for generally applicable activation.
     Activate,
     /// Return / enter key

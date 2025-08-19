@@ -92,6 +92,7 @@ pub struct WindowConfig {
     pub(super) kinetic_decay_sub: f32,
     pub(super) scroll_dist: f32,
     pub(super) pan_dist_thresh: f32,
+    pub(crate) alt_bypass: bool,
     /// Whether navigation focus is enabled for this application window
     pub(crate) nav_focus: bool,
 }
@@ -107,6 +108,7 @@ impl WindowConfig {
             kinetic_decay_sub: f32::NAN,
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
+            alt_bypass: false,
             nav_focus: true,
         }
     }

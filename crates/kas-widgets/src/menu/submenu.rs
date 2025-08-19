@@ -7,7 +7,7 @@
 
 use super::{BoxedMenu, Menu, SubItems};
 use crate::{AccessLabel, Mark};
-use kas::event::{Command, FocusSource};
+use kas::event::FocusSource;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::messages::{Activate, Collapse, Expand};
 use kas::prelude::*;
@@ -59,7 +59,7 @@ mod SubMenu {
                 core: Default::default(),
                 label: AccessLabel::new(label).with_class(TextClass::MenuLabel),
                 mark: Mark::new(MarkStyle::Chevron(direction), "Open"),
-                popup: Popup::new(MenuView::new(list), direction, Align::TL),
+                popup: Popup::new(MenuView::new(list), direction),
             }
         }
 

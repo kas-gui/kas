@@ -629,9 +629,9 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         fn_set_rect = quote! {
             fn set_rect(
                 &mut self,
-                cx: &mut ::kas::event::ConfigCx,
+                _: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
-                hints: ::kas::layout::AlignHints,
+                _: ::kas::layout::AlignHints,
             ) {
                 #[cfg(debug_assertions)]
                 #core_path.status.set_rect(&#core_path._id);
@@ -1011,7 +1011,7 @@ fn widget_nav_next() -> Toks {
             cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
             focus: Option<&::kas::Id>,
-            advance: ::kas::NavAdvance,
+            advance: ::kas::event::NavAdvance,
         ) -> Option<::kas::Id> {
             ::kas::impls::_nav_next(self, cx, data, focus, advance)
         }

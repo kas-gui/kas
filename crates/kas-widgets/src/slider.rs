@@ -6,7 +6,7 @@
 //! `Slider` control
 
 use super::{GripMsg, GripPart};
-use kas::event::{Command, FocusSource};
+use kas::event::FocusSource;
 use kas::messages::{DecrementStep, IncrementStep, SetValueF64};
 use kas::prelude::*;
 use kas::theme::Feature;
@@ -393,7 +393,9 @@ mod Slider {
             }
 
             match cx.try_pop() {
-                Some(GripMsg::PressStart) => cx.set_nav_focus(self.id(), FocusSource::Synthetic),
+                Some(GripMsg::PressStart) => {
+                    cx.request_nav_focus(self.id(), FocusSource::Synthetic)
+                }
                 Some(GripMsg::PressMove(pos)) => {
                     self.apply_grip_offset(cx, data, pos);
                 }

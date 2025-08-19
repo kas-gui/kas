@@ -14,7 +14,7 @@
 //! and their design is likely to change.
 
 use crate::{Button, EditBox, Filler, Label, adapt::AdaptWidgetAny};
-use kas::event::{Command, NamedKey};
+use kas::event::NamedKey;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 
@@ -51,6 +51,7 @@ mod MessageBox {
         }
     }
 
+    // TODO: call register_nav_fallback and close on Command::Escape, Enter
     impl Events for Self {
         type Data = ();
 
@@ -58,10 +59,6 @@ mod MessageBox {
             if let Some(MessageBoxOk) = cx.try_pop() {
                 cx.action(self, Action::CLOSE);
             }
-        }
-
-        fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.enable_alt_bypass(self.id_ref(), true);
         }
     }
 }

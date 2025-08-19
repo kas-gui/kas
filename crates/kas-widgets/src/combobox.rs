@@ -7,7 +7,7 @@
 
 use crate::adapt::AdaptEvents;
 use crate::{Column, Label, Mark, menu::MenuEntry};
-use kas::event::{Command, FocusSource};
+use kas::event::FocusSource;
 use kas::messages::{Collapse, Expand, SetIndex};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
@@ -171,7 +171,7 @@ mod ComboBox {
                     let target = if cond { press.id } else { None };
                     cx.set_grab_depress(press.source, target.clone());
                     if let Some(id) = target {
-                        cx.set_nav_focus(id, FocusSource::Pointer);
+                        cx.request_nav_focus(id, FocusSource::Pointer);
                     }
                     Used
                 }
@@ -274,7 +274,6 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
                     }
                 }),
                 Direction::Down,
-                Align::TL,
             ),
             active: 0,
             opening: false,

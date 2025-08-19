@@ -43,6 +43,8 @@ mod Window {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
+        alt_bypass: bool,
+        disable_nav_focus: bool,
         #[widget]
         inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
@@ -161,13 +163,7 @@ mod Window {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            if self.dec_size != Size::ZERO {
-                draw.frame(self.rect(), FrameStyle::Window, Default::default());
-                if self.bar_h > 0 {
-                    self.title_bar.draw(draw.re());
-                }
-            }
-            self.inner.draw(draw.re());
+            // Draw access keys first to prioritise their access key bindings
             for (_, popup, translation) in &self.popups {
                 if let Some(child) = self.find_tile(&popup.id) {
                     let clip_rect = child.rect() - *translation;
@@ -176,6 +172,14 @@ mod Window {
                     });
                 }
             }
+
+            if self.dec_size != Size::ZERO {
+                draw.frame(self.rect(), FrameStyle::Window, Default::default());
+                if self.bar_h > 0 {
+                    self.title_bar.draw(draw.re());
+                }
+            }
+            self.inner.draw(draw.re());
         }
     }
 
@@ -220,6 +224,14 @@ mod Window {
                 // TODO: Wayland has extensions for this; server-side is still
                 // usually preferred where supported (e.g. KDE).
                 self.decorations = Decorations::Toolkit;
+            }
+
+            if self.alt_bypass {
+                cx.config.alt_bypass = true;
+            }
+
+            if self.disable_nav_focus {
+                cx.config.nav_focus = false;
             }
         }
 
@@ -302,8 +314,10 @@ impl<Data: 'static> Window<Data> {
             restrictions: (true, false),
             drag_anywhere: true,
             transparent: false,
+            alt_bypass: false,
+            disable_nav_focus: false,
             inner: ui,
-            tooltip: Popup::new(Label::default(), Direction::Down, Align::Center),
+            tooltip: Popup::new(Label::default(), Direction::Down).align(Align::Center),
             title_bar: TitleBar::new(title),
             b_w: Border::new(ResizeDirection::West),
             b_e: Border::new(ResizeDirection::East),
@@ -419,6 +433,24 @@ impl<Data: 'static> Window<Data> {
     /// Default: `false`.
     pub fn with_transparent(mut self, transparent: bool) -> Self {
         self.transparent = transparent;
+        self
+    }
+
+    /// Enable <kbd>Alt</kbd> bypass
+    ///
+    /// Access keys usually require that <kbd>Alt</kbd> be held. This method
+    /// allows access keys to be activated without holding <kbd>Alt</kbd>.
+    pub fn with_alt_bypass(mut self) -> Self {
+        self.alt_bypass = true;
+        self
+    }
+
+    /// Disable navigation focus
+    ///
+    /// Usually, widgets may be focussed and this focus may be navigated using
+    /// the <kbd>Tab</kbd> key. This method prevents widgets from gaining focus.
+    pub fn without_nav_focus(mut self) -> Self {
+        self.disable_nav_focus = true;
         self
     }
 

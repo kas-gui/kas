@@ -46,10 +46,7 @@ mod CheckBox {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
-            event.on_activate(cx, self.id(), |cx| {
-                self.toggle(cx, data);
-                Used
-            })
+            event.on_click(cx, self.id(), |cx| self.toggle(cx, data))
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
@@ -240,15 +237,12 @@ mod CheckButton {
             let id = self.make_child_id(widget_index!(self.inner));
             if id.is_valid() {
                 cx.configure(self.inner.as_node(data), id);
-
-                if let Some(key) = self.label.access_key() {
-                    cx.add_access_key(self.inner.id_ref(), key.clone());
-                }
             }
 
             let id = self.make_child_id(widget_index!(self.label));
             if id.is_valid() {
                 cx.configure(self.label.as_node(&()), id);
+                self.label.set_target(self.inner.id());
             }
         }
 

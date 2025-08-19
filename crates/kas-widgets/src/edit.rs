@@ -7,7 +7,7 @@
 
 use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, ElementState, FocusSource, ImePurpose, PhysicalKey, Scroll};
+use kas::event::{CursorIcon, ElementState, FocusSource, ImePurpose, PhysicalKey, Scroll};
 use kas::geom::Vec2;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;

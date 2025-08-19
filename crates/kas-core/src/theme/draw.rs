@@ -5,15 +5,18 @@
 
 //! Widget-facing high-level draw API
 
-use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, TextClass, ThemeSize};
-#[allow(unused)] use crate::Layout;
+use winit::keyboard::Key;
+
+use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::color::{ParseError, Rgb};
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
+#[allow(unused)] use crate::event::{Command, Event};
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{Effect, TextDisplay, format::FormattableText};
 use crate::{Id, Tile, autoimpl};
+#[allow(unused)] use crate::{Layout, theme::TextClass};
 use std::ops::Range;
 use std::time::Instant;
 
@@ -72,6 +75,7 @@ impl std::str::FromStr for Background {
 ///
 /// -   `draw.check_box(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
+#[autoimpl(Debug ignore self.h)]
 pub struct DrawCx<'a> {
     h: &'a mut dyn ThemeDraw,
     id: Id,
@@ -206,6 +210,27 @@ impl<'a> DrawCx<'a> {
         self.h.get_clip_rect()
     }
 
+    /// Register widget `id` as handler of an access `key`
+    ///
+    /// An *access key* (also known as mnemonic) is a shortcut key able to
+    /// directly open menus, activate buttons, etc. Usually this requires that
+    /// the <kbd>Alt</kbd> is held, though
+    /// [alt-bypass mode](crate::window::Window::with_alt_bypass) is available.
+    ///
+    /// The widget `id` is bound to the given `key`, if available. When the
+    /// access key is pressed (assuming that this binding succeeds), widget `id`
+    /// will receive navigation focus (if supported; otherwise an ancestor may
+    /// receive focus) and is sent [`Command::Activate`] (likewise, an ancestor
+    /// may handle this if widget `id` does not).
+    ///
+    /// If multiple widgets attempt to register themselves as handlers of the
+    /// same `key`, then only the first succeeds.
+    ///
+    /// Returns `true` when the key should be underlined.
+    pub fn access_key(&mut self, id: &Id, key: &Key) -> bool {
+        self.ev_state().add_access_key_binding(id, key)
+    }
+
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions are given by [`SizeCx::frame`].
@@ -239,13 +264,25 @@ impl<'a> DrawCx<'a> {
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
         let effects = text.effect_tokens();
-        let class = text.class();
+        self.text_with_effects(rect, text, effects);
+    }
+
+    /// Draw text with a given effect list
+    ///
+    /// This method is similar to [`Self::text`] except that an effect list is
+    /// passed explicitly instead of inferred from `text`.
+    pub fn text_with_effects<T: FormattableText>(
+        &mut self,
+        rect: Rect,
+        text: &Text<T>,
+        effects: &[Effect<()>],
+    ) {
         if let Ok(display) = text.display() {
             if effects.is_empty() {
                 // Use the faster and simpler implementation when we don't have effects
-                self.h.text(&self.id, rect, display, class);
+                self.h.text(&self.id, rect, display);
             } else {
-                self.h.text_effects(&self.id, rect, display, effects, class);
+                self.h.text_effects(&self.id, rect, display, effects);
             }
         }
     }
@@ -269,8 +306,7 @@ impl<'a> DrawCx<'a> {
             return;
         };
 
-        self.h
-            .text_selected_range(&self.id, rect, display, range, text.class());
+        self.h.text_selected_range(&self.id, rect, display, range);
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -281,9 +317,8 @@ impl<'a> DrawCx<'a> {
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_cursor<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, byte: usize) {
-        let class = text.class();
         if let Ok(text) = text.display() {
-            self.h.text_cursor(&self.id, rect, text, class, byte);
+            self.h.text_cursor(&self.id, rect, text, byte);
         }
     }
 
@@ -426,7 +461,7 @@ pub trait ThemeDraw {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay, class: TextClass);
+    fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay);
 
     /// Draw text with effects
     ///
@@ -437,43 +472,18 @@ pub trait ThemeDraw {
     /// If `effects` is empty or all [`Effect::flags`] are default then it is
     /// equivalent (and faster) to call [`Self::text`] instead.
     ///
-    /// Special effect: if `class` is [`TextClass::AccessLabel`] then
-    /// underline and strikethrough are only drawn if
-    /// [`EventState::show_access_labels`].
-    ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_effects(
-        &mut self,
-        id: &Id,
-        rect: Rect,
-        text: &TextDisplay,
-        effects: &[Effect<()>],
-        class: TextClass,
-    );
+    fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect<()>]);
 
     /// Method used to implement [`DrawCx::text_selected`]
-    fn text_selected_range(
-        &mut self,
-        id: &Id,
-        rect: Rect,
-        text: &TextDisplay,
-        range: Range<usize>,
-        class: TextClass,
-    );
+    fn text_selected_range(&mut self, id: &Id, rect: Rect, text: &TextDisplay, range: Range<usize>);
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_cursor(
-        &mut self,
-        id: &Id,
-        rect: Rect,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    );
+    fn text_cursor(&mut self, id: &Id, rect: Rect, text: &TextDisplay, byte: usize);
 
     /// Draw UI element: check box
     ///

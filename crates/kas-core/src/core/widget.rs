@@ -9,26 +9,9 @@
 use super::{Node, Tile};
 use crate::Id;
 #[allow(unused)] use crate::event::EventState;
-use crate::event::{ConfigCx, Event, EventCx, IsUsed};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed, NavAdvance};
 #[allow(unused)] use kas_macros as macros;
 use kas_macros::autoimpl;
-
-/// Action of Widget::_nav_next
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum NavAdvance {
-    /// Match only `focus` if navigable
-    None,
-    /// Walk children forwards, self first
-    ///
-    /// Parameter: whether this can match self (in addition to other widgets).
-    Forward(bool),
-    /// Walk children backwards, self last
-    ///
-    /// Parameter: whether this can match self (in addition to other widgets).
-    Reverse(bool),
-}
 
 /// The Widget trait
 ///

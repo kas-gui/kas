@@ -7,8 +7,25 @@
 
 use super::{EventCx, EventState};
 use crate::event::{Event, FocusSource};
-use crate::{Action, Id, NavAdvance, Node};
+use crate::{Action, Id, Node};
 #[allow(unused)] use crate::{Tile, event::Command};
+
+/// Action of Widget::_nav_next
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum NavAdvance {
+    /// Match only `focus` if navigable
+    None,
+    /// Walk children forwards, self first
+    ///
+    /// Parameter: whether this can match self (in addition to other widgets).
+    Forward(bool),
+    /// Walk children backwards, self last
+    ///
+    /// Parameter: whether this can match self (in addition to other widgets).
+    Reverse(bool),
+}
 
 #[crate::impl_default(PendingNavFocus::None)]
 pub(super) enum PendingNavFocus {
@@ -19,7 +36,7 @@ pub(super) enum PendingNavFocus {
     },
     Next {
         target: Option<Id>,
-        reverse: bool,
+        advance: NavAdvance,
         source: FocusSource,
     },
 }
@@ -32,23 +49,6 @@ impl PendingNavFocus {
 }
 
 impl EventState {
-    /// Disable or enable navigation focus
-    ///
-    /// When nav focus is disabled, [`EventState::nav_focus`] always returns
-    /// `None`. Any existing focus is immediately cleared. Both
-    /// [`EventState::set_nav_focus`] and [`EventState::next_nav_focus`] will fail to
-    /// do anything. Input such as the <kbd>Tab</kbd> key and mouse click
-    /// will not set navigation focus.
-    pub fn disable_nav_focus(&mut self, disabled: bool) {
-        self.config.nav_focus = !disabled;
-        if disabled {
-            self.pending_nav_focus = PendingNavFocus::Set {
-                target: None,
-                source: FocusSource::Synthetic,
-            };
-        }
-    }
-
     /// Get whether this widget has navigation focus
     #[inline]
     pub fn has_nav_focus(&self, w_id: &Id) -> bool {
@@ -60,7 +60,7 @@ impl EventState {
     /// This is the widget selected by navigating the UI with the Tab key.
     ///
     /// Note: changing navigation focus (e.g. via [`Self::clear_nav_focus`],
-    /// [`Self::set_nav_focus`] or [`Self::next_nav_focus`]) does not
+    /// [`Self::request_nav_focus`] or [`Self::next_nav_focus`]) does not
     /// immediately affect the result of this method.
     #[inline]
     pub fn nav_focus(&self) -> Option<&Id> {
@@ -93,6 +93,21 @@ impl EventState {
         }
     }
 
+    /// Request navigation focus directly
+    ///
+    /// If `id` already has navigation focus or navigation focus is disabled
+    /// globally then nothing happens. If widget `id` supports
+    /// [navigation focus](Tile::navigable), then it should receive
+    /// [`Event::NavFocus`]; if not then the first supporting ancestor will
+    /// receive focus.
+    pub fn request_nav_focus(&mut self, id: Id, source: FocusSource) {
+        self.pending_nav_focus = PendingNavFocus::Next {
+            target: Some(id),
+            advance: NavAdvance::None,
+            source,
+        };
+    }
+
     /// Set navigation focus directly
     ///
     /// If `id` already has navigation focus or navigation focus is disabled
@@ -102,7 +117,7 @@ impl EventState {
     /// Normally, [`Tile::navigable`] will return true for widget `id` but this
     /// is not checked or required. For example, a `ScrollLabel` can receive
     /// focus on text selection with the mouse.
-    pub fn set_nav_focus(&mut self, id: Id, source: FocusSource) {
+    pub(crate) fn set_nav_focus(&mut self, id: Id, source: FocusSource) {
         self.pending_nav_focus = PendingNavFocus::Set {
             target: Some(id),
             source,
@@ -124,9 +139,14 @@ impl EventState {
         reverse: bool,
         source: FocusSource,
     ) {
+        let target = target.into();
+        let advance = match reverse {
+            false => NavAdvance::Forward(target.is_some()),
+            true => NavAdvance::Reverse(target.is_some()),
+        };
         self.pending_nav_focus = PendingNavFocus::Next {
-            target: target.into(),
-            reverse,
+            target,
+            advance,
             source,
         };
     }
@@ -170,9 +190,9 @@ impl<'a> EventCx<'a> {
             }
             PendingNavFocus::Next {
                 target,
-                reverse,
+                advance,
                 source,
-            } => self.next_nav_focus_impl(widget, target, reverse, source),
+            } => self.next_nav_focus_impl(widget, target, advance, source),
         }
     }
 
@@ -207,7 +227,7 @@ impl<'a> EventCx<'a> {
         &mut self,
         mut widget: Node,
         target: Option<Id>,
-        reverse: bool,
+        advance: NavAdvance,
         source: FocusSource,
     ) {
         if !self.config.nav_focus || (target.is_some() && target == self.nav_focus) {
@@ -223,7 +243,7 @@ impl<'a> EventCx<'a> {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
             } else if let Some(r) = widget.find_node(&id, |node| {
-                self.next_nav_focus_impl(node, target, reverse, source)
+                self.next_nav_focus_impl(node, target, advance, source)
             }) {
                 return r;
             } else {
@@ -235,11 +255,6 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        let advance = if !reverse {
-            NavAdvance::Forward(target.is_some())
-        } else {
-            NavAdvance::Reverse(target.is_some())
-        };
         let focus = target.or_else(|| self.nav_focus.clone());
 
         // Whether to restart from the beginning on failure

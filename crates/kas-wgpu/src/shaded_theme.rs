@@ -22,7 +22,7 @@ use kas::text::TextDisplay;
 use kas::theme::dimensions as dim;
 use kas::theme::{Background, ThemeDraw, ThemeSize};
 use kas::theme::{ColorsLinear, FlatTheme, InputState, SimpleTheme, Theme};
-use kas::theme::{FrameStyle, MarkStyle, TextClass};
+use kas::theme::{FrameStyle, MarkStyle};
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]

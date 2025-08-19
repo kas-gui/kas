@@ -6,7 +6,6 @@
 //! SpinBox widget
 
 use crate::{EditField, EditGuard, MarkButton};
-use kas::event::Command;
 use kas::messages::{DecrementStep, IncrementStep, ReplaceSelectedText, SetValueF64, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, MarkStyle, Text, TextClass};

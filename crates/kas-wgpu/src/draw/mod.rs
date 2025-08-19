@@ -34,6 +34,23 @@ pub(crate) const RENDER_TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrg
 
 type Scale = [f32; 4];
 
+#[derive(Debug)]
+struct ClipRegion {
+    rect: Rect,
+    offset: Offset,
+    order: u64,
+}
+
+impl Default for ClipRegion {
+    fn default() -> Self {
+        ClipRegion {
+            rect: Rect::ZERO,
+            offset: Offset::ZERO,
+            order: 1,
+        }
+    }
+}
+
 /// Shared pipeline data
 pub struct DrawPipe<C> {
     pub(crate) adapter: wgpu::Adapter,
@@ -57,7 +74,7 @@ kas::impl_scope! {
     pub struct DrawWindow<CW: CustomWindow> {
         pub(crate) common: WindowCommon,
         scale: Scale,
-        clip_regions: Vec<(Rect, Offset)> = vec![Default::default()],
+        clip_regions: Vec<ClipRegion> = vec![Default::default()],
         images: images::Window,
         shaded_square: shaded_square::Window,
         shaded_round: shaded_round::Window,

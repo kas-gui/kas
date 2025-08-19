@@ -5,13 +5,12 @@
 
 //! Event context: key handling and selection focus
 
-use super::{EventCx, EventState};
+use super::{EventCx, EventState, NavAdvance};
 #[allow(unused)] use crate::Events;
 use crate::event::{Command, Event, FocusSource};
 use crate::util::WidgetHierarchy;
 use crate::{Action, HasId};
-use crate::{Id, NavAdvance, Node, geom::Rect, runner::WindowDataErased};
-use std::collections::HashMap;
+use crate::{Id, Node, geom::Rect, runner::WindowDataErased};
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
 use winit::window::ImePurpose;
@@ -24,17 +23,22 @@ pub(super) struct PendingSelFocus {
     source: FocusSource,
 }
 
-pub(super) type AccessLayer = (bool, HashMap<Key, Id>);
-
 impl EventState {
-    /// True when access key labels should be shown
-    ///
-    /// (True when Alt is held and no widget has character focus.)
-    ///
-    /// This is a fast check.
-    #[inline]
-    pub fn show_access_labels(&self) -> bool {
-        self.modifiers.alt_key()
+    pub(crate) fn clear_access_key_bindings(&mut self) {
+        self.access_keys.clear();
+    }
+
+    pub(crate) fn add_access_key_binding(&mut self, id: &Id, key: &Key) -> bool {
+        if !self.modifiers.alt_key() && !self.config.alt_bypass {
+            return false;
+        }
+
+        if self.access_keys.contains_key(key) {
+            false
+        } else {
+            self.access_keys.insert(key.clone(), id.clone());
+            self.modifiers.alt_key()
+        }
     }
 
     /// Get the current modifier state
@@ -193,79 +197,6 @@ impl EventState {
         }
     }
 
-    fn access_layer_for_id(&mut self, id: &Id) -> Option<&mut AccessLayer> {
-        let root = &Id::ROOT;
-        for (k, v) in self.access_layers.range_mut(root..=id).rev() {
-            if k.is_ancestor_of(id) {
-                return Some(v);
-            };
-        }
-        debug_assert!(false, "expected ROOT access layer");
-        None
-    }
-
-    /// Add a new access key layer
-    ///
-    /// This method constructs a new "layer" for access keys: any keys
-    /// added via [`EventState::add_access_key`] to a widget which is a descentant
-    /// of (or equal to) `id` will only be active when that layer is active.
-    ///
-    /// This method should only be called by parents of a pop-up: layers over
-    /// the base layer are *only* activated by an open pop-up.
-    ///
-    /// If `alt_bypass` is true, then this layer's access keys will be
-    /// active even without Alt pressed (but only highlighted with Alt pressed).
-    pub fn new_access_layer(&mut self, id: Id, alt_bypass: bool) {
-        self.access_layers.insert(id, (alt_bypass, HashMap::new()));
-    }
-
-    /// Enable `alt_bypass` for layer
-    ///
-    /// This may be called by a child widget during configure to enable or
-    /// disable alt-bypass for the access-key layer containing its access keys.
-    /// This allows access keys to be used as shortcuts without the Alt
-    /// key held. See also [`EventState::new_access_layer`].
-    pub fn enable_alt_bypass(&mut self, id: &Id, alt_bypass: bool) {
-        if let Some(layer) = self.access_layer_for_id(id) {
-            layer.0 = alt_bypass;
-        }
-    }
-
-    /// Register `id` as handler of an access `key`
-    ///
-    /// An *access key* (also known as mnemonic) is a shortcut key able to
-    /// directly open menus, activate buttons, etc. By default, when the user
-    /// presses (and holds) key <kbd>Alt</kbd>, access keys in labels will be
-    /// underlined and when the user presses the corresponding key then the
-    /// widget registered as handler for that access key will receive navigation
-    /// focus and [`Command::Activate`].
-    ///
-    /// If `id` itself cannot support navigation focus or handle
-    /// [`Command::Activate`], then ancestors of `id` will have the opportunity
-    /// to receive navigation focus and handle this [`Event::Command`].
-    ///
-    /// If multiple widgets attempt to register themselves as handlers of the
-    /// same `key`, then only the first succeeds.
-    ///
-    /// [`Self::enable_alt_bypass`] allows usage of access keys without
-    /// <kbd>Alt</kbd>.
-    ///
-    /// Note that access keys may be automatically derived from labels:
-    /// see [`crate::text::AccessString`].
-    ///
-    /// Access keys are added to the layer with the longest path which is
-    /// an ancestor of `id`. This usually means that if the widget is part of a
-    /// pop-up, the key is only active when that pop-up is open.
-    /// See [`EventState::new_access_layer`].
-    ///
-    /// This should only be called from [`Events::configure`].
-    #[inline]
-    pub fn add_access_key(&mut self, id: &Id, key: Key) {
-        if let Some(layer) = self.access_layer_for_id(id) {
-            layer.1.entry(key).or_insert_with(|| id.clone());
-        }
-    }
-
     /// End Input Method Editor focus on `target`, if present
     #[inline]
     pub fn cancel_ime_focus(&mut self, target: Id) {
@@ -403,33 +334,20 @@ impl<'a> EventCx<'a> {
         }
 
         // Next priority goes to access keys when Alt is held or alt_bypass is true
-        let mut target = None;
-        for id in (self.popups.iter().rev())
-            .filter(|popup| popup.is_sized)
-            .map(|state| state.desc.id.clone())
-            .chain(std::iter::once(widget.id()))
-        {
-            if let Some(layer) = self.access_layers.get(&id) {
-                // but only when Alt is held or alt-bypass is enabled:
-                if (self.modifiers == ModifiersState::ALT
-                    || layer.0 && self.modifiers == ModifiersState::empty())
-                    && let Some(id) = layer.1.get(&vkey).cloned()
-                {
-                    target = Some(id);
-                    break;
-                }
-            }
-        }
+        let target = self.access_keys.get(&vkey).cloned();
 
         if let Some(id) = target {
+            self.close_non_ancestors_of(Some(&id));
+
             if let Some(id) = self.nav_next(widget.re(), Some(&id), NavAdvance::None) {
-                self.set_nav_focus(id, FocusSource::Key);
+                self.request_nav_focus(id, FocusSource::Key);
             }
+
             let event = Event::Command(Command::Activate, Some(code));
             self.send_event(widget, id, event);
         } else if self.config.nav_focus && opt_cmd == Some(Command::Tab) {
             let shift = self.modifiers.shift_key();
-            self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
+            self.next_nav_focus(None, shift, FocusSource::Key);
         } else if opt_cmd == Some(Command::Escape)
             && let Some(id) = self.popups.last().map(|desc| desc.id)
         {

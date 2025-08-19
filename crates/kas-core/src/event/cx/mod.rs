@@ -6,9 +6,8 @@
 //! Event context state
 
 use linear_map::{LinearMap, set::LinearSet};
-pub(crate) use press::{Mouse, Touch};
 use smallvec::SmallVec;
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -24,7 +23,7 @@ use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
 use crate::window::{PopupDescriptor, Window, WindowId};
 use crate::{Action, HasId, Id, Node};
-use key::{AccessLayer, PendingSelFocus};
+use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
 #[cfg(feature = "accesskit")] mod accessibility;
@@ -35,7 +34,9 @@ mod send;
 mod timer;
 mod window;
 
+pub use nav::NavAdvance;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource, PressStart};
+pub(crate) use press::{Mouse, Touch};
 pub use timer::TimerHandle;
 
 struct PopupState {
@@ -64,7 +65,7 @@ struct PopupState {
 // `SmallVec` is used to keep contents in local memory.
 pub struct EventState {
     pub(crate) window_id: WindowId,
-    config: WindowConfig,
+    pub(crate) config: WindowConfig,
     platform: Platform,
     disabled: Vec<Id>,
     window_has_focus: bool,
@@ -84,7 +85,7 @@ pub struct EventState {
     key_depress: LinearMap<PhysicalKey, Id>,
     mouse: Mouse,
     touch: Touch,
-    access_layers: BTreeMap<Id, AccessLayer>,
+    access_keys: HashMap<Key, Id>,
     popups: SmallVec<[PopupState; 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
     time_updates: Vec<(Instant, Id, TimerHandle)>,
@@ -126,7 +127,7 @@ impl EventState {
             key_depress: Default::default(),
             mouse: Default::default(),
             touch: Default::default(),
-            access_layers: Default::default(),
+            access_keys: Default::default(),
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
@@ -166,10 +167,7 @@ impl EventState {
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
 
         // These are recreated during configure:
-        self.access_layers.clear();
         self.nav_fallback = None;
-
-        self.new_access_layer(id.clone(), false);
 
         ConfigCx::new(sizer, self).configure(win.as_node(data), id);
         self.action |= Action::REGION_MOVED;
