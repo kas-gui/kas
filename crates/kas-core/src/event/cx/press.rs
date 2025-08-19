@@ -312,16 +312,17 @@ impl GrabBuilder {
             cursor,
         } = self;
         log::trace!(target: "kas_core::event", "grab_press: start_id={id}, source={source:?}");
-        let success;
-        if let Some(button) = source.mouse_button() {
-            success = cx
-                .mouse
-                .start_grab(button, source.repetitions(), id.clone(), position, mode);
-            if success && let Some(icon) = cursor {
-                cx.window.set_cursor_icon(icon);
-            }
+        let success = if let Some(button) = source.mouse_button() {
+            cx.mouse.start_grab(
+                button,
+                source.repetitions(),
+                id.clone(),
+                position,
+                mode,
+                cursor.unwrap_or_default(),
+            )
         } else if let Some(touch_id) = source.touch_id() {
-            success = cx.touch.start_grab(touch_id, id.clone(), position, mode)
+            cx.touch.start_grab(touch_id, id.clone(), position, mode)
         } else {
             unreachable!()
         };
@@ -472,10 +473,10 @@ impl<'a> EventCx<'a> {
     /// [`PressStart::grab`]). The cursor will be reset when the mouse-grab
     /// ends.
     pub fn set_grab_cursor(&mut self, id: &Id, icon: CursorIcon) {
-        if let Some(ref grab) = self.mouse.grab
+        if let Some(grab) = self.mouse.grab.as_mut()
             && grab.start_id == *id
         {
-            self.window.set_cursor_icon(icon);
+            grab.icon = icon;
         }
     }
 }
