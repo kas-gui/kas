@@ -7,8 +7,7 @@
 
 use winit::keyboard::Key;
 
-use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, TextClass, ThemeSize};
-#[allow(unused)] use crate::Layout;
+use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::color::{ParseError, Rgb};
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
@@ -17,6 +16,7 @@ use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{Effect, TextDisplay, format::FormattableText};
 use crate::{Id, Tile, autoimpl};
+#[allow(unused)] use crate::{Layout, theme::TextClass};
 use std::ops::Range;
 use std::time::Instant;
 
@@ -277,13 +277,12 @@ impl<'a> DrawCx<'a> {
         text: &Text<T>,
         effects: &[Effect<()>],
     ) {
-        let class = text.class();
         if let Ok(display) = text.display() {
             if effects.is_empty() {
                 // Use the faster and simpler implementation when we don't have effects
-                self.h.text(&self.id, rect, display, class);
+                self.h.text(&self.id, rect, display);
             } else {
-                self.h.text_effects(&self.id, rect, display, effects, class);
+                self.h.text_effects(&self.id, rect, display, effects);
             }
         }
     }
@@ -307,8 +306,7 @@ impl<'a> DrawCx<'a> {
             return;
         };
 
-        self.h
-            .text_selected_range(&self.id, rect, display, range, text.class());
+        self.h.text_selected_range(&self.id, rect, display, range);
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -319,9 +317,8 @@ impl<'a> DrawCx<'a> {
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_cursor<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, byte: usize) {
-        let class = text.class();
         if let Ok(text) = text.display() {
-            self.h.text_cursor(&self.id, rect, text, class, byte);
+            self.h.text_cursor(&self.id, rect, text, byte);
         }
     }
 
@@ -464,7 +461,7 @@ pub trait ThemeDraw {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay, class: TextClass);
+    fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay);
 
     /// Draw text with effects
     ///
@@ -477,37 +474,16 @@ pub trait ThemeDraw {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_effects(
-        &mut self,
-        id: &Id,
-        rect: Rect,
-        text: &TextDisplay,
-        effects: &[Effect<()>],
-        class: TextClass,
-    );
+    fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect<()>]);
 
     /// Method used to implement [`DrawCx::text_selected`]
-    fn text_selected_range(
-        &mut self,
-        id: &Id,
-        rect: Rect,
-        text: &TextDisplay,
-        range: Range<usize>,
-        class: TextClass,
-    );
+    fn text_selected_range(&mut self, id: &Id, rect: Rect, text: &TextDisplay, range: Range<usize>);
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_cursor(
-        &mut self,
-        id: &Id,
-        rect: Rect,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    );
+    fn text_cursor(&mut self, id: &Id, rect: Rect, text: &TextDisplay, byte: usize);
 
     /// Draw UI element: check box
     ///

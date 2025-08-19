@@ -19,7 +19,7 @@ use crate::event::EventState;
 use crate::geom::*;
 use crate::text::{Effect, TextDisplay};
 use crate::theme::dimensions as dim;
-use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{SelectionStyle, ThemeDraw, ThemeSize};
 
@@ -319,7 +319,7 @@ where
         }
     }
 
-    fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay, _: TextClass) {
+    fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -328,14 +328,7 @@ where
         self.draw.text(rect, text, col);
     }
 
-    fn text_effects(
-        &mut self,
-        id: &Id,
-        rect: Rect,
-        text: &TextDisplay,
-        effects: &[Effect<()>],
-        _: TextClass,
-    ) {
+    fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect<()>]) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -350,7 +343,6 @@ where
         rect: Rect,
         text: &TextDisplay,
         range: Range<usize>,
-        _: TextClass,
     ) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
@@ -389,7 +381,7 @@ where
         self.draw.text_effects_rgba(rect, text, &effects);
     }
 
-    fn text_cursor(&mut self, id: &Id, rect: Rect, text: &TextDisplay, _: TextClass, byte: usize) {
+    fn text_cursor(&mut self, id: &Id, rect: Rect, text: &TextDisplay, byte: usize) {
         if self.ev.window_has_focus() && !self.w.anim.text_cursor(self.draw.draw, id, byte) {
             return;
         }

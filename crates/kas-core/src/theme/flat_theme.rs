@@ -20,7 +20,7 @@ use crate::event::EventState;
 use crate::geom::*;
 use crate::text::TextDisplay;
 use crate::theme::dimensions as dim;
-use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{ThemeDraw, ThemeSize};
 
