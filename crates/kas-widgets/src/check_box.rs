@@ -31,6 +31,31 @@ mod CheckBox {
         on_toggle: Option<Box<dyn Fn(&mut EventCx, &A, bool)>>,
     }
 
+    impl Layout for Self {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            sizer.feature(Feature::CheckBox, axis)
+        }
+
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            let rect = cx.align_feature(Feature::CheckBox, rect, hints.complete_center());
+            widget_set_rect!(rect);
+        }
+
+        fn draw(&self, mut draw: DrawCx) {
+            draw.check_box(self.rect(), self.state, self.last_change);
+        }
+    }
+
+    impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::CheckBox(self.state)
+        }
+    }
+
     impl Events for Self {
         const REDRAW_ON_MOUSE_OVER: bool = true;
 
@@ -54,31 +79,6 @@ mod CheckBox {
                 self.toggle(cx, data);
                 cx.depress_with_key(&self, code);
             }
-        }
-    }
-
-    impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer.feature(Feature::CheckBox, axis)
-        }
-
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            let rect = cx.align_feature(Feature::CheckBox, rect, hints.complete_center());
-            widget_set_rect!(rect);
-        }
-
-        fn draw(&self, mut draw: DrawCx) {
-            draw.check_box(self.rect(), self.state, self.last_change);
-        }
-    }
-
-    impl Tile for Self {
-        fn navigable(&self) -> bool {
-            true
-        }
-
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::CheckBox(self.state)
         }
     }
 

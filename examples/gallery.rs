@@ -611,6 +611,8 @@ fn filter_list() -> Page<AppData> {
                 ScrollBars::new(ListView::new(clerk, driver::View).with_num_visible(24)),
         }
 
+        impl Layout for Self {}
+
         impl Events for Self {
             type Data = Data;
 
@@ -626,8 +628,6 @@ fn filter_list() -> Page<AppData> {
                 }
             }
         }
-
-        impl Layout for Self {}
     };
 
     let sel_buttons = row![

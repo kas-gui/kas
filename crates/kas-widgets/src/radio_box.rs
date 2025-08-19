@@ -30,32 +30,6 @@ mod RadioBox {
         on_select: Option<Box<dyn Fn(&mut EventCx, &A)>>,
     }
 
-    impl Events for Self {
-        const REDRAW_ON_MOUSE_OVER: bool = true;
-
-        type Data = A;
-
-        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            let new_state = (self.state_fn)(cx, data);
-            if self.state != new_state {
-                self.state = new_state;
-                self.last_change = Some(Instant::now());
-                cx.redraw(self);
-            }
-        }
-
-        fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
-            event.on_click(cx, self.id(), |cx| self.select(cx, data))
-        }
-
-        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
-            if let Some(kas::messages::Activate(code)) = cx.try_pop() {
-                self.select(cx, data);
-                cx.depress_with_key(&self, code);
-            }
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.feature(Feature::RadioBox, axis)
@@ -79,6 +53,32 @@ mod RadioBox {
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::RadioButton(self.state)
+        }
+    }
+
+    impl Events for Self {
+        const REDRAW_ON_MOUSE_OVER: bool = true;
+
+        type Data = A;
+
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
+            let new_state = (self.state_fn)(cx, data);
+            if self.state != new_state {
+                self.state = new_state;
+                self.last_change = Some(Instant::now());
+                cx.redraw(self);
+            }
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
+            event.on_click(cx, self.id(), |cx| self.select(cx, data))
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
+            if let Some(kas::messages::Activate(code)) = cx.try_pop() {
+                self.select(cx, data);
+                cx.depress_with_key(&self, code);
+            }
         }
     }
 

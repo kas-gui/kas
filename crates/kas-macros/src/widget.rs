@@ -443,60 +443,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
     };
 
-    if let Some(index) = widget_impl {
-        let widget_impl = &mut scope.impls[index];
-        let item_idents = collect_idents(widget_impl);
-        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
-
-        // If the user impls Widget, they must supply type Data and fn child_node
-
-        // Always impl fn as_node
-        widget_impl.items.push(Verbatim(widget_as_node()));
-
-        if !has_item("child_node") {
-            if let Some(method) = fn_child_node {
-                widget_impl.items.push(Verbatim(method));
-            } else {
-                emit_error!(
-                    widget_impl, "refusing to generate fn child_node";
-                    note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
-                );
-            }
-        }
-
-        if !has_item("_send") {
-            widget_impl
-                .items
-                .push(Verbatim(widget_recursive_methods(&core_path)));
-        }
-
-        if !has_item("_nav_next") {
-            widget_impl.items.push(Verbatim(widget_nav_next()));
-        }
-    } else {
-        let fns_as_node = widget_as_node();
-
-        if fn_child_node.is_none() {
-            emit_error!(
-                attr_span, "refusing to generate fn Widget::child_node";
-                note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
-            );
-        }
-
-        let fns_recurse = widget_recursive_methods(&core_path);
-        let fn_nav_next = widget_nav_next();
-
-        scope.generated.push(quote_spanned! {attr_span=>
-            impl #impl_generics ::kas::Widget for #impl_target {
-                #ty_data
-                #fns_as_node
-                #fn_child_node
-                #fns_recurse
-                #fn_nav_next
-            }
-        });
-    }
-
     let fn_nav_next;
     let fn_rect;
     let mut fn_size_rules = None;
@@ -662,46 +608,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             #probe
         }
     };
-
-    let fn_handle_event = quote! {
-            fn handle_event(
-            &mut self,
-            _: &mut ::kas::event::EventCx,
-            _: &Self::Data,
-            _: ::kas::event::Event,
-        ) -> ::kas::event::IsUsed {
-            #require_rect
-            ::kas::event::Unused
-        }
-    };
-
-    if let Some(index) = events_impl {
-        let events_impl = &mut scope.impls[index];
-        let item_idents = collect_idents(events_impl);
-
-        if let Some((index, _)) = item_idents
-            .iter()
-            .find(|(_, ident)| *ident == "handle_event")
-        {
-            if let ImplItem::Fn(f) = &mut events_impl.items[*index] {
-                f.block.stmts.insert(0, require_rect);
-            }
-        } else {
-            events_impl.items.push(Verbatim(fn_handle_event));
-        }
-
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "Data") {
-            // Remove "type Data" item; it belongs in Widget impl.
-            // Do this last to avoid affecting item indices.
-            events_impl.items.remove(*index);
-        }
-    } else {
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::Events for #impl_target {
-                #fn_handle_event
-            }
-        });
-    }
 
     let mut widget_set_rect_span = None;
     if let Some(index) = layout_impl {
@@ -900,6 +806,100 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #fn_child_indices
                 #fn_nav_next
                 #fn_probe
+            }
+        });
+    }
+
+    let fn_handle_event = quote! {
+            fn handle_event(
+            &mut self,
+            _: &mut ::kas::event::EventCx,
+            _: &Self::Data,
+            _: ::kas::event::Event,
+        ) -> ::kas::event::IsUsed {
+            #require_rect
+            ::kas::event::Unused
+        }
+    };
+
+    if let Some(index) = events_impl {
+        let events_impl = &mut scope.impls[index];
+        let item_idents = collect_idents(events_impl);
+
+        if let Some((index, _)) = item_idents
+            .iter()
+            .find(|(_, ident)| *ident == "handle_event")
+        {
+            if let ImplItem::Fn(f) = &mut events_impl.items[*index] {
+                f.block.stmts.insert(0, require_rect);
+            }
+        } else {
+            events_impl.items.push(Verbatim(fn_handle_event));
+        }
+
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "Data") {
+            // Remove "type Data" item; it belongs in Widget impl.
+            // Do this last to avoid affecting item indices.
+            events_impl.items.remove(*index);
+        }
+    } else {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Events for #impl_target {
+                #fn_handle_event
+            }
+        });
+    }
+
+    if let Some(index) = widget_impl {
+        let widget_impl = &mut scope.impls[index];
+        let item_idents = collect_idents(widget_impl);
+        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
+
+        // If the user impls Widget, they must supply type Data and fn child_node
+
+        // Always impl fn as_node
+        widget_impl.items.push(Verbatim(widget_as_node()));
+
+        if !has_item("child_node") {
+            if let Some(method) = fn_child_node {
+                widget_impl.items.push(Verbatim(method));
+            } else {
+                emit_error!(
+                    widget_impl, "refusing to generate fn child_node";
+                    note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+                );
+            }
+        }
+
+        if !has_item("_send") {
+            widget_impl
+                .items
+                .push(Verbatim(widget_recursive_methods(&core_path)));
+        }
+
+        if !has_item("_nav_next") {
+            widget_impl.items.push(Verbatim(widget_nav_next()));
+        }
+    } else {
+        let fns_as_node = widget_as_node();
+
+        if fn_child_node.is_none() {
+            emit_error!(
+                attr_span, "refusing to generate fn Widget::child_node";
+                note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+            );
+        }
+
+        let fns_recurse = widget_recursive_methods(&core_path);
+        let fn_nav_next = widget_nav_next();
+
+        scope.generated.push(quote_spanned! {attr_span=>
+            impl #impl_generics ::kas::Widget for #impl_target {
+                #ty_data
+                #fns_as_node
+                #fn_child_node
+                #fns_recurse
+                #fn_nav_next
             }
         });
     }

@@ -297,6 +297,51 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         });
     }
 
+    let tile_methods = quote! {
+        #[inline]
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            self.#inner.nav_next(reverse, from)
+        }
+        #[inline]
+        fn translation(&self, index: usize) -> ::kas::geom::Offset {
+            self.#inner.translation(index)
+        }
+        #[inline]
+        fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id
+        where
+            Self: Sized,
+        {
+            self.#inner.probe(coord)
+        }
+    };
+
+    let fn_role = quote! {
+        #[inline]
+        fn role(&self, cx: &mut dyn ::kas::RoleCx) -> ::kas::Role<'_> {
+            self.#inner.role(cx)
+        }
+    };
+
+    if let Some(index) = tile_impl {
+        let tile_impl = &mut scope.impls[index];
+        let item_idents = collect_idents(tile_impl);
+        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
+
+        tile_impl.items.push(Verbatim(required_tile_methods));
+        tile_impl.items.push(Verbatim(tile_methods));
+        if !has_item("role") {
+            tile_impl.items.push(Verbatim(fn_role));
+        }
+    } else {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Tile for #impl_target {
+                #required_tile_methods
+                #tile_methods
+                #fn_role
+            }
+        });
+    }
+
     let map_data = if let Some(ref expr) = data_binding {
         quote! { let data = #expr; }
     } else {
@@ -422,51 +467,6 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
                 #fn_send
                 #fn_replay
                 #fn_nav_next
-            }
-        });
-    }
-
-    let tile_methods = quote! {
-        #[inline]
-        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-            self.#inner.nav_next(reverse, from)
-        }
-        #[inline]
-        fn translation(&self, index: usize) -> ::kas::geom::Offset {
-            self.#inner.translation(index)
-        }
-        #[inline]
-        fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id
-        where
-            Self: Sized,
-        {
-            self.#inner.probe(coord)
-        }
-    };
-
-    let fn_role = quote! {
-        #[inline]
-        fn role(&self, cx: &mut dyn ::kas::RoleCx) -> ::kas::Role<'_> {
-            self.#inner.role(cx)
-        }
-    };
-
-    if let Some(index) = tile_impl {
-        let tile_impl = &mut scope.impls[index];
-        let item_idents = collect_idents(tile_impl);
-        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
-
-        tile_impl.items.push(Verbatim(required_tile_methods));
-        tile_impl.items.push(Verbatim(tile_methods));
-        if !has_item("role") {
-            tile_impl.items.push(Verbatim(fn_role));
-        }
-    } else {
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::Tile for #impl_target {
-                #required_tile_methods
-                #tile_methods
-                #fn_role
             }
         });
     }

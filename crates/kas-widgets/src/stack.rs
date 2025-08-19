@@ -102,14 +102,6 @@ mod Stack {
         }
     }
 
-    impl Widget for Self {
-        type Data = A;
-
-        fn child_node<'n>(&'n mut self, data: &'n A, index: usize) -> Option<Node<'n>> {
-            self.widgets.get_mut(index).map(|(w, _)| w.as_node(data))
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
@@ -251,6 +243,14 @@ mod Stack {
             if let Some(kas::messages::SetIndex(index)) = cx.try_pop() {
                 self.set_active(&mut cx.config_cx(), data, index);
             }
+        }
+    }
+
+    impl Widget for Self {
+        type Data = A;
+
+        fn child_node<'n>(&'n mut self, data: &'n A, index: usize) -> Option<Node<'n>> {
+            self.widgets.get_mut(index).map(|(w, _)| w.as_node(data))
         }
     }
 
