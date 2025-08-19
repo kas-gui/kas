@@ -75,6 +75,7 @@ impl std::str::FromStr for Background {
 ///
 /// -   `draw.check_box(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
+#[autoimpl(Debug ignore self.h)]
 pub struct DrawCx<'a> {
     h: &'a mut dyn ThemeDraw,
     id: Id,
@@ -209,24 +210,21 @@ impl<'a> DrawCx<'a> {
         self.h.get_clip_rect()
     }
 
-    /// Register `id` as handler of an access `key`
+    /// Register widget `id` as handler of an access `key`
     ///
     /// An *access key* (also known as mnemonic) is a shortcut key able to
-    /// directly open menus, activate buttons, etc. By default, when the user
-    /// presses (and holds) key <kbd>Alt</kbd>, access keys in labels will be
-    /// underlined and when the user presses the corresponding key then the
-    /// widget registered as handler for that access key will receive navigation
-    /// focus and [`Command::Activate`].
+    /// directly open menus, activate buttons, etc. Usually this requires that
+    /// the <kbd>Alt</kbd> is held, though
+    /// [alt-bypass mode](crate::window::Window::with_alt_bypass) is available.
     ///
-    /// If `id` itself cannot support navigation focus or handle
-    /// [`Command::Activate`], then ancestors of `id` will have the opportunity
-    /// to receive navigation focus and handle this [`Event::Command`].
+    /// The widget `id` is bound to the given `key`, if available. When the
+    /// access key is pressed (assuming that this binding succeeds), widget `id`
+    /// will receive navigation focus (if supported; otherwise an ancestor may
+    /// receive focus) and is sent [`Command::Activate`] (likewise, an ancestor
+    /// may handle this if widget `id` does not).
     ///
     /// If multiple widgets attempt to register themselves as handlers of the
     /// same `key`, then only the first succeeds.
-    ///
-    /// Note that access keys may be automatically derived from labels:
-    /// see [`crate::text::AccessString`].
     ///
     /// Returns `true` when the key should be underlined.
     pub fn access_key(&mut self, id: &Id, key: &Key) -> bool {

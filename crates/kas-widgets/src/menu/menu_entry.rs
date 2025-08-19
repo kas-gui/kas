@@ -171,6 +171,7 @@ mod MenuToggle {
             let id = self.make_child_id(widget_index!(self.label));
             if id.is_valid() {
                 cx.configure(self.label.as_node(&()), id);
+                self.label.set_target(self.checkbox.id());
             }
         }
 

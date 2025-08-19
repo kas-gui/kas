@@ -29,10 +29,13 @@ mod AccessLabel {
     ///
     /// ### Action bindings
     ///
-    /// This widget attempts to bind itself to its access key. If this succeeds
-    /// and the access key is used, this widget will receive (but not handle)
-    /// `Event::Command(Command::Activate)`. An ancestor of this widget should
-    /// handle this event.
+    /// This widget attempts to bind itself to its access key unless
+    /// [a different target is set](Self::set_target). If the binding succeeds
+    /// and the access key is used, the target will receive navigation focus
+    /// (if supported; otherwise the first supporting ancestor is focussed) and
+    /// `Event::Command(Command::Activate)` (likewise, an ancestor may handle
+    /// the event). This `AccessLabel` does not support focus and will not
+    /// handle the [`Command::Activate`] event.
     ///
     /// Alternatively, the parent of this widget may attempt to bind the access
     /// key ([`Self::access_key`]) using [`DrawCx::access_key`].
@@ -41,6 +44,7 @@ mod AccessLabel {
     #[layout(self.text)]
     pub struct AccessLabel {
         core: widget_core!(),
+        target: Id,
         text: Text<AccessString>,
     }
 
@@ -50,8 +54,18 @@ mod AccessLabel {
         pub fn new(text: impl Into<AccessString>) -> Self {
             AccessLabel {
                 core: Default::default(),
+                target: Default::default(),
                 text: Text::new(text.into(), TextClass::AccessLabel(true)),
             }
+        }
+
+        /// Set the access key target
+        ///
+        /// This method should be called from [`Events::configure`] or
+        /// [`Events::configure_recurse`].
+        #[inline]
+        pub fn set_target(&mut self, target: Id) {
+            self.target = target;
         }
 
         /// Get text class
@@ -134,7 +148,7 @@ mod AccessLabel {
 
         fn draw(&self, mut draw: DrawCx) {
             if let Some(key) = self.text.text().key()
-                && draw.access_key(self.id_ref(), key)
+                && draw.access_key(&self.target, key)
             {
                 draw.text(self.text.rect(), &self.text);
             } else {
@@ -158,6 +172,7 @@ mod AccessLabel {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            self.target = self.id();
             cx.text_configure(&mut self.text);
         }
     }

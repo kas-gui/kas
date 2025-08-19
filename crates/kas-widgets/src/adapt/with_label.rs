@@ -12,8 +12,8 @@ use kas::prelude::*;
 mod WithLabel {
     /// A wrapper widget with a label
     ///
-    /// The label supports access keys, which activate `self.inner` on
-    /// usage.
+    /// The label supports access keys; on usage the inner widget will receive
+    /// event `Event::Command(Command::Activate)`.
     ///
     /// Mouse/touch input on the label sends events to the inner widget.
     #[derive(Clone, Default)]
@@ -132,6 +132,7 @@ mod WithLabel {
             let id = self.make_child_id(widget_index!(self.label));
             if id.is_valid() {
                 cx.configure(self.label.as_node(&()), id);
+                self.label.set_target(self.inner.id());
             }
         }
     }
