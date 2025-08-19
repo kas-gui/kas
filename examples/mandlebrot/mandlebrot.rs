@@ -330,7 +330,7 @@ mod Mandlebrot {
         }
     }
 
-    impl Layout for Mandlebrot {
+    impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             kas::layout::LogicalSize(320.0, 240.0)
                 .to_rules_with_factor(axis, sizer.scale_factor(), 4.0)
@@ -366,7 +366,7 @@ mod Mandlebrot {
         }
     }
 
-    impl Events for Mandlebrot {
+    impl Events for Self {
         type Data = i32;
 
         fn configure(&mut self, cx: &mut ConfigCx) {

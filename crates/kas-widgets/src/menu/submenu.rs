@@ -106,7 +106,7 @@ mod SubMenu {
         }
     }
 
-    impl kas::Layout for Self {
+    impl Layout for Self {
         fn draw(&self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
@@ -225,7 +225,7 @@ mod MenuView {
         list: Vec<W>,
     }
 
-    impl kas::Layout for Self {
+    impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
@@ -379,7 +379,7 @@ mod MenuView {
         }
     }
 
-    impl kas::Widget for Self {
+    impl Widget for Self {
         type Data = W::Data;
 
         fn child_node<'n>(&'n mut self, data: &'n W::Data, index: usize) -> Option<Node<'n>> {
