@@ -62,12 +62,13 @@ pub(super) struct MouseGrab {
     pub(super) depress: Option<Id>,
     details: GrabDetails,
     cancel: bool,
+    pub(super) icon: CursorIcon,
 }
 
 pub(crate) struct Mouse {
     pub(super) over: Option<Id>, // widget under the mouse
-    pub(super) icon: CursorIcon,
-    old_icon: CursorIcon,
+    pub(super) icon: CursorIcon, // non-grab icon
+    old_icon: CursorIcon,        // last icon set (grab or non-grab)
     last_click_button: MouseButton,
     last_click_repetitions: u32,
     last_click_timeout: Instant,
@@ -110,12 +111,17 @@ impl Mouse {
 
     /// Call on frame to detect change in mouse cursor icon
     pub(in crate::event::cx) fn update_cursor_icon(&mut self) -> Option<CursorIcon> {
-        let mut icon = None;
-        if self.icon != self.old_icon && self.grab.is_none() {
-            icon = Some(self.icon);
+        let icon = self
+            .grab
+            .as_ref()
+            .map(|grab| grab.icon)
+            .unwrap_or(self.icon);
+        if icon != self.old_icon {
+            self.old_icon = icon;
+            Some(icon)
+        } else {
+            None
         }
-        self.old_icon = self.icon;
-        icon
     }
 
     pub fn frame_update(&mut self) -> Option<(Id, Affine)> {
@@ -174,6 +180,7 @@ impl Mouse {
         id: Id,
         position: DVec2,
         mode: GrabMode,
+        icon: CursorIcon,
     ) -> bool {
         let details = match mode {
             GrabMode::Click => GrabDetails::Click,
@@ -208,6 +215,7 @@ impl Mouse {
                 depress: Some(id.clone()),
                 details,
                 cancel: false,
+                icon,
             });
         }
         true
@@ -242,11 +250,11 @@ impl<'a> EventCx<'a> {
     fn set_over(&mut self, mut window: Node<'_>, w_id: Option<Id>) {
         if self.mouse.over != w_id {
             log::trace!("set_over: w_id={w_id:?}");
-            self.mouse.icon = Default::default();
             if let Some(id) = self.mouse.over.take() {
                 self.send_event(window.re(), id, Event::MouseOver(false));
             }
             self.mouse.over = w_id.clone();
+            self.mouse.icon = Default::default();
             let delay = self.config().event().hover_delay();
             self.request_timer(window.id(), Mouse::TIMER_HOVER, delay);
 
@@ -268,7 +276,6 @@ impl<'a> EventCx<'a> {
             );
             debug_assert!(self.mouse.last_position.is_finite());
 
-            self.window.set_cursor_icon(self.mouse.icon);
             redraw = grab.depress.clone();
             if let GrabDetails::Pan(details) = &grab.details {
                 if success && !details.moved {
