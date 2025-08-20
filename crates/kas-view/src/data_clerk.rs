@@ -198,6 +198,16 @@ pub trait DataClerk<Index> {
     /// This input data might provide access to the data set or might be used
     /// for some other purpose (such as passing in a filter from an input field)
     /// or might not be used at all.
+    ///
+    /// Note that it is not currently possible to pass in references to multiple
+    /// data items (such as an external data set and a filter) via `Data`. This
+    /// would require use of Generic Associated Types (GATs), not only here but
+    /// also in the [`Widget`](kas::Widget) trait; alas, GATs are not (yet)
+    /// compatible with dyn traits and Kas requires use of `dyn Widget`. Instead
+    /// one can share the data set (e.g. `Rc<RefCell<DataSet>>`) or store within
+    /// the `DataClerk` using the `clerk` / `clerk_mut` methods to access; in
+    /// both cases it may be necessary to update the view controller explicitly
+    /// (e.g. `cx.update(list.as_node(&input))`) after the data set changes.
     type Data;
 
     /// Key type
