@@ -89,6 +89,32 @@ impl_2D!(u32);
 #[cfg(target_pointer_width = "64")]
 impl_2D!(u64);
 
+/// Indicates whether an update to a [`DataClerk`] changes any keys
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[must_use]
+pub enum KeyChanges {
+    /// `None` indicates that index-key mappings (i.e. [`DataClerk::key`]
+    /// results) have not changed for any index in the range last passed to
+    /// [`DataClerk::prepare_range`].
+    ///
+    /// In this case, the view controller must call [`DataClerk::item`] and
+    /// pass the result to [`Events::update`] on view widgets.
+    ///
+    /// [`Events::update`]: kas::Events::update
+    None,
+    /// `Any` indicates that some keys may have changed.
+    ///
+    /// The view controller must call [`DataClerk::prepare_range`] then
+    /// [`DataClerk::key`] to re-map all view widgets.
+    Any,
+}
+
+impl KeyChanges {
+    pub(crate) fn any(self) -> bool {
+        !matches!(self, KeyChanges::None)
+    }
+}
+
 /// Data access manager
 ///
 /// A `DataClerk` manages access to a data set, using an `Index` type specified by
@@ -191,14 +217,17 @@ pub trait DataClerk<Index> {
     /// and without changes to `data` and should use `async` execution for
     /// expensive or slow calculations.
     ///
-    /// This method should perform any updates required to adjust [`Self::len`].
+    /// This method should perform any updates required to adjust [`Self::len`]
+    /// and [`Self::min_len`] or arrange for these properties to be updated
+    /// asynchronously.
     ///
     /// To receive (async) messages with [`Self::handle_messages`], send to `id`
     /// using (for example) `cx.send_async(id, _)`.
     ///
     /// The default implementation does nothing.
-    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) {
+    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> KeyChanges {
         let _ = (cx, id, data);
+        KeyChanges::None
     }
 
     /// Get the number of indexable items, if known
@@ -232,10 +261,9 @@ pub trait DataClerk<Index> {
 
     /// Prepare a range
     ///
-    /// This method is called after [`Self::update`] and any time that the
-    /// accessed range might be expected to change. It may be called frequently
-    /// and without changes to `range` and should use `async` execution for
-    /// expensive or slow calculations.
+    /// This method is called any time that the accessed range might be expected
+    /// to change. It may be called frequently and without changes to `range`
+    /// and should use `async` execution for expensive or slow calculations.
     ///
     /// It should prepare for [`Self::key`] to be called on the given `range`
     /// and [`Self::item`] to be called for the returnable keys. These methods
@@ -278,8 +306,9 @@ pub trait DataClerk<Index> {
         id: Id,
         data: &Self::Data,
         key: Option<&Self::Key>,
-    ) {
+    ) -> KeyChanges {
         let _ = (cx, id, data, key);
+        KeyChanges::None
     }
 
     /// Get a key for a given `index`, if available
