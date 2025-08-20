@@ -299,6 +299,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 false
             }
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                // This event is generated when constructing a window but already handled
+                if scale_factor as f32 == self.ev_state.config.scale_factor() {
+                    return false;
+                }
+
                 // Note: API allows us to set new window size here.
                 self.ev_state.update_config(scale_factor as f32);
 
