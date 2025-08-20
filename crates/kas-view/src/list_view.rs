@@ -810,6 +810,9 @@ mod ListView {
                     cx.resize(&self);
                     return;
                 }
+
+                self.cur_len = min_data_len.min(self.alloc_len.cast());
+                debug_assert!(usize::conv(self.cur_len) <= self.widgets.len());
             }
 
             let first_data: usize = self.first_data.cast();

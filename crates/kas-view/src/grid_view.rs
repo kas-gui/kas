@@ -770,6 +770,12 @@ mod GridView {
                     cx.resize(&self);
                     return;
                 }
+
+                self.cur_len = GridIndex {
+                    col: min_data_len.col.min(self.alloc_len.col),
+                    row: min_data_len.row.min(self.alloc_len.row),
+                };
+                debug_assert!(self.cur_end() <= self.widgets.len());
             }
 
             let start = self.first_data;
