@@ -219,7 +219,7 @@ pub trait DataClerk<Index> {
     /// Item type
     ///
     /// `&Item` is passed to child view widgets as input data.
-    type Item: Clone;
+    type Item;
 
     /// Update the query
     ///
