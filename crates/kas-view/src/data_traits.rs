@@ -120,9 +120,8 @@ impl_2D!(u64);
 /// latter will already be the case when the changing data/query/filter is
 /// passed via input `data`).
 ///
-/// The result of [`Self::len`] should be updated to return the number of
-/// available elements. (TODO: this should not be required provided that the
-/// available scroll range is provided or estimated somehow.)
+/// The result of [`Self::len`] and/or [`Self::min_len`] should be updated to
+/// return the number of available elements.
 ///
 /// As above, it may be possible to implement [`Self::item`] by referencing the
 /// data directly.

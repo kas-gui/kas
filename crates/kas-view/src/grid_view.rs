@@ -215,6 +215,15 @@ mod GridView {
             &self.clerk
         }
 
+        /// Access the data clerk (mutably)
+        ///
+        /// Changes to the clerk must be notified with an update to the
+        /// `GridView`, for example using [`ConfigCx::update`],
+        /// [`EventCx::update`] or [`Action::UPDATE`].
+        pub fn clerk_mut(&mut self) -> &mut C {
+            &mut self.clerk
+        }
+
         /// Get the current selection mode
         pub fn selection_mode(&self) -> SelectionMode {
             self.sel_mode
