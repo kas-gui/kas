@@ -5,7 +5,7 @@
 
 //! List view controller
 
-use crate::{DataClerk, DataKey, Driver, SelectionMode, SelectionMsg};
+use crate::{DataClerk, DataKey, Driver, KeyChanges, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
@@ -132,6 +132,7 @@ mod ListView {
         widgets: Vec<WidgetData<C::Key, C::Item, V>>,
         alloc_len: u32,
         min_data_len: u32,
+        force_update: bool,
         data_len: Option<u32>,
         /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
         cur_len: u32,
@@ -210,6 +211,7 @@ mod ListView {
                 widgets: Default::default(),
                 alloc_len: 0,
                 min_data_len: 0,
+                force_update: true,
                 data_len: None,
                 cur_len: 0,
                 first_data: 0,
@@ -459,7 +461,8 @@ mod ListView {
             let last_data = u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1)
                 .min(self.min_data_len);
 
-            if first_data < self.first_data
+            if self.force_update
+                || first_data < self.first_data
                 || last_data > self.first_data + self.cur_len
                 || self.cur_len > self.min_data_len
             {
@@ -472,6 +475,7 @@ mod ListView {
         // View widgets are configured and sized if assigned a new data item.
         fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, first_data: usize) {
             let time = Instant::now();
+            self.force_update = false;
 
             let alloc_len = self.alloc_len.cast();
             let min_data_len = if let Some(len) = self.data_len {
@@ -530,6 +534,48 @@ mod ListView {
                 target: "kas_perf::view::list_view",
                 "map_view_widgets {cur_len} view widgets in {dur}μs",
             );
+        }
+
+        // Handle a data clerk update
+        fn handle_clerk_update(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            mut key_changes: KeyChanges,
+        ) {
+            let data_len = self.clerk.len(data).map(|len| len.cast());
+            let min_data_len = data_len.unwrap_or_else(|| {
+                let len = self.first_data + 2 * self.alloc_len;
+                self.clerk.min_len(data, len.cast()).cast()
+            });
+            if data_len != self.data_len || min_data_len != self.min_data_len {
+                self.data_len = data_len;
+                self.min_data_len = min_data_len;
+
+                if self.update_content_size(cx) {
+                    // We may be able to request additional screen space.
+                    // We may need to map new view widgets.
+                    cx.resize(&self);
+                    return;
+                }
+
+                if self.cur_len != min_data_len.min(self.alloc_len.cast()) {
+                    key_changes = KeyChanges::Any;
+                }
+            }
+
+            if key_changes.any() {
+                return self.map_view_widgets(cx, data, self.first_data.cast());
+            }
+
+            let range = ..usize::conv(self.cur_len);
+            for child in &mut self.widgets[range] {
+                if let Some(key) = child.key.as_ref()
+                    && let Some(item) = self.clerk.item(data, key)
+                {
+                    cx.update(child.item.as_node(item));
+                }
+            }
         }
 
         /// Returns true if anything changed
@@ -679,6 +725,7 @@ mod ListView {
                 }
             }
 
+            self.force_update = true;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -794,39 +841,8 @@ mod ListView {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            self.clerk.update(cx, self.id(), data);
-            let data_len = self.clerk.len(data).map(|len| len.cast());
-            let min_data_len = data_len.unwrap_or_else(|| {
-                let len = self.first_data + 2 * self.alloc_len;
-                self.clerk.min_len(data, len.cast()).cast()
-            });
-            if data_len != self.data_len || min_data_len != self.min_data_len {
-                self.data_len = data_len;
-                self.min_data_len = min_data_len;
-
-                if self.update_content_size(cx) {
-                    // We may be able to request additional screen space.
-                    // We may need to map new view widgets.
-                    cx.resize(&self);
-                    return;
-                }
-
-                self.cur_len = min_data_len.min(self.alloc_len.cast());
-                debug_assert!(usize::conv(self.cur_len) <= self.widgets.len());
-            }
-
-            let first_data: usize = self.first_data.cast();
-            let cur_len = self.cur_len.cast();
-            let range = first_data..(first_data + cur_len);
-            self.clerk.prepare_range(cx, self.id(), data, range);
-
-            for child in &mut self.widgets[..cur_len] {
-                if let Some(key) = child.key.as_ref()
-                    && let Some(item) = self.clerk.item(data, key)
-                {
-                    cx.update(child.item.as_node(item));
-                }
-            }
+            let key_changes = self.clerk.update(cx, self.id(), data);
+            self.handle_clerk_update(cx, data, key_changes);
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
@@ -943,8 +959,10 @@ mod ListView {
                 };
             }
 
-            self.clerk
+            let key_changes = self
+                .clerk
                 .handle_messages(cx, self.id(), data, opt_key.as_ref());
+            self.handle_clerk_update(&mut cx.config_cx(), data, key_changes);
 
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {
