@@ -6,7 +6,6 @@
 //! Label with access key
 
 #[allow(unused)] use super::Label;
-use kas::event::Key;
 use kas::prelude::*;
 use kas::theme::{Text, TextClass};
 
@@ -36,9 +35,6 @@ mod AccessLabel {
     /// `Event::Command(Command::Activate)` (likewise, an ancestor may handle
     /// the event). This `AccessLabel` does not support focus and will not
     /// handle the [`Command::Activate`] event.
-    ///
-    /// Alternatively, the parent of this widget may attempt to bind the access
-    /// key ([`Self::access_key`]) using [`DrawCx::access_key`].
     #[derive(Clone, Debug, Default)]
     #[widget]
     #[layout(self.text)]
@@ -131,13 +127,6 @@ mod AccessLabel {
             let act = self.text.reprepare_action();
             cx.action(self, act);
         }
-
-        /// Get this label's access key, if any
-        ///
-        /// This key is parsed from the text.
-        pub fn access_key(&self) -> Option<&Key> {
-            self.text.text().key()
-        }
     }
 
     impl Layout for Self {
@@ -147,20 +136,20 @@ mod AccessLabel {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            if let Some(key) = self.text.text().key()
+            if let Some((key, effects)) = self.text.text().key()
                 && draw.access_key(&self.target, key)
             {
-                draw.text(self.text.rect(), &self.text);
+                // Stop on first successful binding and draw
+                draw.text_with_effects(self.text.rect(), &self.text, effects);
             } else {
-                // draw without underline effects
-                draw.text_with_effects(self.text.rect(), &self.text, &[]);
+                draw.text(self.text.rect(), &self.text);
             }
         }
     }
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            if let Some(key) = self.text.text().key() {
+            if let Some((key, _)) = self.text.text().key() {
                 Role::AccessLabel(self.text.as_str(), key.clone())
             } else {
                 Role::Label(self.text.as_str())
