@@ -71,3 +71,10 @@ pub enum SelectionMode {
     /// Support multi-item selection.
     Multiple,
 }
+
+#[derive(Debug, PartialEq, Eq)]
+enum Update {
+    None,
+    Key,
+    Configure,
+}

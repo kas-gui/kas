@@ -5,7 +5,7 @@
 
 //! List view controller
 
-use crate::{DataChanges, DataClerk, DataKey, Driver, SelectionMode, SelectionMsg};
+use super::*;
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
@@ -132,7 +132,8 @@ mod ListView {
         widgets: Vec<WidgetData<C::Key, C::Item, V>>,
         alloc_len: u32,
         min_data_len: u32,
-        force_update: bool,
+        key_update: Update,
+        value_update: bool,
         data_len: Option<u32>,
         /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
         cur_len: u32,
@@ -211,7 +212,8 @@ mod ListView {
                 widgets: Default::default(),
                 alloc_len: 0,
                 min_data_len: 0,
-                force_update: true,
+                key_update: Update::None,
+                value_update: false,
                 data_len: None,
                 cur_len: 0,
                 first_data: 0,
@@ -461,7 +463,7 @@ mod ListView {
             let last_data = u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1)
                 .min(self.min_data_len);
 
-            if self.force_update
+            if self.key_update != Update::None
                 || first_data < self.first_data
                 || last_data > self.first_data + self.cur_len
                 || self.cur_len > self.min_data_len
@@ -475,7 +477,6 @@ mod ListView {
         // View widgets are configured and sized if assigned a new data item.
         fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, first_data: usize) {
             let time = Instant::now();
-            self.force_update = false;
 
             let alloc_len = self.alloc_len.cast();
             let min_data_len = if let Some(len) = self.data_len {
@@ -505,7 +506,7 @@ mod ListView {
                 };
                 let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
-                if w.key.as_ref() != Some(&key) {
+                if self.key_update == Update::Configure || w.key.as_ref() != Some(&key) {
                     w.item.index = i;
                     self.driver.set_key(&mut w.item.inner, &key);
 
@@ -522,12 +523,19 @@ mod ListView {
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
+                } else if self.value_update
+                    && let Some(item) = self.clerk.item(data, &key)
+                {
+                    cx.update(w.item.as_node(item));
                 }
 
                 if w.key.is_some() {
                     w.item.set_rect(cx, solver.rect(i), self.align_hints);
                 }
             }
+
+            self.key_update = Update::None;
+            self.value_update = false;
 
             let dur = (Instant::now() - time).as_micros();
             log::debug!(
@@ -537,12 +545,12 @@ mod ListView {
         }
 
         // Handle a data clerk update
-        fn handle_clerk_update(
-            &mut self,
-            cx: &mut ConfigCx,
-            data: &C::Data,
-            mut changes: DataChanges,
-        ) {
+        fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
+            self.value_update = match changes {
+                DataChanges::None | DataChanges::NoPrepared => false,
+                DataChanges::NoPreparedKeys | DataChanges::Any => true,
+            };
+
             let data_len = self.clerk.len(data).map(|len| len.cast());
             let min_data_len = data_len.unwrap_or_else(|| {
                 let len = self.first_data + 2 * self.alloc_len;
@@ -560,17 +568,17 @@ mod ListView {
                 }
 
                 if self.cur_len != min_data_len.min(self.alloc_len.cast()) {
-                    changes = DataChanges::Any;
+                    self.key_update = Update::Key;
                 }
             }
 
-            match changes {
-                DataChanges::None | DataChanges::NoPrepared => return,
-                DataChanges::NoPreparedKeys => (), // fall through
-                DataChanges::Any => {
-                    return self.map_view_widgets(cx, data, self.first_data.cast());
-                }
+            if self.key_update != Update::None {
+                return self.map_view_widgets(cx, data, self.first_data.cast());
             }
+            if !self.value_update {
+                return;
+            }
+            self.value_update = false;
 
             let range = ..usize::conv(self.cur_len);
             for child in &mut self.widgets[range] {
@@ -729,7 +737,7 @@ mod ListView {
                 }
             }
 
-            self.force_update = true;
+            self.key_update = Update::Key;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -839,6 +847,7 @@ mod ListView {
                 }
             }
 
+            self.key_update = Update::Configure;
             let offset = self.scroll_offset().extract(self.direction);
             let first_data = u64::conv(offset) / u64::conv(self.skip);
             self.map_view_widgets(cx, data, first_data.cast());

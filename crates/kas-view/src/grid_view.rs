@@ -163,7 +163,8 @@ mod GridView {
         ideal_len: GridIndex,
         alloc_len: GridIndex,
         min_data_len: GridIndex,
-        force_update: bool,
+        key_update: Update,
+        value_update: bool,
         data_len: Option<GridIndex>,
         cur_len: GridIndex,
         first_data: GridIndex,
@@ -195,7 +196,8 @@ mod GridView {
                 ideal_len: GridIndex { col: 3, row: 5 },
                 alloc_len: GridIndex::ZERO,
                 min_data_len: GridIndex::ZERO,
-                force_update: true,
+                key_update: Update::None,
+                value_update: false,
                 data_len: None,
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
@@ -397,7 +399,7 @@ mod GridView {
             if min_data_len != self.min_data_len {
                 self.min_data_len = min_data_len;
                 self.update_content_size(cx);
-                self.force_update = true;
+                self.key_update = Update::Key;
             }
 
             let col_len = min_data_len.col.min(self.alloc_len.col);
@@ -412,7 +414,7 @@ mod GridView {
             let end_row = u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1)
                 .min(min_data_len.row);
 
-            if !self.force_update
+            if self.key_update == Update::None
                 && first_col >= self.first_data.col
                 && first_row >= self.first_data.row
                 && end_col <= self.first_data.col + self.cur_len.col
@@ -420,9 +422,9 @@ mod GridView {
                 && self.cur_len.col <= min_data_len.col
                 && self.cur_len.row <= min_data_len.row
             {
+                // Assumption: this method is not called for value_update without key_update
                 return;
             }
-            self.force_update = false;
 
             let cur_len = GridIndex {
                 col: col_len.cast(),
@@ -452,7 +454,7 @@ mod GridView {
                     if let Some(key) = self.clerk.key(data, cell) {
                         let id = key.make_id(self.id_ref());
                         let w = &mut self.widgets[i];
-                        if w.key.as_ref() != Some(&key) {
+                        if self.key_update == Update::Configure || w.key.as_ref() != Some(&key) {
                             self.driver.set_key(&mut w.item.inner, &key);
 
                             if let Some(item) = self.clerk.item(data, &key) {
@@ -468,6 +470,10 @@ mod GridView {
                             } else {
                                 w.key = None; // disables drawing and clicking
                             }
+                        } else if self.value_update
+                            && let Some(item) = self.clerk.item(data, &key)
+                        {
+                            cx.update(w.item.as_node(item));
                         }
 
                         if w.key.is_some() {
@@ -479,6 +485,9 @@ mod GridView {
                 }
             }
 
+            self.key_update = Update::None;
+            self.value_update = false;
+
             let dur = (Instant::now() - time).as_micros();
             log::debug!(
                 target: "kas_perf::view::grid_view",
@@ -489,12 +498,12 @@ mod GridView {
         }
 
         // Handle a data clerk update
-        fn handle_clerk_update(
-            &mut self,
-            cx: &mut ConfigCx,
-            data: &C::Data,
-            mut changes: DataChanges,
-        ) {
+        fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
+            self.value_update = match changes {
+                DataChanges::None | DataChanges::NoPrepared => false,
+                DataChanges::NoPreparedKeys | DataChanges::Any => true,
+            };
+
             let data_len = self.clerk.len(data);
             let min_data_len = data_len.unwrap_or_else(|| {
                 let expected = GridIndex {
@@ -506,6 +515,7 @@ mod GridView {
             if data_len != self.data_len || min_data_len != self.min_data_len {
                 self.data_len = data_len;
                 self.min_data_len = min_data_len;
+                self.key_update = Update::Key;
 
                 if self.update_content_size(cx) {
                     // We may be able to request additional screen space.
@@ -518,18 +528,17 @@ mod GridView {
                     || self.cur_len.row != min_data_len.row.min(self.alloc_len.row)
                 {
                     // We need to prepare a new range
-                    changes = DataChanges::Any;
+                    self.key_update = Update::Key;
                 }
             }
 
-            match changes {
-                DataChanges::None | DataChanges::NoPrepared => return,
-                DataChanges::NoPreparedKeys => (), // fall through
-                DataChanges::Any => {
-                    self.force_update = true;
-                    return self.map_view_widgets(cx, data);
-                }
+            if self.key_update != Update::None {
+                return self.map_view_widgets(cx, data);
             }
+            if !self.value_update {
+                return;
+            }
+            self.value_update = false;
 
             let range = 0..self.cur_end();
             for child in &mut self.widgets[range] {
@@ -688,7 +697,7 @@ mod GridView {
             }
 
             // Also queue a call to map_view_widgets since ranges may have changed
-            self.force_update = true;
+            self.key_update = Update::Key;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -804,7 +813,7 @@ mod GridView {
                 }
             }
 
-            self.force_update = true;
+            self.key_update = Update::Configure;
             self.map_view_widgets(cx, data);
         }
 
