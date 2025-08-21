@@ -548,6 +548,12 @@ mod EditBox {
             self.inner.clone_string()
         }
 
+        // Set text contents from a `str`
+        #[inline]
+        pub fn set_str(&mut self, cx: &mut EventState, text: &str) {
+            self.inner.set_str(cx, text);
+        }
+
         /// Set text contents from a `String`
         ///
         /// This method does not call action handlers on the [`EditGuard`].
@@ -1174,12 +1180,17 @@ mod EditField {
             self.text.clone_string()
         }
 
+        // Set text contents from a `str`
+        #[inline]
+        pub fn set_str(&mut self, cx: &mut EventState, text: &str) {
+            if self.text.as_str() != text {
+                self.set_string(cx, text.to_string());
+            }
+        }
+
         /// Set text contents from a `String`
         ///
         /// This method does not call action handlers on the [`EditGuard`].
-        ///
-        /// NOTE: we could add a `set_str` variant of this method but there
-        /// doesn't appear to be a need.
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
             if !self.text.set_string(string) || !self.text.prepare() {
                 return;
