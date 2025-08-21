@@ -13,6 +13,7 @@
 use kas::prelude::*;
 use kas::view::{DataClerk, Driver, ListView};
 use kas::widgets::{column, *};
+use kas_view::DataChanges;
 use std::collections::HashMap;
 use std::ops::Range;
 
@@ -158,6 +159,10 @@ impl DataClerk<usize> for Clerk {
     type Data = Data;
     type Key = usize;
     type Item = Item;
+
+    fn update(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data) -> DataChanges {
+        DataChanges::NoPreparedKeys
+    }
 
     fn len(&self, data: &Self::Data) -> Option<usize> {
         data.row_limit.then_some(data.len)

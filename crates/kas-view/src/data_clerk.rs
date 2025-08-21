@@ -229,11 +229,9 @@ pub trait DataClerk<Index> {
     /// To receive (async) messages with [`Self::handle_messages`], send to `id`
     /// using (for example) `cx.send_async(id, _)`.
     ///
-    /// The default implementation does nothing.
-    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> DataChanges {
-        let _ = (cx, id, data);
-        DataChanges::None
-    }
+    /// There is no default implementation since it is unknown what
+    /// [`DataChanges`] might be needed.
+    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> DataChanges;
 
     /// Get the number of indexable items, if known
     ///
