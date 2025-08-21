@@ -19,6 +19,11 @@
 //! A [`DataClerk`] manages all interactions between the view and the data as
 //! well as providing a local cache of (at least) the currently visible data.
 //!
+//! ### Data generators
+//!
+//! A higher-level interface is provided for data generators: [`DataGenerator`]
+//! using clerk [`GeneratorClerk`].
+//!
 //! ## View controller
 //!
 //! This crate provides the following **view controllers**:
@@ -36,8 +41,10 @@
 
 mod data_clerk;
 use std::borrow::Borrow;
+mod generator;
 
 pub use data_clerk::*;
+pub use generator::*;
 
 pub mod filter;
 

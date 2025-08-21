@@ -211,7 +211,7 @@ pub trait DataClerk<Index> {
     /// <code>[Token](crate::Token)&lt;[Self::Key], [Self::Item]&gt;</code>.
     type Token: Borrow<Self::Key>;
 
-    /// Update the query
+    /// Update the clerk
     ///
     /// This is called by [`kas::Events::update`]. It should update `self` as
     /// required reflecting possible data-changes and indicate through the

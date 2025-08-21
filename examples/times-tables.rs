@@ -1,9 +1,9 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::{DataClerk, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
+use kas::view::{DataGenerator, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
-use kas_view::{DataChanges, DataLen, Token, TokenChanges};
+use kas_view::{DataLen, GeneratorChanges, GeneratorClerk};
 
 /// A cache of the visible part of our table
 #[derive(Debug, Default)]
@@ -17,24 +17,19 @@ fn product(index: GridIndex) -> u64 {
     x * y
 }
 
-impl DataClerk<GridIndex> for TableCache {
+impl DataGenerator<GridIndex> for TableCache {
     /// Our table is square; it's size is input.
     type Data = u32;
-
-    /// We re-usize the index as our key.
-    type Key = GridIndex;
-
-    type Token = Token<GridIndex, u64>;
 
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
 
-    fn update(&mut self, _: &mut ConfigCx, _: Id, dim: &Self::Data) -> DataChanges {
+    fn update(&mut self, dim: &Self::Data) -> GeneratorChanges {
         if self.dim == *dim {
-            DataChanges::None
+            GeneratorChanges::None
         } else {
             self.dim = *dim;
-            DataChanges::NoPreparedItems
+            GeneratorChanges::LenOnly
         }
     }
 
@@ -42,34 +37,17 @@ impl DataClerk<GridIndex> for TableCache {
         DataLen::Known(GridIndex::splat(self.dim))
     }
 
-    fn update_token(
-        &self,
-        _: &Self::Data,
-        index: GridIndex,
-        token: &mut Option<Self::Token>,
-    ) -> TokenChanges {
-        if let Some(token) = token.as_ref()
-            && token.key == index
-        {
-            return TokenChanges::None;
-        }
-
-        *token = Some(Token {
-            key: index,
-            item: product(index),
-        });
-        TokenChanges::Any
-    }
-
-    fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {
-        &token.item
+    fn generate(&self, _: &Self::Data, index: GridIndex) -> u64 {
+        product(index)
     }
 }
 
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let table = GridView::new(TableCache::default(), driver::View)
+    let clerk = GeneratorClerk::new(TableCache::default());
+
+    let table = GridView::new(clerk, driver::View)
         .with_num_visible(12, 12)
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);
