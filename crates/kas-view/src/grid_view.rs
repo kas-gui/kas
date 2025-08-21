@@ -493,7 +493,7 @@ mod GridView {
             &mut self,
             cx: &mut ConfigCx,
             data: &C::Data,
-            mut key_changes: KeyChanges,
+            mut changes: DataChanges,
         ) {
             let data_len = self.clerk.len(data);
             let min_data_len = data_len.unwrap_or_else(|| {
@@ -517,13 +517,18 @@ mod GridView {
                 if self.cur_len.col != min_data_len.col.min(self.alloc_len.col)
                     || self.cur_len.row != min_data_len.row.min(self.alloc_len.row)
                 {
-                    key_changes = KeyChanges::Any
+                    // We need to prepare a new range
+                    changes = DataChanges::Any;
                 }
             }
 
-            if key_changes.any() {
-                self.force_update = true;
-                return self.map_view_widgets(cx, data);
+            match changes {
+                DataChanges::None | DataChanges::NoPrepared => return,
+                DataChanges::NoPreparedKeys => (), // fall through
+                DataChanges::Any => {
+                    self.force_update = true;
+                    return self.map_view_widgets(cx, data);
+                }
             }
 
             let range = 0..self.cur_end();
@@ -804,8 +809,10 @@ mod GridView {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            let key_changes = self.clerk.update(cx, self.id(), data);
-            self.handle_clerk_update(cx, data, key_changes);
+            let changes = self.clerk.update(cx, self.id(), data);
+            if changes != DataChanges::None {
+                self.handle_clerk_update(cx, data, changes);
+            }
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
@@ -936,10 +943,12 @@ mod GridView {
                 };
             }
 
-            let key_changes = self
+            let changes = self
                 .clerk
                 .handle_messages(cx, self.id(), data, opt_key.as_ref());
-            self.handle_clerk_update(&mut cx.config_cx(), data, key_changes);
+            if changes != DataChanges::None {
+                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
+            }
 
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {

@@ -5,7 +5,7 @@
 
 //! List view controller
 
-use crate::{DataClerk, DataKey, Driver, KeyChanges, SelectionMode, SelectionMsg};
+use crate::{DataChanges, DataClerk, DataKey, Driver, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
@@ -541,7 +541,7 @@ mod ListView {
             &mut self,
             cx: &mut ConfigCx,
             data: &C::Data,
-            mut key_changes: KeyChanges,
+            mut changes: DataChanges,
         ) {
             let data_len = self.clerk.len(data).map(|len| len.cast());
             let min_data_len = data_len.unwrap_or_else(|| {
@@ -560,12 +560,16 @@ mod ListView {
                 }
 
                 if self.cur_len != min_data_len.min(self.alloc_len.cast()) {
-                    key_changes = KeyChanges::Any;
+                    changes = DataChanges::Any;
                 }
             }
 
-            if key_changes.any() {
-                return self.map_view_widgets(cx, data, self.first_data.cast());
+            match changes {
+                DataChanges::None | DataChanges::NoPrepared => return,
+                DataChanges::NoPreparedKeys => (), // fall through
+                DataChanges::Any => {
+                    return self.map_view_widgets(cx, data, self.first_data.cast());
+                }
             }
 
             let range = ..usize::conv(self.cur_len);
@@ -841,8 +845,10 @@ mod ListView {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            let key_changes = self.clerk.update(cx, self.id(), data);
-            self.handle_clerk_update(cx, data, key_changes);
+            let changes = self.clerk.update(cx, self.id(), data);
+            if changes != DataChanges::None {
+                self.handle_clerk_update(cx, data, changes);
+            }
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
@@ -959,10 +965,12 @@ mod ListView {
                 };
             }
 
-            let key_changes = self
+            let changes = self
                 .clerk
                 .handle_messages(cx, self.id(), data, opt_key.as_ref());
-            self.handle_clerk_update(&mut cx.config_cx(), data, key_changes);
+            if changes != DataChanges::None {
+                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
+            }
 
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {

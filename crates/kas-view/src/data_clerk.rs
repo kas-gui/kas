@@ -89,30 +89,25 @@ impl_2D!(u32);
 #[cfg(target_pointer_width = "64")]
 impl_2D!(u64);
 
-/// Indicates whether an update to a [`DataClerk`] changes any keys
+/// Indicates whether an update to a [`DataClerk`] changes any keys or values
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[must_use]
-pub enum KeyChanges {
-    /// `None` indicates that index-key mappings (i.e. [`DataClerk::key`]
-    /// results) have not changed for any index in the range last passed to
-    /// [`DataClerk::prepare_range`].
-    ///
-    /// In this case, the view controller must call [`DataClerk::item`] and
-    /// pass the result to [`Events::update`] on view widgets.
-    ///
-    /// [`Events::update`]: kas::Events::update
+pub enum DataChanges {
+    /// `None` indicates that no changes to the data set occurred.
     None,
-    /// `Any` indicates that some keys may have changed.
-    ///
-    /// The view controller must call [`DataClerk::prepare_range`] then
-    /// [`DataClerk::key`] to re-map all view widgets.
+    /// `NoPrepared` indicates that changes to the data set may have occurred,
+    /// but that for all indices in the `range` last passed to
+    /// [`DataClerk::prepare_range`] the index-key mappings ([`DataClerk::key`]
+    /// results) and key-value mappings ([`DataClerk::item`] results) remain
+    /// unchanged.
+    NoPrepared,
+    /// `NoPreparedKeys` indicates that changes to the data set may have
+    /// occurred, but that for all indices in the `range` last passed to
+    /// [`DataClerk::prepare_range`] the index-key mappings ([`DataClerk::key`]
+    /// results) remain unchanged.
+    NoPreparedKeys,
+    /// `Any` indicates that changes to the data set may have occurred.
     Any,
-}
-
-impl KeyChanges {
-    pub(crate) fn any(self) -> bool {
-        !matches!(self, KeyChanges::None)
-    }
 }
 
 /// Data access manager
@@ -235,9 +230,9 @@ pub trait DataClerk<Index> {
     /// using (for example) `cx.send_async(id, _)`.
     ///
     /// The default implementation does nothing.
-    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> KeyChanges {
+    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> DataChanges {
         let _ = (cx, id, data);
-        KeyChanges::None
+        DataChanges::None
     }
 
     /// Get the number of indexable items, if known
@@ -316,9 +311,9 @@ pub trait DataClerk<Index> {
         id: Id,
         data: &Self::Data,
         key: Option<&Self::Key>,
-    ) -> KeyChanges {
+    ) -> DataChanges {
         let _ = (cx, id, data, key);
-        KeyChanges::None
+        DataChanges::None
     }
 
     /// Get a key for a given `index`, if available

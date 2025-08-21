@@ -3,7 +3,7 @@
 use kas::prelude::*;
 use kas::view::{DataClerk, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
-use kas_view::KeyChanges;
+use kas_view::DataChanges;
 use std::ops::Range;
 
 /// A cache of the visible part of our table
@@ -32,12 +32,12 @@ impl DataClerk<GridIndex> for TableCache {
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
 
-    fn update(&mut self, _: &mut ConfigCx, _: Id, dim: &Self::Data) -> KeyChanges {
+    fn update(&mut self, _: &mut ConfigCx, _: Id, dim: &Self::Data) -> DataChanges {
         if self.dim == *dim {
-            KeyChanges::None
+            DataChanges::None
         } else {
             self.dim = *dim;
-            KeyChanges::Any
+            DataChanges::NoPrepared
         }
     }
 
