@@ -163,6 +163,8 @@ mod GridView {
         ideal_len: GridIndex,
         alloc_len: GridIndex,
         min_data_len: GridIndex,
+        key_update: Update,
+        value_update: bool,
         data_len: Option<GridIndex>,
         cur_len: GridIndex,
         first_data: GridIndex,
@@ -194,6 +196,8 @@ mod GridView {
                 ideal_len: GridIndex { col: 3, row: 5 },
                 alloc_len: GridIndex::ZERO,
                 min_data_len: GridIndex::ZERO,
+                key_update: Update::None,
+                value_update: false,
                 data_len: None,
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
@@ -213,6 +217,15 @@ mod GridView {
         /// Access the data clerk
         pub fn clerk(&self) -> &C {
             &self.clerk
+        }
+
+        /// Access the data clerk (mutably)
+        ///
+        /// Changes to the clerk must be notified with an update to the
+        /// `GridView`, for example using [`ConfigCx::update`],
+        /// [`EventCx::update`] or [`Action::UPDATE`].
+        pub fn clerk_mut(&mut self) -> &mut C {
+            &mut self.clerk
         }
 
         /// Get the current selection mode
@@ -366,7 +379,7 @@ mod GridView {
         // View widgets are configured and sized if assigned a new data item.
         //
         // This auto-detects whether remapping is required, unless `force` is set.
-        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, mut force: bool) {
+        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let time = Instant::now();
 
             let offset = self.scroll_offset();
@@ -386,7 +399,7 @@ mod GridView {
             if min_data_len != self.min_data_len {
                 self.min_data_len = min_data_len;
                 self.update_content_size(cx);
-                force = true;
+                self.key_update = Update::Key;
             }
 
             let col_len = min_data_len.col.min(self.alloc_len.col);
@@ -401,7 +414,7 @@ mod GridView {
             let end_row = u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1)
                 .min(min_data_len.row);
 
-            if !force
+            if self.key_update == Update::None
                 && first_col >= self.first_data.col
                 && first_row >= self.first_data.row
                 && end_col <= self.first_data.col + self.cur_len.col
@@ -409,6 +422,7 @@ mod GridView {
                 && self.cur_len.col <= min_data_len.col
                 && self.cur_len.row <= min_data_len.row
             {
+                // Assumption: this method is not called for value_update without key_update
                 return;
             }
 
@@ -440,7 +454,7 @@ mod GridView {
                     if let Some(key) = self.clerk.key(data, cell) {
                         let id = key.make_id(self.id_ref());
                         let w = &mut self.widgets[i];
-                        if w.key.as_ref() != Some(&key) {
+                        if self.key_update == Update::Configure || w.key.as_ref() != Some(&key) {
                             self.driver.set_key(&mut w.item.inner, &key);
 
                             if let Some(item) = self.clerk.item(data, &key) {
@@ -456,6 +470,10 @@ mod GridView {
                             } else {
                                 w.key = None; // disables drawing and clicking
                             }
+                        } else if self.value_update
+                            && let Some(item) = self.clerk.item(data, &key)
+                        {
+                            cx.update(w.item.as_node(item));
                         }
 
                         if w.key.is_some() {
@@ -467,6 +485,9 @@ mod GridView {
                 }
             }
 
+            self.key_update = Update::None;
+            self.value_update = false;
+
             let dur = (Instant::now() - time).as_micros();
             log::debug!(
                 target: "kas_perf::view::grid_view",
@@ -474,6 +495,59 @@ mod GridView {
                 cur_len.col,
                 cur_len.row,
             );
+        }
+
+        // Handle a data clerk update
+        fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
+            self.value_update = match changes {
+                DataChanges::None | DataChanges::NoPrepared => false,
+                DataChanges::NoPreparedKeys | DataChanges::Any => true,
+            };
+
+            let data_len = self.clerk.len(data);
+            let min_data_len = data_len.unwrap_or_else(|| {
+                let expected = GridIndex {
+                    col: self.first_data.col + 2 * self.alloc_len.col,
+                    row: self.first_data.row + 2 * self.alloc_len.row,
+                };
+                self.clerk.min_len(data, expected)
+            });
+            if data_len != self.data_len || min_data_len != self.min_data_len {
+                self.data_len = data_len;
+                self.min_data_len = min_data_len;
+                self.key_update = Update::Key;
+
+                if self.update_content_size(cx) {
+                    // We may be able to request additional screen space.
+                    // We may need to map new view widgets.
+                    cx.resize(&self);
+                    return;
+                }
+
+                if self.cur_len.col != min_data_len.col.min(self.alloc_len.col)
+                    || self.cur_len.row != min_data_len.row.min(self.alloc_len.row)
+                {
+                    // We need to prepare a new range
+                    self.key_update = Update::Key;
+                }
+            }
+
+            if self.key_update != Update::None {
+                return self.map_view_widgets(cx, data);
+            }
+            if !self.value_update {
+                return;
+            }
+            self.value_update = false;
+
+            let range = 0..self.cur_end();
+            for child in &mut self.widgets[range] {
+                if let Some(key) = child.key.as_ref()
+                    && let Some(item) = self.clerk.item(data, key)
+                {
+                    cx.update(child.item.as_node(item));
+                }
+            }
         }
 
         /// Returns true if anything changed
@@ -623,6 +697,7 @@ mod GridView {
             }
 
             // Also queue a call to map_view_widgets since ranges may have changed
+            self.key_update = Update::Key;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -738,45 +813,14 @@ mod GridView {
                 }
             }
 
-            self.map_view_widgets(cx, data, true);
+            self.key_update = Update::Configure;
+            self.map_view_widgets(cx, data);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            self.clerk.update(cx, self.id(), data);
-            let data_len = self.clerk.len(data);
-            let min_data_len = data_len.unwrap_or_else(|| {
-                let expected = GridIndex {
-                    col: self.first_data.col + 2 * self.alloc_len.col,
-                    row: self.first_data.row + 2 * self.alloc_len.row,
-                };
-                self.clerk.min_len(data, expected)
-            });
-            if data_len != self.data_len || min_data_len != self.min_data_len {
-                self.data_len = data_len;
-                self.min_data_len = min_data_len;
-
-                if self.update_content_size(cx) {
-                    // We may be able to request additional screen space.
-                    // We may need to map new view widgets.
-                    cx.resize(&self);
-                    return;
-                }
-            }
-
-            let start = self.first_data;
-            let end = GridIndex {
-                col: start.col + self.cur_len.col,
-                row: start.row + self.cur_len.row,
-            };
-            self.clerk.prepare_range(cx, self.id(), data, start..end);
-
-            let range = 0..self.cur_end();
-            for child in &mut self.widgets[range] {
-                if let Some(key) = child.key.as_ref()
-                    && let Some(item) = self.clerk.item(data, key)
-                {
-                    cx.update(child.item.as_node(item));
-                }
+            let changes = self.clerk.update(cx, self.id(), data);
+            if changes != DataChanges::None {
+                self.handle_clerk_update(cx, data, changes);
             }
         }
 
@@ -823,7 +867,7 @@ mod GridView {
                         let action = self.scroll.focus_rect(cx, rect, self.rect());
                         if !action.is_empty() {
                             cx.action(&self, action);
-                            self.map_view_widgets(&mut cx.config_cx(), data, false);
+                            self.map_view_widgets(&mut cx.config_cx(), data);
                             solver = self.position_solver();
                         }
 
@@ -875,7 +919,7 @@ mod GridView {
                     Used
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
-                    self.map_view_widgets(&mut cx.config_cx(), data, false);
+                    self.map_view_widgets(&mut cx.config_cx(), data);
                     Used
                 }
                 _ => Unused, // fall through to scroll handler
@@ -908,8 +952,12 @@ mod GridView {
                 };
             }
 
-            self.clerk
+            let changes = self
+                .clerk
                 .handle_messages(cx, self.id(), data, opt_key.as_ref());
+            if changes != DataChanges::None {
+                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
+            }
 
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {
@@ -944,7 +992,7 @@ mod GridView {
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
             self.scroll
                 .scroll(cx, self.id(), self.rect(), scroll - self.virtual_offset);
-            self.map_view_widgets(&mut cx.config_cx(), data, false);
+            self.map_view_widgets(&mut cx.config_cx(), data);
         }
     }
 
@@ -1036,7 +1084,7 @@ mod GridView {
                 let action = self.scroll.self_focus_rect(rect, self.rect());
                 if !action.is_empty() {
                     cx.action(&self, action);
-                    self.map_view_widgets(cx, data, false);
+                    self.map_view_widgets(cx, data);
                     solver = self.position_solver();
                 }
 

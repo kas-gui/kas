@@ -19,6 +19,7 @@ use kas::resvg::Svg;
 use kas::theme::MarginStyle;
 use kas::widgets::{column, *};
 use kas::window::Popup;
+use kas_view::DataChanges;
 use std::ops::Range;
 
 #[derive(Debug, Default)]
@@ -534,9 +535,9 @@ fn filter_list() -> Page<AppData> {
 
         type Item = String;
 
-        fn update(&mut self, _: &mut ConfigCx, _: Id, filter: &Self::Data) {
+        fn update(&mut self, _: &mut ConfigCx, _: Id, filter: &Self::Data) -> DataChanges {
             if self.filter == *filter && self.end != usize::MAX {
-                return;
+                return DataChanges::None;
             }
             self.filter = filter.clone();
 
@@ -559,6 +560,8 @@ fn filter_list() -> Page<AppData> {
 
             self.end = self.filtered_years.len() * months.len() + self.end_month_filtered as usize;
             self.months = months;
+
+            DataChanges::Any
         }
 
         fn len(&self, _: &Self::Data) -> Option<usize> {

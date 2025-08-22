@@ -89,6 +89,27 @@ impl_2D!(u32);
 #[cfg(target_pointer_width = "64")]
 impl_2D!(u64);
 
+/// Indicates whether an update to a [`DataClerk`] changes any keys or values
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[must_use]
+pub enum DataChanges {
+    /// `None` indicates that no changes to the data set occurred.
+    None,
+    /// `NoPrepared` indicates that changes to the data set may have occurred,
+    /// but that for all indices in the `range` last passed to
+    /// [`DataClerk::prepare_range`] the index-key mappings ([`DataClerk::key`]
+    /// results) and key-value mappings ([`DataClerk::item`] results) remain
+    /// unchanged.
+    NoPrepared,
+    /// `NoPreparedKeys` indicates that changes to the data set may have
+    /// occurred, but that for all indices in the `range` last passed to
+    /// [`DataClerk::prepare_range`] the index-key mappings ([`DataClerk::key`]
+    /// results) remain unchanged.
+    NoPreparedKeys,
+    /// `Any` indicates that changes to the data set may have occurred.
+    Any,
+}
+
 /// Data access manager
 ///
 /// A `DataClerk` manages access to a data set, using an `Index` type specified by
@@ -120,9 +141,8 @@ impl_2D!(u64);
 /// latter will already be the case when the changing data/query/filter is
 /// passed via input `data`).
 ///
-/// The result of [`Self::len`] should be updated to return the number of
-/// available elements. (TODO: this should not be required provided that the
-/// available scroll range is provided or estimated somehow.)
+/// The result of [`Self::len`] and/or [`Self::min_len`] should be updated to
+/// return the number of available elements.
 ///
 /// As above, it may be possible to implement [`Self::item`] by referencing the
 /// data directly.
@@ -173,6 +193,16 @@ pub trait DataClerk<Index> {
     /// This input data might provide access to the data set or might be used
     /// for some other purpose (such as passing in a filter from an input field)
     /// or might not be used at all.
+    ///
+    /// Note that it is not currently possible to pass in references to multiple
+    /// data items (such as an external data set and a filter) via `Data`. This
+    /// would require use of Generic Associated Types (GATs), not only here but
+    /// also in the [`Widget`](kas::Widget) trait; alas, GATs are not (yet)
+    /// compatible with dyn traits and Kas requires use of `dyn Widget`. Instead
+    /// one can share the data set (e.g. `Rc<RefCell<DataSet>>`) or store within
+    /// the `DataClerk` using the `clerk` / `clerk_mut` methods to access; in
+    /// both cases it may be necessary to update the view controller explicitly
+    /// (e.g. `cx.update(list.as_node(&input))`) after the data set changes.
     type Data;
 
     /// Key type
@@ -184,7 +214,7 @@ pub trait DataClerk<Index> {
     /// Item type
     ///
     /// `&Item` is passed to child view widgets as input data.
-    type Item: Clone;
+    type Item;
 
     /// Update the query
     ///
@@ -192,14 +222,17 @@ pub trait DataClerk<Index> {
     /// and without changes to `data` and should use `async` execution for
     /// expensive or slow calculations.
     ///
-    /// This method should perform any updates required to adjust [`Self::len`].
+    /// This method should perform any updates required to adjust [`Self::len`]
+    /// and [`Self::min_len`] or arrange for these properties to be updated
+    /// asynchronously.
     ///
     /// To receive (async) messages with [`Self::handle_messages`], send to `id`
     /// using (for example) `cx.send_async(id, _)`.
     ///
     /// The default implementation does nothing.
-    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) {
+    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> DataChanges {
         let _ = (cx, id, data);
+        DataChanges::None
     }
 
     /// Get the number of indexable items, if known
@@ -233,10 +266,9 @@ pub trait DataClerk<Index> {
 
     /// Prepare a range
     ///
-    /// This method is called after [`Self::update`] and any time that the
-    /// accessed range might be expected to change. It may be called frequently
-    /// and without changes to `range` and should use `async` execution for
-    /// expensive or slow calculations.
+    /// This method is called any time that the accessed range might be expected
+    /// to change. It may be called frequently and without changes to `range`
+    /// and should use `async` execution for expensive or slow calculations.
     ///
     /// It should prepare for [`Self::key`] to be called on the given `range`
     /// and [`Self::item`] to be called for the returnable keys. These methods
@@ -279,8 +311,9 @@ pub trait DataClerk<Index> {
         id: Id,
         data: &Self::Data,
         key: Option<&Self::Key>,
-    ) {
+    ) -> DataChanges {
         let _ = (cx, id, data, key);
+        DataChanges::None
     }
 
     /// Get a key for a given `index`, if available

@@ -106,6 +106,12 @@ mod Text {
         pub fn text(&self) -> &theme::Text<T> {
             &self.text
         }
+
+        /// Read the text contents as an `str`
+        #[inline]
+        pub fn as_str(&self) -> &str {
+            self.text.as_str()
+        }
     }
 
     impl Layout for Self {

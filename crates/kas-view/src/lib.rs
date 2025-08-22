@@ -34,8 +34,8 @@
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
-mod data_traits;
-pub use data_traits::*;
+mod data_clerk;
+pub use data_clerk::*;
 
 pub mod filter;
 
@@ -70,4 +70,11 @@ pub enum SelectionMode {
     Single,
     /// Support multi-item selection.
     Multiple,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Update {
+    None,
+    Key,
+    Configure,
 }

@@ -9,8 +9,6 @@
 //! Hopefully it can be replaced with a real mark-up processor without too
 //! much API breakage.
 
-use smallvec::SmallVec;
-
 use crate::cast::Conv;
 use crate::event::Key;
 use crate::text::format::{FontToken, FormattableText};
@@ -19,9 +17,11 @@ use crate::text::{Effect, EffectFlags};
 /// An access key string
 ///
 /// This is a label which supports highlighting of access keys (sometimes called
-/// "mnemonics"). This type represents both the
-/// displayed text (via [`FormattableText`] implementation)
-/// and the shortcut (via [`AccessString::key`]).
+/// "mnemonics").
+///
+/// Drawing this text using the inherent [`FormattableText`] implementation will
+/// not underline the access key. To do that, use the effect tokens returned by
+/// [`Self::key`].
 ///
 /// Markup: `&&` translates to `&`; `&x` for any `x` translates to `x` and
 /// identifies `x` as an "access key"; this may be drawn underlined and
@@ -29,8 +29,7 @@ use crate::text::{Effect, EffectFlags};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AccessString {
     text: String,
-    effects: SmallVec<[Effect<()>; 2]>,
-    key: Option<Key>,
+    key: Option<(Key, [Effect<()>; 2])>,
 }
 
 impl AccessString {
@@ -39,63 +38,59 @@ impl AccessString {
     /// Since we require `'static` for references and don't yet have
     /// specialisation, this parser always allocates. Prefer to use `from`.
     fn parse(mut s: &str) -> Self {
-        let mut buf = String::with_capacity(s.len());
-        let mut effects = SmallVec::<[Effect<()>; 2]>::default();
+        let mut text = String::with_capacity(s.len());
         let mut key = None;
 
         while let Some(mut i) = s.find('&') {
-            buf.push_str(&s[..i]);
+            text.push_str(&s[..i]);
             i += "&".len();
             s = &s[i..];
-            let mut chars = s.char_indices();
 
-            match chars.next() {
+            match s.chars().next() {
                 None => {
                     // Ending with '&' is an error, but we can ignore it
                     s = &s[0..0];
                     break;
                 }
-                Some((j, c)) => {
-                    // TODO(opt): we can simplify if we don't support multiple mnemonic keys
-                    let pos = u32::conv(buf.len());
-                    buf.push(c);
-                    if effects.last().map(|e| e.start == pos).unwrap_or(false) {
-                        effects.last_mut().unwrap().flags = EffectFlags::UNDERLINE;
-                    } else {
-                        effects.push(Effect {
-                            start: pos,
-                            flags: EffectFlags::UNDERLINE,
-                            aux: (),
-                        });
-                    }
-                    if key.is_none() {
-                        let mut kbuf = [0u8; 4];
-                        let s = c.to_ascii_lowercase().encode_utf8(&mut kbuf);
-                        key = Some(Key::Character(s.into()));
-                    }
+                Some(c) if key.is_none() => {
+                    let start = u32::conv(text.len());
+                    text.push(c);
+
+                    let mut kbuf = [0u8; 4];
+                    let k = c.to_ascii_lowercase().encode_utf8(&mut kbuf);
+                    let k = Key::Character(k.into());
+
+                    let e0 = Effect {
+                        start,
+                        flags: EffectFlags::UNDERLINE,
+                        aux: (),
+                    };
+
                     let i = c.len_utf8();
                     s = &s[i..];
 
-                    if let Some((k, _)) = chars.next() {
-                        effects.push(Effect {
-                            start: pos + u32::conv(k - j),
-                            flags: EffectFlags::empty(),
-                            aux: (),
-                        });
-                    }
+                    let e1 = Effect {
+                        start: start + u32::conv(i),
+                        flags: EffectFlags::empty(),
+                        aux: (),
+                    };
+
+                    key = Some((k, [e0, e1]));
+                }
+                Some(c) => {
+                    text.push(c);
+                    let i = c.len_utf8();
+                    s = &s[i..];
                 }
             }
         }
-        buf.push_str(s);
-        AccessString {
-            text: buf,
-            effects,
-            key,
-        }
+
+        text.push_str(s);
+        AccessString { text, key }
     }
 
-    /// Get the key binding, if any
-    pub fn key(&self) -> Option<&Key> {
+    /// Get the key bindings and associated effects, if any
+    pub fn key(&self) -> Option<&(Key, [Effect<()>; 2])> {
         self.key.as_ref()
     }
 
@@ -119,7 +114,7 @@ impl FormattableText for AccessString {
     }
 
     fn effect_tokens(&self) -> &[Effect<()>] {
-        &self.effects
+        &[]
     }
 }
 
