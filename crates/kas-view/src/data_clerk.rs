@@ -8,8 +8,6 @@
 use kas::Id;
 use kas::cast::Cast;
 use kas::event::{ConfigCx, EventCx};
-#[allow(unused)] // doc links
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::Range;
 
@@ -317,11 +315,12 @@ pub trait DataClerk<Index> {
     /// Get a key for a given `index`, if available
     ///
     /// This method should be fast since it may be called repeatedly.
-    /// The method may be called for each `index` in the given `range` after
-    /// calls to [`Self::update`].
+    /// This method is only called after [`Self::prepare_range`] and for `index`
+    /// values within the passed `range`.
     ///
     /// This may return `None` even when `index` is within the query's `range`
-    /// since data may be sparse or still loading (async).
+    /// since data may be sparse or still loading (async); in this case the view
+    /// widget at this `index` is hidden.
     ///
     /// In case the implementation applies some type of filter to an underlying
     /// data set, this method should not return hidden keys. The implementation
@@ -334,6 +333,11 @@ pub trait DataClerk<Index> {
     /// This method should be fast since it may be called repeatedly.
     ///
     /// This may return `None` while data is still loading (async). The view
-    /// widget may display a loading animation in this case.
+    /// controller may display a loading animation in this case, though the
+    /// current implementation merely hides the view widget. It is expected that
+    /// the method not return `None` after `Some(_)` (excepting after
+    /// [`Self::prepare_range`] has removed its `key` from the `range`);
+    /// returning `None` in this case might cause stale content to be shown and
+    /// event/message handlers on the view widget to fail.
     fn item<'r>(&'r self, data: &'r Self::Data, key: &'r Self::Key) -> Option<&'r Self::Item>;
 }

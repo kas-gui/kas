@@ -502,8 +502,10 @@ mod ListView {
             let solver = self.position_solver();
             for i in solver.data_range() {
                 let Some(key) = self.clerk.key(data, i) else {
+                    self.widgets[i % solver.cur_len].key = None;
                     continue;
                 };
+
                 let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
                 if self.key_update == Update::Configure || w.key.as_ref() != Some(&key) {
@@ -522,6 +524,7 @@ mod ListView {
                         w.key = Some(key);
                     } else {
                         w.key = None; // disables drawing and clicking
+                        continue;
                     }
                 } else if self.value_update
                     && let Some(item) = self.clerk.item(data, &key)
@@ -529,9 +532,8 @@ mod ListView {
                     cx.update(w.item.as_node(item));
                 }
 
-                if w.key.is_some() {
-                    w.item.set_rect(cx, solver.rect(i), self.align_hints);
-                }
+                debug_assert!(w.key.is_some());
+                w.item.set_rect(cx, solver.rect(i), self.align_hints);
             }
 
             self.key_update = Update::None;

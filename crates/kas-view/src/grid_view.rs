@@ -451,37 +451,39 @@ mod GridView {
                 for col in start.col..end.col {
                     let cell = GridIndex { col, row };
                     let i = solver.data_to_child(cell);
-                    if let Some(key) = self.clerk.key(data, cell) {
-                        let id = key.make_id(self.id_ref());
-                        let w = &mut self.widgets[i];
-                        if self.key_update == Update::Configure || w.key.as_ref() != Some(&key) {
-                            self.driver.set_key(&mut w.item.inner, &key);
 
-                            if let Some(item) = self.clerk.item(data, &key) {
-                                cx.configure(w.item.as_node(item), id);
-
-                                w.key = Some(key);
-                                solve_size_rules(
-                                    &mut w.item,
-                                    cx.size_cx(),
-                                    Some(self.child_size.0),
-                                    Some(self.child_size.1),
-                                );
-                            } else {
-                                w.key = None; // disables drawing and clicking
-                            }
-                        } else if self.value_update
-                            && let Some(item) = self.clerk.item(data, &key)
-                        {
-                            cx.update(w.item.as_node(item));
-                        }
-
-                        if w.key.is_some() {
-                            w.item.set_rect(cx, solver.rect(cell), self.align_hints);
-                        }
-                    } else {
+                    let Some(key) = self.clerk.key(data, cell) else {
                         self.widgets[i].key = None;
+                        continue;
+                    };
+
+                    let id = key.make_id(self.id_ref());
+                    let w = &mut self.widgets[i];
+                    if self.key_update == Update::Configure || w.key.as_ref() != Some(&key) {
+                        self.driver.set_key(&mut w.item.inner, &key);
+
+                        if let Some(item) = self.clerk.item(data, &key) {
+                            cx.configure(w.item.as_node(item), id);
+
+                            w.key = Some(key);
+                            solve_size_rules(
+                                &mut w.item,
+                                cx.size_cx(),
+                                Some(self.child_size.0),
+                                Some(self.child_size.1),
+                            );
+                        } else {
+                            w.key = None; // disables drawing and clicking
+                            continue;
+                        }
+                    } else if self.value_update
+                        && let Some(item) = self.clerk.item(data, &key)
+                    {
+                        cx.update(w.item.as_node(item));
                     }
+
+                    debug_assert!(w.key.is_some());
+                    w.item.set_rect(cx, solver.rect(cell), self.align_hints);
                 }
             }
 
