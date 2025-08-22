@@ -36,6 +36,7 @@ struct Data {
     ver: u64,
     row_limit: bool,
     len: usize,
+    last_string: usize,
     active: usize,
     dir: Direction,
     active_string: String,
@@ -47,6 +48,7 @@ impl Data {
             ver: 0,
             row_limit,
             len,
+            last_string: len,
             active: 0,
             dir: Direction::Down,
             active_string: String::from("Entry 1"),
@@ -79,6 +81,7 @@ impl Data {
                 return;
             }
             Control::Update(index, text) => {
+                self.last_string = self.last_string.max(index);
                 if index == self.active {
                     self.active_string = text.clone();
                 }
@@ -168,9 +171,9 @@ impl DataClerk<usize> for Clerk {
         data.row_limit.then_some(data.len)
     }
 
-    fn min_len(&self, _: &Self::Data, expected: usize) -> usize {
+    fn min_len(&self, data: &Self::Data, expected: usize) -> usize {
         // This method is only called when len returns None, i.e. when we don't use data.len
-        expected
+        (data.active.max(data.last_string) + 1).max(expected)
     }
 
     fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {
