@@ -3,7 +3,7 @@
 use kas::prelude::*;
 use kas::view::{DataClerk, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
-use kas_view::DataChanges;
+use kas_view::{DataChanges, DataLen};
 use std::ops::Range;
 
 /// A cache of the visible part of our table
@@ -41,8 +41,8 @@ impl DataClerk<GridIndex> for TableCache {
         }
     }
 
-    fn len(&self, _: &Self::Data) -> Option<GridIndex> {
-        Some(GridIndex::splat(self.dim))
+    fn len(&self, _: &Self::Data, _: GridIndex) -> DataLen<GridIndex> {
+        DataLen::Known(GridIndex::splat(self.dim))
     }
 
     fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, range: Range<GridIndex>) {

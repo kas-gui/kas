@@ -13,7 +13,7 @@
 use kas::prelude::*;
 use kas::view::{DataClerk, Driver, ListView};
 use kas::widgets::{column, *};
-use kas_view::DataChanges;
+use kas_view::{DataChanges, DataLen};
 use std::collections::HashMap;
 use std::ops::Range;
 
@@ -167,13 +167,12 @@ impl DataClerk<usize> for Clerk {
         DataChanges::NoPreparedKeys
     }
 
-    fn len(&self, data: &Self::Data) -> Option<usize> {
-        data.row_limit.then_some(data.len)
-    }
-
-    fn min_len(&self, data: &Self::Data, expected: usize) -> usize {
-        // This method is only called when len returns None, i.e. when we don't use data.len
-        (data.active.max(data.last_string) + 1).max(expected)
+    fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {
+        if data.row_limit {
+            DataLen::Known(data.len)
+        } else {
+            DataLen::LBound((data.active.max(data.last_string) + 1).max(lbound))
+        }
     }
 
     fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {

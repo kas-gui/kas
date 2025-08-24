@@ -108,6 +108,32 @@ pub enum DataChanges {
     Any,
 }
 
+/// Result of [`Self::len`]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DataLen<Index> {
+    /// Length is known and specified exactly
+    Known(Index),
+    /// A lower bound on length is specified
+    LBound(Index),
+}
+
+impl<Index: Copy> DataLen<Index> {
+    /// Returns the length payload (known or lower bound)
+    #[inline]
+    pub fn len(&self) -> Index {
+        match self {
+            DataLen::Known(len) => *len,
+            DataLen::LBound(len) => *len,
+        }
+    }
+
+    /// Returns true if a known length given
+    #[inline]
+    pub fn is_known(&self) -> bool {
+        matches!(self, DataLen::Known(_))
+    }
+}
+
 /// Data access manager
 ///
 /// A `DataClerk` manages access to a data set, using an `Index` type specified by
@@ -139,7 +165,7 @@ pub enum DataChanges {
 /// latter will already be the case when the changing data/query/filter is
 /// passed via input `data`).
 ///
-/// The result of [`Self::len`] and/or [`Self::min_len`] should be updated to
+/// The result of [`Self::len`] should be updated to
 /// return the number of available elements.
 ///
 /// As above, it may be possible to implement [`Self::item`] by referencing the
@@ -221,8 +247,7 @@ pub trait DataClerk<Index> {
     /// expensive or slow calculations.
     ///
     /// This method should perform any updates required to adjust [`Self::len`]
-    /// and [`Self::min_len`] or arrange for these properties to be updated
-    /// asynchronously.
+    /// or arrange for this property to be updated asynchronously.
     ///
     /// To receive (async) messages with [`Self::handle_messages`], send to `id`
     /// using (for example) `cx.send_async(id, _)`.
@@ -231,34 +256,22 @@ pub trait DataClerk<Index> {
     /// [`DataChanges`] might be needed.
     fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> DataChanges;
 
-    /// Get the number of indexable items, if known
+    /// Get the number of indexable items
     ///
-    /// If known, the result should be one larger than the largest `index`
-    /// yielding a result from [`Self::key`]. This number may therefore be
-    /// affected by input `data` such as filters.
+    /// Scroll bars and the `range` passed to [`Self::prepare_range`] are
+    /// limited by the result of this method.
     ///
-    /// The result may change after a call to [`Self::update`] due to changes in
-    /// the data set query or filter. The result should not depend on `range`.
+    /// Where the data set size is a known fixed `len` (or unfixed but with
+    /// maximum `len <= lbound`), this method should return
+    /// <code>[DataLen::Known][](len)</code>.
     ///
-    /// This method may return [`None`], in which case [`Self::min_len`] must be
-    /// implemented instead. This will affect the appearance of scroll bars.
-    fn len(&self, data: &Self::Data) -> Option<Index>;
-
-    /// Get a lower bound on the number of indexable items
+    /// Where the data set size is unknown (or unfixed and greater than
+    /// `lbound`), this method should return
+    /// <code>[DataLen::LBound][](lbound)</code>.
     ///
-    /// This method is only called when [`Self::len`] returns [`None`].
-    ///
-    /// If the return value is less than `expected`, then scrolling and querying
-    /// will be limited to indices less than the return value. If the return
-    /// value is at least `expected`, then scrolling and item querying will be
-    /// unimpeded.
-    ///
-    /// In case [`Self::len`] returns [`None`], this value is used to size
-    /// scroll bar grips.
-    fn min_len(&self, data: &Self::Data, expected: Index) -> Index {
-        let _ = expected;
-        self.len(data).unwrap()
-    }
+    /// `lbound` is set to allow scrolling a little beyond the current view
+    /// position (i.e. a little larger than the last prepared `range.end`).
+    fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index>;
 
     /// Prepare a range
     ///

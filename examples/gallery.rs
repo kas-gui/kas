@@ -354,7 +354,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Page<AppData> {
-    use kas::view::{DataClerk, ListView, SelectionMode, SelectionMsg, driver};
+    use kas::view::{DataClerk, DataLen, ListView, SelectionMode, SelectionMsg, driver};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -564,8 +564,8 @@ fn filter_list() -> Page<AppData> {
             DataChanges::Any
         }
 
-        fn len(&self, _: &Self::Data) -> Option<usize> {
-            Some(self.end)
+        fn len(&self, _: &Self::Data, _: usize) -> DataLen<usize> {
+            DataLen::Known(self.end)
         }
 
         fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, range: Range<usize>) {
