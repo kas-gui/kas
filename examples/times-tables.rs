@@ -21,6 +21,8 @@ impl DataGenerator<GridIndex> for TableCache {
     /// Our table is square; it's size is input.
     type Data = u32;
 
+    type Key = GridIndex;
+
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
 
@@ -37,8 +39,12 @@ impl DataGenerator<GridIndex> for TableCache {
         DataLen::Known(GridIndex::splat(self.dim))
     }
 
-    fn generate(&self, _: &Self::Data, index: GridIndex) -> u64 {
-        product(index)
+    fn key(&self, _: &Self::Data, index: GridIndex) -> Option<GridIndex> {
+        Some(index)
+    }
+
+    fn generate(&self, _: &Self::Data, index: &GridIndex) -> u64 {
+        product(*index)
     }
 }
 

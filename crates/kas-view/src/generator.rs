@@ -47,10 +47,19 @@ pub trait DataGenerator<Index> {
     /// (e.g. `cx.update(list.as_node(&input))`) after the data set changes.
     type Data;
 
+    /// Key type
+    ///
+    /// All data items should have a stable key so that data items may be
+    /// tracked through changing queries. This allows focus and selection to
+    /// correctly track items when the data query or filter changes.
+    ///
+    /// Where the query is fixed, this can just be the `Index` type.
+    type Key: DataKey;
+
     /// Item type
     ///
     /// This is the generated type.
-    type Item: Clone + Default;
+    type Item: Clone + Default + PartialEq;
 
     /// Update the generator
     ///
@@ -84,11 +93,22 @@ pub trait DataGenerator<Index> {
     /// position (i.e. a little larger than the last prepared `range.end`).
     fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index>;
 
+    /// Get a key for a given `index`, if available
+    ///
+    /// This method should be fast since it may be called repeatedly.
+    /// This method is only called for `index` less than the result of
+    /// [`Self::len`].
+    ///
+    /// This may return `None` even when `index` is within the query's `range`
+    /// since data may be sparse; in this case the view widget at this `index`
+    /// is hidden.
+    fn key(&self, data: &Self::Data, index: Index) -> Option<Self::Key>;
+
     /// Generate an item
     ///
-    /// The `index` will be less than the result of the last call to
+    /// The `key` will be the result of [`Self::key`] for an `index` less than
     /// [`Self::len`].
-    fn generate(&self, data: &Self::Data, index: Index) -> Self::Item;
+    fn generate(&self, data: &Self::Data, key: &Self::Key) -> Self::Item;
 }
 
 /// An implementation of [`DataClerk`] for data generators
@@ -105,11 +125,16 @@ impl<Index: Default, G: DataGenerator<Index>> GeneratorClerk<Index, G> {
             _index: PhantomData,
         }
     }
+
+    /// Access the inner generator
+    pub fn generator(&self) -> &G {
+        &self.g
+    }
 }
 
 impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorClerk<Index, G> {
     type Data = G::Data;
-    type Key = Index;
+    type Key = G::Key;
     type Item = G::Item;
     type Token = Token<Self::Key, Self::Item>;
 
@@ -131,16 +156,25 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
         index: Index,
         token: &mut Option<Self::Token>,
     ) -> TokenChanges {
-        if let Some(token) = token.as_ref()
-            && token.key == index
-        {
+        let Some(key) = self.g.key(data, index) else {
+            *token = None;
             return TokenChanges::None;
+        };
+
+        let item = self.g.generate(data, &key);
+
+        if let Some(token) = token.as_mut()
+            && token.key == key
+        {
+            if token.item == item {
+                return TokenChanges::None;
+            } else {
+                token.item = item;
+                return TokenChanges::SameKey;
+            }
         }
 
-        *token = Some(Token {
-            key: index.clone(),
-            item: self.g.generate(data, index),
-        });
+        *token = Some(Token { key, item });
         TokenChanges::Any
     }
 
