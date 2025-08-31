@@ -35,8 +35,7 @@ mod GridCell {
     #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus))]
     struct GridCell<K, I, V: Driver<K, I>> {
         core: widget_core!(),
-        col: u32,
-        row: u32,
+        index: GridIndex,
         selected: Option<bool>,
         /// The inner widget
         #[widget]
@@ -49,8 +48,7 @@ mod GridCell {
         fn new(inner: V::Widget) -> Self {
             GridCell {
                 core: Default::default(),
-                col: 0,
-                row: 0,
+                index: GridIndex::default(),
                 selected: None,
                 inner,
             }
@@ -63,7 +61,7 @@ mod GridCell {
                 cx.set_label(label);
             }
             Role::GridCell {
-                info: Some(GridCellInfo::new(self.col, self.row)),
+                info: Some(GridCellInfo::new(self.index.col, self.index.row)),
                 selected: self.selected,
             }
         }
@@ -463,7 +461,9 @@ mod GridView {
 
                     let id = token.borrow().make_id(self.id_ref());
                     let w = &mut self.widgets[i];
+
                     if self.key_update == Update::Configure || w.key() != Some(token.borrow()) {
+                        w.item.index = cell;
                         self.driver.set_key(&mut w.item.inner, token.borrow());
 
                         let item = self.clerk.item(data, &token);

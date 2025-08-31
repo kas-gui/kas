@@ -507,6 +507,7 @@ mod ListView {
 
                 let id = token.borrow().make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
+
                 if self.key_update == Update::Configure || w.key() != Some(token.borrow()) {
                     w.item.index = i;
                     self.driver.set_key(&mut w.item.inner, token.borrow());
