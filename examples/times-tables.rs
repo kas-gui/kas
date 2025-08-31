@@ -3,22 +3,17 @@
 use kas::prelude::*;
 use kas::view::{DataClerk, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
-use kas_view::{DataChanges, DataLen};
-use std::ops::Range;
+use kas_view::{DataChanges, DataLen, Token};
 
 /// A cache of the visible part of our table
 #[derive(Debug, Default)]
 struct TableCache {
     dim: u32,
-    col_len: usize,
-    col_start: u32,
-    row_start: u32,
-    contents: Vec<u64>,
 }
 
-fn product(x: u32, y: u32) -> u64 {
-    let x = u64::conv(x + 1);
-    let y = u64::conv(y + 1);
+fn product(index: GridIndex) -> u64 {
+    let x = u64::conv(index.col + 1);
+    let y = u64::conv(index.row + 1);
     x * y
 }
 
@@ -29,7 +24,7 @@ impl DataClerk<GridIndex> for TableCache {
     /// We re-usize the index as our key.
     type Key = GridIndex;
 
-    type Token = GridIndex;
+    type Token = Token<GridIndex, u64>;
 
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
@@ -47,41 +42,12 @@ impl DataClerk<GridIndex> for TableCache {
         DataLen::Known(GridIndex::splat(self.dim))
     }
 
-    fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, range: Range<GridIndex>) {
-        // This is a simple hack to cache contents for the given range for usage by item()
-        let x_len = usize::conv(range.end.col - range.start.col);
-        let y_len = usize::conv(range.end.row - range.start.row);
-        if x_len != self.col_len
-            || x_len * y_len != self.contents.len()
-            || self.col_start != range.start.col
-            || self.row_start != range.start.row
-        {
-            self.col_len = x_len;
-            self.col_start = range.start.col;
-            self.row_start = range.start.row;
-            self.contents.clear();
-            self.contents.reserve(x_len * y_len);
-
-            for y in range.start.row..range.end.row {
-                for x in range.start.col..range.end.col {
-                    self.contents.push(product(x, y));
-                }
-            }
-        }
-    }
-
     fn token(&self, _: &Self::Data, index: GridIndex) -> Option<Self::Token> {
-        Some(index)
+        Some(Token::new(index, product(index)))
     }
 
-    fn item(&self, _: &Self::Data, key: &Self::Key) -> &Self::Item {
-        // We are required to return a reference, otherwise we would simply
-        // calculate the value here!
-        let GridIndex { col, row } = *key;
-        let xrel = usize::conv(col - self.col_start);
-        let yrel = usize::conv(row - self.row_start);
-        let i = xrel + yrel * self.col_len;
-        self.contents.get(i).unwrap()
+    fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {
+        &token.item
     }
 }
 
@@ -104,8 +70,8 @@ fn main() -> kas::runner::Result<()> {
         .with_state(12)
         .on_message(|_, dim, SetLen(len)| *dim = len)
         .on_message(|_, _, selection| match selection {
-            SelectionMsg::<GridIndex>::Select(GridIndex { col, row }) => {
-                println!("{} × {} = {}", col + 1, row + 1, product(col, row));
+            SelectionMsg::<GridIndex>::Select(index) => {
+                println!("{} × {} = {}", index.col + 1, index.row + 1, product(index));
             }
             _ => (),
         });

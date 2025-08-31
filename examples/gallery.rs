@@ -354,7 +354,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Page<AppData> {
-    use kas::view::{DataClerk, DataLen, ListView, SelectionMode, SelectionMsg, driver};
+    use kas::view::{DataClerk, DataLen, ListView, SelectionMode, SelectionMsg, Token, driver};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -504,8 +504,6 @@ fn filter_list() -> Page<AppData> {
         filtered_years: FilteredRange,
         end_month: u8,
         end_month_filtered: u8,
-        cache_start: usize,
-        cache: Vec<(usize, String)>,
         filter: MonthYearFilter,
     }
     let clerk = MonthsClerk {
@@ -515,8 +513,6 @@ fn filter_list() -> Page<AppData> {
         filtered_years: FilteredRange::new(years),
         end_month,
         end_month_filtered: end_month,
-        cache_start: 0,
-        cache: Vec::new(),
         filter: MonthYearFilter::default(),
     };
 
@@ -532,7 +528,7 @@ fn filter_list() -> Page<AppData> {
         type Data = MonthYearFilter;
 
         type Key = usize;
-        type Token = usize;
+        type Token = Token<usize, String>;
 
         type Item = String;
 
@@ -569,21 +565,7 @@ fn filter_list() -> Page<AppData> {
             DataLen::Known(self.end)
         }
 
-        fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, range: Range<usize>) {
-            self.cache.clear();
-            self.cache.reserve(range.len());
-            self.cache_start = range.start;
-            self.cache.extend(range.clone().map(|index| {
-                let i = self.end - index - 1;
-                let m = self.months.len(); // number of months (filtered)
-                let year = self.filtered_years.get(i / m);
-                let month = self.months[i % m] as usize;
-                let text = format!("{} {year}", &MONTHS[month]);
-                (year * 12 + month, text)
-            }));
-        }
-
-        fn token(&self, _: &Self::Data, index: usize) -> Option<usize> {
+        fn token(&self, _: &Self::Data, index: usize) -> Option<Self::Token> {
             if index >= self.end {
                 return None;
             }
@@ -592,15 +574,15 @@ fn filter_list() -> Page<AppData> {
             let m = self.months.len(); // number of months (filtered)
             let year = self.filtered_years.get(i / m);
             let month = self.months[i % m] as usize;
-            Some(year * 12 + month)
+
+            Some(Token {
+                key: year * 12 + month,
+                item: format!("{} {year}", &MONTHS[month]),
+            })
         }
 
-        fn item(&self, _: &Self::Data, key: &usize) -> &String {
-            let i = self
-                .cache
-                .binary_search_by(|x| x.0.cmp(key).reverse())
-                .unwrap();
-            self.cache.get(i).map(|x| &x.1).unwrap()
+        fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r String {
+            &token.item
         }
     }
 

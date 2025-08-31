@@ -13,9 +13,8 @@
 use kas::prelude::*;
 use kas::view::{DataClerk, Driver, ListView};
 use kas::widgets::{column, *};
-use kas_view::{DataChanges, DataLen};
+use kas_view::{DataChanges, DataLen, Token};
 use std::collections::HashMap;
-use std::ops::Range;
 
 #[derive(Debug)]
 struct SelectEntry(usize);
@@ -153,19 +152,15 @@ mod ListEntry {
 }
 
 #[derive(Default)]
-struct Clerk {
-    start: usize,
-    ver: u64,
-    items: Vec<Item>,
-}
+struct Clerk;
 impl DataClerk<usize> for Clerk {
     type Data = Data;
     type Key = usize;
-    type Token = usize;
+    type Token = Token<usize, Item>;
     type Item = Item;
 
     fn update(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data) -> DataChanges {
-        DataChanges::NoPreparedKeys
+        DataChanges::Any
     }
 
     fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {
@@ -176,36 +171,15 @@ impl DataClerk<usize> for Clerk {
         }
     }
 
-    fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {
-        let len = range.len();
-        let update_range;
-        if self.ver == data.ver && range.len() == self.items.len() {
-            if range.start == self.start {
-                return;
-            } else if range.start > self.start {
-                update_range = (self.start + self.items.len())..range.end;
-            } else {
-                update_range = range.start..self.start;
-            }
-        } else {
-            // If the data version has changed, we must update all items
-            self.ver = data.ver;
-            self.items.resize(len, Item::default());
-            update_range = range.clone();
-        }
-
-        self.start = range.start;
-        for index in update_range {
-            self.items[index % len] = (data.active, data.get_string(index));
-        }
+    fn token(&self, data: &Self::Data, index: usize) -> Option<Self::Token> {
+        Some(Token {
+            key: index,
+            item: (data.active, data.get_string(index)),
+        })
     }
 
-    fn token(&self, _: &Self::Data, index: usize) -> Option<Self::Token> {
-        Some(index)
-    }
-
-    fn item(&self, _: &Self::Data, key: &Self::Key) -> &Item {
-        &self.items[key % self.items.len()]
+    fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Item {
+        &token.item
     }
 }
 

@@ -35,6 +35,8 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 mod data_clerk;
+use std::borrow::Borrow;
+
 pub use data_clerk::*;
 
 pub mod filter;
@@ -47,6 +49,27 @@ pub use list_view::ListView;
 
 mod grid_view;
 pub use grid_view::{GridIndex, GridView};
+
+/// A pair which may be borrowed over the first item
+#[derive(Debug, Default)]
+pub struct Token<K, I> {
+    pub key: K,
+    pub item: I,
+}
+
+impl<K, I> Token<K, I> {
+    /// Construct
+    #[inline]
+    pub fn new(key: K, item: I) -> Self {
+        Token { key, item }
+    }
+}
+
+impl<K, I> Borrow<K> for Token<K, I> {
+    fn borrow(&self) -> &K {
+        &self.key
+    }
+}
 
 /// Used to notify selection and deselection of [`ListView`] and [`GridView`] children
 #[derive(Clone, Debug)]
