@@ -595,12 +595,12 @@ fn filter_list() -> Page<AppData> {
             Some(year * 12 + month)
         }
 
-        fn item(&self, _: &Self::Data, key: &usize) -> Option<&String> {
+        fn item(&self, _: &Self::Data, key: &usize) -> &String {
             let i = self
                 .cache
                 .binary_search_by(|x| x.0.cmp(key).reverse())
-                .ok()?;
-            self.cache.get(i).map(|x| &x.1)
+                .unwrap();
+            self.cache.get(i).map(|x| &x.1).unwrap()
         }
     }
 

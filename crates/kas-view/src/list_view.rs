@@ -511,23 +511,18 @@ mod ListView {
                     w.item.index = i;
                     self.driver.set_key(&mut w.item.inner, token.borrow());
 
-                    if let Some(item) = self.clerk.item(data, &token) {
-                        cx.configure(w.item.as_node(item), id);
+                    let item = self.clerk.item(data, &token);
+                    cx.configure(w.item.as_node(item), id);
 
-                        solve_size_rules(
-                            &mut w.item,
-                            cx.size_cx(),
-                            Some(self.child_size.0),
-                            Some(self.child_size.1),
-                        );
-                        w.token = Some(token);
-                    } else {
-                        w.token = None; // disables drawing and clicking
-                        continue;
-                    }
-                } else if self.value_update
-                    && let Some(item) = self.clerk.item(data, &token)
-                {
+                    solve_size_rules(
+                        &mut w.item,
+                        cx.size_cx(),
+                        Some(self.child_size.0),
+                        Some(self.child_size.1),
+                    );
+                    w.token = Some(token);
+                } else if self.value_update {
+                    let item = self.clerk.item(data, &token);
                     cx.update(w.item.as_node(item));
                 }
 
@@ -581,9 +576,8 @@ mod ListView {
 
             let range = ..usize::conv(self.cur_len);
             for child in &mut self.widgets[range] {
-                if let Some(token) = child.token.as_ref()
-                    && let Some(item) = self.clerk.item(data, token)
-                {
+                if let Some(token) = child.token.as_ref() {
+                    let item = self.clerk.item(data, token);
                     cx.update(child.item.as_node(item));
                 }
             }
@@ -1027,8 +1021,8 @@ mod ListView {
         fn child_node<'n>(&'n mut self, data: &'n C::Data, index: usize) -> Option<Node<'n>> {
             if let Some(w) = self.widgets.get_mut(index)
                 && let Some(ref token) = w.token
-                && let Some(item) = self.clerk.item(data, token)
             {
+                let item = self.clerk.item(data, token);
                 return Some(w.item.as_node(item));
             }
 

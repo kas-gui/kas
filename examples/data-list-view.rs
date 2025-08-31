@@ -204,8 +204,8 @@ impl DataClerk<usize> for Clerk {
         Some(index)
     }
 
-    fn item(&self, _: &Self::Data, key: &Self::Key) -> Option<&Item> {
-        Some(&self.items[key % self.items.len()])
+    fn item(&self, _: &Self::Data, key: &Self::Key) -> &Item {
+        &self.items[key % self.items.len()]
     }
 }
 

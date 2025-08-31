@@ -74,14 +74,14 @@ impl DataClerk<GridIndex> for TableCache {
         Some(index)
     }
 
-    fn item(&self, _: &Self::Data, key: &Self::Key) -> Option<&Self::Item> {
+    fn item(&self, _: &Self::Data, key: &Self::Key) -> &Self::Item {
         // We are required to return a reference, otherwise we would simply
         // calculate the value here!
         let GridIndex { col, row } = *key;
         let xrel = usize::conv(col - self.col_start);
         let yrel = usize::conv(row - self.row_start);
         let i = xrel + yrel * self.col_len;
-        self.contents.get(i)
+        self.contents.get(i).unwrap()
     }
 }
 

@@ -343,16 +343,8 @@ pub trait DataClerk<Index> {
     /// entries) or remap indices such that hidden keys are skipped over.
     fn token(&self, data: &Self::Data, index: Index) -> Option<Self::Token>;
 
-    /// Get a data item, if available
+    /// Get the data item for the given `token`
     ///
     /// This method should be fast since it may be called repeatedly.
-    ///
-    /// This may return `None` while data is still loading (async). The view
-    /// controller may display a loading animation in this case, though the
-    /// current implementation merely hides the view widget. It is expected that
-    /// the method not return `None` after `Some(_)` (excepting after
-    /// [`Self::prepare_range`] has removed its `token` from the `range`);
-    /// returning `None` in this case might cause stale content to be shown and
-    /// event/message handlers on the view widget to fail.
-    fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> Option<&'r Self::Item>;
+    fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item;
 }
