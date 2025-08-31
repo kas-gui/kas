@@ -94,19 +94,22 @@ impl_2D!(u64);
 pub enum DataChanges {
     /// `None` indicates that no changes to the data set occurred.
     None,
-    /// `NoPrepared` indicates that changes to the data set may have occurred,
-    /// but that for all indices in the `range` last passed to
-    /// [`DataClerk::prepare_range`] the index-key mappings ([`DataClerk::key`]
-    /// results) and key-value mappings ([`DataClerk::item`] results) remain
-    /// unchanged.
-    NoPrepared,
-    /// `NoPreparedKeys` indicates that changes to the data set may have
-    /// occurred, but that for all indices in the `range` last passed to
-    /// [`DataClerk::prepare_range`] the index-key mappings ([`DataClerk::key`]
-    /// results) remain unchanged.
-    NoPreparedKeys,
+    /// `NoPreparedItems` indicates that changes to the data set may have
+    /// occurred, but that [`DataClerk::token`] and [`DataClerk::item`] results
+    /// are unchanged for the `range` last passed to [`DataClerk::prepare_range`].
+    NoPreparedItems,
+    /// `NoPreparedItems` indicates that changes to the data set may have
+    /// occurred, but that [`DataClerk::token`] results
+    /// are unchanged for the `range` last passed to [`DataClerk::prepare_range`].
+    NoPreparedTokens,
     /// `Any` indicates that changes to the data set may have occurred.
     Any,
+}
+
+impl DataChanges {
+    pub(crate) fn any_item(self) -> bool {
+        matches!(self, DataChanges::NoPreparedTokens | DataChanges::Any)
+    }
 }
 
 /// Result of [`Self::len`]

@@ -34,7 +34,7 @@ impl DataClerk<GridIndex> for TableCache {
             DataChanges::None
         } else {
             self.dim = *dim;
-            DataChanges::NoPrepared
+            DataChanges::NoPreparedItems
         }
     }
 

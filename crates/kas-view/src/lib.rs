@@ -95,9 +95,9 @@ pub enum SelectionMode {
     Multiple,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Update {
     None,
-    Key,
+    Token,
     Configure,
 }

@@ -167,7 +167,7 @@ mod GridView {
         ideal_len: GridIndex,
         alloc_len: GridIndex,
         data_len: GridIndex,
-        key_update: Update,
+        token_update: Update,
         value_update: bool,
         len_is_known: bool,
         cur_len: GridIndex,
@@ -200,7 +200,7 @@ mod GridView {
                 ideal_len: GridIndex { col: 3, row: 5 },
                 alloc_len: GridIndex::ZERO,
                 data_len: GridIndex::ZERO,
-                key_update: Update::None,
+                token_update: Update::None,
                 value_update: false,
                 len_is_known: false,
                 cur_len: GridIndex::ZERO,
@@ -401,7 +401,7 @@ mod GridView {
             if data_len != self.data_len {
                 self.data_len = data_len;
                 self.update_content_size(cx);
-                self.key_update = Update::Key;
+                self.token_update = Update::Token;
             }
 
             let col_len = data_len.col.min(self.alloc_len.col);
@@ -416,7 +416,7 @@ mod GridView {
             let end_row =
                 u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1).min(data_len.row);
 
-            if self.key_update == Update::None
+            if self.token_update == Update::None
                 && first_col >= self.first_data.col
                 && first_row >= self.first_data.row
                 && end_col <= self.first_data.col + self.cur_len.col
@@ -462,14 +462,13 @@ mod GridView {
                     let id = token.borrow().make_id(self.id_ref());
                     let w = &mut self.widgets[i];
 
-                    if self.key_update == Update::Configure || w.key() != Some(token.borrow()) {
+                    if self.token_update == Update::Configure || w.key() != Some(token.borrow()) {
                         w.item.index = cell;
                         self.driver.set_key(&mut w.item.inner, token.borrow());
 
                         let item = self.clerk.item(data, &token);
                         cx.configure(w.item.as_node(item), id);
 
-                        w.token = Some(token);
                         solve_size_rules(
                             &mut w.item,
                             cx.size_cx(),
@@ -481,12 +480,13 @@ mod GridView {
                         cx.update(w.item.as_node(item));
                     }
 
-                    debug_assert!(w.token.is_some());
+                    w.token = Some(token);
+
                     w.item.set_rect(cx, solver.rect(cell), self.align_hints);
                 }
             }
 
-            self.key_update = Update::None;
+            self.token_update = Update::None;
             self.value_update = false;
 
             let dur = (Instant::now() - time).as_micros();
@@ -500,10 +500,10 @@ mod GridView {
 
         // Handle a data clerk update
         fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
-            self.value_update = match changes {
-                DataChanges::None | DataChanges::NoPrepared => false,
-                DataChanges::NoPreparedKeys | DataChanges::Any => true,
-            };
+            if changes == DataChanges::Any {
+                self.token_update = self.token_update.max(Update::Token);
+            }
+            self.value_update |= changes.any_item();
 
             let lbound = GridIndex {
                 col: self.first_data.col + 2 * self.alloc_len.col,
@@ -514,7 +514,7 @@ mod GridView {
             let data_len = data_len.len();
             if data_len != self.data_len {
                 self.data_len = data_len;
-                self.key_update = Update::Key;
+                self.token_update = Update::Token;
 
                 if self.update_content_size(cx) {
                     // We may be able to request additional screen space.
@@ -527,11 +527,11 @@ mod GridView {
                     || self.cur_len.row != data_len.row.min(self.alloc_len.row)
                 {
                     // We need to prepare a new range
-                    self.key_update = Update::Key;
+                    self.token_update = Update::Token;
                 }
             }
 
-            if self.key_update != Update::None {
+            if self.token_update != Update::None {
                 return self.map_view_widgets(cx, data);
             }
             if !self.value_update {
@@ -695,7 +695,7 @@ mod GridView {
             }
 
             // Also queue a call to map_view_widgets since ranges may have changed
-            self.key_update = Update::Key;
+            self.token_update = Update::Token;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -811,7 +811,7 @@ mod GridView {
                 }
             }
 
-            self.key_update = Update::Configure;
+            self.token_update = Update::Configure;
             self.map_view_widgets(cx, data);
         }
 

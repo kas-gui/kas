@@ -138,7 +138,7 @@ mod ListView {
         widgets: Vec<WidgetData<C, V>>,
         alloc_len: u32,
         data_len: u32,
-        key_update: Update,
+        token_update: Update,
         value_update: bool,
         len_is_known: bool,
         /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
@@ -218,7 +218,7 @@ mod ListView {
                 widgets: Default::default(),
                 alloc_len: 0,
                 data_len: 0,
-                key_update: Update::None,
+                token_update: Update::None,
                 value_update: false,
                 len_is_known: false,
                 cur_len: 0,
@@ -464,7 +464,7 @@ mod ListView {
             let last_data =
                 u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1).min(self.data_len);
 
-            if self.key_update != Update::None
+            if self.token_update != Update::None
                 || first_data < self.first_data
                 || last_data > self.first_data + self.cur_len
                 || self.cur_len > self.data_len
@@ -508,7 +508,7 @@ mod ListView {
                 let id = token.borrow().make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
 
-                if self.key_update == Update::Configure || w.key() != Some(token.borrow()) {
+                if self.token_update == Update::Configure || w.key() != Some(token.borrow()) {
                     w.item.index = i;
                     self.driver.set_key(&mut w.item.inner, token.borrow());
 
@@ -521,17 +521,17 @@ mod ListView {
                         Some(self.child_size.0),
                         Some(self.child_size.1),
                     );
-                    w.token = Some(token);
                 } else if self.value_update {
                     let item = self.clerk.item(data, &token);
                     cx.update(w.item.as_node(item));
                 }
 
-                debug_assert!(w.token.is_some());
+                w.token = Some(token);
+
                 w.item.set_rect(cx, solver.rect(i), self.align_hints);
             }
 
-            self.key_update = Update::None;
+            self.token_update = Update::None;
             self.value_update = false;
 
             let dur = (Instant::now() - time).as_micros();
@@ -543,10 +543,10 @@ mod ListView {
 
         // Handle a data clerk update
         fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
-            self.value_update = match changes {
-                DataChanges::None | DataChanges::NoPrepared => false,
-                DataChanges::NoPreparedKeys | DataChanges::Any => true,
-            };
+            if changes == DataChanges::Any {
+                self.token_update = self.token_update.max(Update::Token);
+            }
+            self.value_update |= changes.any_item();
 
             let lbound = self.first_data + 2 * self.alloc_len;
             let data_len = self.clerk.len(data, lbound.cast());
@@ -563,11 +563,11 @@ mod ListView {
                 }
 
                 if self.cur_len != data_len.min(self.alloc_len.cast()) {
-                    self.key_update = Update::Key;
+                    self.token_update = Update::Token;
                 }
             }
 
-            if self.key_update != Update::None {
+            if self.token_update != Update::None {
                 return self.map_view_widgets(cx, data, self.first_data.cast());
             }
             if !self.value_update {
@@ -731,7 +731,7 @@ mod ListView {
                 }
             }
 
-            self.key_update = Update::Key;
+            self.token_update = Update::Token;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -841,7 +841,7 @@ mod ListView {
                 }
             }
 
-            self.key_update = Update::Configure;
+            self.token_update = Update::Configure;
             let offset = self.scroll_offset().extract(self.direction);
             let first_data = u64::conv(offset) / u64::conv(self.skip);
             self.map_view_widgets(cx, data, first_data.cast());
