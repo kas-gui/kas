@@ -3,7 +3,7 @@
 use kas::prelude::*;
 use kas::view::{DataClerk, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
-use kas_view::{DataChanges, DataLen, Token};
+use kas_view::{DataChanges, DataLen, Token, TokenChanges};
 
 /// A cache of the visible part of our table
 #[derive(Debug, Default)]
@@ -42,8 +42,23 @@ impl DataClerk<GridIndex> for TableCache {
         DataLen::Known(GridIndex::splat(self.dim))
     }
 
-    fn token(&self, _: &Self::Data, index: GridIndex) -> Option<Self::Token> {
-        Some(Token::new(index, product(index)))
+    fn update_token(
+        &self,
+        _: &Self::Data,
+        index: GridIndex,
+        token: &mut Option<Self::Token>,
+    ) -> TokenChanges {
+        if let Some(token) = token.as_ref()
+            && token.key == index
+        {
+            return TokenChanges::None;
+        }
+
+        *token = Some(Token {
+            key: index,
+            item: product(index),
+        });
+        TokenChanges::Any
     }
 
     fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {

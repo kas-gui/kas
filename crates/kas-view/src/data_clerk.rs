@@ -95,12 +95,13 @@ pub enum DataChanges {
     /// `None` indicates that no changes to the data set occurred.
     None,
     /// `NoPreparedItems` indicates that changes to the data set may have
-    /// occurred, but that [`DataClerk::token`] and [`DataClerk::item`] results
-    /// are unchanged for the `range` last passed to [`DataClerk::prepare_range`].
+    /// occurred, but that [`DataClerk::update_token`] and [`DataClerk::item`]
+    /// results are unchanged for the `range` last passed to
+    /// [`DataClerk::prepare_range`].
     NoPreparedItems,
     /// `NoPreparedItems` indicates that changes to the data set may have
-    /// occurred, but that [`DataClerk::token`] results
-    /// are unchanged for the `range` last passed to [`DataClerk::prepare_range`].
+    /// occurred, but that [`DataClerk::update_token`] results are unchanged for
+    /// the `range` last passed to [`DataClerk::prepare_range`].
     NoPreparedTokens,
     /// `Any` indicates that changes to the data set may have occurred.
     Any,
@@ -109,6 +110,29 @@ pub enum DataChanges {
 impl DataChanges {
     pub(crate) fn any_item(self) -> bool {
         matches!(self, DataChanges::NoPreparedTokens | DataChanges::Any)
+    }
+}
+
+/// Return value of [`DataClerk::update_token`]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[must_use]
+pub enum TokenChanges {
+    /// `None` indicates that no changes to the token occurred.
+    None,
+    /// `SameKey` indicates that the result of [`DataClerk::item`] may have
+    /// changed for this token, but that the token represents the same key.
+    SameKey,
+    /// `Any` indicates that the key may have changed.
+    Any,
+}
+
+impl TokenChanges {
+    pub(crate) fn key(self) -> bool {
+        self == TokenChanges::Any
+    }
+
+    pub(crate) fn item(self) -> bool {
+        self != TokenChanges::None
     }
 }
 
@@ -286,7 +310,7 @@ pub trait DataClerk<Index> {
     /// to change. It may be called frequently and without changes to `range`
     /// and should use `async` execution for expensive or slow calculations.
     ///
-    /// It should prepare for [`Self::token`] to be called on the given `range`
+    /// It should prepare for [`Self::update_token`] to be called on the given `range`
     /// and [`Self::item`] to be called for the returnable tokens. These methods
     /// may be called immediately after this method, though it is acceptable for
     /// them to return [`None`] until data tokens / items are available.
@@ -330,21 +354,27 @@ pub trait DataClerk<Index> {
         DataChanges::None
     }
 
-    /// Get a token for a given `index`, if available
+    /// Update a token for the given `index`
     ///
-    /// This method should be fast since it may be called repeatedly.
-    /// This method is only called after [`Self::prepare_range`] and for `index`
-    /// values within the passed `range`.
+    /// This method is called after [`Self::prepare_range`] for each `index` in
+    /// the prepared `range`. The input `token` may be `None`, a token for the
+    /// passed `index` or a token for some other index. The method should update
+    /// `token` for the current `index` and any changes to `self` or `data`, or
+    /// set `token` to `None` where `index` is unavailable (e.g. due to sparse,
+    /// or not-yet-loaded data).
     ///
-    /// This may return `None` even when `index` is within the query's `range`
-    /// since data may be sparse or still loading (async); in this case the view
-    /// widget at this `index` is hidden.
+    /// This method should be fast since it may be called repeatedly. Slow and
+    /// blocking operations should be run asynchronously from
+    /// [`Self::prepare_range`] using an internal cache.
     ///
-    /// In case the implementation applies some type of filter to an underlying
-    /// data set, this method should not return tokens for hidden items. The
-    /// implementationmay either return [`None`] (resulting in empty list
-    /// entries) or remap indices such that hidden keys are skipped over.
-    fn token(&self, data: &Self::Data, index: Index) -> Option<Self::Token>;
+    /// The return value indicates required updates. (The value is unimportant
+    /// when `token` is set to `None`.)
+    fn update_token(
+        &self,
+        data: &Self::Data,
+        index: Index,
+        token: &mut Option<Self::Token>,
+    ) -> TokenChanges;
 
     /// Get the data item for the given `token`
     ///

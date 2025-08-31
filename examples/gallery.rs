@@ -19,7 +19,6 @@ use kas::resvg::Svg;
 use kas::theme::MarginStyle;
 use kas::widgets::{column, *};
 use kas::window::Popup;
-use kas_view::DataChanges;
 use std::ops::Range;
 
 #[derive(Debug, Default)]
@@ -354,7 +353,10 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Page<AppData> {
-    use kas::view::{DataClerk, DataLen, ListView, SelectionMode, SelectionMsg, Token, driver};
+    use kas::view::{
+        DataChanges, DataClerk, DataLen, ListView, SelectionMode, SelectionMsg, Token,
+        TokenChanges, driver,
+    };
 
     const MONTHS: &[&str] = &[
         "January",
@@ -565,20 +567,32 @@ fn filter_list() -> Page<AppData> {
             DataLen::Known(self.end)
         }
 
-        fn token(&self, _: &Self::Data, index: usize) -> Option<Self::Token> {
+        fn update_token(
+            &self,
+            _: &Self::Data,
+            index: usize,
+            token: &mut Option<Self::Token>,
+        ) -> TokenChanges {
             if index >= self.end {
-                return None;
+                *token = None;
+                return TokenChanges::None;
             }
 
             let i = self.end - index - 1;
             let m = self.months.len(); // number of months (filtered)
             let year = self.filtered_years.get(i / m);
             let month = self.months[i % m] as usize;
+            let key = year * 12 + month;
 
-            Some(Token {
-                key: year * 12 + month,
-                item: format!("{} {year}", &MONTHS[month]),
-            })
+            if let Some(token) = token.as_ref()
+                && token.key == key
+            {
+                return TokenChanges::None;
+            }
+
+            let item = format!("{} {year}", &MONTHS[month]);
+            *token = Some(Token { key, item });
+            TokenChanges::Any
         }
 
         fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r String {

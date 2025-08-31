@@ -497,22 +497,24 @@ mod ListView {
             let range = first_data..(first_data + cur_len);
             self.clerk.prepare_range(cx, self.id(), data, range);
 
+            let id = self.id();
+
             self.virtual_offset = -self.scroll_offset().extract(self.direction);
             let solver = self.position_solver();
             for i in solver.data_range() {
-                let Some(token) = self.clerk.token(data, i) else {
-                    self.widgets[i % solver.cur_len].token = None;
+                let w = &mut self.widgets[i % solver.cur_len];
+
+                let changes = self.clerk.update_token(data, i, &mut w.token);
+                let Some(token) = w.token.as_ref() else {
                     continue;
                 };
 
-                let id = token.borrow().make_id(self.id_ref());
-                let w = &mut self.widgets[i % solver.cur_len];
-
-                if self.token_update == Update::Configure || w.key() != Some(token.borrow()) {
+                if changes.key() || self.token_update == Update::Configure {
                     w.item.index = i;
                     self.driver.set_key(&mut w.item.inner, token.borrow());
 
-                    let item = self.clerk.item(data, &token);
+                    let item = self.clerk.item(data, token);
+                    let id = token.borrow().make_id(&id);
                     cx.configure(w.item.as_node(item), id);
 
                     solve_size_rules(
@@ -521,12 +523,10 @@ mod ListView {
                         Some(self.child_size.0),
                         Some(self.child_size.1),
                     );
-                } else if self.value_update {
-                    let item = self.clerk.item(data, &token);
+                } else if changes.item() || self.value_update {
+                    let item = self.clerk.item(data, token);
                     cx.update(w.item.as_node(item));
                 }
-
-                w.token = Some(token);
 
                 w.item.set_rect(cx, solver.rect(i), self.align_hints);
             }

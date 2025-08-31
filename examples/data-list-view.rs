@@ -13,7 +13,8 @@
 use kas::prelude::*;
 use kas::view::{DataClerk, Driver, ListView};
 use kas::widgets::{column, *};
-use kas_view::{DataChanges, DataLen, Token};
+use kas_view::{DataChanges, DataLen, TokenChanges};
+use std::borrow::Borrow;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -28,6 +29,19 @@ enum Control {
     Reverse,
     Select(usize, String),
     Update(usize, String),
+}
+
+#[derive(Debug)]
+struct Token<K, I> {
+    key: K,
+    ver: u64,
+    item: I,
+}
+
+impl<K, I> Borrow<K> for Token<K, I> {
+    fn borrow(&self) -> &K {
+        &self.key
+    }
 }
 
 #[derive(Debug)]
@@ -171,11 +185,28 @@ impl DataClerk<usize> for Clerk {
         }
     }
 
-    fn token(&self, data: &Self::Data, index: usize) -> Option<Self::Token> {
-        Some(Token {
+    fn update_token(
+        &self,
+        data: &Self::Data,
+        index: usize,
+        token: &mut Option<Self::Token>,
+    ) -> TokenChanges {
+        let mut changes = TokenChanges::Any;
+        if let Some(token) = token.as_ref()
+            && token.key == index
+        {
+            if token.ver == data.ver {
+                return TokenChanges::None;
+            }
+            changes = TokenChanges::SameKey;
+        }
+
+        *token = Some(Token {
             key: index,
+            ver: data.ver,
             item: (data.active, data.get_string(index)),
-        })
+        });
+        changes
     }
 
     fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Item {

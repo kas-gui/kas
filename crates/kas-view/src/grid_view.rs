@@ -447,26 +447,27 @@ mod GridView {
             };
             self.clerk.prepare_range(cx, self.id(), data, start..end);
 
+            let id = self.id();
+
             self.virtual_offset = -offset;
             let solver = self.position_solver();
             for row in start.row..end.row {
                 for col in start.col..end.col {
                     let cell = GridIndex { col, row };
                     let i = solver.data_to_child(cell);
+                    let w = &mut self.widgets[i];
 
-                    let Some(token) = self.clerk.token(data, cell) else {
-                        self.widgets[i].token = None;
+                    let changes = self.clerk.update_token(data, cell, &mut w.token);
+                    let Some(token) = w.token.as_ref() else {
                         continue;
                     };
 
-                    let id = token.borrow().make_id(self.id_ref());
-                    let w = &mut self.widgets[i];
-
-                    if self.token_update == Update::Configure || w.key() != Some(token.borrow()) {
+                    if changes.key() || self.token_update == Update::Configure {
                         w.item.index = cell;
                         self.driver.set_key(&mut w.item.inner, token.borrow());
 
-                        let item = self.clerk.item(data, &token);
+                        let item = self.clerk.item(data, token);
+                        let id = token.borrow().make_id(&id);
                         cx.configure(w.item.as_node(item), id);
 
                         solve_size_rules(
@@ -475,12 +476,10 @@ mod GridView {
                             Some(self.child_size.0),
                             Some(self.child_size.1),
                         );
-                    } else if self.value_update {
-                        let item = self.clerk.item(data, &token);
+                    } else if changes.item() || self.value_update {
+                        let item = self.clerk.item(data, token);
                         cx.update(w.item.as_node(item));
                     }
-
-                    w.token = Some(token);
 
                     w.item.set_rect(cx, solver.rect(cell), self.align_hints);
                 }
