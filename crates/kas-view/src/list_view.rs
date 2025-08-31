@@ -504,7 +504,9 @@ mod ListView {
             for i in solver.data_range() {
                 let w = &mut self.widgets[i % solver.cur_len];
 
-                let changes = self.clerk.update_token(data, i, &mut w.token);
+                let changes = self
+                    .clerk
+                    .update_token(data, i, self.value_update, &mut w.token);
                 let Some(token) = w.token.as_ref() else {
                     continue;
                 };

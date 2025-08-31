@@ -189,6 +189,7 @@ impl DataClerk<usize> for Clerk {
         &self,
         data: &Self::Data,
         index: usize,
+        update_item: bool,
         token: &mut Option<Self::Token>,
     ) -> TokenChanges {
         let mut changes = TokenChanges::Any;

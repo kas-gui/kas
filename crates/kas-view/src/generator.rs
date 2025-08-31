@@ -154,6 +154,7 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
         &self,
         data: &Self::Data,
         index: Index,
+        update_item: bool,
         token: &mut Option<Self::Token>,
     ) -> TokenChanges {
         let Some(key) = self.g.key(data, index) else {
@@ -161,7 +162,15 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
             return TokenChanges::None;
         };
 
+        if !update_item
+            && let Some(token) = token.as_mut()
+            && token.key == key
+        {
+            return TokenChanges::None;
+        }
+
         let item = self.g.generate(data, &key);
+        let mut changes = TokenChanges::Any;
 
         if let Some(token) = token.as_mut()
             && token.key == key
@@ -169,13 +178,12 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
             if token.item == item {
                 return TokenChanges::None;
             } else {
-                token.item = item;
-                return TokenChanges::SameKey;
+                changes = TokenChanges::SameKey;
             }
         }
 
         *token = Some(Token { key, item });
-        TokenChanges::Any
+        changes
     }
 
     fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {

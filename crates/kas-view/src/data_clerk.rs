@@ -294,21 +294,31 @@ pub trait DataClerk<Index> {
     ///
     /// This method is called after [`Self::prepare_range`] for each `index` in
     /// the prepared `range`. The input `token` may be `None`, a token for the
-    /// passed `index` or a token for some other index. The method should update
-    /// `token` for the current `index` and any changes to `self` or `data`, or
-    /// set `token` to `None` where `index` is unavailable (e.g. due to sparse,
-    /// or not-yet-loaded data).
+    /// passed `index` or a token for some other index.
+    ///
+    /// If no item is currently available for `index`, the method should set
+    /// `token` to `None`. (The return value is unimportant in this case.)
+    ///
+    /// Otherwise, if `token` is `None` or corresponds to a different `index`,
+    /// the method should replace `token` and report [`TokenChanges::Any`].
+    ///
+    /// Otherwise, if `update_item` and the data item is cached within the
+    /// token, the method may need to update the token (`update_item` is true
+    /// only when [`Self::update`] indicates that data updates are required).
+    /// The method should report [`TokenChanges::SameKey`] if the cached item
+    /// changes.
+    ///
+    /// Finally (if none of the above), the method should report
+    /// [`TokenChanges::None`].
     ///
     /// This method should be fast since it may be called repeatedly. Slow and
     /// blocking operations should be run asynchronously from
     /// [`Self::prepare_range`] using an internal cache.
-    ///
-    /// The return value indicates required updates. (The value is unimportant
-    /// when `token` is set to `None`.)
     fn update_token(
         &self,
         data: &Self::Data,
         index: Index,
+        update_item: bool,
         token: &mut Option<Self::Token>,
     ) -> TokenChanges;
 
