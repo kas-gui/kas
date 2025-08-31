@@ -14,6 +14,7 @@ use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
+use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::time::Instant;
 
@@ -87,10 +88,16 @@ mod ListItem {
     }
 }
 
-#[autoimpl(Debug ignore self.item where K: trait)]
-struct WidgetData<K, I, V: Driver<K, I>> {
-    key: Option<K>,
-    item: ListItem<K, I, V>,
+#[autoimpl(Debug ignore self.item where C::Token: trait)]
+struct WidgetData<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> {
+    token: Option<C::Token>,
+    item: ListItem<C::Key, C::Item, V>,
+}
+
+impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
+    fn key(&self) -> Option<&C::Key> {
+        self.token.as_ref().map(Borrow::borrow)
+    }
 }
 
 #[impl_self]
@@ -128,7 +135,7 @@ mod ListView {
         frame_size: Size,
         clerk: C,
         driver: V,
-        widgets: Vec<WidgetData<C::Key, C::Item, V>>,
+        widgets: Vec<WidgetData<C, V>>,
         alloc_len: u32,
         data_len: u32,
         key_update: Update,
@@ -376,11 +383,8 @@ mod ListView {
         /// filters. To avoid this behaviour, call this method on update.
         pub fn deselect_unavailable(&mut self, cx: &mut EventState) {
             let len = self.selection.len();
-            self.selection.retain(|key| {
-                self.widgets
-                    .iter()
-                    .any(|widget| widget.key.as_ref() == Some(key))
-            });
+            self.selection
+                .retain(|key| self.widgets.iter().any(|widget| widget.key() == Some(key)));
             self.update_selected_items();
             if len != self.selection.len() {
                 cx.redraw(self);
@@ -394,7 +398,7 @@ mod ListView {
                 SelectionMode::Multiple => Some(false),
             };
             for w in &mut self.widgets {
-                if let Some(ref key) = w.key {
+                if let Some(key) = w.key() {
                     if self.selection.contains(key) {
                         w.item.selected = Some(true);
                     } else {
@@ -496,18 +500,18 @@ mod ListView {
             self.virtual_offset = -self.scroll_offset().extract(self.direction);
             let solver = self.position_solver();
             for i in solver.data_range() {
-                let Some(key) = self.clerk.key(data, i) else {
-                    self.widgets[i % solver.cur_len].key = None;
+                let Some(token) = self.clerk.token(data, i) else {
+                    self.widgets[i % solver.cur_len].token = None;
                     continue;
                 };
 
-                let id = key.make_id(self.id_ref());
+                let id = token.borrow().make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
-                if self.key_update == Update::Configure || w.key.as_ref() != Some(&key) {
+                if self.key_update == Update::Configure || w.key() != Some(token.borrow()) {
                     w.item.index = i;
-                    self.driver.set_key(&mut w.item.inner, &key);
+                    self.driver.set_key(&mut w.item.inner, token.borrow());
 
-                    if let Some(item) = self.clerk.item(data, &key) {
+                    if let Some(item) = self.clerk.item(data, &token) {
                         cx.configure(w.item.as_node(item), id);
 
                         solve_size_rules(
@@ -516,18 +520,18 @@ mod ListView {
                             Some(self.child_size.0),
                             Some(self.child_size.1),
                         );
-                        w.key = Some(key);
+                        w.token = Some(token);
                     } else {
-                        w.key = None; // disables drawing and clicking
+                        w.token = None; // disables drawing and clicking
                         continue;
                     }
                 } else if self.value_update
-                    && let Some(item) = self.clerk.item(data, &key)
+                    && let Some(item) = self.clerk.item(data, &token)
                 {
                     cx.update(w.item.as_node(item));
                 }
 
-                debug_assert!(w.key.is_some());
+                debug_assert!(w.token.is_some());
                 w.item.set_rect(cx, solver.rect(i), self.align_hints);
             }
 
@@ -577,8 +581,8 @@ mod ListView {
 
             let range = ..usize::conv(self.cur_len);
             for child in &mut self.widgets[range] {
-                if let Some(key) = child.key.as_ref()
-                    && let Some(item) = self.clerk.item(data, key)
+                if let Some(token) = child.token.as_ref()
+                    && let Some(item) = self.clerk.item(data, token)
                 {
                     cx.update(child.item.as_node(item));
                 }
@@ -654,7 +658,7 @@ mod ListView {
 
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
-                if w.key.is_some() {
+                if w.token.is_some() {
                     let child_rules = w.item.size_rules(sizer.re(), axis);
                     rules = rules.max(child_rules);
                 }
@@ -715,7 +719,7 @@ mod ListView {
                 let key = C::Key::default();
                 for _ in avail_widgets..req_widgets {
                     let item = ListItem::new(self.driver.make(&key));
-                    self.widgets.push(WidgetData { key: None, item });
+                    self.widgets.push(WidgetData { token: None, item });
                 }
             }
 
@@ -727,7 +731,7 @@ mod ListView {
             for i in 0..solver.cur_len {
                 let i = solver.first_data + i;
                 let w = &mut self.widgets[i % solver.cur_len];
-                if w.key.is_some() {
+                if w.token.is_some() {
                     w.item.set_rect(cx, solver.rect(i), self.align_hints);
                 }
             }
@@ -740,7 +744,7 @@ mod ListView {
             let offset = self.scroll_offset() + self.virtual_offset();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
                 for child in &self.widgets[..self.cur_len.cast()] {
-                    if let Some(ref key) = child.key {
+                    if let Some(key) = child.key() {
                         if self.selection.contains(key) {
                             draw.selection(child.item.rect(), self.sel_style);
                         }
@@ -767,7 +771,7 @@ mod ListView {
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets
                 .get(index)
-                .filter(|w| w.key.is_some())
+                .filter(|w| w.token.is_some())
                 .map(|w| w.item.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
@@ -775,7 +779,7 @@ mod ListView {
             if key.is_some() {
                 let num = self.cur_len.cast();
                 for (i, w) in self.widgets[..num].iter().enumerate() {
-                    if key == w.key {
+                    if key.as_ref() == w.key() {
                         return Some(i);
                     }
                 }
@@ -795,7 +799,7 @@ mod ListView {
 
             let coord = coord + self.translation(0);
             for child in &self.widgets[..self.cur_len.cast()] {
-                if child.key.is_some()
+                if child.token.is_some()
                     && let Some(id) = child.item.try_probe(coord)
                 {
                     return id;
@@ -831,14 +835,14 @@ mod ListView {
                 let len = self.ideal_visible.cast();
                 let key = C::Key::default();
                 self.widgets.resize_with(len, || WidgetData {
-                    key: None,
+                    token: None,
                     item: ListItem::new(self.driver.make(&key)),
                 });
                 self.alloc_len = len.cast();
             } else {
                 // Force reconfiguration:
                 for w in &mut self.widgets {
-                    w.key = None;
+                    w.token = None;
                 }
             }
 
@@ -896,7 +900,7 @@ mod ListView {
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         let w = &self.widgets[index];
-                        if w.key.is_some() {
+                        if w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
                         }
                         Used
@@ -908,11 +912,11 @@ mod ListView {
                     if press.is_primary() && cx.config().event().mouse_nav_focus() =>
                 {
                     if let Some(index) = cx.last_child() {
-                        self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
+                        self.press_target = self.widgets[index].key().map(|k| (index, k.clone()));
                     }
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
-                        if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
+                        if w.key() == Some(key) {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
                         }
                     }
@@ -927,7 +931,7 @@ mod ListView {
                         if success
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_kinetic_scrolling()
-                            && w.key.as_ref().map(|k| k == key).unwrap_or(false)
+                            && w.key() == Some(key)
                             && w.item.rect().contains(press.coord + self.translation(0))
                         {
                             cx.push(kas::messages::Select);
@@ -963,9 +967,10 @@ mod ListView {
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child
-                opt_key = match self.widgets[index].key.as_ref() {
-                    Some(k) => Some(k.clone()),
-                    None => return, // should be unreachable
+                if let Some(token) = self.widgets.get_mut(index).and_then(|w| w.token.as_mut()) {
+                    opt_key = Some(Borrow::<C::Key>::borrow(token).clone());
+                } else {
+                    return; // should be unreachable
                 };
             }
 
@@ -1021,8 +1026,8 @@ mod ListView {
 
         fn child_node<'n>(&'n mut self, data: &'n C::Data, index: usize) -> Option<Node<'n>> {
             if let Some(w) = self.widgets.get_mut(index)
-                && let Some(ref key) = w.key
-                && let Some(item) = self.clerk.item(data, key)
+                && let Some(ref token) = w.token
+                && let Some(item) = self.clerk.item(data, token)
             {
                 return Some(w.item.as_node(item));
             }

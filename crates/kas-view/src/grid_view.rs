@@ -14,6 +14,7 @@ use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
+use std::borrow::Borrow;
 use std::time::Instant;
 
 const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
@@ -88,10 +89,16 @@ mod GridCell {
     }
 }
 
-#[autoimpl(Debug ignore self.item where K: trait)]
-struct WidgetData<K, I, V: Driver<K, I>> {
-    key: Option<K>,
-    item: GridCell<K, I, V>,
+#[autoimpl(Debug ignore self.item where C::Token: trait)]
+struct WidgetData<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
+    token: Option<C::Token>,
+    item: GridCell<C::Key, C::Item, V>,
+}
+
+impl<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
+    fn key(&self) -> Option<&C::Key> {
+        self.token.as_ref().map(Borrow::borrow)
+    }
 }
 
 /// Index of a grid cell
@@ -157,7 +164,7 @@ mod GridView {
         frame_size: Size,
         clerk: C,
         driver: V,
-        widgets: Vec<WidgetData<C::Key, C::Item, V>>,
+        widgets: Vec<WidgetData<C, V>>,
         align_hints: AlignHints,
         ideal_len: GridIndex,
         alloc_len: GridIndex,
@@ -449,20 +456,20 @@ mod GridView {
                     let cell = GridIndex { col, row };
                     let i = solver.data_to_child(cell);
 
-                    let Some(key) = self.clerk.key(data, cell) else {
-                        self.widgets[i].key = None;
+                    let Some(token) = self.clerk.token(data, cell) else {
+                        self.widgets[i].token = None;
                         continue;
                     };
 
-                    let id = key.make_id(self.id_ref());
+                    let id = token.borrow().make_id(self.id_ref());
                     let w = &mut self.widgets[i];
-                    if self.key_update == Update::Configure || w.key.as_ref() != Some(&key) {
-                        self.driver.set_key(&mut w.item.inner, &key);
+                    if self.key_update == Update::Configure || w.key() != Some(token.borrow()) {
+                        self.driver.set_key(&mut w.item.inner, token.borrow());
 
-                        if let Some(item) = self.clerk.item(data, &key) {
+                        if let Some(item) = self.clerk.item(data, &token) {
                             cx.configure(w.item.as_node(item), id);
 
-                            w.key = Some(key);
+                            w.token = Some(token);
                             solve_size_rules(
                                 &mut w.item,
                                 cx.size_cx(),
@@ -470,16 +477,16 @@ mod GridView {
                                 Some(self.child_size.1),
                             );
                         } else {
-                            w.key = None; // disables drawing and clicking
+                            w.token = None; // disables drawing and clicking
                             continue;
                         }
                     } else if self.value_update
-                        && let Some(item) = self.clerk.item(data, &key)
+                        && let Some(item) = self.clerk.item(data, &token)
                     {
                         cx.update(w.item.as_node(item));
                     }
 
-                    debug_assert!(w.key.is_some());
+                    debug_assert!(w.token.is_some());
                     w.item.set_rect(cx, solver.rect(cell), self.align_hints);
                 }
             }
@@ -539,8 +546,8 @@ mod GridView {
 
             let range = 0..self.cur_end();
             for child in &mut self.widgets[range] {
-                if let Some(key) = child.key.as_ref()
-                    && let Some(item) = self.clerk.item(data, key)
+                if let Some(token) = child.token.as_ref()
+                    && let Some(item) = self.clerk.item(data, token)
                 {
                     cx.update(child.item.as_node(item));
                 }
@@ -613,7 +620,7 @@ mod GridView {
 
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
-                if w.key.is_some() {
+                if w.token.is_some() {
                     let child_rules = w.item.size_rules(sizer.re(), axis);
                     rules = rules.max(child_rules);
                 }
@@ -672,7 +679,7 @@ mod GridView {
                     "set_rect: allocating widgets (old len = {avail_widgets}, new = {req_widgets})",
                 );
                 self.widgets.resize_with(req_widgets, || WidgetData {
-                    key: None,
+                    token: None,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
             }
@@ -687,7 +694,7 @@ mod GridView {
                     let cell = GridIndex { col, row };
                     let i = solver.data_to_child(cell);
                     let w = &mut self.widgets[i];
-                    if w.key.is_some() {
+                    if w.token.is_some() {
                         w.item.set_rect(cx, solver.rect(cell), self.align_hints);
                     }
                 }
@@ -704,7 +711,7 @@ mod GridView {
             let num = self.cur_end();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
                 for child in &self.widgets[..num] {
-                    if let Some(ref key) = child.key {
+                    if let Some(key) = child.key() {
                         // Note: we don't know which widgets within 0..num are
                         // visible, so check intersection before drawing:
                         if rect.intersection(&child.item.rect()).is_some() {
@@ -735,7 +742,7 @@ mod GridView {
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets
                 .get(index)
-                .filter(|w| w.key.is_some())
+                .filter(|w| w.token.is_some())
                 .map(|w| w.item.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
@@ -743,7 +750,7 @@ mod GridView {
             if key.is_some() {
                 let num = self.cur_end();
                 for (i, w) in self.widgets[..num].iter().enumerate() {
-                    if key == w.key {
+                    if key.as_ref() == w.key() {
                         return Some(i);
                     }
                 }
@@ -764,7 +771,7 @@ mod GridView {
             let num = self.cur_end();
             let coord = coord + self.translation(0);
             for child in &self.widgets[..num] {
-                if child.key.is_some()
+                if child.token.is_some()
                     && let Some(id) = child.item.try_probe(coord)
                 {
                     return id;
@@ -799,14 +806,14 @@ mod GridView {
 
                 let len = self.ideal_len.col * self.ideal_len.row;
                 self.widgets.resize_with(len.cast(), || WidgetData {
-                    key: None,
+                    token: None,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
                 self.alloc_len = self.ideal_len;
             } else {
                 // Force reconfiguration:
                 for w in &mut self.widgets {
-                    w.key = None;
+                    w.token = None;
                 }
             }
 
@@ -871,7 +878,7 @@ mod GridView {
                         let index = solver.data_to_child(cell);
                         let w = &self.widgets[index];
 
-                        if w.key.is_some() {
+                        if w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
                         }
                         Used
@@ -883,11 +890,11 @@ mod GridView {
                     if press.is_primary() && cx.config().event().mouse_nav_focus() =>
                 {
                     if let Some(index) = cx.last_child() {
-                        self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
+                        self.press_target = self.widgets[index].key().map(|k| (index, k.clone()));
                     }
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
-                        if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
+                        if w.key() == Some(key) {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
                         }
                     }
@@ -902,7 +909,7 @@ mod GridView {
                         if success
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_kinetic_scrolling()
-                            && w.key.as_ref().map(|k| k == key).unwrap_or(false)
+                            && w.key() == Some(key)
                             && w.item.rect().contains(press.coord + self.translation(0))
                         {
                             cx.push(kas::messages::Select);
@@ -938,9 +945,10 @@ mod GridView {
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child
-                opt_key = match self.widgets[index].key.as_ref() {
-                    Some(k) => Some(k.clone()),
-                    None => return, // should be unreachable
+                if let Some(token) = self.widgets.get_mut(index).and_then(|w| w.token.as_mut()) {
+                    opt_key = Some(Borrow::<C::Key>::borrow(token).clone());
+                } else {
+                    return; // should be unreachable
                 };
             }
 
@@ -994,8 +1002,8 @@ mod GridView {
 
         fn child_node<'n>(&'n mut self, data: &'n C::Data, index: usize) -> Option<Node<'n>> {
             if let Some(w) = self.widgets.get_mut(index)
-                && let Some(ref key) = w.key
-                && let Some(item) = self.clerk.item(data, key)
+                && let Some(ref token) = w.token
+                && let Some(item) = self.clerk.item(data, token)
             {
                 return Some(w.item.as_node(item));
             }

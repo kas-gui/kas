@@ -8,6 +8,7 @@
 use kas::Id;
 use kas::cast::Cast;
 use kas::event::{ConfigCx, EventCx};
+use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::ops::Range;
 
@@ -153,7 +154,7 @@ impl<Index: Copy> DataLen<Index> {
 ///
 /// If the data set is immutable and stored within `self` or within input data
 /// (see type [`Self::Data`]) it is sufficient to implement only [`Self::len`],
-/// [`Self::key`] and [`Self::item`]. All these methods take a `data` parameter
+/// [`Self::token`] and [`Self::item`]. All these methods take a `data` parameter
 /// thus enabling direct referencing of data items from either `self` or input
 /// data.
 ///
@@ -204,9 +205,6 @@ impl<Index: Copy> DataLen<Index> {
 /// undesirable) for [`Self::len`] to report too large a value.
 /// (TODO: rework this; the main thing affected is the length of scrollbars.)
 ///
-/// If data keys cannot be generated locally on demand they may be requested by
-/// [`Self::update`] and/or [`Self::prepare_range`].
-///
 /// Data items should be requested through [`Self::prepare_range`] as required,
 /// caching results locally when received by [`Self::handle_messages`]. It is up
 /// to the implementation whether to continue caching items outside of the
@@ -234,6 +232,12 @@ pub trait DataClerk<Index> {
     /// All data items should have a stable key so that data items may be
     /// tracked through changing queries.
     type Key: DataKey;
+
+    /// Token type
+    ///
+    /// This may be the same type as [`Self::Key`] or it may contain a key and
+    /// a cached item.
+    type Token: Borrow<Self::Key>;
 
     /// Item type
     ///
@@ -279,17 +283,15 @@ pub trait DataClerk<Index> {
     /// to change. It may be called frequently and without changes to `range`
     /// and should use `async` execution for expensive or slow calculations.
     ///
-    /// It should prepare for [`Self::key`] to be called on the given `range`
-    /// and [`Self::item`] to be called for the returnable keys. These methods
+    /// It should prepare for [`Self::token`] to be called on the given `range`
+    /// and [`Self::item`] to be called for the returnable tokens. These methods
     /// may be called immediately after this method, though it is acceptable for
-    /// them to return [`None`] until keys / data items are available.
+    /// them to return [`None`] until data tokens / items are available.
     ///
     /// This method may update cached keys and items asynchronously (i.e. after
-    /// this method returns); in this case it should prioritise updating of keys
-    /// over items.
-    ///
-    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
-    /// using (for example) `cx.send_async(id, _)`.
+    /// this method returns). To do so, send an `async` message
+    /// (`cx.send_async(id, MyMessage { .. })`) and implement the handler in
+    /// [`Self::handle_messages`].
     ///
     /// The default implementation does nothing.
     fn prepare_range(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data, range: Range<Index>) {
@@ -325,7 +327,7 @@ pub trait DataClerk<Index> {
         DataChanges::None
     }
 
-    /// Get a key for a given `index`, if available
+    /// Get a token for a given `index`, if available
     ///
     /// This method should be fast since it may be called repeatedly.
     /// This method is only called after [`Self::prepare_range`] and for `index`
@@ -336,10 +338,10 @@ pub trait DataClerk<Index> {
     /// widget at this `index` is hidden.
     ///
     /// In case the implementation applies some type of filter to an underlying
-    /// data set, this method should not return hidden keys. The implementation
-    /// may either return [`None`] (resulting in empty list entries) or remap
-    /// indices such that hidden keys are skipped over.
-    fn key(&self, data: &Self::Data, index: Index) -> Option<Self::Key>;
+    /// data set, this method should not return tokens for hidden items. The
+    /// implementationmay either return [`None`] (resulting in empty list
+    /// entries) or remap indices such that hidden keys are skipped over.
+    fn token(&self, data: &Self::Data, index: Index) -> Option<Self::Token>;
 
     /// Get a data item, if available
     ///
@@ -349,8 +351,8 @@ pub trait DataClerk<Index> {
     /// controller may display a loading animation in this case, though the
     /// current implementation merely hides the view widget. It is expected that
     /// the method not return `None` after `Some(_)` (excepting after
-    /// [`Self::prepare_range`] has removed its `key` from the `range`);
+    /// [`Self::prepare_range`] has removed its `token` from the `range`);
     /// returning `None` in this case might cause stale content to be shown and
     /// event/message handlers on the view widget to fail.
-    fn item<'r>(&'r self, data: &'r Self::Data, key: &'r Self::Key) -> Option<&'r Self::Item>;
+    fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> Option<&'r Self::Item>;
 }

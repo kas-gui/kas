@@ -29,6 +29,8 @@ impl DataClerk<GridIndex> for TableCache {
     /// We re-usize the index as our key.
     type Key = GridIndex;
 
+    type Token = GridIndex;
+
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
 
@@ -68,7 +70,7 @@ impl DataClerk<GridIndex> for TableCache {
         }
     }
 
-    fn key(&self, _: &Self::Data, index: GridIndex) -> Option<Self::Key> {
+    fn token(&self, _: &Self::Data, index: GridIndex) -> Option<Self::Token> {
         Some(index)
     }
 

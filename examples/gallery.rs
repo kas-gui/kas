@@ -532,6 +532,7 @@ fn filter_list() -> Page<AppData> {
         type Data = MonthYearFilter;
 
         type Key = usize;
+        type Token = usize;
 
         type Item = String;
 
@@ -582,7 +583,7 @@ fn filter_list() -> Page<AppData> {
             }));
         }
 
-        fn key(&self, _: &Self::Data, index: usize) -> Option<usize> {
+        fn token(&self, _: &Self::Data, index: usize) -> Option<usize> {
             if index >= self.end {
                 return None;
             }

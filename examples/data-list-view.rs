@@ -161,6 +161,7 @@ struct Clerk {
 impl DataClerk<usize> for Clerk {
     type Data = Data;
     type Key = usize;
+    type Token = usize;
     type Item = Item;
 
     fn update(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data) -> DataChanges {
@@ -199,7 +200,7 @@ impl DataClerk<usize> for Clerk {
         }
     }
 
-    fn key(&self, _: &Self::Data, index: usize) -> Option<Self::Key> {
+    fn token(&self, _: &Self::Data, index: usize) -> Option<Self::Token> {
         Some(index)
     }
 
