@@ -117,7 +117,6 @@ mod ListView {
     /// ### Messages
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[derive(Debug)]
     #[widget]
     pub struct ListView<C: DataClerk<usize>, V, D = Direction>
     where

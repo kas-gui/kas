@@ -150,7 +150,6 @@ mod GridView {
     /// ### Messages
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[derive(Debug)]
     #[widget]
     pub struct GridView<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
         core: widget_core!(),
@@ -871,11 +870,6 @@ mod GridView {
 
                         let index = solver.data_to_child(cell);
                         let w = &self.widgets[index];
-                        #[cfg(debug_assertions)]
-                        {
-                            let key = self.clerk.key(data, cell).unwrap();
-                            assert_eq!(w.key, Some(key));
-                        }
 
                         if w.key.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
