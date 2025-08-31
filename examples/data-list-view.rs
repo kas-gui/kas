@@ -13,8 +13,9 @@
 use kas::prelude::*;
 use kas::view::{DataClerk, Driver, ListView};
 use kas::widgets::{column, *};
+use kas_view::{DataChanges, DataLen, TokenChanges};
+use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::ops::Range;
 
 #[derive(Debug)]
 struct SelectEntry(usize);
@@ -31,10 +32,24 @@ enum Control {
 }
 
 #[derive(Debug)]
+struct Token<K, I> {
+    key: K,
+    ver: u64,
+    item: I,
+}
+
+impl<K, I> Borrow<K> for Token<K, I> {
+    fn borrow(&self) -> &K {
+        &self.key
+    }
+}
+
+#[derive(Debug)]
 struct Data {
     ver: u64,
     row_limit: bool,
     len: usize,
+    last_string: usize,
     active: usize,
     dir: Direction,
     active_string: String,
@@ -46,6 +61,7 @@ impl Data {
             ver: 0,
             row_limit,
             len,
+            last_string: len,
             active: 0,
             dir: Direction::Down,
             active_string: String::from("Entry 1"),
@@ -78,6 +94,7 @@ impl Data {
                 return;
             }
             Control::Update(index, text) => {
+                self.last_string = self.last_string.max(index);
                 if index == self.active {
                     self.active_string = text.clone();
                 }
@@ -149,55 +166,51 @@ mod ListEntry {
 }
 
 #[derive(Default)]
-struct Clerk {
-    start: usize,
-    ver: u64,
-    items: Vec<Item>,
-}
+struct Clerk;
 impl DataClerk<usize> for Clerk {
     type Data = Data;
     type Key = usize;
+    type Token = Token<usize, Item>;
     type Item = Item;
 
-    fn len(&self, data: &Self::Data) -> Option<usize> {
-        data.row_limit.then_some(data.len)
+    fn update(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data) -> DataChanges {
+        DataChanges::Any
     }
 
-    fn min_len(&self, _: &Self::Data, expected: usize) -> usize {
-        // This method is only called when len returns None, i.e. when we don't use data.len
-        expected
-    }
-
-    fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {
-        let len = range.len();
-        let update_range;
-        if self.ver == data.ver && range.len() == self.items.len() {
-            if range.start == self.start {
-                return;
-            } else if range.start > self.start {
-                update_range = (self.start + self.items.len())..range.end;
-            } else {
-                update_range = range.start..self.start;
-            }
+    fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {
+        if data.row_limit {
+            DataLen::Known(data.len)
         } else {
-            // If the data version has changed, we must update all items
-            self.ver = data.ver;
-            self.items.resize(len, Item::default());
-            update_range = range.clone();
-        }
-
-        self.start = range.start;
-        for index in update_range {
-            self.items[index % len] = (data.active, data.get_string(index));
+            DataLen::LBound((data.active.max(data.last_string) + 1).max(lbound))
         }
     }
 
-    fn key(&self, _: &Self::Data, index: usize) -> Option<Self::Key> {
-        Some(index)
+    fn update_token(
+        &self,
+        data: &Self::Data,
+        index: usize,
+        token: &mut Option<Self::Token>,
+    ) -> TokenChanges {
+        let mut changes = TokenChanges::Any;
+        if let Some(token) = token.as_ref()
+            && token.key == index
+        {
+            if token.ver == data.ver {
+                return TokenChanges::None;
+            }
+            changes = TokenChanges::SameKey;
+        }
+
+        *token = Some(Token {
+            key: index,
+            ver: data.ver,
+            item: (data.active, data.get_string(index)),
+        });
+        changes
     }
 
-    fn item(&self, _: &Self::Data, key: &Self::Key) -> Option<&Item> {
-        Some(&self.items[key % self.items.len()])
+    fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Item {
+        &token.item
     }
 }
 

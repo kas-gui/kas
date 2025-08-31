@@ -8,8 +8,8 @@
 use kas::Id;
 use kas::cast::Cast;
 use kas::event::{ConfigCx, EventCx};
-#[allow(unused)] // doc links
-use std::cell::RefCell;
+#[allow(unused)] use kas::{Action, Events, Widget};
+use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::ops::Range;
 
@@ -95,19 +95,72 @@ impl_2D!(u64);
 pub enum DataChanges {
     /// `None` indicates that no changes to the data set occurred.
     None,
-    /// `NoPrepared` indicates that changes to the data set may have occurred,
-    /// but that for all indices in the `range` last passed to
-    /// [`DataClerk::prepare_range`] the index-key mappings ([`DataClerk::key`]
-    /// results) and key-value mappings ([`DataClerk::item`] results) remain
-    /// unchanged.
-    NoPrepared,
-    /// `NoPreparedKeys` indicates that changes to the data set may have
-    /// occurred, but that for all indices in the `range` last passed to
-    /// [`DataClerk::prepare_range`] the index-key mappings ([`DataClerk::key`]
-    /// results) remain unchanged.
-    NoPreparedKeys,
+    /// `NoPreparedItems` indicates that changes to the data set may have
+    /// occurred, but that [`DataClerk::update_token`] and [`DataClerk::item`]
+    /// results are unchanged for the `range` last passed to
+    /// [`DataClerk::prepare_range`].
+    NoPreparedItems,
+    /// `NoPreparedItems` indicates that changes to the data set may have
+    /// occurred, but that [`DataClerk::update_token`] results are unchanged for
+    /// the `range` last passed to [`DataClerk::prepare_range`].
+    NoPreparedTokens,
     /// `Any` indicates that changes to the data set may have occurred.
     Any,
+}
+
+impl DataChanges {
+    pub(crate) fn any_item(self) -> bool {
+        matches!(self, DataChanges::NoPreparedTokens | DataChanges::Any)
+    }
+}
+
+/// Return value of [`DataClerk::update_token`]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[must_use]
+pub enum TokenChanges {
+    /// `None` indicates that no changes to the token occurred.
+    None,
+    /// `SameKey` indicates that the result of [`DataClerk::item`] may have
+    /// changed for this token, but that the token represents the same key.
+    SameKey,
+    /// `Any` indicates that the key may have changed.
+    Any,
+}
+
+impl TokenChanges {
+    pub(crate) fn key(self) -> bool {
+        self == TokenChanges::Any
+    }
+
+    pub(crate) fn item(self) -> bool {
+        self != TokenChanges::None
+    }
+}
+
+/// Result of [`Self::len`]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DataLen<Index> {
+    /// Length is known and specified exactly
+    Known(Index),
+    /// A lower bound on length is specified
+    LBound(Index),
+}
+
+impl<Index: Copy> DataLen<Index> {
+    /// Returns the length payload (known or lower bound)
+    #[inline]
+    pub fn len(&self) -> Index {
+        match self {
+            DataLen::Known(len) => *len,
+            DataLen::LBound(len) => *len,
+        }
+    }
+
+    /// Returns true if a known length given
+    #[inline]
+    pub fn is_known(&self) -> bool {
+        matches!(self, DataLen::Known(_))
+    }
 }
 
 /// Data access manager
@@ -115,84 +168,14 @@ pub enum DataChanges {
 /// A `DataClerk` manages access to a data set, using an `Index` type specified by
 /// the [view controller](crate#view-controller).
 ///
-/// Instances are expected to provide access to a subset of data elements (as
-/// specified by [`Self::prepare_range`]), either via direct access or via an
-/// internal cache.
-///
-/// Each data item must have a unique key of type [`Self::Key`]. Where the data
-/// view is affected by a variable filter or query the index-item relationship
-/// may vary; the key-item relationship must not vary.
-///
-/// # Implementing `DataClerk`
-///
-/// ## Local fixed data sets
-///
-/// If the data set is immutable and stored within `self` or within input data
-/// (see type [`Self::Data`]) it is sufficient to implement only [`Self::len`],
-/// [`Self::key`] and [`Self::item`]. All these methods take a `data` parameter
-/// thus enabling direct referencing of data items from either `self` or input
-/// data.
-///
-/// ## Dynamic local data sets
-///
-/// In case of a local data set which may change or where the query or filter
-/// used changes, the method [`Self::update`] must be implemented and it must be
-/// ensured that the widget's [`kas::Events::update`] method is called (the
-/// latter will already be the case when the changing data/query/filter is
-/// passed via input `data`).
-///
-/// The result of [`Self::len`] and/or [`Self::min_len`] should be updated to
-/// return the number of available elements.
-///
-/// As above, it may be possible to implement [`Self::item`] by referencing the
-/// data directly.
-///
-/// ## Generated data
-///
-/// In some cases, data `Item`s may be generated on demand. This is not
-/// *directly* supported since [`Self::item`] must return a *reference to* the
-/// data (and is expected to be very fast). Instead, a cache of (at least) the
-/// currently visible items must be generated by [`Self::prepare_range`].
-///
-/// Note that [`Self::prepare_range`] may be called frequently, thus (at risk of
-/// premature optimization) it should not unnecessarily regenerate items on each
-/// call. The `range.len()` will rarely change and frequently this range will
-/// only move a little from the previously-visible range, thus it may be
-/// sensible to use a
-/// [circular buffer](https://en.wikipedia.org/wiki/Circular_buffer) for the
-/// cache; elements may then be indexed by `index % range.len()`.
-///
-/// If generation is slow, it should be performed asynchronously (see below)
-/// so that all methods may return quickly.
-///
-/// ## Non-local data (`async`)
-///
-/// Method implementations should never block. For non-local data, this requires
-/// the usage of `async` message handling; [`Self::update`],
-/// [`Self::prepare_range`] and [`Self::handle_messages`] may all dispatch
-/// `async` queries using `cx.send_async(id, QUERY)`.
-/// The result will be received by [`Self::handle_messages`].
-///
-/// If the number of available elements (i.e. [`Self::len`]) is not known in
-/// advance then [`Self::update`] should request this. Note that
-/// [`Self::prepare_range`] will never attempt to access elements beyond the
-/// current result of [`Self::len`] and that it is safe (but possibly
-/// undesirable) for [`Self::len`] to report too large a value.
-/// (TODO: rework this; the main thing affected is the length of scrollbars.)
-///
-/// If data keys cannot be generated locally on demand they may be requested by
-/// [`Self::update`] and/or [`Self::prepare_range`].
-///
-/// Data items should be requested through [`Self::prepare_range`] as required,
-/// caching results locally when received by [`Self::handle_messages`]. It is up
-/// to the implementation whether to continue caching items outside of the
-/// latest requested `range`.
+/// In simpler cases it is sufficient to implement only required methods.
 pub trait DataClerk<Index> {
     /// Input data type (of parent widget)
     ///
-    /// This input data might provide access to the data set or might be used
-    /// for some other purpose (such as passing in a filter from an input field)
-    /// or might not be used at all.
+    /// Data of this type is passed through the parent widget; see
+    /// [`Widget::Data`] and the [`Events`] trait. This input data might be used
+    /// to access a data set stored in another widget or to pass a query or
+    /// filter into the `DataClerk`.
     ///
     /// Note that it is not currently possible to pass in references to multiple
     /// data items (such as an external data set and a filter) via `Data`. This
@@ -208,7 +191,10 @@ pub trait DataClerk<Index> {
     /// Key type
     ///
     /// All data items should have a stable key so that data items may be
-    /// tracked through changing queries.
+    /// tracked through changing queries. This allows focus and selection to
+    /// correctly track items when the data query or filter changes.
+    ///
+    /// Where the query is fixed, this can just be the `Index` type.
     type Key: DataKey;
 
     /// Item type
@@ -216,71 +202,62 @@ pub trait DataClerk<Index> {
     /// `&Item` is passed to child view widgets as input data.
     type Item;
 
+    /// Token type
+    ///
+    /// Each view widget is stored with a corresponding token set by
+    /// [`Self::update_token`].
+    ///
+    /// Often this will either be [`Self::Key`] or
+    /// <code>[Token](crate::Token)&lt;[Self::Key], [Self::Item]&gt;</code>.
+    type Token: Borrow<Self::Key>;
+
     /// Update the query
     ///
-    /// This is called by [`kas::Events::update`]. It may be called frequently
-    /// and without changes to `data` and should use `async` execution for
-    /// expensive or slow calculations.
+    /// This is called by [`kas::Events::update`]. It should update `self` as
+    /// required reflecting possible data-changes and indicate through the
+    /// returned [`DataChanges`] value the updates required to tokens and views.
     ///
-    /// This method should perform any updates required to adjust [`Self::len`]
-    /// and [`Self::min_len`] or arrange for these properties to be updated
-    /// asynchronously.
+    /// Note: this method is called automatically when input data changes. When
+    /// data owned or referenced by the `DataClerk` implementation is changed it
+    /// may be necessary to explicitly update the view controller, e.g. using
+    /// [`ConfigCx::update`] or [`Action::UPDATE`].
     ///
-    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
-    /// using (for example) `cx.send_async(id, _)`.
-    ///
-    /// The default implementation does nothing.
-    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> DataChanges {
-        let _ = (cx, id, data);
-        DataChanges::None
-    }
+    /// This method may be called frequently and without changes to `data`.
+    /// It is expected to be fast and non-blocking. Asynchronous updates to
+    /// `self` are possible using [`Self::handle_messages`].
+    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> DataChanges;
 
-    /// Get the number of indexable items, if known
+    /// Get the number of indexable items
     ///
-    /// If known, the result should be one larger than the largest `index`
-    /// yielding a result from [`Self::key`]. This number may therefore be
-    /// affected by input `data` such as filters.
+    /// Scroll bars and the `range` passed to [`Self::prepare_range`] are
+    /// limited by the result of this method.
     ///
-    /// The result may change after a call to [`Self::update`] due to changes in
-    /// the data set query or filter. The result should not depend on `range`.
+    /// Where the data set size is a known fixed `len` (or unfixed but with
+    /// maximum `len <= lbound`), this method should return
+    /// <code>[DataLen::Known][](len)</code>.
     ///
-    /// This method may return [`None`], in which case [`Self::min_len`] must be
-    /// implemented instead. This will affect the appearance of scroll bars.
-    fn len(&self, data: &Self::Data) -> Option<Index>;
-
-    /// Get a lower bound on the number of indexable items
+    /// Where the data set size is unknown (or unfixed and greater than
+    /// `lbound`), this method should return
+    /// <code>[DataLen::LBound][](lbound)</code>.
     ///
-    /// This method is only called when [`Self::len`] returns [`None`].
-    ///
-    /// If the return value is less than `expected`, then scrolling and querying
-    /// will be limited to indices less than the return value. If the return
-    /// value is at least `expected`, then scrolling and item querying will be
-    /// unimpeded.
-    ///
-    /// In case [`Self::len`] returns [`None`], this value is used to size
-    /// scroll bar grips.
-    fn min_len(&self, data: &Self::Data, expected: Index) -> Index {
-        let _ = expected;
-        self.len(data).unwrap()
-    }
+    /// `lbound` is set to allow scrolling a little beyond the current view
+    /// position (i.e. a little larger than the last prepared `range.end`).
+    fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index>;
 
     /// Prepare a range
     ///
-    /// This method is called any time that the accessed range might be expected
-    /// to change. It may be called frequently and without changes to `range`
-    /// and should use `async` execution for expensive or slow calculations.
+    /// This method is called whenever the accessed `range` changes or tokens
+    /// may have changed before calling [`Self::update_token`] for each `index`
+    /// in this `range`.
     ///
-    /// It should prepare for [`Self::key`] to be called on the given `range`
-    /// and [`Self::item`] to be called for the returnable keys. These methods
-    /// may be called immediately after this method, though it is acceptable for
-    /// them to return [`None`] until keys / data items are available.
+    /// This method may be called frequently and without changes to `range`.
+    /// It is expected to be fast and non-blocking. Asynchronous updates to
+    /// `self` are possible using [`Self::handle_messages`].
     ///
-    /// This method may update cached keys and items asynchronously (i.e. after
-    /// this method returns); in this case it should prioritise updating of keys
-    /// over items.
-    ///
-    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
-    /// using (for example) `cx.send_async(id, _)`.
+    /// Note that `range` corresponds to the data items which may be visible.
+    /// It may be desirable to retain previously-prepared items in a local cache
+    /// and to pre-emptively request additional items when using a remote
+    /// data source.
     ///
     /// The default implementation does nothing.
     fn prepare_range(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data, range: Range<Index>) {
@@ -290,19 +267,16 @@ pub trait DataClerk<Index> {
     /// Handle an async message
     ///
     /// This method is called when a message is available. Such messages may be
-    /// taken using [`EventCx::try_pop`]. It is not required that all messages
-    /// be handled (some may be intended for other recipients).
+    /// taken using [`EventCx::try_pop`]. Messages may be received from:
     ///
-    /// When `key.is_some()`, the message's source is a view widget over the
-    /// data item with this key. This allows a custom view widget to send a
-    /// custom message, possibly affecting the data set.
-    ///
-    /// When `key.is_none()` the message may be from the view controller or may
-    /// be the result of an asynchronous message sent through [`Self::update`]
-    /// or [`Self::prepare_range`].
-    ///
-    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
-    /// using (for example) `cx.send_async(id, _)`.
+    /// -   View widgets: in this case `key` is `Some(_)` and may be used to
+    ///     identify the source.
+    /// -   [`kas::messages::Select`] may be sent by a wrapper over the view
+    ///     widget. In this case `key` is also `Some(_)`. Usually this message
+    ///     will not be handled here. TODO: disallow?
+    /// -   [`Self::update`], [`Self::prepare_range`] and this method may send
+    ///     `async` messages using `cx.send_async(id, SomeMessage { .. })`.
+    ///     In this case, `key` is `None`.
     ///
     /// The default implementation does nothing.
     fn handle_messages(
@@ -316,26 +290,34 @@ pub trait DataClerk<Index> {
         DataChanges::None
     }
 
-    /// Get a key for a given `index`, if available
+    /// Update a token for the given `index`
     ///
-    /// This method should be fast since it may be called repeatedly.
-    /// The method may be called for each `index` in the given `range` after
-    /// calls to [`Self::update`].
+    /// This method is called after [`Self::prepare_range`] for each `index` in
+    /// the prepared `range`. The input `token` may be `None`, a token for the
+    /// passed `index` or a token for some other index. The method should update
+    /// `token` for the current `index` and any changes to `self` or `data`, or
+    /// set `token` to `None` where `index` is unavailable (e.g. due to sparse,
+    /// or not-yet-loaded data).
     ///
-    /// This may return `None` even when `index` is within the query's `range`
-    /// since data may be sparse or still loading (async).
+    /// This method should be fast since it may be called repeatedly. Slow and
+    /// blocking operations should be run asynchronously from
+    /// [`Self::prepare_range`] using an internal cache.
     ///
-    /// In case the implementation applies some type of filter to an underlying
-    /// data set, this method should not return hidden keys. The implementation
-    /// may either return [`None`] (resulting in empty list entries) or remap
-    /// indices such that hidden keys are skipped over.
-    fn key(&self, data: &Self::Data, index: Index) -> Option<Self::Key>;
+    /// The return value indicates required updates. (The value is unimportant
+    /// when `token` is set to `None`.)
+    fn update_token(
+        &self,
+        data: &Self::Data,
+        index: Index,
+        token: &mut Option<Self::Token>,
+    ) -> TokenChanges;
 
-    /// Get a data item, if available
+    /// Get the data item for the given `token`
+    ///
+    /// Data cannot be generated by this method but it can be generated by
+    /// [`Self::update_token`] and cached within a [`Token`](crate::Token).
+    /// (see [`Self::Token`]).
     ///
     /// This method should be fast since it may be called repeatedly.
-    ///
-    /// This may return `None` while data is still loading (async). The view
-    /// widget may display a loading animation in this case.
-    fn item<'r>(&'r self, data: &'r Self::Data, key: &'r Self::Key) -> Option<&'r Self::Item>;
+    fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item;
 }

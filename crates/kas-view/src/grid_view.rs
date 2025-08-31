@@ -14,6 +14,7 @@ use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
+use std::borrow::Borrow;
 use std::time::Instant;
 
 const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
@@ -34,8 +35,7 @@ mod GridCell {
     #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus))]
     struct GridCell<K, I, V: Driver<K, I>> {
         core: widget_core!(),
-        col: u32,
-        row: u32,
+        index: GridIndex,
         selected: Option<bool>,
         /// The inner widget
         #[widget]
@@ -48,8 +48,7 @@ mod GridCell {
         fn new(inner: V::Widget) -> Self {
             GridCell {
                 core: Default::default(),
-                col: 0,
-                row: 0,
+                index: GridIndex::default(),
                 selected: None,
                 inner,
             }
@@ -62,7 +61,7 @@ mod GridCell {
                 cx.set_label(label);
             }
             Role::GridCell {
-                info: Some(GridCellInfo::new(self.col, self.row)),
+                info: Some(GridCellInfo::new(self.index.col, self.index.row)),
                 selected: self.selected,
             }
         }
@@ -88,10 +87,16 @@ mod GridCell {
     }
 }
 
-#[autoimpl(Debug ignore self.item where K: trait)]
-struct WidgetData<K, I, V: Driver<K, I>> {
-    key: Option<K>,
-    item: GridCell<K, I, V>,
+#[autoimpl(Debug ignore self.item where C::Token: trait)]
+struct WidgetData<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
+    token: Option<C::Token>,
+    item: GridCell<C::Key, C::Item, V>,
+}
+
+impl<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
+    fn key(&self) -> Option<&C::Key> {
+        self.token.as_ref().map(Borrow::borrow)
+    }
 }
 
 /// Index of a grid cell
@@ -150,7 +155,6 @@ mod GridView {
     /// ### Messages
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[derive(Debug)]
     #[widget]
     pub struct GridView<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
         core: widget_core!(),
@@ -158,14 +162,14 @@ mod GridView {
         frame_size: Size,
         clerk: C,
         driver: V,
-        widgets: Vec<WidgetData<C::Key, C::Item, V>>,
+        widgets: Vec<WidgetData<C, V>>,
         align_hints: AlignHints,
         ideal_len: GridIndex,
         alloc_len: GridIndex,
-        min_data_len: GridIndex,
-        key_update: Update,
+        data_len: GridIndex,
+        token_update: Update,
         value_update: bool,
-        data_len: Option<GridIndex>,
+        len_is_known: bool,
         cur_len: GridIndex,
         first_data: GridIndex,
         child_size_min: Size,
@@ -195,10 +199,10 @@ mod GridView {
                 align_hints: Default::default(),
                 ideal_len: GridIndex { col: 3, row: 5 },
                 alloc_len: GridIndex::ZERO,
-                min_data_len: GridIndex::ZERO,
-                key_update: Update::None,
+                data_len: GridIndex::ZERO,
+                token_update: Update::None,
                 value_update: false,
-                data_len: None,
+                len_is_known: false,
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
                 child_size_min: Size::ZERO,
@@ -387,40 +391,38 @@ mod GridView {
             let first_col = u32::conv(u64::conv(offset.0) / u64::conv(skip.0));
             let first_row = u32::conv(u64::conv(offset.1) / u64::conv(skip.1));
 
-            let min_data_len = if let Some(len) = self.data_len {
-                len
-            } else {
-                let expected = GridIndex {
-                    col: first_col + 2 * self.alloc_len.col,
-                    row: first_row + 2 * self.alloc_len.row,
-                };
-                self.clerk.min_len(data, expected)
+            let lbound = GridIndex {
+                col: first_col + 2 * self.alloc_len.col,
+                row: first_row + 2 * self.alloc_len.row,
             };
-            if min_data_len != self.min_data_len {
-                self.min_data_len = min_data_len;
+            let data_len = self.clerk.len(data, lbound);
+            self.len_is_known = data_len.is_known();
+            let data_len = data_len.len();
+            if data_len != self.data_len {
+                self.data_len = data_len;
                 self.update_content_size(cx);
-                self.key_update = Update::Key;
+                self.token_update = Update::Token;
             }
 
-            let col_len = min_data_len.col.min(self.alloc_len.col);
-            let row_len = min_data_len.row.min(self.alloc_len.row);
+            let col_len = data_len.col.min(self.alloc_len.col);
+            let row_len = data_len.row.min(self.alloc_len.row);
 
-            let first_col = first_col.min(min_data_len.col - col_len);
-            let first_row = first_row.min(min_data_len.row - row_len);
+            let first_col = first_col.min(data_len.col - col_len);
+            let first_row = first_row.min(data_len.row - row_len);
 
             let view_end_offset = offset + Offset::conv(self.rect().size - self.frame_size);
-            let end_col = u32::conv(u64::conv(view_end_offset.0) / u64::conv(skip.0) + 1)
-                .min(min_data_len.col);
-            let end_row = u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1)
-                .min(min_data_len.row);
+            let end_col =
+                u32::conv(u64::conv(view_end_offset.0) / u64::conv(skip.0) + 1).min(data_len.col);
+            let end_row =
+                u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1).min(data_len.row);
 
-            if self.key_update == Update::None
+            if self.token_update == Update::None
                 && first_col >= self.first_data.col
                 && first_row >= self.first_data.row
                 && end_col <= self.first_data.col + self.cur_len.col
                 && end_row <= self.first_data.row + self.cur_len.row
-                && self.cur_len.col <= min_data_len.col
-                && self.cur_len.row <= min_data_len.row
+                && self.cur_len.col <= data_len.col
+                && self.cur_len.row <= data_len.row
             {
                 // Assumption: this method is not called for value_update without key_update
                 return;
@@ -445,47 +447,45 @@ mod GridView {
             };
             self.clerk.prepare_range(cx, self.id(), data, start..end);
 
+            let id = self.id();
+
             self.virtual_offset = -offset;
             let solver = self.position_solver();
             for row in start.row..end.row {
                 for col in start.col..end.col {
                     let cell = GridIndex { col, row };
                     let i = solver.data_to_child(cell);
-                    if let Some(key) = self.clerk.key(data, cell) {
-                        let id = key.make_id(self.id_ref());
-                        let w = &mut self.widgets[i];
-                        if self.key_update == Update::Configure || w.key.as_ref() != Some(&key) {
-                            self.driver.set_key(&mut w.item.inner, &key);
+                    let w = &mut self.widgets[i];
 
-                            if let Some(item) = self.clerk.item(data, &key) {
-                                cx.configure(w.item.as_node(item), id);
+                    let changes = self.clerk.update_token(data, cell, &mut w.token);
+                    let Some(token) = w.token.as_ref() else {
+                        continue;
+                    };
 
-                                w.key = Some(key);
-                                solve_size_rules(
-                                    &mut w.item,
-                                    cx.size_cx(),
-                                    Some(self.child_size.0),
-                                    Some(self.child_size.1),
-                                );
-                            } else {
-                                w.key = None; // disables drawing and clicking
-                            }
-                        } else if self.value_update
-                            && let Some(item) = self.clerk.item(data, &key)
-                        {
-                            cx.update(w.item.as_node(item));
-                        }
+                    if changes.key() || self.token_update == Update::Configure {
+                        w.item.index = cell;
+                        self.driver.set_key(&mut w.item.inner, token.borrow());
 
-                        if w.key.is_some() {
-                            w.item.set_rect(cx, solver.rect(cell), self.align_hints);
-                        }
-                    } else {
-                        self.widgets[i].key = None;
+                        let item = self.clerk.item(data, token);
+                        let id = token.borrow().make_id(&id);
+                        cx.configure(w.item.as_node(item), id);
+
+                        solve_size_rules(
+                            &mut w.item,
+                            cx.size_cx(),
+                            Some(self.child_size.0),
+                            Some(self.child_size.1),
+                        );
+                    } else if changes.item() || self.value_update {
+                        let item = self.clerk.item(data, token);
+                        cx.update(w.item.as_node(item));
                     }
+
+                    w.item.set_rect(cx, solver.rect(cell), self.align_hints);
                 }
             }
 
-            self.key_update = Update::None;
+            self.token_update = Update::None;
             self.value_update = false;
 
             let dur = (Instant::now() - time).as_micros();
@@ -499,23 +499,21 @@ mod GridView {
 
         // Handle a data clerk update
         fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
-            self.value_update = match changes {
-                DataChanges::None | DataChanges::NoPrepared => false,
-                DataChanges::NoPreparedKeys | DataChanges::Any => true,
-            };
+            if changes == DataChanges::Any {
+                self.token_update = self.token_update.max(Update::Token);
+            }
+            self.value_update |= changes.any_item();
 
-            let data_len = self.clerk.len(data);
-            let min_data_len = data_len.unwrap_or_else(|| {
-                let expected = GridIndex {
-                    col: self.first_data.col + 2 * self.alloc_len.col,
-                    row: self.first_data.row + 2 * self.alloc_len.row,
-                };
-                self.clerk.min_len(data, expected)
-            });
-            if data_len != self.data_len || min_data_len != self.min_data_len {
+            let lbound = GridIndex {
+                col: self.first_data.col + 2 * self.alloc_len.col,
+                row: self.first_data.row + 2 * self.alloc_len.row,
+            };
+            let data_len = self.clerk.len(data, lbound);
+            self.len_is_known = data_len.is_known();
+            let data_len = data_len.len();
+            if data_len != self.data_len {
                 self.data_len = data_len;
-                self.min_data_len = min_data_len;
-                self.key_update = Update::Key;
+                self.token_update = Update::Token;
 
                 if self.update_content_size(cx) {
                     // We may be able to request additional screen space.
@@ -524,15 +522,15 @@ mod GridView {
                     return;
                 }
 
-                if self.cur_len.col != min_data_len.col.min(self.alloc_len.col)
-                    || self.cur_len.row != min_data_len.row.min(self.alloc_len.row)
+                if self.cur_len.col != data_len.col.min(self.alloc_len.col)
+                    || self.cur_len.row != data_len.row.min(self.alloc_len.row)
                 {
                     // We need to prepare a new range
-                    self.key_update = Update::Key;
+                    self.token_update = Update::Token;
                 }
             }
 
-            if self.key_update != Update::None {
+            if self.token_update != Update::None {
                 return self.map_view_widgets(cx, data);
             }
             if !self.value_update {
@@ -542,9 +540,8 @@ mod GridView {
 
             let range = 0..self.cur_end();
             for child in &mut self.widgets[range] {
-                if let Some(key) = child.key.as_ref()
-                    && let Some(item) = self.clerk.item(data, key)
-                {
+                if let Some(token) = child.token.as_ref() {
+                    let item = self.clerk.item(data, token);
                     cx.update(child.item.as_node(item));
                 }
             }
@@ -562,7 +559,7 @@ mod GridView {
 
     impl Scrollable for Self {
         fn content_size(&self) -> Size {
-            let data_len = self.data_len.unwrap_or(self.min_data_len);
+            let data_len = self.data_len;
             let m = self.child_inter_margin;
             let step = self.child_size + m;
             Size(
@@ -616,7 +613,7 @@ mod GridView {
 
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
-                if w.key.is_some() {
+                if w.token.is_some() {
                     let child_rules = w.item.size_rules(sizer.re(), axis);
                     rules = rules.max(child_rules);
                 }
@@ -675,7 +672,7 @@ mod GridView {
                     "set_rect: allocating widgets (old len = {avail_widgets}, new = {req_widgets})",
                 );
                 self.widgets.resize_with(req_widgets, || WidgetData {
-                    key: None,
+                    token: None,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
             }
@@ -690,14 +687,14 @@ mod GridView {
                     let cell = GridIndex { col, row };
                     let i = solver.data_to_child(cell);
                     let w = &mut self.widgets[i];
-                    if w.key.is_some() {
+                    if w.token.is_some() {
                         w.item.set_rect(cx, solver.rect(cell), self.align_hints);
                     }
                 }
             }
 
             // Also queue a call to map_view_widgets since ranges may have changed
-            self.key_update = Update::Key;
+            self.token_update = Update::Token;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -707,7 +704,7 @@ mod GridView {
             let num = self.cur_end();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
                 for child in &self.widgets[..num] {
-                    if let Some(ref key) = child.key {
+                    if let Some(key) = child.key() {
                         // Note: we don't know which widgets within 0..num are
                         // visible, so check intersection before drawing:
                         if rect.intersection(&child.item.rect()).is_some() {
@@ -726,8 +723,8 @@ mod GridView {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_scroll_offset(self.scroll_offset(), self.max_scroll_offset());
             Role::Grid {
-                columns: self.data_len.map(|len| len.col.cast()),
-                rows: self.data_len.map(|len| len.row.cast()),
+                columns: self.len_is_known.then(|| self.data_len.col.cast()),
+                rows: self.len_is_known.then(|| self.data_len.row.cast()),
             }
         }
 
@@ -738,7 +735,7 @@ mod GridView {
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets
                 .get(index)
-                .filter(|w| w.key.is_some())
+                .filter(|w| w.token.is_some())
                 .map(|w| w.item.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
@@ -746,7 +743,7 @@ mod GridView {
             if key.is_some() {
                 let num = self.cur_end();
                 for (i, w) in self.widgets[..num].iter().enumerate() {
-                    if key == w.key {
+                    if key.as_ref() == w.key() {
                         return Some(i);
                     }
                 }
@@ -767,7 +764,7 @@ mod GridView {
             let num = self.cur_end();
             let coord = coord + self.translation(0);
             for child in &self.widgets[..num] {
-                if child.key.is_some()
+                if child.token.is_some()
                     && let Some(id) = child.item.try_probe(coord)
                 {
                     return id;
@@ -802,18 +799,18 @@ mod GridView {
 
                 let len = self.ideal_len.col * self.ideal_len.row;
                 self.widgets.resize_with(len.cast(), || WidgetData {
-                    key: None,
+                    token: None,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
                 self.alloc_len = self.ideal_len;
             } else {
                 // Force reconfiguration:
                 for w in &mut self.widgets {
-                    w.key = None;
+                    w.token = None;
                 }
             }
 
-            self.key_update = Update::Configure;
+            self.token_update = Update::Configure;
             self.map_view_widgets(cx, data);
         }
 
@@ -829,7 +826,7 @@ mod GridView {
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
             let mut is_used = match event {
                 Event::Command(cmd, _) => {
-                    let len = self.min_data_len;
+                    let len = self.data_len;
                     if len == GridIndex::ZERO {
                         return Unused;
                     }
@@ -873,13 +870,8 @@ mod GridView {
 
                         let index = solver.data_to_child(cell);
                         let w = &self.widgets[index];
-                        #[cfg(debug_assertions)]
-                        {
-                            let key = self.clerk.key(data, cell).unwrap();
-                            assert_eq!(w.key, Some(key));
-                        }
 
-                        if w.key.is_some() {
+                        if w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
                         }
                         Used
@@ -891,11 +883,11 @@ mod GridView {
                     if press.is_primary() && cx.config().event().mouse_nav_focus() =>
                 {
                     if let Some(index) = cx.last_child() {
-                        self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
+                        self.press_target = self.widgets[index].key().map(|k| (index, k.clone()));
                     }
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
-                        if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
+                        if w.key() == Some(key) {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
                         }
                     }
@@ -910,7 +902,7 @@ mod GridView {
                         if success
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_kinetic_scrolling()
-                            && w.key.as_ref().map(|k| k == key).unwrap_or(false)
+                            && w.key() == Some(key)
                             && w.item.rect().contains(press.coord + self.translation(0))
                         {
                             cx.push(kas::messages::Select);
@@ -946,9 +938,10 @@ mod GridView {
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child
-                opt_key = match self.widgets[index].key.as_ref() {
-                    Some(k) => Some(k.clone()),
-                    None => return, // should be unreachable
+                if let Some(token) = self.widgets.get_mut(index).and_then(|w| w.token.as_mut()) {
+                    opt_key = Some(Borrow::<C::Key>::borrow(token).clone());
+                } else {
+                    return; // should be unreachable
                 };
             }
 
@@ -1002,9 +995,9 @@ mod GridView {
 
         fn child_node<'n>(&'n mut self, data: &'n C::Data, index: usize) -> Option<Node<'n>> {
             if let Some(w) = self.widgets.get_mut(index)
-                && let Some(ref key) = w.key
-                && let Some(item) = self.clerk.item(data, key)
+                && let Some(ref token) = w.token
             {
+                let item = self.clerk.item(data, token);
                 return Some(w.item.as_node(item));
             }
 
@@ -1049,9 +1042,9 @@ mod GridView {
                 if let Some(index) = child {
                     cell = solver.child_to_data(index);
                     if !reverse {
-                        if cell.col + 1 < self.min_data_len.col {
+                        if cell.col + 1 < self.data_len.col {
                             cell.col += 1;
-                        } else if cell.row + 1 < self.min_data_len.row {
+                        } else if cell.row + 1 < self.data_len.row {
                             cell = GridIndex {
                                 col: 0,
                                 row: cell.row + 1,
@@ -1064,7 +1057,7 @@ mod GridView {
                             cell.col -= 1;
                         } else if cell.row > 0 {
                             cell = GridIndex {
-                                col: self.min_data_len.col - 1,
+                                col: self.data_len.col - 1,
                                 row: cell.row - 1,
                             };
                         } else {
@@ -1075,8 +1068,8 @@ mod GridView {
                     cell = GridIndex::ZERO;
                 } else {
                     cell = GridIndex {
-                        col: self.min_data_len.col - 1,
-                        row: self.min_data_len.row - 1,
+                        col: self.data_len.col - 1,
+                        row: self.data_len.row - 1,
                     };
                 }
 
