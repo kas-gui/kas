@@ -357,7 +357,7 @@ mod test {
             _: crate::prelude::Rect,
             _: &kas_text::TextDisplay,
             _: crate::draw::color::Rgba,
-            _: &[kas_text::Effect<()>],
+            _: &[kas_text::Effect],
         ) {
             todo!()
         }

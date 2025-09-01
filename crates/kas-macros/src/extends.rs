@@ -84,7 +84,7 @@ impl Extends {
                 (#base).text(id, rect, text);
             }
 
-            fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[::kas::text::Effect<()>]) {
+            fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[::kas::text::Effect]) {
                 (#base).text_effects(id, rect, text, effects);
             }
 

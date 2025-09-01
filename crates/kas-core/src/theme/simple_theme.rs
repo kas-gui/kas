@@ -328,7 +328,7 @@ where
         self.draw.text(rect, text, col);
     }
 
-    fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect<()>]) {
+    fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect]) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -364,21 +364,22 @@ where
         let effects = [
             Effect {
                 start: 0,
+                e: 0,
                 flags: Default::default(),
-                aux: col,
             },
             Effect {
                 start: range.start.cast(),
+                e: 1,
                 flags: Default::default(),
-                aux: sel_col,
             },
             Effect {
                 start: range.end.cast(),
+                e: 0,
                 flags: Default::default(),
-                aux: col,
             },
         ];
-        self.draw.text_effects_rgba(rect, text, &effects);
+        let colors = [col, sel_col];
+        self.draw.text_effects_rgba(rect, text, &effects, &colors);
     }
 
     fn text_cursor(&mut self, id: &Id, rect: Rect, text: &TextDisplay, byte: usize) {

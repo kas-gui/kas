@@ -197,7 +197,7 @@ pub trait DrawSharedImpl: Any {
         rect: Rect,
         text: &TextDisplay,
         col: Rgba,
-        effects: &[Effect<()>],
+        effects: &[Effect],
     );
 
     /// Draw text with effects
@@ -214,6 +214,7 @@ pub trait DrawSharedImpl: Any {
         pass: PassId,
         rect: Rect,
         text: &TextDisplay,
-        effects: &[Effect<Rgba>],
+        effects: &[Effect],
+        colors: &[Rgba],
     );
 }

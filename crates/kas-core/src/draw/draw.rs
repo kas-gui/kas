@@ -221,7 +221,7 @@ pub trait Draw {
     ///
     /// The `text` object must be configured and prepared prior to calling this
     /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
-    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]);
+    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect]);
 
     /// Draw text with effects (including [`Rgba`] color)
     ///
@@ -234,7 +234,13 @@ pub trait Draw {
     ///
     /// The `text` object must be configured and prepared prior to calling this
     /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
-    fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]);
+    fn text_effects_rgba(
+        &mut self,
+        rect: Rect,
+        text: &TextDisplay,
+        effects: &[Effect],
+        colors: &[Rgba],
+    );
 }
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
@@ -288,16 +294,22 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
             .draw_text(self.draw, self.pass, rect, text, col);
     }
 
-    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]) {
+    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect]) {
         self.shared
             .draw
             .draw_text_effects(self.draw, self.pass, rect, text, col, effects);
     }
 
-    fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]) {
+    fn text_effects_rgba(
+        &mut self,
+        rect: Rect,
+        text: &TextDisplay,
+        effects: &[Effect],
+        colors: &[Rgba],
+    ) {
         self.shared
             .draw
-            .draw_text_effects_rgba(self.draw, self.pass, rect, text, effects);
+            .draw_text_effects_rgba(self.draw, self.pass, rect, text, effects, colors);
     }
 }
 

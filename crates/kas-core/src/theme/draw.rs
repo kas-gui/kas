@@ -275,7 +275,7 @@ impl<'a> DrawCx<'a> {
         &mut self,
         rect: Rect,
         text: &Text<T>,
-        effects: &[Effect<()>],
+        effects: &[Effect],
     ) {
         if let Ok(display) = text.display() {
             if effects.is_empty() {
@@ -474,7 +474,7 @@ pub trait ThemeDraw {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect<()>]);
+    fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect]);
 
     /// Method used to implement [`DrawCx::text_selected`]
     fn text_selected_range(&mut self, id: &Id, rect: Rect, text: &TextDisplay, range: Range<usize>);

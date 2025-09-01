@@ -29,7 +29,7 @@ use crate::text::{Effect, EffectFlags};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AccessString {
     text: String,
-    key: Option<(Key, [Effect<()>; 2])>,
+    key: Option<(Key, [Effect; 2])>,
 }
 
 impl AccessString {
@@ -62,8 +62,8 @@ impl AccessString {
 
                     let e0 = Effect {
                         start,
+                        e: 0,
                         flags: EffectFlags::UNDERLINE,
-                        aux: (),
                     };
 
                     let i = c.len_utf8();
@@ -71,8 +71,8 @@ impl AccessString {
 
                     let e1 = Effect {
                         start: start + u32::conv(i),
+                        e: 0,
                         flags: EffectFlags::empty(),
-                        aux: (),
                     };
 
                     key = Some((k, [e0, e1]));
@@ -90,7 +90,7 @@ impl AccessString {
     }
 
     /// Get the key bindings and associated effects, if any
-    pub fn key(&self) -> Option<&(Key, [Effect<()>; 2])> {
+    pub fn key(&self) -> Option<&(Key, [Effect; 2])> {
         self.key.as_ref()
     }
 
@@ -113,7 +113,7 @@ impl FormattableText for AccessString {
         std::iter::empty()
     }
 
-    fn effect_tokens(&self) -> &[Effect<()>] {
+    fn effect_tokens(&self) -> &[Effect] {
         &[]
     }
 }
