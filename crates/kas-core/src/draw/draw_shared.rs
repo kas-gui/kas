@@ -9,7 +9,7 @@ use super::color::Rgba;
 use super::{DrawImpl, PassId};
 use crate::cast::Cast;
 use crate::config::RasterConfig;
-use crate::geom::{Quad, Rect, Size};
+use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 use std::num::NonZeroU32;
@@ -178,7 +178,8 @@ pub trait DrawSharedImpl: Any {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        rect: Rect,
+        pos: Vec2,
+        bb: Quad,
         text: &TextDisplay,
         col: Rgba,
     );
@@ -195,7 +196,8 @@ pub trait DrawSharedImpl: Any {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        rect: Rect,
+        pos: Vec2,
+        bb: Quad,
         text: &TextDisplay,
         effects: &[Effect],
         colors: &[Rgba],

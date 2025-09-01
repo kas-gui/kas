@@ -351,12 +351,13 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        rect: Rect,
+        pos: Vec2,
+        bb: Quad,
         text: &TextDisplay,
         col: Rgba,
     ) {
         let time = std::time::Instant::now();
-        draw.images.text(&mut self.images, pass, rect, text, col);
+        draw.images.text(&mut self.images, pass, pos, bb, text, col);
         draw.common.report_dur_text(time.elapsed());
     }
 
@@ -364,7 +365,8 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        rect: Rect,
+        pos: Vec2,
+        bb: Quad,
         text: &TextDisplay,
         effects: &[Effect],
         colors: &[Rgba],
@@ -373,7 +375,8 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         draw.images.text_effects(
             &mut self.images,
             pass,
-            rect,
+            pos,
+            bb,
             text,
             effects,
             colors,

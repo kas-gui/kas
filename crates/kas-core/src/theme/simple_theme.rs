@@ -320,21 +320,23 @@ where
     }
 
     fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay) {
+        let bb = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
-        self.draw.text(rect, text, col);
+        self.draw.text(bb.a, bb, text, col);
     }
 
     fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect]) {
+        let bb = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
-        self.draw.text_effects(rect, text, effects, &[col]);
+        self.draw.text_effects(bb.a, bb, text, effects, &[col]);
     }
 
     fn text_selected_range(
@@ -344,6 +346,7 @@ where
         text: &TextDisplay,
         range: Range<usize>,
     ) {
+        let bb = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -379,7 +382,7 @@ where
             },
         ];
         let colors = [col, sel_col];
-        self.draw.text_effects(rect, text, &effects, &colors);
+        self.draw.text_effects(bb.a, bb, text, &effects, &colors);
     }
 
     fn text_cursor(&mut self, id: &Id, rect: Rect, text: &TextDisplay, byte: usize) {
