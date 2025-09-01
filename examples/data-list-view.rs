@@ -11,10 +11,9 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
-use kas::view::{DataClerk, Driver, ListView};
+use kas::view::{Driver, ListView};
 use kas::widgets::{column, *};
-use kas_view::{DataChanges, DataLen, TokenChanges};
-use std::borrow::Borrow;
+use kas_view::{DataGenerator, DataLen, GeneratorChanges, GeneratorClerk};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -32,21 +31,7 @@ enum Control {
 }
 
 #[derive(Debug)]
-struct Token<K, I> {
-    key: K,
-    ver: u64,
-    item: I,
-}
-
-impl<K, I> Borrow<K> for Token<K, I> {
-    fn borrow(&self) -> &K {
-        &self.key
-    }
-}
-
-#[derive(Debug)]
 struct Data {
-    ver: u64,
     row_limit: bool,
     len: usize,
     last_string: usize,
@@ -58,7 +43,6 @@ struct Data {
 impl Data {
     fn new(row_limit: bool, len: usize) -> Self {
         Data {
-            ver: 0,
             row_limit,
             len,
             last_string: len,
@@ -75,7 +59,6 @@ impl Data {
             .unwrap_or_else(|| format!("Entry #{}", index + 1))
     }
     fn handle(&mut self, control: Control) {
-        self.ver = self.ver.wrapping_add(1);
         let len = match control {
             Control::SetRowLimit(row_limit) => {
                 self.row_limit = row_limit;
@@ -166,15 +149,14 @@ mod ListEntry {
 }
 
 #[derive(Default)]
-struct Clerk;
-impl DataClerk<usize> for Clerk {
+struct Generator;
+impl DataGenerator<usize> for Generator {
     type Data = Data;
     type Key = usize;
-    type Token = Token<usize, Item>;
     type Item = Item;
 
-    fn update(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data) -> DataChanges {
-        DataChanges::Any
+    fn update(&mut self, _: &Self::Data) -> GeneratorChanges {
+        GeneratorChanges::Any
     }
 
     fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {
@@ -185,32 +167,12 @@ impl DataClerk<usize> for Clerk {
         }
     }
 
-    fn update_token(
-        &self,
-        data: &Self::Data,
-        index: usize,
-        token: &mut Option<Self::Token>,
-    ) -> TokenChanges {
-        let mut changes = TokenChanges::Any;
-        if let Some(token) = token.as_ref()
-            && token.key == index
-        {
-            if token.ver == data.ver {
-                return TokenChanges::None;
-            }
-            changes = TokenChanges::SameKey;
-        }
-
-        *token = Some(Token {
-            key: index,
-            ver: data.ver,
-            item: (data.active, data.get_string(index)),
-        });
-        changes
+    fn key(&self, _: &Self::Data, index: usize) -> Option<Self::Key> {
+        Some(index)
     }
 
-    fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Item {
-        &token.item
+    fn generate(&self, data: &Self::Data, key: &usize) -> Self::Item {
+        (data.active, data.get_string(*key))
     }
 }
 
@@ -255,7 +217,8 @@ fn main() -> kas::runner::Result<()> {
 
     let data = Data::new(false, 5);
 
-    let list = ListView::new(Clerk::default(), MyDriver).on_update(|cx, list, data: &Data| {
+    let clerk = GeneratorClerk::new(Generator::default());
+    let list = ListView::new(clerk, MyDriver).on_update(|cx, list, data: &Data| {
         list.set_direction(cx, data.dir);
     });
     let tree = column![

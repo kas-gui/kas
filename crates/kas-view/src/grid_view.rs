@@ -457,7 +457,9 @@ mod GridView {
                     let i = solver.data_to_child(cell);
                     let w = &mut self.widgets[i];
 
-                    let changes = self.clerk.update_token(data, cell, &mut w.token);
+                    let changes =
+                        self.clerk
+                            .update_token(data, cell, self.value_update, &mut w.token);
                     let Some(token) = w.token.as_ref() else {
                         continue;
                     };

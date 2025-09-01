@@ -354,8 +354,8 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
 fn filter_list() -> Page<AppData> {
     use kas::view::{
-        DataChanges, DataClerk, DataLen, ListView, SelectionMode, SelectionMsg, Token,
-        TokenChanges, driver,
+        DataGenerator, DataLen, GeneratorChanges, GeneratorClerk, ListView, SelectionMode,
+        SelectionMsg, driver,
     };
 
     const MONTHS: &[&str] = &[
@@ -499,26 +499,16 @@ fn filter_list() -> Page<AppData> {
         }
     }
 
-    struct MonthsClerk {
+    struct MonthsGenerator {
         months: Vec<u8>,
         end: usize,
         years: Range<u32>,
         filtered_years: FilteredRange,
         end_month: u8,
-        end_month_filtered: u8,
         filter: MonthYearFilter,
     }
-    let clerk = MonthsClerk {
-        months: Vec::new(),
-        end: usize::MAX,
-        years: years.clone(),
-        filtered_years: FilteredRange::new(years),
-        end_month,
-        end_month_filtered: end_month,
-        filter: MonthYearFilter::default(),
-    };
 
-    impl MonthsClerk {
+    impl MonthsGenerator {
         fn text(&self, key: usize) -> String {
             let year = key / 12;
             let month = key % 12;
@@ -526,17 +516,14 @@ fn filter_list() -> Page<AppData> {
         }
     }
 
-    impl DataClerk<usize> for MonthsClerk {
+    impl DataGenerator<usize> for MonthsGenerator {
         type Data = MonthYearFilter;
-
         type Key = usize;
-        type Token = Token<usize, String>;
-
         type Item = String;
 
-        fn update(&mut self, _: &mut ConfigCx, _: Id, filter: &Self::Data) -> DataChanges {
+        fn update(&mut self, filter: &Self::Data) -> GeneratorChanges {
             if self.filter == *filter && self.end != usize::MAX {
-                return DataChanges::None;
+                return GeneratorChanges::None;
             }
             self.filter = filter.clone();
 
@@ -550,55 +537,49 @@ fn filter_list() -> Page<AppData> {
                     .filter_map(|(i, month)| filter.matches_month(month).then_some(i as u8)),
             );
 
-            if self.filtered_years.end_year() == self.years.end {
-                self.end_month_filtered =
-                    months.iter().filter(|i| **i < self.end_month).count() as u8;
+            let end_month_filtered = if self.filtered_years.end_year() == self.years.end {
+                months.iter().filter(|i| **i < self.end_month).count()
             } else {
-                self.end_month_filtered = 0;
-            }
+                0
+            };
 
-            self.end = self.filtered_years.len() * months.len() + self.end_month_filtered as usize;
+            self.end = self.filtered_years.len() * months.len() + end_month_filtered;
             self.months = months;
 
-            DataChanges::Any
+            GeneratorChanges::Any
         }
 
         fn len(&self, _: &Self::Data, _: usize) -> DataLen<usize> {
             DataLen::Known(self.end)
         }
 
-        fn update_token(
-            &self,
-            _: &Self::Data,
-            index: usize,
-            token: &mut Option<Self::Token>,
-        ) -> TokenChanges {
+        fn key(&self, _: &Self::Data, index: usize) -> Option<usize> {
             if index >= self.end {
-                *token = None;
-                return TokenChanges::None;
+                return None;
             }
 
             let i = self.end - index - 1;
             let m = self.months.len(); // number of months (filtered)
             let year = self.filtered_years.get(i / m);
             let month = self.months[i % m] as usize;
-            let key = year * 12 + month;
-
-            if let Some(token) = token.as_ref()
-                && token.key == key
-            {
-                return TokenChanges::None;
-            }
-
-            let item = format!("{} {year}", &MONTHS[month]);
-            *token = Some(Token { key, item });
-            TokenChanges::Any
+            Some(year * 12 + month)
         }
 
-        fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r String {
-            &token.item
+        #[inline]
+        fn generate(&self, _: &Self::Data, key: &Self::Key) -> Self::Item {
+            self.text(*key)
         }
     }
+
+    type Clerk = GeneratorClerk<usize, MonthsGenerator>;
+    let clerk = GeneratorClerk::new(MonthsGenerator {
+        months: Vec::new(),
+        end: usize::MAX,
+        years: years.clone(),
+        filtered_years: FilteredRange::new(years),
+        end_month,
+        filter: MonthYearFilter::default(),
+    });
 
     let list_view = impl_anon! {
         #[widget]
@@ -607,7 +588,8 @@ fn filter_list() -> Page<AppData> {
             core: widget_core!(),
             #[widget(&())] filter: EditBox<MonthYearFilterGuard> =
                 EditBox::default().with_multi_line(false),
-            #[widget(&self.filter.guard().0)] list: ScrollBars<ListView<MonthsClerk, driver::View, Down>> =
+            #[widget(&self.filter.guard().0)] list: ScrollBars<ListView<Clerk, driver::View, Down>>
+                =
                 ScrollBars::new(ListView::new(clerk, driver::View).with_num_visible(24)),
         }
 
@@ -624,7 +606,7 @@ fn filter_list() -> Page<AppData> {
                 if let Some(FilterUpdate) = cx.try_pop() {
                     cx.update(self.as_node(data));
                 } else if let Some(SelectionMsg::Select(key)) = cx.try_pop() {
-                    println!("Selected: {}", &self.list.inner().clerk().text(key))
+                    println!("Selected: {}", &self.list.inner().clerk().generator().text(key))
                 }
             }
         }
