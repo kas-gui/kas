@@ -343,7 +343,8 @@ mod test {
             &mut self,
             _: &mut Self::Draw,
             _: crate::draw::PassId,
-            _: crate::prelude::Rect,
+            _: crate::geom::Vec2,
+            _: crate::geom::Quad,
             _: &kas_text::TextDisplay,
             _: crate::draw::color::Rgba,
         ) {
@@ -354,21 +355,11 @@ mod test {
             &mut self,
             _: &mut Self::Draw,
             _: crate::draw::PassId,
-            _: crate::prelude::Rect,
+            _: crate::geom::Vec2,
+            _: crate::geom::Quad,
             _: &kas_text::TextDisplay,
-            _: crate::draw::color::Rgba,
             _: &[kas_text::Effect],
-        ) {
-            todo!()
-        }
-
-        fn draw_text_effects_rgba(
-            &mut self,
-            _: &mut Self::Draw,
-            _: crate::draw::PassId,
-            _: crate::prelude::Rect,
-            _: &kas_text::TextDisplay,
-            _: &[kas_text::Effect<crate::draw::color::Rgba>],
+            _: &[crate::draw::color::Rgba],
         ) {
             todo!()
         }
