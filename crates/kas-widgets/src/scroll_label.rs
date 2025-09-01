@@ -32,13 +32,12 @@ mod SelectableText {
 
     impl Layout for Self {
         fn draw(&self, mut draw: DrawCx) {
+            let rect = self.rect();
+            let pos = rect.pos;
             if self.selection.is_empty() {
-                draw.text(self.rect(), &self.text);
+                draw.text_pos(pos, rect, &self.text);
             } else {
-                // TODO(opt): we could cache the selection rectangles here to make
-                // drawing more efficient (self.text.highlight_lines(range) output).
-                // The same applies to the edit marker below.
-                draw.text_selected(self.rect(), &self.text, self.selection.range());
+                draw.text_selected(pos, rect, &self.text, self.selection.range());
             }
         }
     }

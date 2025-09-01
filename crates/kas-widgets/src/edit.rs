@@ -904,14 +904,12 @@ mod EditField {
 
         fn draw(&self, mut draw: DrawCx) {
             let rect = self.rect();
+            let pos = rect.pos;
 
-            // TODO(opt): we could cache the selection rectangles here to make
-            // drawing more efficient (self.text.highlight_lines(range) output).
-            // The same applies to the edit marker below.
-            draw.text_selected(rect, &self.text, self.selection.range());
+            draw.text_selected(pos, rect, &self.text, self.selection.range());
 
             if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
-                draw.text_cursor(rect, &self.text, self.selection.edit_index());
+                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
             }
         }
     }

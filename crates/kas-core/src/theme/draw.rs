@@ -13,7 +13,7 @@ use crate::draw::color::{ParseError, Rgb};
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
 #[allow(unused)] use crate::event::{Command, Event};
 use crate::event::{ConfigCx, EventState};
-use crate::geom::{Offset, Rect};
+use crate::geom::{Coord, Offset, Rect};
 use crate::text::{Effect, TextDisplay, format::FormattableText};
 use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
@@ -263,8 +263,7 @@ impl<'a> DrawCx<'a> {
 
     /// Draw text with effects
     ///
-    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
-    /// scrolls, `rect` should be the size of the whole text, not the window.
+    /// Text is drawn from `rect.pos` and clipped to `rect`.
     ///
     /// This method supports a number of text effects: bold, emphasis, text
     /// size, underline and strikethrough.
@@ -272,16 +271,35 @@ impl<'a> DrawCx<'a> {
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
+        self.text_pos(rect.pos, rect, text);
+    }
+
+    /// Draw text with effects and an offset
+    ///
+    /// Text is drawn from `pos` and clipped to `rect`.
+    ///
+    /// This method supports a number of text effects: bold, emphasis, text
+    /// size, underline and strikethrough.
+    ///
+    /// [`ConfigCx::text_configure`] should be called prior to this method to
+    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    pub fn text_pos<T: FormattableText>(&mut self, pos: Coord, rect: Rect, text: &Text<T>) {
         let effects = text.effect_tokens();
-        self.text_with_effects(rect, text, effects);
+        self.text_with_effects(pos, rect, text, effects);
     }
 
     /// Draw text with a given effect list
     ///
-    /// This method is similar to [`Self::text`] except that an effect list is
-    /// passed explicitly instead of inferred from `text`.
+    /// Text is drawn from `pos` and clipped to `rect`.
+    ///
+    /// This method supports a number of text effects: bold, emphasis, text
+    /// size, underline and strikethrough.
+    ///
+    /// This method is similar to [`Self::text_pos`] except that an effect list
+    /// is passed explicitly instead of inferred from `text`.
     pub fn text_with_effects<T: FormattableText>(
         &mut self,
+        pos: Coord,
         rect: Rect,
         text: &Text<T>,
         effects: &[Effect],
@@ -289,9 +307,9 @@ impl<'a> DrawCx<'a> {
         if let Ok(display) = text.display() {
             if effects.is_empty() {
                 // Use the faster and simpler implementation when we don't have effects
-                self.h.text(&self.id, rect, display);
+                self.h.text(&self.id, pos, rect, display);
             } else {
-                self.h.text_effects(&self.id, rect, display, effects);
+                self.h.text_effects(&self.id, pos, rect, display, effects);
             }
         }
     }
@@ -303,31 +321,38 @@ impl<'a> DrawCx<'a> {
     /// future by a higher-level API.
     pub fn text_selected<T: FormattableText>(
         &mut self,
+        pos: Coord,
         rect: Rect,
         text: &Text<T>,
         range: Range<usize>,
     ) {
         if range.is_empty() {
-            return self.text(rect, text);
+            return self.text_pos(pos, rect, text);
         }
 
         let Ok(display) = text.display() else {
             return;
         };
 
-        self.h.text_selected_range(&self.id, rect, display, range);
+        self.h
+            .text_selected_range(&self.id, pos, rect, display, range);
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
-    /// The text cursor is draw from `rect.pos` and clipped to `rect`. If the text
-    /// scrolls, `rect` should be the size of the whole text, not the window.
+    /// The text cursor is draw from `rect.pos` and clipped to `rect`.
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_cursor<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, byte: usize) {
+    pub fn text_cursor<T: FormattableText>(
+        &mut self,
+        pos: Coord,
+        rect: Rect,
+        text: &Text<T>,
+        byte: usize,
+    ) {
         if let Ok(text) = text.display() {
-            self.h.text_cursor(&self.id, rect, text, byte);
+            self.h.text_cursor(&self.id, pos, rect, text, byte);
         }
     }
 
@@ -470,7 +495,7 @@ pub trait ThemeDraw {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay);
+    fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay);
 
     /// Draw text with effects
     ///
@@ -483,16 +508,30 @@ pub trait ThemeDraw {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect]);
+    fn text_effects(
+        &mut self,
+        id: &Id,
+        pos: Coord,
+        rect: Rect,
+        text: &TextDisplay,
+        effects: &[Effect],
+    );
 
     /// Method used to implement [`DrawCx::text_selected`]
-    fn text_selected_range(&mut self, id: &Id, rect: Rect, text: &TextDisplay, range: Range<usize>);
+    fn text_selected_range(
+        &mut self,
+        id: &Id,
+        pos: Coord,
+        rect: Rect,
+        text: &TextDisplay,
+        range: Range<usize>,
+    );
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_cursor(&mut self, id: &Id, rect: Rect, text: &TextDisplay, byte: usize);
+    fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize);
 
     /// Draw UI element: check box
     ///

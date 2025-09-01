@@ -319,29 +319,38 @@ where
         }
     }
 
-    fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay) {
+    fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay) {
         let bb = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
-        self.draw.text(bb.a, bb, text, col);
+        self.draw.text(pos.cast(), bb, text, col);
     }
 
-    fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[Effect]) {
+    fn text_effects(
+        &mut self,
+        id: &Id,
+        pos: Coord,
+        rect: Rect,
+        text: &TextDisplay,
+        effects: &[Effect],
+    ) {
         let bb = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
-        self.draw.text_effects(bb.a, bb, text, effects, &[col]);
+        self.draw
+            .text_effects(pos.cast(), bb, text, effects, &[col]);
     }
 
     fn text_selected_range(
         &mut self,
         id: &Id,
+        pos: Coord,
         rect: Rect,
         text: &TextDisplay,
         range: Range<usize>,
@@ -382,16 +391,17 @@ where
             },
         ];
         let colors = [col, sel_col];
-        self.draw.text_effects(bb.a, bb, text, &effects, &colors);
+        self.draw
+            .text_effects(pos.cast(), bb, text, &effects, &colors);
     }
 
-    fn text_cursor(&mut self, id: &Id, rect: Rect, text: &TextDisplay, byte: usize) {
+    fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {
         if self.ev.window_has_focus() && !self.w.anim.text_cursor(self.draw.draw, id, byte) {
             return;
         }
 
         let width = self.w.dims.mark_line;
-        let pos = Vec2::conv(rect.pos);
+        let pos = Vec2::conv(pos);
         let bb = Quad::conv(rect);
 
         let mut col = self.cols.nav_focus;
