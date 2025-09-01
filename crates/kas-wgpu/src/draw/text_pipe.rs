@@ -493,60 +493,6 @@ impl Window {
         pass: PassId,
         rect: Rect,
         text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect],
-        mut draw_quad: impl FnMut(Quad),
-    ) {
-        // Optimisation: use cheaper TextDisplay::runs method
-        if effects.len() <= 1
-            && effects
-                .first()
-                .map(|e| e.flags == Default::default())
-                .unwrap_or(true)
-        {
-            self.text(pipe, pass, rect, text, col);
-            return;
-        }
-
-        let rect = Quad::conv(rect);
-
-        for run in text.runs(rect.a.into(), effects) {
-            let face = run.face_id();
-            let dpem = run.dpem();
-            let for_glyph = |glyph: Glyph, _: u16| {
-                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
-                let sprite = match pipe.text.glyphs.get(&desc) {
-                    Some(sprite) => sprite,
-                    None => {
-                        pipe.raster_glyphs(face, dpem, run.glyphs());
-                        match pipe.text.glyphs.get(&desc) {
-                            Some(sprite) => sprite,
-                            None => return,
-                        }
-                    }
-                };
-                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
-            };
-
-            let for_rect = |x1, x2, y: f32, h: f32, _| {
-                let y = y.ceil();
-                let y2 = y + h.ceil();
-                if let Some(quad) = Quad::from_coords(Vec2(x1, y), Vec2(x2, y2)).intersection(&rect)
-                {
-                    draw_quad(quad);
-                }
-            };
-
-            run.glyphs_with_effects(for_glyph, for_rect);
-        }
-    }
-
-    pub fn text_effects_rgba(
-        &mut self,
-        pipe: &mut Pipeline,
-        pass: PassId,
-        rect: Rect,
-        text: &TextDisplay,
         effects: &[Effect],
         colors: &[Rgba],
         mut draw_quad: impl FnMut(Quad, Rgba),

@@ -334,7 +334,7 @@ where
         } else {
             self.cols.text
         };
-        self.draw.text_effects(rect, text, col, effects);
+        self.draw.text_effects(rect, text, effects, &[col]);
     }
 
     fn text_selected_range(
@@ -379,7 +379,7 @@ where
             },
         ];
         let colors = [col, sel_col];
-        self.draw.text_effects_rgba(rect, text, &effects, &colors);
+        self.draw.text_effects(rect, text, &effects, &colors);
     }
 
     fn text_cursor(&mut self, id: &Id, rect: Rect, text: &TextDisplay, byte: usize) {

@@ -211,36 +211,21 @@ pub trait Draw {
     /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
     fn text(&mut self, rect: Rect, text: &TextDisplay, col: Rgba);
 
-    /// Draw text with a single color and effects
+    /// Draw text with effects
     ///
     /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
+    /// The `effects` list provides underlining/strikethrough information via
+    /// [`Effect::flags`] and an index [`Effect::e`]. If `effects` is empty,
+    /// this is equivalent to [`Self::text`].
+    ///
+    /// Text colour lookup uses index `e` and is essentially:
+    /// `colors.get(e).unwrap_or(Rgba::BLACK)`.
     ///
     /// The `text` object must be configured and prepared prior to calling this
     /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
-    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect]);
-
-    /// Draw text with effects (including [`Rgba`] color)
-    ///
-    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
-    /// scrolls, `rect` should be the size of the whole text, not the window.
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
-    ///
-    /// The `text` object must be configured and prepared prior to calling this
-    /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
-    fn text_effects_rgba(
-        &mut self,
-        rect: Rect,
-        text: &TextDisplay,
-        effects: &[Effect],
-        colors: &[Rgba],
-    );
+    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect], colors: &[Rgba]);
 }
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
@@ -294,13 +279,7 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
             .draw_text(self.draw, self.pass, rect, text, col);
     }
 
-    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect]) {
-        self.shared
-            .draw
-            .draw_text_effects(self.draw, self.pass, rect, text, col, effects);
-    }
-
-    fn text_effects_rgba(
+    fn text_effects(
         &mut self,
         rect: Rect,
         text: &TextDisplay,
@@ -309,7 +288,7 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
     ) {
         self.shared
             .draw
-            .draw_text_effects_rgba(self.draw, self.pass, rect, text, effects, colors);
+            .draw_text_effects(self.draw, self.pass, rect, text, effects, colors);
     }
 }
 

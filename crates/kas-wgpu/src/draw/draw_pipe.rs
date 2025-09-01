@@ -366,28 +366,11 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         pass: PassId,
         rect: Rect,
         text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect],
-    ) {
-        let time = std::time::Instant::now();
-        draw.images
-            .text_effects(&mut self.images, pass, rect, text, col, effects, |quad| {
-                draw.shaded_square.rect(pass, quad, col);
-            });
-        draw.common.report_dur_text(time.elapsed());
-    }
-
-    fn draw_text_effects_rgba(
-        &mut self,
-        draw: &mut Self::Draw,
-        pass: PassId,
-        rect: Rect,
-        text: &TextDisplay,
         effects: &[Effect],
         colors: &[Rgba],
     ) {
         let time = std::time::Instant::now();
-        draw.images.text_effects_rgba(
+        draw.images.text_effects(
             &mut self.images,
             pass,
             rect,
