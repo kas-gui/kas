@@ -21,7 +21,7 @@ fn main() {
         print!("[");
         let mut first = true;
         let mut i = 1;
-        let mut n = 0;
+        let mut n: usize = 0;
         while i < s.len() {
             let b = match u8::from_str_radix(&s[i..i + 1], 16) {
                 Ok(b) => b,
@@ -33,7 +33,7 @@ fn main() {
             };
             i += 1;
 
-            n |= b & 7;
+            n |= (b as usize) & 7;
             if b & 8 != 0 {
                 n <<= 3;
                 continue;
