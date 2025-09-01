@@ -157,6 +157,9 @@ impl<'a> DrawCx<'a> {
     ///
     /// Adds a new draw pass for purposes of enforcing draw order. Content of
     /// the new pass will be drawn after content in the parent pass.
+    ///
+    /// Warning: the number of passes used can have a substantial performance
+    /// impact, potentially more on GPU communication than CPU usage.
     pub fn with_pass<F: FnOnce(DrawCx)>(&mut self, f: F) {
         let clip_rect = self.h.get_clip_rect();
         let id = self.id.clone();
@@ -172,6 +175,9 @@ impl<'a> DrawCx<'a> {
     ///
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
+    ///
+    /// Warning: the number of passes used can have a substantial performance
+    /// impact, potentially more on GPU communication than CPU usage.
     pub fn with_clip_region<F: FnOnce(DrawCx)>(&mut self, rect: Rect, offset: Offset, f: F) {
         let id = self.id.clone();
         self.h.new_pass(
@@ -190,6 +196,9 @@ impl<'a> DrawCx<'a> {
     /// The theme is permitted to enlarge the `rect` for the purpose of drawing
     /// a frame or shadow around this overlay, thus the
     /// [`Self::get_clip_rect`] may be larger than expected.
+    ///
+    /// Warning: the number of passes used can have a substantial performance
+    /// impact, potentially more on GPU communication than CPU usage.
     pub fn with_overlay<F: FnOnce(DrawCx)>(&mut self, rect: Rect, offset: Offset, f: F) {
         let id = self.id.clone();
         self.h.new_pass(

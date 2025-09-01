@@ -166,6 +166,7 @@ mod Window {
             // Draw access keys first to prioritise their access key bindings
             for (_, popup, translation) in &self.popups {
                 if let Some(child) = self.find_tile(&popup.id) {
+                    // We use a new pass to control draw order and clip content:
                     let clip_rect = child.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         child.draw(draw);
