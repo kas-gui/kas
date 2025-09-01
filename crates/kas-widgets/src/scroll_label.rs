@@ -308,7 +308,12 @@ mod ScrollText {
             draw.with_clip_region(self.rect(), self.scroll.offset(), |draw| {
                 self.label.draw(draw)
             });
-            draw.with_pass(|draw| self.vert_bar.draw(draw));
+
+            // We use a new pass to draw the scroll bar over inner content, but
+            // only when required to minimize cost:
+            if self.vert_bar.currently_visible(draw.ev_state()) {
+                draw.with_pass(|draw| self.vert_bar.draw(draw));
+            }
         }
     }
 
@@ -413,8 +418,11 @@ mod ScrollText {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            self.scroll
-                .scroll_by_event(cx, event, self.id(), self.rect())
+            let is_used = self
+                .scroll
+                .scroll_by_event(cx, event, self.id(), self.rect());
+            self.vert_bar.set_value(cx, self.scroll.offset().1);
+            is_used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
@@ -423,6 +431,7 @@ mod ScrollText {
             {
                 let offset = Offset(self.scroll.offset().0, y);
                 let action = self.scroll.set_offset(offset);
+                self.vert_bar.set_value(cx, self.scroll.offset().1);
                 cx.action(self, action);
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
                 self.set_scroll_offset(cx, offset);
@@ -431,6 +440,7 @@ mod ScrollText {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
             self.scroll.scroll(cx, self.id(), self.rect(), scroll);
+            self.vert_bar.set_value(cx, self.scroll.offset().1);
         }
     }
 
