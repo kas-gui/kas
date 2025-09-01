@@ -411,9 +411,8 @@ mod EditBox {
             };
             draw_inner.frame(self.rect(), FrameStyle::EditBox, bg);
 
-            draw_inner.with_clip_region(self.rect(), self.scroll.offset(), |draw| {
-                self.inner.draw(draw);
-            });
+            self.inner.draw_with_offset(draw.re(), self.scroll.offset());
+
             if self.scroll.max_offset().1 > 0 {
                 self.vert_bar.draw(draw.re());
             }
@@ -1217,6 +1216,22 @@ mod EditField {
                     rect.pos += Offset::conv(self.rect().pos);
                     cx.set_ime_cursor_area(self.id_ref(), rect);
                 }
+            }
+        }
+
+        /// Draw with an offset
+        ///
+        /// Draws at position `self.rect() - offset`.
+        ///
+        /// This may be called instead of [`Layout::draw`].
+        pub fn draw_with_offset(&self, mut draw: DrawCx, offset: Offset) {
+            let rect = self.rect();
+            let pos = rect.pos - offset;
+
+            draw.text_selected(pos, rect, &self.text, self.selection.range());
+
+            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
+                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
             }
         }
     }

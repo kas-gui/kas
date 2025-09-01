@@ -32,13 +32,7 @@ mod SelectableText {
 
     impl Layout for Self {
         fn draw(&self, mut draw: DrawCx) {
-            let rect = self.rect();
-            let pos = rect.pos;
-            if self.selection.is_empty() {
-                draw.text_pos(pos, rect, &self.text);
-            } else {
-                draw.text_selected(pos, rect, &self.text, self.selection.range());
-            }
+            self.draw_with_offset(draw, Offset::ZERO);
         }
     }
 
@@ -152,6 +146,22 @@ mod SelectableText {
         #[inline]
         pub fn as_str(&self) -> &str {
             self.text.as_str()
+        }
+
+        /// Draw with an offset
+        ///
+        /// Draws at position `self.rect() - offset`.
+        ///
+        /// This may be called instead of [`Layout::draw`].
+        pub fn draw_with_offset(&self, mut draw: DrawCx, offset: Offset) {
+            let rect = self.rect();
+            let pos = rect.pos - offset;
+
+            if self.selection.is_empty() {
+                draw.text_pos(pos, rect, &self.text);
+            } else {
+                draw.text_selected(pos, rect, &self.text, self.selection.range());
+            }
         }
     }
 
@@ -304,9 +314,7 @@ mod ScrollText {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            draw.with_clip_region(self.rect(), self.scroll.offset(), |draw| {
-                self.label.draw(draw)
-            });
+            self.label.draw_with_offset(draw.re(), self.scroll.offset());
 
             // We use a new pass to draw the scroll bar over inner content, but
             // only when required to minimize cost:
