@@ -738,6 +738,7 @@ mod ListView {
         }
 
         fn draw(&self, mut draw: DrawCx) {
+            // We use a new pass to clip and offset scrolled content:
             let offset = self.scroll_offset() + self.virtual_offset();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
                 for child in &self.widgets[..self.cur_len.cast()] {

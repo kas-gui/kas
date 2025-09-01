@@ -36,8 +36,8 @@ mod Clock {
     #[widget]
     struct Clock {
         core: widget_core!(),
-        date_rect: Rect,
-        time_rect: Rect,
+        date_rect: Quad,
+        time_rect: Quad,
         now: DateTime<Local>,
         date: Text<String>,
         time: Text<String>,
@@ -68,8 +68,8 @@ mod Clock {
 
             let time_pos = pos + Offset(0, size.1 * 5 / 8);
             let date_pos = pos + Offset(0, size.1 / 8);
-            self.date_rect = Rect::new(date_pos, text_size);
-            self.time_rect = Rect::new(time_pos, text_size);
+            self.date_rect = Rect::new(date_pos, text_size).cast();
+            self.time_rect = Rect::new(time_pos, text_size).cast();
         }
 
         fn draw(&self, mut draw: DrawCx) {
@@ -104,10 +104,10 @@ mod Clock {
             }
 
             if let Ok(text) = self.date.display() {
-                draw.text(self.date_rect, text, col_date);
+                draw.text(self.date_rect.a, self.date_rect, text, col_date);
             }
             if let Ok(text) = self.time.display() {
-                draw.text(self.time_rect, text, col_time);
+                draw.text(self.time_rect.a, self.time_rect, text, col_time);
             }
 
             let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
@@ -160,8 +160,8 @@ mod Clock {
         fn new() -> Self {
             Clock {
                 core: Default::default(),
-                date_rect: Rect::ZERO,
-                time_rect: Rect::ZERO,
+                date_rect: Quad::ZERO,
+                time_rect: Quad::ZERO,
                 now: Local::now(),
                 date: Text::new("0000-00-00".to_string()),
                 time: Text::new("00:00:00".to_string()),

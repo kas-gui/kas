@@ -701,6 +701,7 @@ mod GridView {
         }
 
         fn draw(&self, mut draw: DrawCx) {
+            // We use a new pass to clip and offset scrolled content:
             let offset = self.scroll_offset() + self.virtual_offset;
             let rect = self.rect() + offset;
             let num = self.cur_end();

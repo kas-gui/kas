@@ -80,32 +80,41 @@ impl Extends {
                 (#base).selection(rect, style);
             }
 
-            fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay) {
-                (#base).text(id, rect, text);
+            fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay) {
+                (#base).text(id, pos, rect, text);
             }
 
-            fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[::kas::text::Effect<()>]) {
-                (#base).text_effects(id, rect, text, effects);
+            fn text_effects(
+                &mut self,
+                id: &Id,
+                pos: Coord,
+                rect: Rect,
+                text: &TextDisplay,
+                effects: &[::kas::text::Effect],
+            ) {
+                (#base).text_effects(id, pos, rect, text, effects);
             }
 
             fn text_selected_range(
                 &mut self,
                 id: &Id,
+                pos: Coord,
                 rect: Rect,
                 text: &TextDisplay,
                 range: Range<usize>,
             ) {
-                (#base).text_selected_range(id, rect, text, range);
+                (#base).text_selected_range(id, pos, rect, text, range);
             }
 
             fn text_cursor(
                 &mut self,
                 id: &Id,
+                pos: Coord,
                 rect: Rect,
                 text: &TextDisplay,
                 byte: usize,
             ) {
-                (#base).text_cursor(id, rect, text, byte);
+                (#base).text_cursor(id, pos, rect, text, byte);
             }
 
             fn check_box(&mut self, id: &Id, rect: Rect, checked: bool, last_change: Option<Instant>) {

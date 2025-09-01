@@ -8,7 +8,7 @@
 use super::{AnimationState, color::Rgba};
 #[allow(unused)] use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState, WindowCommon};
-use crate::geom::{Offset, Quad, Rect};
+use crate::geom::{Offset, Quad, Rect, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 use std::time::Instant;
@@ -204,37 +204,33 @@ pub trait Draw {
 
     /// Draw text with a colour
     ///
-    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
-    /// scrolls, `rect` should be the size of the whole text, not the window.
+    /// Text is drawn from `pos` and clipped to `bounding_box`.
     ///
     /// The `text` object must be configured and prepared prior to calling this
     /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
-    fn text(&mut self, rect: Rect, text: &TextDisplay, col: Rgba);
+    fn text(&mut self, pos: Vec2, bounding_box: Quad, text: &TextDisplay, col: Rgba);
 
-    /// Draw text with a single color and effects
+    /// Draw text with effects
     ///
-    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
-    /// scrolls, `rect` should be the size of the whole text, not the window.
+    /// Text is drawn from `pos` and clipped to `bounding_box`.
     ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
+    /// The `effects` list provides underlining/strikethrough information via
+    /// [`Effect::flags`] and an index [`Effect::e`]. If `effects` is empty,
+    /// this is equivalent to [`Self::text`].
     ///
-    /// The `text` object must be configured and prepared prior to calling this
-    /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
-    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]);
-
-    /// Draw text with effects (including [`Rgba`] color)
-    ///
-    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
-    /// scrolls, `rect` should be the size of the whole text, not the window.
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
+    /// Text colour lookup uses index `e` and is essentially:
+    /// `colors.get(e).unwrap_or(Rgba::BLACK)`.
     ///
     /// The `text` object must be configured and prepared prior to calling this
     /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
-    fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]);
+    fn text_effects(
+        &mut self,
+        pos: Vec2,
+        bounding_box: Quad,
+        text: &TextDisplay,
+        effects: &[Effect],
+        colors: &[Rgba],
+    );
 }
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
@@ -282,22 +278,23 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         self.shared.draw.draw_image(self.draw, self.pass, id, rect);
     }
 
-    fn text(&mut self, rect: Rect, text: &TextDisplay, col: Rgba) {
+    fn text(&mut self, pos: Vec2, bb: Quad, text: &TextDisplay, col: Rgba) {
         self.shared
             .draw
-            .draw_text(self.draw, self.pass, rect, text, col);
+            .draw_text(self.draw, self.pass, pos, bb, text, col);
     }
 
-    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]) {
+    fn text_effects(
+        &mut self,
+        pos: Vec2,
+        bb: Quad,
+        text: &TextDisplay,
+        effects: &[Effect],
+        colors: &[Rgba],
+    ) {
         self.shared
             .draw
-            .draw_text_effects(self.draw, self.pass, rect, text, col, effects);
-    }
-
-    fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]) {
-        self.shared
-            .draw
-            .draw_text_effects_rgba(self.draw, self.pass, rect, text, effects);
+            .draw_text_effects(self.draw, self.pass, pos, bb, text, effects, colors);
     }
 }
 

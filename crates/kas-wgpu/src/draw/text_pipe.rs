@@ -9,7 +9,7 @@ use super::images::{Images as Pipeline, InstanceA, InstanceRgba, Window};
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
 use kas::draw::{PassId, color::Rgba};
-use kas::geom::{Quad, Rect, Vec2};
+use kas::geom::{Quad, Vec2};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
@@ -412,12 +412,12 @@ impl Window {
     fn push_sprite(
         &mut self,
         pass: PassId,
+        glyph_pos: Vec2,
         rect: Quad,
         col: Rgba,
-        glyph_pos: Vec2,
         sprite: &Sprite,
     ) {
-        let mut a = rect.a + glyph_pos.floor() + sprite.offset;
+        let mut a = glyph_pos.floor() + sprite.offset;
         let mut b = a + sprite.size;
 
         if !(sprite.is_valid()
@@ -460,13 +460,12 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        rect: Rect,
+        pos: Vec2,
+        bb: Quad,
         text: &TextDisplay,
         col: Rgba,
     ) {
-        let rect = Quad::conv(rect);
-
-        for run in text.runs() {
+        for run in text.runs(pos.into(), &[]) {
             let face = run.face_id();
             let dpem = run.dpem();
             for glyph in run.glyphs() {
@@ -481,7 +480,7 @@ impl Window {
                         }
                     }
                 };
-                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
+                self.push_sprite(pass, Vec2::from(glyph.position), bb, col, sprite);
             }
         }
     }
@@ -491,64 +490,11 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        rect: Rect,
+        pos: Vec2,
+        bb: Quad,
         text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-        mut draw_quad: impl FnMut(Quad),
-    ) {
-        // Optimisation: use cheaper TextDisplay::runs method
-        if effects.len() <= 1
-            && effects
-                .first()
-                .map(|e| e.flags == Default::default())
-                .unwrap_or(true)
-        {
-            self.text(pipe, pass, rect, text, col);
-            return;
-        }
-
-        let rect = Quad::conv(rect);
-
-        for run in text.runs_with_effects(effects, ()) {
-            let face = run.face_id();
-            let dpem = run.dpem();
-            let for_glyph = |glyph: Glyph, _: usize, _: ()| {
-                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
-                let sprite = match pipe.text.glyphs.get(&desc) {
-                    Some(sprite) => sprite,
-                    None => {
-                        pipe.raster_glyphs(face, dpem, run.glyphs());
-                        match pipe.text.glyphs.get(&desc) {
-                            Some(sprite) => sprite,
-                            None => return,
-                        }
-                    }
-                };
-                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
-            };
-
-            let for_rect = |x1, x2, y: f32, h: f32, _, _| {
-                let y = y.ceil();
-                let y2 = y + h.ceil();
-                if let Some(quad) = Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2))
-                    .intersection(&rect)
-                {
-                    draw_quad(quad);
-                }
-            };
-
-            run.glyphs_with_effects(for_glyph, for_rect);
-        }
-    }
-
-    pub fn text_effects_rgba(
-        &mut self,
-        pipe: &mut Pipeline,
-        pass: PassId,
-        rect: Rect,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
+        effects: &[Effect],
+        colors: &[Rgba],
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
         // Optimisation: use cheaper TextDisplay::runs method
@@ -558,17 +504,15 @@ impl Window {
                 .map(|e| e.flags == Default::default())
                 .unwrap_or(true)
         {
-            let col = effects.first().map(|e| e.aux).unwrap_or(Rgba::BLACK);
-            self.text(pipe, pass, rect, text, col);
+            let col = colors.first().cloned().unwrap_or(Rgba::BLACK);
+            self.text(pipe, pass, pos, bb, text, col);
             return;
         }
 
-        let rect = Quad::conv(rect);
-
-        for run in text.runs_with_effects(effects, Rgba::BLACK) {
+        for run in text.runs(pos.into(), effects) {
             let face = run.face_id();
             let dpem = run.dpem();
-            let for_glyph = |glyph: Glyph, _, col: Rgba| {
+            let for_glyph = |glyph: Glyph, e: u16| {
                 let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
                 let sprite = match pipe.text.glyphs.get(&desc) {
                     Some(sprite) => sprite,
@@ -580,15 +524,15 @@ impl Window {
                         }
                     }
                 };
-                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
+                let col = colors.get(usize::conv(e)).cloned().unwrap_or(Rgba::BLACK);
+                self.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 
-            let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {
+            let for_rect = |x1, x2, y: f32, h: f32, e: u16| {
                 let y = y.ceil();
                 let y2 = y + h.ceil();
-                if let Some(quad) = Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2))
-                    .intersection(&rect)
-                {
+                if let Some(quad) = Quad::from_coords(Vec2(x1, y), Vec2(x2, y2)).intersection(&bb) {
+                    let col = colors.get(usize::conv(e)).cloned().unwrap_or(Rgba::BLACK);
                     draw_quad(quad, col);
                 }
             };

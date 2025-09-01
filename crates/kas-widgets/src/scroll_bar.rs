@@ -294,6 +294,19 @@ mod ScrollBar {
                 cx.push(ScrollMsg(value));
             }
         }
+
+        /// Get whether the scroll bar is currently visible
+        ///
+        /// This property may change frequently. The method is intended only to
+        /// allow omitting draw calls while the scroll bar is not visible, since
+        /// these draw calls may require use of an additional draw pass to allow
+        /// an "invisible" scroll bar to be drawn over content.
+        #[inline]
+        pub fn currently_visible(&self, ev_state: &EventState) -> bool {
+            !self.invisible
+                || (self.max_value != 0 && self.force_visible)
+                || ev_state.is_depressed(self.grip.id_ref())
+        }
     }
 
     impl Layout for Self {
@@ -318,11 +331,9 @@ mod ScrollBar {
             self.update_widgets(cx);
         }
 
+        #[inline]
         fn draw(&self, mut draw: DrawCx) {
-            if !self.invisible
-                || (self.max_value != 0 && self.force_visible)
-                || draw.ev_state().is_depressed(self.grip.id_ref())
-            {
+            if self.currently_visible(draw.ev_state()) {
                 let dir = self.direction.as_direction();
                 draw.scroll_bar(self.rect(), &self.grip, dir);
             }
@@ -584,14 +595,33 @@ mod ScrollBars {
 
         fn draw(&self, mut draw: DrawCx) {
             self.inner.draw(draw.re());
-            draw.with_pass(|mut draw| {
+            if self.show_bars == (false, false) {
+                return;
+            }
+
+            // We use a new pass to draw scroll bars over inner content, but
+            // only when required to minimize cost:
+            let ev_state = draw.ev_state();
+            if matches!(self.mode, ScrollBarMode::Invisible(_, _))
+                && (self.horiz_bar.currently_visible(ev_state)
+                    || self.vert_bar.currently_visible(ev_state))
+            {
+                draw.with_pass(|mut draw| {
+                    if self.show_bars.0 {
+                        self.horiz_bar.draw(draw.re());
+                    }
+                    if self.show_bars.1 {
+                        self.vert_bar.draw(draw.re());
+                    }
+                });
+            } else {
                 if self.show_bars.0 {
                     self.horiz_bar.draw(draw.re());
                 }
                 if self.show_bars.1 {
                     self.vert_bar.draw(draw.re());
                 }
-            });
+            }
         }
     }
 

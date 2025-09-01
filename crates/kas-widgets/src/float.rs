@@ -56,6 +56,12 @@ use kas::prelude::*;
 /// ];
 /// ```
 ///
+/// # Cost
+///
+/// Warning: each child beyond the first requires a new draw pass. The
+/// number of passes used can have a substantial performance impact,
+/// potentially more on GPU communication than CPU usage.
+///
 /// [widget layout syntax]: macro@kas::layout
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
@@ -83,6 +89,10 @@ mod Float {
     /// not *visually* hide everything beneath, it may still "occupy" the
     /// assigned area, preventing mouse clicks from reaching the widget
     /// beneath).
+    ///
+    /// Warning: each child beyond the first requires a new draw pass. The
+    /// number of passes used can have a substantial performance impact,
+    /// potentially more on GPU communication than CPU usage.
     ///
     /// [`pack`]: crate::AdaptWidget::pack
     #[derive(Clone, Default)]
@@ -133,6 +143,7 @@ mod Float {
             }
             for i in iter {
                 if let Some(child) = self.widgets.get_tile(i) {
+                    // We use a new pass to control draw order and clip content:
                     draw.with_pass(|draw| child.draw(draw));
                 }
             }

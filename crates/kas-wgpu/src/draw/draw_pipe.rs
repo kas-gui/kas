@@ -351,12 +351,13 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        rect: Rect,
+        pos: Vec2,
+        bb: Quad,
         text: &TextDisplay,
         col: Rgba,
     ) {
         let time = std::time::Instant::now();
-        draw.images.text(&mut self.images, pass, rect, text, col);
+        draw.images.text(&mut self.images, pass, pos, bb, text, col);
         draw.common.report_dur_text(time.elapsed());
     }
 
@@ -364,32 +365,25 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        rect: Rect,
+        pos: Vec2,
+        bb: Quad,
         text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
+        effects: &[Effect],
+        colors: &[Rgba],
     ) {
         let time = std::time::Instant::now();
-        draw.images
-            .text_effects(&mut self.images, pass, rect, text, col, effects, |quad| {
+        draw.images.text_effects(
+            &mut self.images,
+            pass,
+            pos,
+            bb,
+            text,
+            effects,
+            colors,
+            |quad, col| {
                 draw.shaded_square.rect(pass, quad, col);
-            });
-        draw.common.report_dur_text(time.elapsed());
-    }
-
-    fn draw_text_effects_rgba(
-        &mut self,
-        draw: &mut Self::Draw,
-        pass: PassId,
-        rect: Rect,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
-    ) {
-        let time = std::time::Instant::now();
-        draw.images
-            .text_effects_rgba(&mut self.images, pass, rect, text, effects, |quad, col| {
-                draw.shaded_square.rect(pass, quad, col);
-            });
+            },
+        );
         draw.common.report_dur_text(time.elapsed());
     }
 }
