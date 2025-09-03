@@ -540,10 +540,29 @@ mod GridView {
         }
 
         // Handle a data clerk update
-        fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
-            if changes == DataChanges::Any {
-                self.token_update = self.token_update.max(Update::Token);
-            }
+        fn handle_clerk_update(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            changes: DataChanges<GridIndex>,
+        ) {
+            let start = self.first_data;
+            let end = self.first_data + self.cur_len;
+            let range = match changes {
+                DataChanges::None | DataChanges::NoPreparedItems => start..start,
+                DataChanges::Range(range) => {
+                    let start = GridIndex {
+                        col: start.col.max(range.start.col),
+                        row: start.row.max(range.start.row),
+                    };
+                    let end = GridIndex {
+                        col: end.col.min(range.end.col),
+                        row: end.row.min(range.end.row),
+                    };
+                    start..end
+                }
+                DataChanges::Any => start..end,
+            };
 
             let lbound = GridIndex {
                 col: self.first_data.col + 2 * self.alloc_len.col,
@@ -571,9 +590,9 @@ mod GridView {
                 }
             }
 
-            if self.token_update != Update::None {
-                let end = self.first_data + self.cur_len;
-                return self.map_view_widgets(cx, data, self.first_data..end);
+            if range.start.col < range.end.col && range.start.row < range.end.row {
+                self.token_update = self.token_update.max(Update::Token);
+                return self.map_view_widgets(cx, data, start..end);
             }
         }
 

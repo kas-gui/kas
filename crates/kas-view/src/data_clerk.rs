@@ -91,15 +91,20 @@ impl_2D!(u32);
 impl_2D!(u64);
 
 /// Indicates whether an update to a [`DataClerk`] changes any keys or values
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use]
-pub enum DataChanges {
-    /// `None` indicates that no changes to the data set occurred.
+pub enum DataChanges<Index> {
+    /// Indicates that no changes to the data set occurred.
     None,
-    /// `NoPreparedItems` indicates that changes to the data set may have
-    /// occurred, but that [`DataClerk::update_token`] and [`DataClerk::item`]
-    /// results are unchanged for the `view_range`.
+    /// Indicates that changes to the data set may have occurred, but that
+    /// [`DataClerk::update_token`] and [`DataClerk::item`] results are
+    /// unchanged for the `view_range`.
     NoPreparedItems,
+    /// Indicates that tokens for the given range may require an update
+    /// and/or that items for the given range have changed.
+    /// [`DataClerk::update_token`] will be called for each index in the
+    /// intersection of the given range with the `view_range`.
+    Range(Range<Index>),
     /// `Any` indicates that changes to the data set may have occurred.
     Any,
 }
@@ -223,7 +228,7 @@ pub trait DataClerk<Index> {
         id: Id,
         view_range: Range<Index>,
         data: &Self::Data,
-    ) -> DataChanges;
+    ) -> DataChanges<Index>;
 
     /// Get the number of indexable items
     ///
@@ -288,7 +293,7 @@ pub trait DataClerk<Index> {
         view_range: Range<Index>,
         data: &Self::Data,
         opt_key: Option<Self::Key>,
-    ) -> DataChanges {
+    ) -> DataChanges<Index> {
         let _ = (cx, id, view_range, data, opt_key);
         DataChanges::None
     }

@@ -34,6 +34,7 @@ enum Control {
 struct Data {
     row_limit: bool,
     len: usize,
+    last_change: GeneratorChanges<usize>,
     last_string: usize,
     active: usize,
     dir: Direction,
@@ -45,6 +46,7 @@ impl Data {
         Data {
             row_limit,
             len,
+            last_change: GeneratorChanges::None,
             last_string: len,
             active: 0,
             dir: Direction::Down,
@@ -59,6 +61,7 @@ impl Data {
             .unwrap_or_else(|| format!("Entry #{}", index + 1))
     }
     fn handle(&mut self, control: Control) {
+        self.last_change = GeneratorChanges::LenOnly;
         let len = match control {
             Control::SetRowLimit(row_limit) => {
                 self.row_limit = row_limit;
@@ -68,15 +71,18 @@ impl Data {
             Control::DecrLen => self.len.saturating_sub(1),
             Control::IncrLen => self.len.saturating_add(1),
             Control::Reverse => {
+                self.last_change = GeneratorChanges::None;
                 self.dir = self.dir.reversed();
                 return;
             }
             Control::Select(index, text) => {
+                self.last_change = GeneratorChanges::Any;
                 self.active = index;
                 self.active_string = text;
                 return;
             }
             Control::Update(index, text) => {
+                self.last_change = GeneratorChanges::Range(index..index + 1);
                 self.last_string = self.last_string.max(index);
                 if index == self.active {
                     self.active_string = text.clone();
@@ -155,8 +161,10 @@ impl DataGenerator<usize> for Generator {
     type Key = usize;
     type Item = Item;
 
-    fn update(&mut self, _: &Self::Data) -> GeneratorChanges {
-        GeneratorChanges::Any
+    fn update(&mut self, data: &Self::Data) -> GeneratorChanges<usize> {
+        // We assume that `Data::handle` has only been called once since this
+        // method was last called.
+        data.last_change.clone()
     }
 
     fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {

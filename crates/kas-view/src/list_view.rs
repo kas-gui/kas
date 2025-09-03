@@ -569,10 +569,19 @@ mod ListView {
         }
 
         // Handle a data clerk update
-        fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
-            if changes == DataChanges::Any {
-                self.token_update = self.token_update.max(Update::Token);
-            }
+        fn handle_clerk_update(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            changes: DataChanges<usize>,
+        ) {
+            let start: usize = self.first_data.cast();
+            let end = start + usize::conv(self.cur_len);
+            let range = match changes {
+                DataChanges::None | DataChanges::NoPreparedItems => 0..0,
+                DataChanges::Range(range) => start.max(range.start)..end.min(range.end),
+                DataChanges::Any => start..end,
+            };
 
             let lbound = self.first_data + 2 * self.alloc_len;
             let data_len = self.clerk.len(data, lbound.cast());
@@ -593,10 +602,9 @@ mod ListView {
                 }
             }
 
-            if self.token_update != Update::None {
-                let start: usize = self.first_data.cast();
-                let end = start + usize::conv(self.cur_len);
-                return self.map_view_widgets(cx, data, start..end);
+            if !range.is_empty() {
+                self.token_update = self.token_update.max(Update::Token);
+                return self.map_view_widgets(cx, data, range);
             }
         }
 
