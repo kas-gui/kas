@@ -16,6 +16,7 @@ use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::fmt::Debug;
+use std::ops::Range;
 use std::time::Instant;
 
 const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
@@ -457,30 +458,24 @@ mod ListView {
         // Call after scrolling to re-map widgets (if required)
         fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let offset = self.scroll_offset().extract(self.direction);
-            let first_data = u32::conv(u64::conv(offset) / u64::conv(self.skip));
+            let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
 
             let view_end_offset =
                 offset + (self.rect().size - self.frame_size).extract(self.direction);
             let last_data =
                 u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1).min(self.data_len);
 
-            if self.token_update != Update::None
-                || first_data < self.first_data
-                || last_data > self.first_data + self.cur_len
-                || self.cur_len > self.data_len
+            if self.token_update == Update::None
+                && first_data >= usize::conv(self.first_data)
+                && last_data <= self.first_data + self.cur_len
+                && self.cur_len <= self.data_len
             {
-                self.map_view_widgets(cx, data, first_data.cast());
+                return;
             }
-        }
-
-        // Assign view widgets to data as required and set their rects
-        //
-        // View widgets are configured and sized if assigned a new data item.
-        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, first_data: usize) {
-            let time = Instant::now();
 
             let alloc_len = self.alloc_len.cast();
-            let data_len = self.clerk.len(data, first_data + 2 * alloc_len);
+            let lbound = first_data + 2 * alloc_len;
+            let data_len = self.clerk.len(data, lbound);
             self.len_is_known = data_len.is_known();
             let data_len = data_len.len();
             if data_len != usize::conv(self.data_len) {
@@ -494,8 +489,16 @@ mod ListView {
             debug_assert!(usize::conv(self.cur_len) <= self.widgets.len());
             self.first_data = first_data.cast();
 
-            let range = first_data..(first_data + cur_len);
-            self.clerk.prepare_range(cx, self.id(), data, range);
+            self.map_view_widgets(cx, data, first_data..(first_data + cur_len));
+        }
+
+        // Assign view widgets to data as required and set their rects
+        //
+        // View widgets are configured and sized if assigned a new data item.
+        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, range: Range<usize>) {
+            let time = Instant::now();
+
+            self.clerk.prepare_range(cx, self.id(), data, range.clone());
 
             let id = self.id();
 
@@ -539,7 +542,8 @@ mod ListView {
             let dur = (Instant::now() - time).as_micros();
             log::debug!(
                 target: "kas_perf::view::list_view",
-                "map_view_widgets {cur_len} view widgets in {dur}μs",
+                "map_view_widgets: {} view widgets in: {dur}μs",
+                range.len(),
             );
         }
 
@@ -566,11 +570,14 @@ mod ListView {
 
                 if self.cur_len != data_len.min(self.alloc_len.cast()) {
                     self.token_update = Update::Token;
+                    return self.post_scroll(cx, data);
                 }
             }
 
             if self.token_update != Update::None {
-                return self.map_view_widgets(cx, data, self.first_data.cast());
+                let start: usize = self.first_data.cast();
+                let end = start + usize::conv(self.cur_len);
+                return self.map_view_widgets(cx, data, start..end);
             }
             if !self.value_update {
                 return;
@@ -844,10 +851,19 @@ mod ListView {
                 }
             }
 
+            let alloc_len = self.alloc_len.cast();
+            let first_data: usize = self.first_data.cast();
+            let lbound = first_data + 2 * alloc_len;
+            let data_len = self.clerk.len(data, lbound);
+            self.len_is_known = data_len.is_known();
+            let data_len = data_len.len();
+            self.data_len = data_len.cast();
+            let cur_len = data_len.min(alloc_len);
+            debug_assert!(cur_len <= self.widgets.len());
+            self.cur_len = cur_len.cast();
+
             self.token_update = Update::Configure;
-            let offset = self.scroll_offset().extract(self.direction);
-            let first_data = u64::conv(offset) / u64::conv(self.skip);
-            self.map_view_widgets(cx, data, first_data.cast());
+            self.map_view_widgets(cx, data, first_data..(first_data + cur_len));
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
