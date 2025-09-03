@@ -417,7 +417,7 @@ mod GridView {
             let col_len = data_len.col.min(self.alloc_len.col);
             let row_len = data_len.row.min(self.alloc_len.row);
 
-            let start = GridIndex {
+            let first_data = GridIndex {
                 col: first_col.min(data_len.col - col_len),
                 row: first_row.min(data_len.row - row_len),
             };
@@ -425,25 +425,42 @@ mod GridView {
                 col: col_len.cast(),
                 row: row_len.cast(),
             };
-
-            if self.token_update == Update::None
-                && start == self.first_data
-                && cur_len == self.cur_len
-            {
-                // Assumption: this method is not called for value_update without key_update
-                return;
-            }
-
-            self.cur_len = cur_len;
-            debug_assert!(self.cur_end() <= self.widgets.len());
-            self.first_data = start;
+            let (mut start, mut end) = (first_data, first_data + cur_len);
+            let (old_start, old_end) = (self.first_data, self.first_data + self.cur_len);
 
             let virtual_offset = -Offset(offset.0 & 0x7FF0_0000, offset.1 & 0x7FF0_0000);
             if virtual_offset != self.virtual_offset {
                 self.virtual_offset = virtual_offset;
                 self.rect_update = true;
+            } else if self.token_update != Update::None {
+                // This forces an update to all widgets
+            } else if start == old_start && cur_len == self.cur_len {
+                return;
+            } else if start.col == old_start.col && end.col == old_end.col {
+                if start.row >= old_start.row {
+                    start.row = start.row.max(old_end.row);
+                } else if end.row <= old_end.row {
+                    end.row = end.row.min(old_start.row);
+                }
+                if start.row >= end.row {
+                    return;
+                }
+            } else if start.row == old_start.row && end.row == old_end.row {
+                if start.col >= old_start.col {
+                    start.col = start.col.max(old_end.col);
+                } else if end.col <= old_end.col {
+                    end.col = end.col.min(old_start.col);
+                }
+                if start.col >= end.col {
+                    return;
+                }
             }
-            self.map_view_widgets(cx, data, start..start + cur_len);
+
+            self.cur_len = cur_len;
+            debug_assert!(self.cur_end() <= self.widgets.len());
+            self.first_data = first_data;
+
+            self.map_view_widgets(cx, data, start..end);
         }
 
         // Assign view widgets to data as required and set their rects

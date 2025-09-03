@@ -462,25 +462,6 @@ mod ListView {
             let offset = self.scroll_offset().extract(self.direction);
             let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
 
-            let view_end_offset =
-                offset + (self.rect().size - self.frame_size).extract(self.direction);
-            let last_data =
-                u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1).min(self.data_len);
-
-            if self.token_update == Update::None
-                && first_data >= usize::conv(self.first_data)
-                && last_data <= self.first_data + self.cur_len
-                && self.cur_len <= self.data_len
-            {
-                return;
-            }
-
-            let virtual_offset = -(offset & 0x7FF0_0000);
-            if virtual_offset != self.virtual_offset {
-                self.virtual_offset = virtual_offset;
-                self.rect_update = true;
-            }
-
             let alloc_len = self.alloc_len.cast();
             let lbound = first_data + 2 * alloc_len;
             let data_len = self.clerk.len(data, lbound);
@@ -493,11 +474,30 @@ mod ListView {
             let cur_len: usize = data_len.min(alloc_len);
 
             let first_data = first_data.min(data_len - cur_len);
+
+            let old_start = self.first_data.cast();
+            let old_end = old_start + usize::conv(self.cur_len);
+            let (mut start, mut end) = (first_data, first_data + cur_len);
+
+            let virtual_offset = -(offset & 0x7FF0_0000);
+            if virtual_offset != self.virtual_offset {
+                self.virtual_offset = virtual_offset;
+                self.rect_update = true;
+            } else if self.token_update != Update::None {
+                // This forces an update to all widgets
+            } else if start >= old_start {
+                start = start.max(old_end);
+            } else if end <= old_end {
+                end = end.min(old_start);
+            }
+
+            debug_assert!(cur_len <= self.widgets.len());
             self.cur_len = cur_len.cast();
-            debug_assert!(usize::conv(self.cur_len) <= self.widgets.len());
             self.first_data = first_data.cast();
 
-            self.map_view_widgets(cx, data, first_data..(first_data + cur_len));
+            if start < end {
+                self.map_view_widgets(cx, data, start..end);
+            }
         }
 
         // Assign view widgets to data as required and set their rects
@@ -511,7 +511,7 @@ mod ListView {
             let id = self.id();
 
             let solver = self.position_solver();
-            for i in solver.data_range() {
+            for i in range.clone() {
                 let w = &mut self.widgets[i % solver.cur_len];
 
                 let changes = self
@@ -1151,11 +1151,6 @@ struct PositionSolver {
 }
 
 impl PositionSolver {
-    /// Data range
-    fn data_range(&self) -> std::ops::Range<usize> {
-        self.first_data..(self.first_data + self.cur_len)
-    }
-
     /// Map a child index to a data index
     fn child_to_data(&self, index: usize) -> usize {
         let mut data = (self.first_data / self.cur_len) * self.cur_len + index;
