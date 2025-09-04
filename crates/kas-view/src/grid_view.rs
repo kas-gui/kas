@@ -117,6 +117,16 @@ impl GridIndex {
     }
 }
 
+impl std::ops::Add for GridIndex {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        GridIndex {
+            col: self.col + rhs.col,
+            row: self.row + rhs.row,
+        }
+    }
+}
+
 impl crate::DataKey for GridIndex {
     fn make_id(&self, parent: &Id) -> Id {
         parent
@@ -392,6 +402,7 @@ mod GridView {
                 col: first_col + 2 * self.alloc_len.col,
                 row: first_row + 2 * self.alloc_len.row,
             };
+
             let data_len = self.clerk.len(data, lbound);
             self.len_is_known = data_len.is_known();
             let data_len = data_len.len();
@@ -404,47 +415,29 @@ mod GridView {
             let col_len = data_len.col.min(self.alloc_len.col);
             let row_len = data_len.row.min(self.alloc_len.row);
 
-            let first_col = first_col.min(data_len.col - col_len);
-            let first_row = first_row.min(data_len.row - row_len);
-
-            let view_end_offset = offset + Offset::conv(self.rect().size - self.frame_size);
-            let end_col =
-                u32::conv(u64::conv(view_end_offset.0) / u64::conv(skip.0) + 1).min(data_len.col);
-            let end_row =
-                u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1).min(data_len.row);
+            let start = GridIndex {
+                col: first_col.min(data_len.col - col_len),
+                row: first_row.min(data_len.row - row_len),
+            };
+            let cur_len = GridIndex {
+                col: col_len.cast(),
+                row: row_len.cast(),
+            };
 
             if self.token_update == Update::None
-                && first_col >= self.first_data.col
-                && first_row >= self.first_data.row
-                && end_col <= self.first_data.col + self.cur_len.col
-                && end_row <= self.first_data.row + self.cur_len.row
-                && self.cur_len.col <= data_len.col
-                && self.cur_len.row <= data_len.row
+                && start == self.first_data
+                && cur_len == self.cur_len
             {
                 // Assumption: this method is not called for value_update without key_update
                 return;
             }
 
-            let cur_len = GridIndex {
-                col: col_len.cast(),
-                row: row_len.cast(),
-            };
             self.cur_len = cur_len;
             debug_assert!(self.cur_end() <= self.widgets.len());
-
-            let start = GridIndex {
-                col: first_col,
-                row: first_row,
-            };
             self.first_data = start;
 
-            let end = GridIndex {
-                col: start.col + cur_len.col,
-                row: start.row + cur_len.row,
-            };
-
             self.virtual_offset = -offset;
-            self.map_view_widgets(cx, data, start..end);
+            self.map_view_widgets(cx, data, start..start + cur_len);
         }
 
         // Assign view widgets to data as required and set their rects
@@ -546,10 +539,7 @@ mod GridView {
             }
 
             if self.token_update != Update::None {
-                let end = GridIndex {
-                    col: self.first_data.col + self.cur_len.col,
-                    row: self.first_data.row + self.cur_len.row,
-                };
+                let end = self.first_data + self.cur_len;
                 return self.map_view_widgets(cx, data, self.first_data..end);
             }
             if !self.value_update {
@@ -850,10 +840,7 @@ mod GridView {
             debug_assert!(self.cur_end() <= self.widgets.len());
 
             self.token_update = Update::Configure;
-            let end = GridIndex {
-                col: self.first_data.col + cur_len.col,
-                row: self.first_data.row + cur_len.row,
-            };
+            let end = self.first_data + cur_len;
             self.map_view_widgets(cx, data, self.first_data..end);
         }
 
