@@ -504,6 +504,8 @@ mod GridView {
                     let mut rect_update = self.rect_update;
                     if changes.key() || self.token_update == Update::Configure {
                         w.item.index = cell;
+                        // TODO(opt): some impls of Driver::set_key do nothing
+                        // and do not need re-configure (beyond the first).
                         self.driver.set_key(&mut w.item.inner, token.borrow());
 
                         let item = self.clerk.item(data, token);
