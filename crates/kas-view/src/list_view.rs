@@ -141,6 +141,7 @@ mod ListView {
         data_len: u32,
         token_update: Update,
         value_update: bool,
+        rect_update: bool,
         len_is_known: bool,
         /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
         cur_len: u32,
@@ -221,6 +222,7 @@ mod ListView {
                 data_len: 0,
                 token_update: Update::None,
                 value_update: false,
+                rect_update: false,
                 len_is_known: false,
                 cur_len: 0,
                 first_data: 0,
@@ -473,6 +475,12 @@ mod ListView {
                 return;
             }
 
+            let virtual_offset = -(offset & 0x7FF0_0000);
+            if virtual_offset != self.virtual_offset {
+                self.virtual_offset = virtual_offset;
+                self.rect_update = true;
+            }
+
             let alloc_len = self.alloc_len.cast();
             let lbound = first_data + 2 * alloc_len;
             let data_len = self.clerk.len(data, lbound);
@@ -502,7 +510,6 @@ mod ListView {
 
             let id = self.id();
 
-            self.virtual_offset = -self.scroll_offset().extract(self.direction);
             let solver = self.position_solver();
             for i in solver.data_range() {
                 let w = &mut self.widgets[i % solver.cur_len];
@@ -514,6 +521,7 @@ mod ListView {
                     continue;
                 };
 
+                let mut rect_update = self.rect_update;
                 if changes.key() || self.token_update == Update::Configure {
                     w.item.index = i;
                     self.driver.set_key(&mut w.item.inner, token.borrow());
@@ -528,16 +536,20 @@ mod ListView {
                         Some(self.child_size.0),
                         Some(self.child_size.1),
                     );
+                    rect_update = true;
                 } else if changes.item() || self.value_update {
                     let item = self.clerk.item(data, token);
                     cx.update(w.item.as_node(item));
                 }
 
-                w.item.set_rect(cx, solver.rect(i), self.align_hints);
+                if rect_update {
+                    w.item.set_rect(cx, solver.rect(i), self.align_hints);
+                }
             }
 
             self.token_update = Update::None;
             self.value_update = false;
+            self.rect_update = false;
 
             let dur = (Instant::now() - time).as_micros();
             log::debug!(
@@ -741,6 +753,7 @@ mod ListView {
             }
 
             self.token_update = Update::Token;
+            self.rect_update = true;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
