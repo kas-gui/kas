@@ -26,7 +26,7 @@ impl DataGenerator<GridIndex> for TableCache {
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
 
-    fn update(&mut self, dim: &Self::Data) -> GeneratorChanges {
+    fn update(&mut self, dim: &Self::Data) -> GeneratorChanges<GridIndex> {
         if self.dim == *dim {
             GeneratorChanges::None
         } else {

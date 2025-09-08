@@ -11,16 +11,21 @@ use kas::event::ConfigCx;
 #[allow(unused)] use kas::{Action, Events, Widget};
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::ops::Range;
 
 /// Indicates whether an update to a [`DataGenerator`] has changed
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use]
-pub enum GeneratorChanges {
+pub enum GeneratorChanges<Index> {
     /// `None` indicates that no changes to the data has occurred.
     None,
     /// Indicates that [`DataGenerator::len`] may have changed but generated
     /// values have not changed.
     LenOnly,
+    /// Indicates that items in the given range may require an update
+    /// [`DataGenerator::generate`] will be called for each index in the
+    /// intersection of the given range with the visible data range.
+    Range(Range<Index>),
     /// `Any` indicates that changes to the data set may have occurred.
     Any,
 }
@@ -74,7 +79,7 @@ pub trait DataGenerator<Index> {
     /// [`ConfigCx::update`] or [`Action::UPDATE`].
     ///
     /// This method may be called frequently and without changes to `data`.
-    fn update(&mut self, data: &Self::Data) -> GeneratorChanges;
+    fn update(&mut self, data: &Self::Data) -> GeneratorChanges<Index>;
 
     /// Get the number of indexable items
     ///
@@ -138,10 +143,17 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
     type Item = G::Item;
     type Token = Token<Self::Key, Self::Item>;
 
-    fn update(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data) -> DataChanges {
+    fn update(
+        &mut self,
+        _: &mut ConfigCx,
+        _: Id,
+        _: Range<Index>,
+        data: &Self::Data,
+    ) -> DataChanges<Index> {
         match self.g.update(data) {
             GeneratorChanges::None => DataChanges::None,
             GeneratorChanges::LenOnly => DataChanges::NoPreparedItems,
+            GeneratorChanges::Range(range) => DataChanges::Range(range),
             GeneratorChanges::Any => DataChanges::Any,
         }
     }

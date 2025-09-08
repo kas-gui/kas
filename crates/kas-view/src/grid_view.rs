@@ -15,6 +15,7 @@ use kas::theme::SelectionStyle;
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
 use std::borrow::Borrow;
+use std::ops::Range;
 use std::time::Instant;
 
 const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
@@ -116,6 +117,16 @@ impl GridIndex {
     }
 }
 
+impl std::ops::Add for GridIndex {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        GridIndex {
+            col: self.col + rhs.col,
+            row: self.row + rhs.row,
+        }
+    }
+}
+
 impl crate::DataKey for GridIndex {
     fn make_id(&self, parent: &Id) -> Id {
         parent
@@ -168,7 +179,7 @@ mod GridView {
         alloc_len: GridIndex,
         data_len: GridIndex,
         token_update: Update,
-        value_update: bool,
+        rect_update: bool,
         len_is_known: bool,
         cur_len: GridIndex,
         first_data: GridIndex,
@@ -201,7 +212,7 @@ mod GridView {
                 alloc_len: GridIndex::ZERO,
                 data_len: GridIndex::ZERO,
                 token_update: Update::None,
-                value_update: false,
+                rect_update: false,
                 len_is_known: false,
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
@@ -230,6 +241,14 @@ mod GridView {
         /// [`EventCx::update`] or [`Action::UPDATE`].
         pub fn clerk_mut(&mut self) -> &mut C {
             &mut self.clerk
+        }
+
+        /// Get the range of visible data items
+        ///
+        /// Data items within this range may be visible (or should at least be
+        /// allocated some pixel within the controller's view).
+        pub fn view_range(&self) -> Range<GridIndex> {
+            self.first_data..self.first_data + self.cur_len
         }
 
         /// Get the current selection mode
@@ -378,14 +397,10 @@ mod GridView {
             }
         }
 
-        // Assign view widgets to data as required and set their rects
+        // Call after scrolling to re-map widgets (if required)
         //
-        // View widgets are configured and sized if assigned a new data item.
-        //
-        // This auto-detects whether remapping is required, unless `force` is set.
-        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            let time = Instant::now();
-
+        // This auto-detects whether remapping is required, unless `self.token_update` is set.
+        fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let offset = self.scroll_offset();
             let skip = (self.child_size + self.child_inter_margin).max(Size(1, 1));
             let first_col = u32::conv(u64::conv(offset.0) / u64::conv(skip.0));
@@ -395,6 +410,7 @@ mod GridView {
                 col: first_col + 2 * self.alloc_len.col,
                 row: first_row + 2 * self.alloc_len.row,
             };
+
             let data_len = self.clerk.len(data, lbound);
             self.len_is_known = data_len.is_known();
             let data_len = data_len.len();
@@ -407,49 +423,68 @@ mod GridView {
             let col_len = data_len.col.min(self.alloc_len.col);
             let row_len = data_len.row.min(self.alloc_len.row);
 
-            let first_col = first_col.min(data_len.col - col_len);
-            let first_row = first_row.min(data_len.row - row_len);
-
-            let view_end_offset = offset + Offset::conv(self.rect().size - self.frame_size);
-            let end_col =
-                u32::conv(u64::conv(view_end_offset.0) / u64::conv(skip.0) + 1).min(data_len.col);
-            let end_row =
-                u32::conv(u64::conv(view_end_offset.1) / u64::conv(skip.1) + 1).min(data_len.row);
-
-            if self.token_update == Update::None
-                && first_col >= self.first_data.col
-                && first_row >= self.first_data.row
-                && end_col <= self.first_data.col + self.cur_len.col
-                && end_row <= self.first_data.row + self.cur_len.row
-                && self.cur_len.col <= data_len.col
-                && self.cur_len.row <= data_len.row
-            {
-                // Assumption: this method is not called for value_update without key_update
-                return;
-            }
-
+            let first_data = GridIndex {
+                col: first_col.min(data_len.col - col_len),
+                row: first_row.min(data_len.row - row_len),
+            };
             let cur_len = GridIndex {
                 col: col_len.cast(),
                 row: row_len.cast(),
             };
+            let (mut start, mut end) = (first_data, first_data + cur_len);
+            let (old_start, old_end) = (self.first_data, self.first_data + self.cur_len);
+
+            let virtual_offset = -Offset(offset.0 & 0x7FF0_0000, offset.1 & 0x7FF0_0000);
+            if virtual_offset != self.virtual_offset {
+                self.virtual_offset = virtual_offset;
+                self.rect_update = true;
+            } else if self.rect_update || self.token_update != Update::None {
+                // This forces an update to all widgets
+            } else if start == old_start && cur_len == self.cur_len {
+                return;
+            } else if start.col == old_start.col && end.col == old_end.col {
+                if start.row >= old_start.row {
+                    start.row = start.row.max(old_end.row);
+                } else if end.row <= old_end.row {
+                    end.row = end.row.min(old_start.row);
+                }
+                if start.row >= end.row {
+                    return;
+                }
+            } else if start.row == old_start.row && end.row == old_end.row {
+                if start.col >= old_start.col {
+                    start.col = start.col.max(old_end.col);
+                } else if end.col <= old_end.col {
+                    end.col = end.col.min(old_start.col);
+                }
+                if start.col >= end.col {
+                    return;
+                }
+            }
+
             self.cur_len = cur_len;
             debug_assert!(self.cur_end() <= self.widgets.len());
+            self.first_data = first_data;
 
-            let start = GridIndex {
-                col: first_col,
-                row: first_row,
-            };
-            self.first_data = start;
+            self.map_view_widgets(cx, data, start..end);
+        }
 
-            let end = GridIndex {
-                col: start.col + cur_len.col,
-                row: start.row + cur_len.row,
-            };
-            self.clerk.prepare_range(cx, self.id(), data, start..end);
+        // Assign view widgets to data as required and set their rects
+        //
+        // View widgets are configured and sized if assigned a new data item.
+        fn map_view_widgets(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            Range { start, end }: Range<GridIndex>,
+        ) {
+            let time = Instant::now();
+
+            self.clerk
+                .prepare_range(cx, self.id(), self.view_range(), data, start..end);
 
             let id = self.id();
 
-            self.virtual_offset = -offset;
             let solver = self.position_solver();
             for row in start.row..end.row {
                 for col in start.col..end.col {
@@ -457,15 +492,17 @@ mod GridView {
                     let i = solver.data_to_child(cell);
                     let w = &mut self.widgets[i];
 
-                    let changes =
-                        self.clerk
-                            .update_token(data, cell, self.value_update, &mut w.token);
+                    let force = self.token_update != Update::None;
+                    let changes = self.clerk.update_token(data, cell, force, &mut w.token);
                     let Some(token) = w.token.as_ref() else {
                         continue;
                     };
 
+                    let mut rect_update = self.rect_update;
                     if changes.key() || self.token_update == Update::Configure {
                         w.item.index = cell;
+                        // TODO(opt): some impls of Driver::set_key do nothing
+                        // and do not need re-configure (beyond the first).
                         self.driver.set_key(&mut w.item.inner, token.borrow());
 
                         let item = self.clerk.item(data, token);
@@ -478,33 +515,54 @@ mod GridView {
                             Some(self.child_size.0),
                             Some(self.child_size.1),
                         );
-                    } else if changes.item() || self.value_update {
+                        rect_update = true;
+                    } else if changes.item() {
                         let item = self.clerk.item(data, token);
                         cx.update(w.item.as_node(item));
                     }
 
-                    w.item.set_rect(cx, solver.rect(cell), self.align_hints);
+                    if rect_update {
+                        w.item.set_rect(cx, solver.rect(cell), self.align_hints);
+                    }
                 }
             }
 
             self.token_update = Update::None;
-            self.value_update = false;
+            self.rect_update = false;
 
             let dur = (Instant::now() - time).as_micros();
             log::debug!(
                 target: "kas_perf::view::grid_view",
                 "map_view_widgets {}×{} widgets in {dur}μs",
-                cur_len.col,
-                cur_len.row,
+                end.col - start.col,
+                end.row - start.row,
             );
         }
 
         // Handle a data clerk update
-        fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
-            if changes == DataChanges::Any {
-                self.token_update = self.token_update.max(Update::Token);
-            }
-            self.value_update |= changes.any_item();
+        fn handle_clerk_update(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            changes: DataChanges<GridIndex>,
+        ) {
+            let start = self.first_data;
+            let end = self.first_data + self.cur_len;
+            let range = match changes {
+                DataChanges::None | DataChanges::NoPreparedItems => start..start,
+                DataChanges::Range(range) => {
+                    let start = GridIndex {
+                        col: start.col.max(range.start.col),
+                        row: start.row.max(range.start.row),
+                    };
+                    let end = GridIndex {
+                        col: end.col.min(range.end.col),
+                        row: end.row.min(range.end.row),
+                    };
+                    start..end
+                }
+                DataChanges::Any => start..end,
+            };
 
             let lbound = GridIndex {
                 col: self.first_data.col + 2 * self.alloc_len.col,
@@ -528,24 +586,13 @@ mod GridView {
                     || self.cur_len.row != data_len.row.min(self.alloc_len.row)
                 {
                     // We need to prepare a new range
-                    self.token_update = Update::Token;
+                    return self.post_scroll(cx, data);
                 }
             }
 
-            if self.token_update != Update::None {
-                return self.map_view_widgets(cx, data);
-            }
-            if !self.value_update {
-                return;
-            }
-            self.value_update = false;
-
-            let range = 0..self.cur_end();
-            for child in &mut self.widgets[range] {
-                if let Some(token) = child.token.as_ref() {
-                    let item = self.clerk.item(data, token);
-                    cx.update(child.item.as_node(item));
-                }
+            if range.start.col < range.end.col && range.start.row < range.end.row {
+                self.token_update = self.token_update.max(Update::Token);
+                return self.map_view_widgets(cx, data, start..end);
             }
         }
 
@@ -696,7 +743,7 @@ mod GridView {
             }
 
             // Also queue a call to map_view_widgets since ranges may have changed
-            self.token_update = Update::Token;
+            self.rect_update = true;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -813,12 +860,32 @@ mod GridView {
                 }
             }
 
+            let lbound = GridIndex {
+                col: self.first_data.col + 2 * self.alloc_len.col,
+                row: self.first_data.row + 2 * self.alloc_len.row,
+            };
+            let data_len = self.clerk.len(data, lbound);
+            self.len_is_known = data_len.is_known();
+            let data_len = data_len.len();
+            self.data_len = data_len;
+
+            let col_len = data_len.col.min(self.alloc_len.col);
+            let row_len = data_len.row.min(self.alloc_len.row);
+
+            let cur_len = GridIndex {
+                col: col_len.cast(),
+                row: row_len.cast(),
+            };
+            self.cur_len = cur_len;
+            debug_assert!(self.cur_end() <= self.widgets.len());
+
             self.token_update = Update::Configure;
-            self.map_view_widgets(cx, data);
+            let end = self.first_data + cur_len;
+            self.map_view_widgets(cx, data, self.first_data..end);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            let changes = self.clerk.update(cx, self.id(), data);
+            let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if changes != DataChanges::None {
                 self.handle_clerk_update(cx, data, changes);
             }
@@ -867,7 +934,7 @@ mod GridView {
                         let action = self.scroll.focus_rect(cx, rect, self.rect());
                         if !action.is_empty() {
                             cx.action(&self, action);
-                            self.map_view_widgets(&mut cx.config_cx(), data);
+                            self.post_scroll(&mut cx.config_cx(), data);
                             solver = self.position_solver();
                         }
 
@@ -914,7 +981,7 @@ mod GridView {
                     Used
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
-                    self.map_view_widgets(&mut cx.config_cx(), data);
+                    self.post_scroll(&mut cx.config_cx(), data);
                     Used
                 }
                 _ => Unused, // fall through to scroll handler
@@ -948,13 +1015,6 @@ mod GridView {
                 };
             }
 
-            let changes = self
-                .clerk
-                .handle_messages(cx, self.id(), data, opt_key.as_ref());
-            if changes != DataChanges::None {
-                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
-            }
-
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {
                     Some(key) => key,
@@ -963,6 +1023,7 @@ mod GridView {
                         None => return,
                     },
                 };
+                opt_key = None;
 
                 match self.sel_mode {
                     SelectionMode::None => (),
@@ -983,12 +1044,19 @@ mod GridView {
                     }
                 }
             }
+
+            let changes =
+                self.clerk
+                    .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
+            if changes != DataChanges::None {
+                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
+            }
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
             self.scroll
                 .scroll(cx, self.id(), self.rect(), scroll - self.virtual_offset);
-            self.map_view_widgets(&mut cx.config_cx(), data);
+            self.post_scroll(&mut cx.config_cx(), data);
         }
     }
 
@@ -1080,7 +1148,7 @@ mod GridView {
                 let action = self.scroll.self_focus_rect(rect, self.rect());
                 if !action.is_empty() {
                     cx.action(&self, action);
-                    self.map_view_widgets(cx, data);
+                    self.post_scroll(cx, data);
                     solver = self.position_solver();
                 }
 

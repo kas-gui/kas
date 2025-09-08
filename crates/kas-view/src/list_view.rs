@@ -16,6 +16,7 @@ use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::fmt::Debug;
+use std::ops::Range;
 use std::time::Instant;
 
 const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
@@ -139,7 +140,7 @@ mod ListView {
         alloc_len: u32,
         data_len: u32,
         token_update: Update,
-        value_update: bool,
+        rect_update: bool,
         len_is_known: bool,
         /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
         cur_len: u32,
@@ -219,7 +220,7 @@ mod ListView {
                 alloc_len: 0,
                 data_len: 0,
                 token_update: Update::None,
-                value_update: false,
+                rect_update: false,
                 len_is_known: false,
                 cur_len: 0,
                 first_data: 0,
@@ -252,6 +253,16 @@ mod ListView {
         /// [`EventCx::update`] or [`Action::UPDATE`].
         pub fn clerk_mut(&mut self) -> &mut C {
             &mut self.clerk
+        }
+
+        /// Get the range of visible data items
+        ///
+        /// Data items within this range may be visible (or should at least be
+        /// allocated some pixel within the controller's view).
+        pub fn view_range(&self) -> Range<usize> {
+            let start: usize = self.first_data.cast();
+            let end = start + usize::conv(self.cur_len);
+            start..end
         }
 
         /// Get the current selection mode
@@ -457,30 +468,11 @@ mod ListView {
         // Call after scrolling to re-map widgets (if required)
         fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let offset = self.scroll_offset().extract(self.direction);
-            let first_data = u32::conv(u64::conv(offset) / u64::conv(self.skip));
-
-            let view_end_offset =
-                offset + (self.rect().size - self.frame_size).extract(self.direction);
-            let last_data =
-                u32::conv(u64::conv(view_end_offset) / u64::conv(self.skip) + 1).min(self.data_len);
-
-            if self.token_update != Update::None
-                || first_data < self.first_data
-                || last_data > self.first_data + self.cur_len
-                || self.cur_len > self.data_len
-            {
-                self.map_view_widgets(cx, data, first_data.cast());
-            }
-        }
-
-        // Assign view widgets to data as required and set their rects
-        //
-        // View widgets are configured and sized if assigned a new data item.
-        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, first_data: usize) {
-            let time = Instant::now();
+            let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
 
             let alloc_len = self.alloc_len.cast();
-            let data_len = self.clerk.len(data, first_data + 2 * alloc_len);
+            let lbound = first_data + 2 * alloc_len;
+            let data_len = self.clerk.len(data, lbound);
             self.len_is_known = data_len.is_known();
             let data_len = data_len.len();
             if data_len != usize::conv(self.data_len) {
@@ -490,29 +482,58 @@ mod ListView {
             let cur_len: usize = data_len.min(alloc_len);
 
             let first_data = first_data.min(data_len - cur_len);
+
+            let old_start = self.first_data.cast();
+            let old_end = old_start + usize::conv(self.cur_len);
+            let (mut start, mut end) = (first_data, first_data + cur_len);
+
+            let virtual_offset = -(offset & 0x7FF0_0000);
+            if virtual_offset != self.virtual_offset {
+                self.virtual_offset = virtual_offset;
+                self.rect_update = true;
+            } else if self.rect_update || self.token_update != Update::None {
+                // This forces an update to all widgets
+            } else if start >= old_start {
+                start = start.max(old_end);
+            } else if end <= old_end {
+                end = end.min(old_start);
+            }
+
+            debug_assert!(cur_len <= self.widgets.len());
             self.cur_len = cur_len.cast();
-            debug_assert!(usize::conv(self.cur_len) <= self.widgets.len());
             self.first_data = first_data.cast();
 
-            let range = first_data..(first_data + cur_len);
-            self.clerk.prepare_range(cx, self.id(), data, range);
+            if start < end {
+                self.map_view_widgets(cx, data, start..end);
+            }
+        }
+
+        // Assign view widgets to data as required and set their rects
+        //
+        // View widgets are configured and sized if assigned a new data item.
+        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, range: Range<usize>) {
+            let time = Instant::now();
+
+            self.clerk
+                .prepare_range(cx, self.id(), self.view_range(), data, range.clone());
 
             let id = self.id();
 
-            self.virtual_offset = -self.scroll_offset().extract(self.direction);
             let solver = self.position_solver();
-            for i in solver.data_range() {
+            for i in range.clone() {
                 let w = &mut self.widgets[i % solver.cur_len];
 
-                let changes = self
-                    .clerk
-                    .update_token(data, i, self.value_update, &mut w.token);
+                let force = self.token_update != Update::None;
+                let changes = self.clerk.update_token(data, i, force, &mut w.token);
                 let Some(token) = w.token.as_ref() else {
                     continue;
                 };
 
+                let mut rect_update = self.rect_update;
                 if changes.key() || self.token_update == Update::Configure {
                     w.item.index = i;
+                    // TODO(opt): some impls of Driver::set_key do nothing
+                    // and do not need re-configure (beyond the first).
                     self.driver.set_key(&mut w.item.inner, token.borrow());
 
                     let item = self.clerk.item(data, token);
@@ -525,30 +546,42 @@ mod ListView {
                         Some(self.child_size.0),
                         Some(self.child_size.1),
                     );
-                } else if changes.item() || self.value_update {
+                    rect_update = true;
+                } else if changes.item() {
                     let item = self.clerk.item(data, token);
                     cx.update(w.item.as_node(item));
                 }
 
-                w.item.set_rect(cx, solver.rect(i), self.align_hints);
+                if rect_update {
+                    w.item.set_rect(cx, solver.rect(i), self.align_hints);
+                }
             }
 
             self.token_update = Update::None;
-            self.value_update = false;
+            self.rect_update = false;
 
             let dur = (Instant::now() - time).as_micros();
             log::debug!(
                 target: "kas_perf::view::list_view",
-                "map_view_widgets {cur_len} view widgets in {dur}μs",
+                "map_view_widgets: {} view widgets in: {dur}μs",
+                range.len(),
             );
         }
 
         // Handle a data clerk update
-        fn handle_clerk_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: DataChanges) {
-            if changes == DataChanges::Any {
-                self.token_update = self.token_update.max(Update::Token);
-            }
-            self.value_update |= changes.any_item();
+        fn handle_clerk_update(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            changes: DataChanges<usize>,
+        ) {
+            let start: usize = self.first_data.cast();
+            let end = start + usize::conv(self.cur_len);
+            let range = match changes {
+                DataChanges::None | DataChanges::NoPreparedItems => 0..0,
+                DataChanges::Range(range) => start.max(range.start)..end.min(range.end),
+                DataChanges::Any => start..end,
+            };
 
             let lbound = self.first_data + 2 * self.alloc_len;
             let data_len = self.clerk.len(data, lbound.cast());
@@ -565,24 +598,13 @@ mod ListView {
                 }
 
                 if self.cur_len != data_len.min(self.alloc_len.cast()) {
-                    self.token_update = Update::Token;
+                    return self.post_scroll(cx, data);
                 }
             }
 
-            if self.token_update != Update::None {
-                return self.map_view_widgets(cx, data, self.first_data.cast());
-            }
-            if !self.value_update {
-                return;
-            }
-            self.value_update = false;
-
-            let range = ..usize::conv(self.cur_len);
-            for child in &mut self.widgets[range] {
-                if let Some(token) = child.token.as_ref() {
-                    let item = self.clerk.item(data, token);
-                    cx.update(child.item.as_node(item));
-                }
+            if !range.is_empty() {
+                self.token_update = self.token_update.max(Update::Token);
+                return self.map_view_widgets(cx, data, range);
             }
         }
 
@@ -733,7 +755,7 @@ mod ListView {
                 }
             }
 
-            self.token_update = Update::Token;
+            self.rect_update = true;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -844,14 +866,23 @@ mod ListView {
                 }
             }
 
+            let alloc_len = self.alloc_len.cast();
+            let first_data: usize = self.first_data.cast();
+            let lbound = first_data + 2 * alloc_len;
+            let data_len = self.clerk.len(data, lbound);
+            self.len_is_known = data_len.is_known();
+            let data_len = data_len.len();
+            self.data_len = data_len.cast();
+            let cur_len = data_len.min(alloc_len);
+            debug_assert!(cur_len <= self.widgets.len());
+            self.cur_len = cur_len.cast();
+
             self.token_update = Update::Configure;
-            let offset = self.scroll_offset().extract(self.direction);
-            let first_data = u64::conv(offset) / u64::conv(self.skip);
-            self.map_view_widgets(cx, data, first_data.cast());
+            self.map_view_widgets(cx, data, first_data..(first_data + cur_len));
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            let changes = self.clerk.update(cx, self.id(), data);
+            let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if changes != DataChanges::None {
                 self.handle_clerk_update(cx, data, changes);
             }
@@ -972,13 +1003,6 @@ mod ListView {
                 };
             }
 
-            let changes = self
-                .clerk
-                .handle_messages(cx, self.id(), data, opt_key.as_ref());
-            if changes != DataChanges::None {
-                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
-            }
-
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {
                     Some(key) => key,
@@ -987,6 +1011,7 @@ mod ListView {
                         None => return,
                     },
                 };
+                opt_key = None;
 
                 match self.sel_mode {
                     SelectionMode::None => (),
@@ -1008,6 +1033,13 @@ mod ListView {
                         self.update_selected_items();
                     }
                 }
+            }
+
+            let changes =
+                self.clerk
+                    .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
+            if changes != DataChanges::None {
+                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
             }
         }
 
@@ -1122,11 +1154,6 @@ struct PositionSolver {
 }
 
 impl PositionSolver {
-    /// Data range
-    fn data_range(&self) -> std::ops::Range<usize> {
-        self.first_data..(self.first_data + self.cur_len)
-    }
-
     /// Map a child index to a data index
     fn child_to_data(&self, index: usize) -> usize {
         let mut data = (self.first_data / self.cur_len) * self.cur_len + index;

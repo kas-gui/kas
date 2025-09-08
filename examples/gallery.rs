@@ -521,7 +521,7 @@ fn filter_list() -> Page<AppData> {
         type Key = usize;
         type Item = String;
 
-        fn update(&mut self, filter: &Self::Data) -> GeneratorChanges {
+        fn update(&mut self, filter: &Self::Data) -> GeneratorChanges<usize> {
             if self.filter == *filter && self.end != usize::MAX {
                 return GeneratorChanges::None;
             }
