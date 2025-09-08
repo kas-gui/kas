@@ -140,7 +140,6 @@ mod ListView {
         alloc_len: u32,
         data_len: u32,
         token_update: Update,
-        value_update: bool,
         rect_update: bool,
         len_is_known: bool,
         /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
@@ -221,7 +220,6 @@ mod ListView {
                 alloc_len: 0,
                 data_len: 0,
                 token_update: Update::None,
-                value_update: false,
                 rect_update: false,
                 len_is_known: false,
                 cur_len: 0,
@@ -493,7 +491,7 @@ mod ListView {
             if virtual_offset != self.virtual_offset {
                 self.virtual_offset = virtual_offset;
                 self.rect_update = true;
-            } else if self.token_update != Update::None {
+            } else if self.rect_update || self.token_update != Update::None {
                 // This forces an update to all widgets
             } else if start >= old_start {
                 start = start.max(old_end);
@@ -525,9 +523,8 @@ mod ListView {
             for i in range.clone() {
                 let w = &mut self.widgets[i % solver.cur_len];
 
-                let changes = self
-                    .clerk
-                    .update_token(data, i, self.value_update, &mut w.token);
+                let force = self.token_update != Update::None;
+                let changes = self.clerk.update_token(data, i, force, &mut w.token);
                 let Some(token) = w.token.as_ref() else {
                     continue;
                 };
@@ -550,7 +547,7 @@ mod ListView {
                         Some(self.child_size.1),
                     );
                     rect_update = true;
-                } else if changes.item() || self.value_update {
+                } else if changes.item() {
                     let item = self.clerk.item(data, token);
                     cx.update(w.item.as_node(item));
                 }
@@ -561,7 +558,6 @@ mod ListView {
             }
 
             self.token_update = Update::None;
-            self.value_update = false;
             self.rect_update = false;
 
             let dur = (Instant::now() - time).as_micros();
@@ -577,7 +573,6 @@ mod ListView {
             if changes == DataChanges::Any {
                 self.token_update = self.token_update.max(Update::Token);
             }
-            self.value_update |= changes.any_item();
 
             let lbound = self.first_data + 2 * self.alloc_len;
             let data_len = self.clerk.len(data, lbound.cast());
@@ -594,7 +589,6 @@ mod ListView {
                 }
 
                 if self.cur_len != data_len.min(self.alloc_len.cast()) {
-                    self.token_update = Update::Token;
                     return self.post_scroll(cx, data);
                 }
             }
@@ -603,18 +597,6 @@ mod ListView {
                 let start: usize = self.first_data.cast();
                 let end = start + usize::conv(self.cur_len);
                 return self.map_view_widgets(cx, data, start..end);
-            }
-            if !self.value_update {
-                return;
-            }
-            self.value_update = false;
-
-            let range = ..usize::conv(self.cur_len);
-            for child in &mut self.widgets[range] {
-                if let Some(token) = child.token.as_ref() {
-                    let item = self.clerk.item(data, token);
-                    cx.update(child.item.as_node(item));
-                }
             }
         }
 
@@ -765,7 +747,6 @@ mod ListView {
                 }
             }
 
-            self.token_update = Update::Token;
             self.rect_update = true;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }

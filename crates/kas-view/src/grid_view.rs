@@ -179,7 +179,6 @@ mod GridView {
         alloc_len: GridIndex,
         data_len: GridIndex,
         token_update: Update,
-        value_update: bool,
         rect_update: bool,
         len_is_known: bool,
         cur_len: GridIndex,
@@ -213,7 +212,6 @@ mod GridView {
                 alloc_len: GridIndex::ZERO,
                 data_len: GridIndex::ZERO,
                 token_update: Update::None,
-                value_update: false,
                 rect_update: false,
                 len_is_known: false,
                 cur_len: GridIndex::ZERO,
@@ -440,7 +438,7 @@ mod GridView {
             if virtual_offset != self.virtual_offset {
                 self.virtual_offset = virtual_offset;
                 self.rect_update = true;
-            } else if self.token_update != Update::None {
+            } else if self.rect_update || self.token_update != Update::None {
                 // This forces an update to all widgets
             } else if start == old_start && cur_len == self.cur_len {
                 return;
@@ -494,9 +492,8 @@ mod GridView {
                     let i = solver.data_to_child(cell);
                     let w = &mut self.widgets[i];
 
-                    let changes =
-                        self.clerk
-                            .update_token(data, cell, self.value_update, &mut w.token);
+                    let force = self.token_update != Update::None;
+                    let changes = self.clerk.update_token(data, cell, force, &mut w.token);
                     let Some(token) = w.token.as_ref() else {
                         continue;
                     };
@@ -519,7 +516,7 @@ mod GridView {
                             Some(self.child_size.1),
                         );
                         rect_update = true;
-                    } else if changes.item() || self.value_update {
+                    } else if changes.item() {
                         let item = self.clerk.item(data, token);
                         cx.update(w.item.as_node(item));
                     }
@@ -531,7 +528,6 @@ mod GridView {
             }
 
             self.token_update = Update::None;
-            self.value_update = false;
             self.rect_update = false;
 
             let dur = (Instant::now() - time).as_micros();
@@ -548,7 +544,6 @@ mod GridView {
             if changes == DataChanges::Any {
                 self.token_update = self.token_update.max(Update::Token);
             }
-            self.value_update |= changes.any_item();
 
             let lbound = GridIndex {
                 col: self.first_data.col + 2 * self.alloc_len.col,
@@ -572,7 +567,6 @@ mod GridView {
                     || self.cur_len.row != data_len.row.min(self.alloc_len.row)
                 {
                     // We need to prepare a new range
-                    self.token_update = Update::Token;
                     return self.post_scroll(cx, data);
                 }
             }
@@ -580,18 +574,6 @@ mod GridView {
             if self.token_update != Update::None {
                 let end = self.first_data + self.cur_len;
                 return self.map_view_widgets(cx, data, self.first_data..end);
-            }
-            if !self.value_update {
-                return;
-            }
-            self.value_update = false;
-
-            let range = 0..self.cur_end();
-            for child in &mut self.widgets[range] {
-                if let Some(token) = child.token.as_ref() {
-                    let item = self.clerk.item(data, token);
-                    cx.update(child.item.as_node(item));
-                }
             }
         }
 
@@ -742,7 +724,6 @@ mod GridView {
             }
 
             // Also queue a call to map_view_widgets since ranges may have changed
-            self.token_update = Update::Token;
             self.rect_update = true;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }

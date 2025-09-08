@@ -100,18 +100,8 @@ pub enum DataChanges {
     /// occurred, but that [`DataClerk::update_token`] and [`DataClerk::item`]
     /// results are unchanged for the `view_range`.
     NoPreparedItems,
-    /// `NoPreparedItems` indicates that changes to the data set may have
-    /// occurred, but that [`DataClerk::update_token`] results are unchanged for
-    /// the `view_range`.
-    NoPreparedTokens,
     /// `Any` indicates that changes to the data set may have occurred.
     Any,
-}
-
-impl DataChanges {
-    pub(crate) fn any_item(self) -> bool {
-        matches!(self, DataChanges::NoPreparedTokens | DataChanges::Any)
-    }
 }
 
 /// Return value of [`DataClerk::update_token`]
@@ -120,10 +110,10 @@ impl DataChanges {
 pub enum TokenChanges {
     /// `None` indicates that no changes to the token occurred.
     None,
-    /// `SameKey` indicates that the result of [`DataClerk::item`] may have
-    /// changed for this token, but that the token represents the same key.
+    /// `SameKey` indicates that while the token still represents the same key,
+    /// the associated data item may have changed.
     SameKey,
-    /// `Any` indicates that the key may have changed.
+    /// `Any` indicates that the data key (and item) may have changed.
     Any,
 }
 
@@ -315,11 +305,9 @@ pub trait DataClerk<Index> {
     /// Otherwise, if `token` is `None` or corresponds to a different `index`,
     /// the method should replace `token` and report [`TokenChanges::Any`].
     ///
-    /// Otherwise, if `update_item` and the data item is cached within the
-    /// token, the method may need to update the token (`update_item` is true
-    /// only when [`Self::update`] indicates that data updates are required).
-    /// The method should report [`TokenChanges::SameKey`] if the cached item
-    /// changes.
+    /// Otherwise, if then token depends on (caches) the data item and
+    /// `update_item`, the token should be updated. The method should report
+    /// [`TokenChanges::SameKey`] when the token has changed.
     ///
     /// Finally (if none of the above), the method should report
     /// [`TokenChanges::None`].
