@@ -9,8 +9,7 @@ use super::{GrabMode, Press, PressSource, velocity};
 use crate::config::EventWindowConfig;
 use crate::event::{Event, EventCx, EventState, FocusSource, NavAdvance, PressStart};
 use crate::geom::{Affine, DVec2, Vec2};
-use crate::window::Window;
-use crate::{Action, Id, Layout, Node, Widget};
+use crate::{Action, Id, Node};
 use cast::{Cast, CastApprox, CastFloat, Conv};
 use smallvec::SmallVec;
 use winit::event::TouchPhase;
@@ -246,7 +245,7 @@ impl EventState {
 }
 
 impl<'a> EventCx<'a> {
-    pub(in crate::event::cx) fn touch_handle_pending<A>(&mut self, win: &mut Window<A>, data: &A) {
+    pub(in crate::event::cx) fn touch_handle_pending(&mut self, mut node: Node<'_>) {
         let mut i = 0;
         while i < self.touch.touch_grab.len() {
             let action = self.touch.touch_grab[i].flush_click_move();
@@ -264,7 +263,7 @@ impl<'a> EventCx<'a> {
                     press,
                     success: false,
                 };
-                self.send_event(win.as_node(data), grab.start_id, event);
+                self.send_event(node.re(), grab.start_id, event);
             } else {
                 i += 1;
             }
@@ -272,7 +271,7 @@ impl<'a> EventCx<'a> {
 
         if self.action.contains(Action::REGION_MOVED) {
             for grab in self.touch.touch_grab.iter_mut() {
-                grab.over = win.try_probe(grab.last_position.cast_nearest());
+                grab.over = node.try_probe(grab.last_position.cast_nearest());
             }
         }
     }
@@ -303,10 +302,9 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    pub(in crate::event::cx) fn handle_touch_event<A>(
+    pub(in crate::event::cx) fn handle_touch_event(
         &mut self,
-        win: &mut Window<A>,
-        data: &A,
+        mut node: Node<'_>,
         touch: winit::event::Touch,
     ) {
         let source = PressSource::touch(touch.id);
@@ -314,13 +312,12 @@ impl<'a> EventCx<'a> {
         let coord = position.cast_nearest();
         match touch.phase {
             TouchPhase::Started => {
-                let over = win.try_probe(coord);
+                let over = node.try_probe(coord);
                 self.close_non_ancestors_of(over.as_ref());
 
                 if let Some(id) = over {
                     if self.config.event().touch_nav_focus()
-                        && let Some(id) =
-                            self.nav_next(win.as_node(data), Some(&id), NavAdvance::None)
+                        && let Some(id) = self.nav_next(node.re(), Some(&id), NavAdvance::None)
                     {
                         self.set_nav_focus(id, FocusSource::Pointer);
                     }
@@ -331,11 +328,11 @@ impl<'a> EventCx<'a> {
                         position,
                     };
                     let event = Event::PressStart(press);
-                    self.send_event(win.as_node(data), id, event);
+                    self.send_event(node, id, event);
                 }
             }
             TouchPhase::Moved => {
-                let over = win.try_probe(coord);
+                let over = node.try_probe(coord);
 
                 let mut pan_grab = None;
                 let grab_index = self
@@ -369,7 +366,7 @@ impl<'a> EventCx<'a> {
                                 coord,
                             };
                             let event = Event::PressMove { press, delta };
-                            self.send_event(win.as_node(data), target, event);
+                            self.send_event(node, target, event);
                         }
                         GrabMode::Pan { .. } => {
                             pan_grab = Some(grab.pan_grab);
@@ -402,7 +399,7 @@ impl<'a> EventCx<'a> {
 
                     // We must send Event::PressEnd before removing the grab
                     if let Some((id, event)) = to_send {
-                        self.send_event(win.as_node(data), id, event);
+                        self.send_event(node, id, event);
                     }
 
                     self.remove_touch(index);

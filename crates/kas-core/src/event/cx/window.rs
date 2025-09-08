@@ -68,8 +68,8 @@ impl EventState {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
 
-            cx.mouse_handle_pending(win, data);
-            cx.touch_handle_pending(win, data);
+            cx.mouse_handle_pending(win.as_node(data));
+            cx.touch_handle_pending(win.as_node(data));
 
             if let Some(id) = cx.pending_update.take() {
                 win.as_node(data).find_node(&id, |node| cx.update(node));
@@ -379,7 +379,7 @@ impl<'a> EventCx<'a> {
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
             // AxisMotion { axis: AxisId, value: f64, },
-            Touch(touch) => self.handle_touch_event(win, data, touch),
+            Touch(touch) => self.handle_touch_event(win.as_node(data), touch),
             _ => (),
         }
     }
