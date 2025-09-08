@@ -35,7 +35,7 @@ fn main() -> kas::runner::Result<()> {
         }
     });
 
-    let window = Window::new(adapt, "Slitter panes");
+    let window = Window::new(adapt, "Slitter panes").escapable();
 
     let theme = kas_wgpu::ShadedTheme::new();
     kas::runner::Runner::with_theme(theme)

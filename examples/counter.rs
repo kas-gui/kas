@@ -31,5 +31,6 @@ fn main() -> kas::runner::Result<()> {
     let theme = kas::theme::SimpleTheme::new();
     let mut app = kas::runner::Runner::with_theme(theme).build(())?;
     let _ = app.config_mut().font.set_size(24.0);
-    app.with(Window::new(counter(), "Counter")).run()
+    let window = Window::new(counter(), "Counter").escapable();
+    app.with(window).run()
 }

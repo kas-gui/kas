@@ -13,7 +13,7 @@ fn main() -> kas::runner::Result<()> {
         "Hello, world!",
         Button::label("&Close").with(|cx, _| cx.exit())
     ];
-    let window = Window::new(ui, "Hello");
+    let window = Window::new(ui, "Hello").escapable();
 
     kas::runner::Runner::new(())?.with(window).run()
 }

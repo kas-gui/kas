@@ -74,7 +74,7 @@ fn main() -> kas::runner::Result<()> {
             }
             _ => (),
         });
-    let window = Window::new(ui, "Times-Tables");
+    let window = Window::new(ui, "Times-Tables").escapable();
 
     let theme = kas::theme::SimpleTheme::new();
     kas::runner::Runner::with_theme(theme)

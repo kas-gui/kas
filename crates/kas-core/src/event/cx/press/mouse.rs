@@ -308,10 +308,10 @@ impl<'a> EventCx<'a> {
         self.mouse.grab = None;
     }
 
-    pub(in crate::event::cx) fn mouse_handle_pending<A>(&mut self, win: &mut Window<A>, data: &A) {
+    pub(in crate::event::cx) fn mouse_handle_pending(&mut self, mut node: Node<'_>) {
         let (cancel, redraw) = self.mouse.update_grab();
         if cancel {
-            self.remove_mouse_grab(win.as_node(data), false);
+            self.remove_mouse_grab(node.re(), false);
         }
 
         if redraw {
@@ -319,8 +319,8 @@ impl<'a> EventCx<'a> {
         }
 
         if self.action.contains(Action::REGION_MOVED) {
-            let over = win.try_probe(self.mouse.last_position.cast_nearest());
-            self.set_over(win.as_node(data), over);
+            let over = node.try_probe(self.mouse.last_position.cast_nearest());
+            self.set_over(node, over);
         }
     }
 

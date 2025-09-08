@@ -23,7 +23,7 @@ fn main() -> kas::runner::Result<()> {
         (1..3, 3) => ScrollLabel::new(CRASIT).align(AlignHints::STRETCH),
         (0, 3) => EditBox::text("A small\nsample\nof text").with_multi_line(true),
     };
-    let window = Window::new(ui, "Layout demo");
+    let window = Window::new(ui, "Layout demo").escapable();
 
     kas::runner::Runner::new(())?.with(window).run()
 }
