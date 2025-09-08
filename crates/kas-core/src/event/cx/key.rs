@@ -269,10 +269,8 @@ impl<'a> EventCx<'a> {
     }
 
     pub(super) fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: PhysicalKey) {
-        log::trace!(
-            "start_key_event: widget={}, vkey={vkey:?}, physical_key={code:?}",
-            widget.id()
-        );
+        let id = widget.id();
+        log::trace!("start_key_event: window={id}, vkey={vkey:?}, physical_key={code:?}");
 
         let opt_cmd = self.config.shortcuts().try_match(self.modifiers, &vkey);
 
@@ -319,9 +317,8 @@ impl<'a> EventCx<'a> {
                 return;
             }
 
-            if let Some(id) = self.nav_fallback.clone()
-                && send(self, id, cmd)
-            {
+            let fallback = self.nav_fallback.clone().unwrap_or(id);
+            if send(self, fallback, cmd) {
                 return;
             }
 
