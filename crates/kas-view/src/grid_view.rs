@@ -1013,17 +1013,6 @@ mod GridView {
                 };
             }
 
-            let changes = self.clerk.handle_messages(
-                cx,
-                self.id(),
-                self.view_range(),
-                data,
-                opt_key.as_ref(),
-            );
-            if changes != DataChanges::None {
-                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
-            }
-
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {
                     Some(key) => key,
@@ -1032,6 +1021,7 @@ mod GridView {
                         None => return,
                     },
                 };
+                opt_key = None;
 
                 match self.sel_mode {
                     SelectionMode::None => (),
@@ -1051,6 +1041,13 @@ mod GridView {
                         }
                     }
                 }
+            }
+
+            let changes =
+                self.clerk
+                    .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
+            if changes != DataChanges::None {
+                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
             }
         }
 

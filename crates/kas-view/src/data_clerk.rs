@@ -5,6 +5,7 @@
 
 //! Traits for shared data objects
 
+#[allow(unused)] use crate::SelectionMsg;
 use kas::Id;
 use kas::cast::Cast;
 use kas::event::{ConfigCx, EventCx};
@@ -282,14 +283,10 @@ pub trait DataClerk<Index> {
     /// This method is called when a message is available. Such messages may be
     /// taken using [`EventCx::try_pop`]. Messages may be received from:
     ///
-    /// -   View widgets: in this case `key` is `Some(_)` and may be used to
-    ///     identify the source.
-    /// -   [`kas::messages::Select`] may be sent by a wrapper over the view
-    ///     widget. In this case `key` is also `Some(_)`. Usually this message
-    ///     will not be handled here. TODO: disallow?
+    /// -   The view widget for `key` when `opt_key = Some(key)`.
+    /// -   [`SelectionMsg`] may be received from the view controller.
     /// -   [`Self::update`], [`Self::prepare_range`] and this method may send
     ///     `async` messages using `cx.send_async(controller.id(), SomeMessage { .. })`.
-    ///     In this case, `key` is `None`.
     ///
     /// Data items within `view_range` may be visible.
     ///
@@ -300,9 +297,9 @@ pub trait DataClerk<Index> {
         id: Id,
         view_range: Range<Index>,
         data: &Self::Data,
-        key: Option<&Self::Key>,
+        opt_key: Option<Self::Key>,
     ) -> DataChanges {
-        let _ = (cx, id, view_range, data, key);
+        let _ = (cx, id, view_range, data, opt_key);
         DataChanges::None
     }
 
