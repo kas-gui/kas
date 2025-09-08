@@ -56,6 +56,7 @@ fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let window = Window::new(make_ui(), "Stopwatch")
+        .escapable()
         .with_alt_bypass()
         .with_decorations(kas::window::Decorations::Border)
         .with_transparent(true)

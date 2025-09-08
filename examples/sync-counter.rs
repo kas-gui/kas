@@ -50,7 +50,7 @@ fn counter(title: &str) -> Window<Count> {
         .with_state(initial)
         .on_update(|_, state, count| state.0 = *count)
         .on_message(|_, state, SetValue(v)| state.1 = v);
-    Window::new(ui, title)
+    Window::new(ui, title).escapable()
 }
 
 fn main() -> kas::runner::Result<()> {

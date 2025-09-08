@@ -61,6 +61,7 @@ fn calc_ui() -> Window<()> {
         .on_message(|_, calc, key| calc.handle(key));
 
     Window::new(ui, "Calculator")
+        .escapable()
         .with_alt_bypass()
         .without_nav_focus()
 }

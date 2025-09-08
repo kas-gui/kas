@@ -8,7 +8,7 @@
 use super::{Decorations, Icon, Popup, PopupDescriptor, ResizeDirection, WindowId};
 use crate::cast::Cast;
 use crate::dir::{Direction, Directional};
-use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
+use crate::event::{Command, ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
@@ -43,6 +43,7 @@ mod Window {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
+        escapable: bool,
         alt_bypass: bool,
         disable_nav_focus: bool,
         #[widget]
@@ -238,6 +239,10 @@ mod Window {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
+                Event::Command(Command::Escape, _) if self.escapable => {
+                    cx.window_action(Action::CLOSE);
+                    Used
+                }
                 Event::PressStart(_) if self.drag_anywhere => {
                     cx.drag_window();
                     Used
@@ -315,6 +320,7 @@ impl<Data: 'static> Window<Data> {
             restrictions: (true, false),
             drag_anywhere: true,
             transparent: false,
+            escapable: false,
             alt_bypass: false,
             disable_nav_focus: false,
             inner: ui,
@@ -434,6 +440,12 @@ impl<Data: 'static> Window<Data> {
     /// Default: `false`.
     pub fn with_transparent(mut self, transparent: bool) -> Self {
         self.transparent = transparent;
+        self
+    }
+
+    /// Enable closure via <kbd>Escape</kbd> key
+    pub fn escapable(mut self) -> Self {
+        self.escapable = true;
         self
     }
 
