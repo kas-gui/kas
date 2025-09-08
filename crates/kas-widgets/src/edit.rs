@@ -357,7 +357,9 @@ mod EditBox {
         vert_bar: ScrollBar<kas::dir::Down>,
         frame_offset: Offset,
         frame_size: Size,
+        frame_offset_ex_margin: Offset,
         inner_margin: i32,
+        clip_rect: Rect,
     }
 
     impl Layout for Self {
@@ -372,6 +374,8 @@ mod EditBox {
             }
 
             let frame_rules = sizer.frame(FrameStyle::EditBox, axis);
+            self.frame_offset_ex_margin
+                .set_component(axis, frame_rules.size());
             let (rules, offset, size) = frame_rules.surround(rules);
             self.frame_offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
@@ -381,6 +385,12 @@ mod EditBox {
         fn set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect, hints: AlignHints) {
             widget_set_rect!(outer_rect);
             let mut rect = outer_rect;
+
+            self.clip_rect = Rect {
+                pos: rect.pos + self.frame_offset_ex_margin,
+                size: rect.size - (self.frame_offset_ex_margin * 2).cast(),
+            };
+
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
 
@@ -411,7 +421,8 @@ mod EditBox {
             };
             draw_inner.frame(self.rect(), FrameStyle::EditBox, bg);
 
-            self.inner.draw_with_offset(draw.re(), self.scroll.offset());
+            self.inner
+                .draw_with_offset(draw.re(), self.clip_rect, self.scroll.offset());
 
             if self.scroll.max_offset().1 > 0 {
                 self.vert_bar.draw(draw.re());
@@ -524,7 +535,9 @@ mod EditBox {
                 vert_bar: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
+                frame_offset_ex_margin: Default::default(),
                 inner_margin: Default::default(),
+                clip_rect: Default::default(),
             }
         }
 
@@ -799,8 +812,8 @@ impl CurrentAction {
 mod EditField {
     /// A text-edit field (single- or multi-line)
     ///
-    /// This widget implements the mechanics of text layout and event handling.
-    /// If you want a box with a border, use [`EditBox`] instead.
+    /// The [`EditBox`] widget should be preferred in most cases; this widget
+    /// is a component of `EditBox` and has some special behaviour.
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
@@ -901,15 +914,8 @@ mod EditField {
             }
         }
 
-        fn draw(&self, mut draw: DrawCx) {
-            let rect = self.rect();
-            let pos = rect.pos;
-
-            draw.text_selected(pos, rect, &self.text, self.selection.range());
-
-            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
-                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
-            }
+        fn draw(&self, draw: DrawCx) {
+            self.draw_with_offset(draw, self.rect(), Offset::ZERO);
         }
     }
 
@@ -1224,9 +1230,8 @@ mod EditField {
         /// Draws at position `self.rect() - offset`.
         ///
         /// This may be called instead of [`Layout::draw`].
-        pub fn draw_with_offset(&self, mut draw: DrawCx, offset: Offset) {
-            let rect = self.rect();
-            let pos = rect.pos - offset;
+        pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+            let pos = self.rect().pos - offset;
 
             draw.text_selected(pos, rect, &self.text, self.selection.range());
 
