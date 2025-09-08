@@ -7,7 +7,7 @@
 
 use super::Widget;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, NavAdvance};
-use crate::geom::Rect;
+use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::SizeCx;
 use crate::util::IdentifyWidget;
@@ -16,7 +16,6 @@ use crate::{Id, Tile};
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeT {
     fn id_ref(&self) -> &Id;
-    fn identify(&self) -> IdentifyWidget<'_>;
     fn rect(&self) -> Rect;
 
     fn clone_node(&mut self) -> Node<'_>;
@@ -46,9 +45,6 @@ trait NodeT {
 impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn id_ref(&self) -> &Id {
         self.0.id_ref()
-    }
-    fn identify(&self) -> IdentifyWidget<'_> {
-        self.0.identify()
     }
     fn rect(&self) -> Rect {
         self.0.rect()
@@ -170,7 +166,7 @@ impl<'a> Node<'a> {
     /// Get the widget's identifier
     #[inline]
     pub fn id(&self) -> Id {
-        self.id_ref().clone()
+        self.0.id_ref().clone()
     }
 
     /// Return a [`Display`]-able widget identifier
@@ -178,7 +174,7 @@ impl<'a> Node<'a> {
     /// [`Display`]: std::fmt::Display
     #[inline]
     pub fn identify(&self) -> IdentifyWidget<'_> {
-        self.0.identify()
+        self.0.as_tile().identify()
     }
 
     /// Test widget identifier for equality
@@ -213,6 +209,12 @@ impl<'a> Node<'a> {
     #[inline]
     pub fn rect(&self) -> Rect {
         self.0.rect()
+    }
+
+    /// Probe a coordinate for a widget's [`Id`]
+    #[inline]
+    pub fn try_probe(&self, coord: Coord) -> Option<Id> {
+        self.0.as_tile().try_probe(coord)
     }
 
     /// Access a child as a [`Node`], if available
