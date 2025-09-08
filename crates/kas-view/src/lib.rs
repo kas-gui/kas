@@ -39,8 +39,10 @@
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
-mod data_clerk;
+use kas::Id;
 use std::borrow::Borrow;
+
+mod data_clerk;
 mod generator;
 
 pub use data_clerk::*;

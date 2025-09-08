@@ -11,6 +11,7 @@ use kas::event::ConfigCx;
 #[allow(unused)] use kas::{Action, Events, Widget};
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::ops::Range;
 
 /// Indicates whether an update to a [`DataGenerator`] has changed
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -138,7 +139,13 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
     type Item = G::Item;
     type Token = Token<Self::Key, Self::Item>;
 
-    fn update(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data) -> DataChanges {
+    fn update(
+        &mut self,
+        _: &mut ConfigCx,
+        _: Id,
+        _: Range<Index>,
+        data: &Self::Data,
+    ) -> DataChanges {
         match self.g.update(data) {
             GeneratorChanges::None => DataChanges::None,
             GeneratorChanges::LenOnly => DataChanges::NoPreparedItems,

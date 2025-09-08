@@ -97,12 +97,11 @@ pub enum DataChanges {
     None,
     /// `NoPreparedItems` indicates that changes to the data set may have
     /// occurred, but that [`DataClerk::update_token`] and [`DataClerk::item`]
-    /// results are unchanged for the `range` last passed to
-    /// [`DataClerk::prepare_range`].
+    /// results are unchanged for the `view_range`.
     NoPreparedItems,
     /// `NoPreparedItems` indicates that changes to the data set may have
     /// occurred, but that [`DataClerk::update_token`] results are unchanged for
-    /// the `range` last passed to [`DataClerk::prepare_range`].
+    /// the `view_range`.
     NoPreparedTokens,
     /// `Any` indicates that changes to the data set may have occurred.
     Any,
@@ -217,6 +216,8 @@ pub trait DataClerk<Index> {
     /// required reflecting possible data-changes and indicate through the
     /// returned [`DataChanges`] value the updates required to tokens and views.
     ///
+    /// Data items within `view_range` may be visible.
+    ///
     /// Note: this method is called automatically when input data changes. When
     /// data owned or referenced by the `DataClerk` implementation is changed it
     /// may be necessary to explicitly update the view controller, e.g. using
@@ -225,11 +226,17 @@ pub trait DataClerk<Index> {
     /// This method may be called frequently and without changes to `data`.
     /// It is expected to be fast and non-blocking. Asynchronous updates to
     /// `self` are possible using [`Self::handle_messages`].
-    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) -> DataChanges;
+    fn update(
+        &mut self,
+        cx: &mut ConfigCx,
+        id: Id,
+        view_range: Range<Index>,
+        data: &Self::Data,
+    ) -> DataChanges;
 
     /// Get the number of indexable items
     ///
-    /// Scroll bars and the `range` passed to [`Self::prepare_range`] are
+    /// Scroll bars and the `view_range` are
     /// limited by the result of this method.
     ///
     /// Where the data set size is a known fixed `len` (or unfixed but with
@@ -246,22 +253,28 @@ pub trait DataClerk<Index> {
 
     /// Prepare a range
     ///
-    /// This method is called whenever the accessed `range` changes or tokens
-    /// may have changed before calling [`Self::update_token`] for each `index`
-    /// in this `range`.
+    /// This method is called prior to [`Self::update_token`] over the indices
+    /// in `range`. If data is to be loaded from a remote source or computed in
+    /// a worker thread, it should be done so from here using `async` worker(s)
+    /// (see [`Self::handle_messages`]).
     ///
-    /// This method may be called frequently and without changes to `range`.
-    /// It is expected to be fast and non-blocking. Asynchronous updates to
-    /// `self` are possible using [`Self::handle_messages`].
+    /// Data items within `view_range` may be visible.
     ///
-    /// Note that `range` corresponds to the data items which may be visible.
-    /// It may be desirable to retain previously-prepared items in a local cache
-    /// and to pre-emptively request additional items when using a remote
-    /// data source.
+    /// The passed `range` may be a subset of the `view_range` but does
+    /// not exceed it; pre-emptive loading is left to the implementation.
+    /// This method may be called frequently and without changes to `range`, and
+    /// is expected to be fast and non-blocking.
     ///
     /// The default implementation does nothing.
-    fn prepare_range(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data, range: Range<Index>) {
-        let _ = (cx, id, data, range);
+    fn prepare_range(
+        &mut self,
+        cx: &mut ConfigCx,
+        id: Id,
+        view_range: Range<Index>,
+        data: &Self::Data,
+        range: Range<Index>,
+    ) {
+        let _ = (cx, id, view_range, data, range);
     }
 
     /// Handle an async message
@@ -275,18 +288,21 @@ pub trait DataClerk<Index> {
     ///     widget. In this case `key` is also `Some(_)`. Usually this message
     ///     will not be handled here. TODO: disallow?
     /// -   [`Self::update`], [`Self::prepare_range`] and this method may send
-    ///     `async` messages using `cx.send_async(id, SomeMessage { .. })`.
+    ///     `async` messages using `cx.send_async(controller.id(), SomeMessage { .. })`.
     ///     In this case, `key` is `None`.
+    ///
+    /// Data items within `view_range` may be visible.
     ///
     /// The default implementation does nothing.
     fn handle_messages(
         &mut self,
         cx: &mut EventCx,
         id: Id,
+        view_range: Range<Index>,
         data: &Self::Data,
         key: Option<&Self::Key>,
     ) -> DataChanges {
-        let _ = (cx, id, data, key);
+        let _ = (cx, id, view_range, data, key);
         DataChanges::None
     }
 

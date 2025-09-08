@@ -245,6 +245,14 @@ mod GridView {
             &mut self.clerk
         }
 
+        /// Get the range of visible data items
+        ///
+        /// Data items within this range may be visible (or should at least be
+        /// allocated some pixel within the controller's view).
+        pub fn view_range(&self) -> Range<GridIndex> {
+            self.first_data..self.first_data + self.cur_len
+        }
+
         /// Get the current selection mode
         pub fn selection_mode(&self) -> SelectionMode {
             self.sel_mode
@@ -474,7 +482,8 @@ mod GridView {
         ) {
             let time = Instant::now();
 
-            self.clerk.prepare_range(cx, self.id(), data, start..end);
+            self.clerk
+                .prepare_range(cx, self.id(), self.view_range(), data, start..end);
 
             let id = self.id();
 
@@ -874,7 +883,7 @@ mod GridView {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            let changes = self.clerk.update(cx, self.id(), data);
+            let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if changes != DataChanges::None {
                 self.handle_clerk_update(cx, data, changes);
             }
@@ -1004,9 +1013,13 @@ mod GridView {
                 };
             }
 
-            let changes = self
-                .clerk
-                .handle_messages(cx, self.id(), data, opt_key.as_ref());
+            let changes = self.clerk.handle_messages(
+                cx,
+                self.id(),
+                self.view_range(),
+                data,
+                opt_key.as_ref(),
+            );
             if changes != DataChanges::None {
                 self.handle_clerk_update(&mut cx.config_cx(), data, changes);
             }

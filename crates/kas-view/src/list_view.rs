@@ -257,6 +257,16 @@ mod ListView {
             &mut self.clerk
         }
 
+        /// Get the range of visible data items
+        ///
+        /// Data items within this range may be visible (or should at least be
+        /// allocated some pixel within the controller's view).
+        pub fn view_range(&self) -> Range<usize> {
+            let start: usize = self.first_data.cast();
+            let end = start + usize::conv(self.cur_len);
+            start..end
+        }
+
         /// Get the current selection mode
         pub fn selection_mode(&self) -> SelectionMode {
             self.sel_mode
@@ -506,7 +516,8 @@ mod ListView {
         fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, range: Range<usize>) {
             let time = Instant::now();
 
-            self.clerk.prepare_range(cx, self.id(), data, range.clone());
+            self.clerk
+                .prepare_range(cx, self.id(), self.view_range(), data, range.clone());
 
             let id = self.id();
 
@@ -880,7 +891,7 @@ mod ListView {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            let changes = self.clerk.update(cx, self.id(), data);
+            let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if changes != DataChanges::None {
                 self.handle_clerk_update(cx, data, changes);
             }
@@ -1001,9 +1012,13 @@ mod ListView {
                 };
             }
 
-            let changes = self
-                .clerk
-                .handle_messages(cx, self.id(), data, opt_key.as_ref());
+            let changes = self.clerk.handle_messages(
+                cx,
+                self.id(),
+                self.view_range(),
+                data,
+                opt_key.as_ref(),
+            );
             if changes != DataChanges::None {
                 self.handle_clerk_update(&mut cx.config_cx(), data, changes);
             }
