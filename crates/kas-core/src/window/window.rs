@@ -239,8 +239,12 @@ mod Window {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::Command(Command::Escape, _) if self.escapable => {
-                    cx.window_action(Action::CLOSE);
+                Event::Command(Command::Escape, _) => {
+                    if let Some(id) = self.popups.last().map(|desc| desc.0) {
+                        cx.close_window(id);
+                    } else if self.escapable {
+                        cx.window_action(Action::CLOSE);
+                    }
                     Used
                 }
                 Event::PressStart(_) if self.drag_anywhere => {

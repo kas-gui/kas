@@ -345,10 +345,6 @@ impl<'a> EventCx<'a> {
         } else if self.config.nav_focus && opt_cmd == Some(Command::Tab) {
             let shift = self.modifiers.shift_key();
             self.next_nav_focus(None, shift, FocusSource::Key);
-        } else if opt_cmd == Some(Command::Escape)
-            && let Some(id) = self.popups.last().map(|desc| desc.id)
-        {
-            self.close_window(id);
         }
     }
 
