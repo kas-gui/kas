@@ -7,7 +7,7 @@
 
 use super::TextClass;
 #[allow(unused)] use super::{DrawCx, SizeCx};
-use crate::cast::{Cast, CastFloat};
+use crate::cast::Cast;
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::geom::{Rect, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
@@ -457,20 +457,12 @@ impl<T: FormattableText> Text<T> {
         debug_assert!(self.status >= Status::LevelRuns);
 
         if self.status == Status::LevelRuns {
-            let (wrap_width, align_width);
-            if self.class == TextClass::Edit(false) {
-                // TODO(opt): ideally we'd prepare lines with align_width=0,
-                // take the width from bounding_box() and offset. But kas-text
-                // doesn't support user-supplied offsetting.
-                wrap_width = f32::INFINITY;
-                align_width = self.display.measure_width(wrap_width);
-                if let Ok(width) = align_width.try_cast_ceil() {
-                    self.rect.size.0 = width;
-                }
+            let align_width = self.rect.size.0.cast();
+            let wrap_width = if self.class.single_line() {
+                f32::INFINITY
             } else {
-                wrap_width = self.rect.size.0.cast();
-                align_width = wrap_width;
-            }
+                align_width
+            };
             self.display
                 .prepare_lines(wrap_width, align_width, self.align.0);
         }
@@ -508,6 +500,24 @@ impl<T: FormattableText> Text<T> {
                     Action::REDRAW
                 }
             }
+        }
+    }
+
+    /// Offset prepared content to avoid left-overhangs
+    ///
+    /// This might be called after [`Self::prepare`] to ensure content does not
+    /// overhang to the left (i.e. that the x-component of the first [`Vec2`]
+    /// returned by [`Self::bounding_box`] is not negative).
+    ///
+    /// This is a special utility intended for content which may be scrolled
+    /// using the size reported by [`Self::bounding_box`]. Note that while
+    /// vertical alignment is untouched by this method, text is never aligned
+    /// above the top (the first y-component is never negative).
+    pub fn ensure_no_left_overhang(&mut self) {
+        if let Ok((tl, _)) = self.bounding_box()
+            && tl.0 < 0.0
+        {
+            self.display.apply_offset(kas_text::Vec2(-tl.0, 0.0));
         }
     }
 

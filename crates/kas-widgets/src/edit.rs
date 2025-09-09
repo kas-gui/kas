@@ -911,6 +911,7 @@ mod EditField {
                 Align::Center
             });
             self.text.set_rect(cx, rect, hints);
+            self.text.ensure_no_left_overhang();
             if self.current.is_ime() {
                 self.set_ime_cursor_area(cx);
             }
@@ -1228,6 +1229,8 @@ mod EditField {
         }
 
         /// Get the size of the type-set text
+        ///
+        /// `EditField` ensures text has no left or top overhang.
         #[inline]
         pub fn typeset_size(&self) -> Size {
             let mut size = self.rect().size;
@@ -1459,6 +1462,7 @@ impl<G: EditGuard> EditField<G> {
 
     fn prepare_text(&mut self, cx: &mut EventCx) {
         if self.text.prepare() {
+            self.text.ensure_no_left_overhang();
             cx.redraw(&self);
         }
 
