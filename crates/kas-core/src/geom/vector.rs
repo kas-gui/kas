@@ -107,13 +107,8 @@ impl Quad {
     /// Calculate the intersection of two quads
     pub fn intersection(&self, rhs: &Quad) -> Option<Quad> {
         let a = Vec2(self.a.0.max(rhs.a.0), self.a.1.max(rhs.a.1));
-        let x = (self.b.0.min(rhs.b.0) - a.0).max(0.0);
-        let y = (self.b.1.min(rhs.b.1) - a.1).max(0.0);
-        if x * y > 0.0 {
-            Some(Quad::from_pos_and_size(a, Vec2(x, y)))
-        } else {
-            None
-        }
+        let b = Vec2(self.b.0.min(rhs.b.0), self.b.1.min(rhs.b.1));
+        if a <= b { Some(Quad::from_coords(a, b)) } else { None }
     }
 }
 
