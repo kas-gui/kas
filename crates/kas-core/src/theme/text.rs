@@ -478,12 +478,6 @@ impl<T: FormattableText> Text<T> {
         if self.status <= Status::Wrapped {
             self.display
                 .vertically_align(self.rect.size.1.cast(), self.align.1);
-            if self.align.1 == Align::Default {
-                let (_, br) = self.display.bounding_box();
-                if let Ok(height) = br.1.try_cast_ceil() {
-                    self.rect.size.1 = height;
-                }
-            }
         }
 
         self.status = Status::Ready;
@@ -516,6 +510,7 @@ impl<T: FormattableText> Text<T> {
             }
         }
     }
+
     /// Get the size of the required bounding box
     ///
     /// This is the position of the upper-left and lower-right corners of a
@@ -526,6 +521,7 @@ impl<T: FormattableText> Text<T> {
         let (tl, br) = self.wrapped_display()?.bounding_box();
         Ok((tl.into(), br.into()))
     }
+
     /// Get the number of lines (after wrapping)
     ///
     /// See [`TextDisplay::num_lines`].

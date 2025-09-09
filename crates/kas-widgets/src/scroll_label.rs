@@ -163,6 +163,18 @@ mod SelectableText {
             self.text.as_str()
         }
 
+        /// Get the size of the type-set text
+        ///
+        /// We only support content spilling over on the bottom edge.
+        #[inline]
+        pub fn typeset_size(&self) -> Size {
+            let mut size = self.rect().size;
+            if let Ok((tl, br)) = self.text.bounding_box() {
+                size.1 = size.1.max((br.1 - tl.1).cast_ceil());
+            }
+            size
+        }
+
         /// Draw with an offset
         ///
         /// Draws at position `self.rect().pos - offset` bounded by `rect`.
@@ -316,7 +328,7 @@ mod ScrollText {
 
             let _ = self
                 .scroll
-                .set_sizes(self.rect().size, self.label.rect().size);
+                .set_sizes(self.rect().size, self.label.typeset_size());
 
             let w = cx.size_cx().scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
