@@ -355,6 +355,7 @@ where
         text: &TextDisplay,
         range: Range<usize>,
     ) {
+        let pos = pos.cast();
         let bb = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
@@ -365,10 +366,9 @@ where
 
         // Draw background:
         text.highlight_range(range.clone(), &mut |p1, p2| {
-            let q = Quad::conv(rect);
             let p1 = Vec2::from(p1);
             let p2 = Vec2::from(p2);
-            if let Some(quad) = Quad::from_coords(q.a + p1, q.a + p2).intersection(&q) {
+            if let Some(quad) = Quad::from_coords(pos + p1, pos + p2).intersection(&bb) {
                 self.draw.rect(quad, self.cols.text_sel_bg);
             }
         });
@@ -391,8 +391,7 @@ where
             },
         ];
         let colors = [col, sel_col];
-        self.draw
-            .text_effects(pos.cast(), bb, text, &effects, &colors);
+        self.draw.text_effects(pos, bb, text, &effects, &colors);
     }
 
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {
