@@ -402,6 +402,7 @@ where
         let width = self.w.dims.mark_line;
         let pos = Vec2::conv(pos);
         let bb = Quad::conv(rect);
+        let l_half = (0.5 * width).floor();
 
         let mut col = self.cols.nav_focus;
         for cursor in text.text_glyph_pos(byte).rev() {
@@ -409,7 +410,8 @@ where
             let mut p2 = p1;
             p1.1 -= cursor.ascent;
             p2.1 -= cursor.descent;
-            p2.0 += width;
+            p1.0 -= l_half;
+            p2.0 += width - l_half;
 
             if let Some(quad) = Quad::from_coords(p1, p2).intersection(&bb) {
                 self.draw.rect(quad, col);
