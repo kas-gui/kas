@@ -405,9 +405,7 @@ mod EditBox {
             self.vert_bar.set_rect(cx, bar_rect, AlignHints::NONE);
 
             self.inner.set_rect(cx, rect, hints);
-            let _ = self
-                .scroll
-                .set_sizes(self.rect().size, self.inner.rect().size);
+            let _ = self.scroll.set_sizes(rect.size, self.inner.typeset_size());
             self.update_scroll_bar(cx);
         }
 
@@ -463,9 +461,11 @@ mod EditBox {
         type Data = G::Data;
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            let used = self
-                .scroll
-                .scroll_by_event(cx, event, self.id(), self.rect());
+            let rect = Rect {
+                pos: self.rect().pos + self.frame_offset,
+                size: self.rect().size - self.frame_size,
+            };
+            let used = self.scroll.scroll_by_event(cx, event, self.id(), rect);
             self.update_scroll_bar(cx);
             used
         }
@@ -492,10 +492,12 @@ mod EditBox {
 
         fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {
             // Inner may have resized itself, hence we update sizes now.
-            let _ = self
-                .scroll
-                .set_sizes(self.rect().size, self.inner.rect().size);
-            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
+            let rect = Rect {
+                pos: self.rect().pos + self.frame_offset,
+                size: self.rect().size - self.frame_size,
+            };
+            let _ = self.scroll.set_sizes(rect.size, self.inner.typeset_size());
+            self.scroll.scroll(cx, self.id(), rect, scroll);
             self.update_scroll_bar(cx);
         }
     }
@@ -1223,6 +1225,17 @@ mod EditField {
                     cx.set_ime_cursor_area(self.id_ref(), rect);
                 }
             }
+        }
+
+        /// Get the size of the type-set text
+        #[inline]
+        pub fn typeset_size(&self) -> Size {
+            let mut size = self.rect().size;
+            if let Ok((tl, br)) = self.text.bounding_box() {
+                size.1 = size.1.max((br.1 - tl.1).cast_ceil());
+                size.0 = size.0.max((br.0 - tl.0).cast_ceil());
+            }
+            size
         }
 
         /// Draw with an offset
