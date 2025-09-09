@@ -17,8 +17,15 @@ use kas::theme::{Text, TextClass};
 mod SelectableText {
     /// A text label supporting selection
     ///
+    /// The [`ScrollText`] widget should be preferred in most cases; this widget
+    /// is a component of `ScrollText` and has some special behaviour.
+    ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
+    ///
+    /// Minimum size requirements of this widget are reduced, while the vertical
+    /// size is allowed to exceed the assigned rect. It is recommended to draw
+    /// using [`Self::draw_with_offset`].
     #[widget]
     #[layout(self.text)]
     pub struct SelectableText<A, T: FormattableText + 'static> {
@@ -31,8 +38,16 @@ mod SelectableText {
     }
 
     impl Layout for Self {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = kas::MacroDefinedLayout::size_rules(self, sizer.re(), axis);
+            if axis.is_vertical() {
+                rules.reduce_min_to(sizer.dpem().cast_ceil());
+            }
+            rules
+        }
+
         fn draw(&self, mut draw: DrawCx) {
-            self.draw_with_offset(draw, Offset::ZERO);
+            self.draw_with_offset(draw, self.rect(), Offset::ZERO);
         }
     }
 
@@ -150,12 +165,11 @@ mod SelectableText {
 
         /// Draw with an offset
         ///
-        /// Draws at position `self.rect() - offset`.
+        /// Draws at position `self.rect().pos - offset` bounded by `rect`.
         ///
         /// This may be called instead of [`Layout::draw`].
-        pub fn draw_with_offset(&self, mut draw: DrawCx, offset: Offset) {
-            let rect = self.rect();
-            let pos = rect.pos - offset;
+        pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+            let pos = self.rect().pos - offset;
 
             if self.selection.is_empty() {
                 draw.text_pos(pos, rect, &self.text);
@@ -314,7 +328,8 @@ mod ScrollText {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            self.label.draw_with_offset(draw.re(), self.scroll.offset());
+            self.label
+                .draw_with_offset(draw.re(), self.rect(), self.scroll.offset());
 
             // We use a new pass to draw the scroll bar over inner content, but
             // only when required to minimize cost:
