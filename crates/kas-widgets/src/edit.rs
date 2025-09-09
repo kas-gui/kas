@@ -1617,6 +1617,8 @@ impl<G: EditGuard> EditField<G> {
                 }
                 Action::Move(p, None)
             }
+            // Avoid use of unused navigation keys (e.g. by ScrollComponent):
+            Command::Left | Command::Right | Command::WordLeft | Command::WordRight => Action::None,
             Command::Up | Command::Down if multi_line => {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
@@ -1654,6 +1656,8 @@ impl<G: EditGuard> EditField<G> {
             }
             Command::DocHome if cursor > 0 => Action::Move(0, None),
             Command::DocEnd if cursor < len => Action::Move(len, None),
+            // Avoid use of unused navigation keys (e.g. by ScrollComponent):
+            Command::Home | Command::End | Command::DocHome | Command::DocEnd => Action::None,
             Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = self
                     .text
