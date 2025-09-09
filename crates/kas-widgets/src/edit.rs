@@ -357,7 +357,9 @@ mod EditBox {
         vert_bar: ScrollBar<kas::dir::Down>,
         frame_offset: Offset,
         frame_size: Size,
+        frame_offset_ex_margin: Offset,
         inner_margin: i32,
+        clip_rect: Rect,
     }
 
     impl Layout for Self {
@@ -372,6 +374,8 @@ mod EditBox {
             }
 
             let frame_rules = sizer.frame(FrameStyle::EditBox, axis);
+            self.frame_offset_ex_margin
+                .set_component(axis, frame_rules.size());
             let (rules, offset, size) = frame_rules.surround(rules);
             self.frame_offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
@@ -381,6 +385,12 @@ mod EditBox {
         fn set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect, hints: AlignHints) {
             widget_set_rect!(outer_rect);
             let mut rect = outer_rect;
+
+            self.clip_rect = Rect {
+                pos: rect.pos + self.frame_offset_ex_margin,
+                size: rect.size - (self.frame_offset_ex_margin * 2).cast(),
+            };
+
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
 
@@ -395,9 +405,7 @@ mod EditBox {
             self.vert_bar.set_rect(cx, bar_rect, AlignHints::NONE);
 
             self.inner.set_rect(cx, rect, hints);
-            let _ = self
-                .scroll
-                .set_sizes(self.rect().size, self.inner.rect().size);
+            let _ = self.scroll.set_sizes(rect.size, self.inner.typeset_size());
             self.update_scroll_bar(cx);
         }
 
@@ -411,7 +419,8 @@ mod EditBox {
             };
             draw_inner.frame(self.rect(), FrameStyle::EditBox, bg);
 
-            self.inner.draw_with_offset(draw.re(), self.scroll.offset());
+            self.inner
+                .draw_with_offset(draw.re(), self.clip_rect, self.scroll.offset());
 
             if self.scroll.max_offset().1 > 0 {
                 self.vert_bar.draw(draw.re());
@@ -452,9 +461,11 @@ mod EditBox {
         type Data = G::Data;
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            let used = self
-                .scroll
-                .scroll_by_event(cx, event, self.id(), self.rect());
+            let rect = Rect {
+                pos: self.rect().pos + self.frame_offset,
+                size: self.rect().size - self.frame_size,
+            };
+            let used = self.scroll.scroll_by_event(cx, event, self.id(), rect);
             self.update_scroll_bar(cx);
             used
         }
@@ -481,10 +492,12 @@ mod EditBox {
 
         fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {
             // Inner may have resized itself, hence we update sizes now.
-            let _ = self
-                .scroll
-                .set_sizes(self.rect().size, self.inner.rect().size);
-            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
+            let rect = Rect {
+                pos: self.rect().pos + self.frame_offset,
+                size: self.rect().size - self.frame_size,
+            };
+            let _ = self.scroll.set_sizes(rect.size, self.inner.typeset_size());
+            self.scroll.scroll(cx, self.id(), rect, scroll);
             self.update_scroll_bar(cx);
         }
     }
@@ -524,7 +537,9 @@ mod EditBox {
                 vert_bar: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
+                frame_offset_ex_margin: Default::default(),
                 inner_margin: Default::default(),
+                clip_rect: Default::default(),
             }
         }
 
@@ -799,8 +814,8 @@ impl CurrentAction {
 mod EditField {
     /// A text-edit field (single- or multi-line)
     ///
-    /// This widget implements the mechanics of text layout and event handling.
-    /// If you want a box with a border, use [`EditBox`] instead.
+    /// The [`EditBox`] widget should be preferred in most cases; this widget
+    /// is a component of `EditBox` and has some special behaviour.
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
@@ -896,20 +911,14 @@ mod EditField {
                 Align::Center
             });
             self.text.set_rect(cx, rect, hints);
+            self.text.ensure_no_left_overhang();
             if self.current.is_ime() {
                 self.set_ime_cursor_area(cx);
             }
         }
 
-        fn draw(&self, mut draw: DrawCx) {
-            let rect = self.rect();
-            let pos = rect.pos;
-
-            draw.text_selected(pos, rect, &self.text, self.selection.range());
-
-            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
-                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
-            }
+        fn draw(&self, draw: DrawCx) {
+            self.draw_with_offset(draw, self.rect(), Offset::ZERO);
         }
     }
 
@@ -1219,14 +1228,26 @@ mod EditField {
             }
         }
 
+        /// Get the size of the type-set text
+        ///
+        /// `EditField` ensures text has no left or top overhang.
+        #[inline]
+        pub fn typeset_size(&self) -> Size {
+            let mut size = self.rect().size;
+            if let Ok((tl, br)) = self.text.bounding_box() {
+                size.1 = size.1.max((br.1 - tl.1).cast_ceil());
+                size.0 = size.0.max((br.0 - tl.0).cast_ceil());
+            }
+            size
+        }
+
         /// Draw with an offset
         ///
         /// Draws at position `self.rect() - offset`.
         ///
         /// This may be called instead of [`Layout::draw`].
-        pub fn draw_with_offset(&self, mut draw: DrawCx, offset: Offset) {
-            let rect = self.rect();
-            let pos = rect.pos - offset;
+        pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+            let pos = self.rect().pos - offset;
 
             draw.text_selected(pos, rect, &self.text, self.selection.range());
 
@@ -1441,6 +1462,7 @@ impl<G: EditGuard> EditField<G> {
 
     fn prepare_text(&mut self, cx: &mut EventCx) {
         if self.text.prepare() {
+            self.text.ensure_no_left_overhang();
             cx.redraw(&self);
         }
 
@@ -1595,6 +1617,8 @@ impl<G: EditGuard> EditField<G> {
                 }
                 Action::Move(p, None)
             }
+            // Avoid use of unused navigation keys (e.g. by ScrollComponent):
+            Command::Left | Command::Right | Command::WordLeft | Command::WordRight => Action::None,
             Command::Up | Command::Down if multi_line => {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
@@ -1632,6 +1656,8 @@ impl<G: EditGuard> EditField<G> {
             }
             Command::DocHome if cursor > 0 => Action::Move(0, None),
             Command::DocEnd if cursor < len => Action::Move(len, None),
+            // Avoid use of unused navigation keys (e.g. by ScrollComponent):
+            Command::Home | Command::End | Command::DocHome | Command::DocEnd => Action::None,
             Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = self
                     .text

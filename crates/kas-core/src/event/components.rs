@@ -339,8 +339,8 @@ impl ScrollComponent {
                     Command::End => self.max_offset,
                     cmd => {
                         let delta = match cmd {
-                            Command::Left => ScrollDelta::Lines(-1.0, 0.0),
-                            Command::Right => ScrollDelta::Lines(1.0, 0.0),
+                            Command::Left => ScrollDelta::Lines(1.0, 0.0),
+                            Command::Right => ScrollDelta::Lines(-1.0, 0.0),
                             Command::Up => ScrollDelta::Lines(0.0, 1.0),
                             Command::Down => ScrollDelta::Lines(0.0, -1.0),
                             Command::PageUp | Command::PageDown => {

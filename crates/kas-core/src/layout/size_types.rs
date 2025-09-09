@@ -293,8 +293,8 @@ impl PixmapScaling {
 /// frame rules have a content offset and a minimum internal margin size.
 #[derive(Clone, Copy, Debug)]
 pub struct FrameRules {
-    // (pre, post) pairs
     size: i32,
+    // (pre, post) pairs
     inner: (u16, u16),
     outer: (u16, u16),
 }
@@ -324,6 +324,12 @@ impl FrameRules {
     #[inline]
     pub const fn new_sym(size: i32, inner: u16, outer: u16) -> Self {
         Self::new(size, (inner, inner), (outer, outer))
+    }
+
+    /// Get the size of the frame itself (excluding margin)
+    #[inline]
+    pub const fn size(&self) -> i32 {
+        self.size
     }
 
     /// Generate rules for content surrounded by this frame

@@ -604,7 +604,7 @@ mod ListView {
 
             if !range.is_empty() {
                 self.token_update = self.token_update.max(Update::Token);
-                return self.map_view_widgets(cx, data, range);
+                self.map_view_widgets(cx, data, range);
             }
         }
 
