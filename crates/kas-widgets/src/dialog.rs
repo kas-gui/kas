@@ -55,6 +55,20 @@ mod MessageBox {
     impl Events for Self {
         type Data = ();
 
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            match event {
+                Event::Command(Command::Escape, _) | Event::Command(Command::Enter, _) => {
+                    cx.window_action(Action::CLOSE);
+                    Used
+                }
+                _ => Unused,
+            }
+        }
+
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(MessageBoxOk) = cx.try_pop() {
                 cx.action(self, Action::CLOSE);

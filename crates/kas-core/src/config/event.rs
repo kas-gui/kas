@@ -273,7 +273,6 @@ impl<'a> EventWindowConfig<'a> {
 /// acceptable (equivalent to touch scrolling).
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
 #[repr(u8)]
 pub enum MousePan {
     /// Disable
