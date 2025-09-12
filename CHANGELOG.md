@@ -2,11 +2,151 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.16.0] — 2025-09-13
+
+A major new feature is support for screen readers and similar accessibility tools via AccessKit. The result is reasonably functional, though does not yet support input (`EditField`) contents. Implementation in #521, #527; tracking issue is #509.
+
+Other significant new features:
+
+-   Support for Input Method Editors (IME) (#497)
+-   New `enum Role`, returned by fn `Tile::role` (#519, #526, #540). This allows the kind of widget introspection required by AccessKit without tying implementation details to AccessKit.
+-   Add tooltips (#530)
+
+### Features and dependencies
+
+-   MSRV is now 1.88, using Edition 2024 (#514)
+-   Remove feature `min_spec` (#458)
+-   Replace `proc-macro-error` with `proc-macro-error2` and add feature `nightly-diagnostics` (#459, #464)
+-   Remove feature `recursive-layout-widgets` (#476)
+-   Remove feature `winit`: it is a required dependency (#510)
+
+### Windowing and event loop
+
+-   Add fn `AppData::suspended` to allow data saving on window closure (#477)
+-   Support frame updates; add fn `EventState::request_frame_timer` (#482)
+-   Delay construction of `wgpu::Device`, allowing destruction when a window is suspended (#496)
+-   Tweak `kas::runner::{Runner, Builder}`; replace trait `GraphicsBuilder` with `GraphicsInstance` (#496)
+-   Support pop-up alignment (besides top-left) (#530)
+-   Improve initial window sizing on (at least) Wayland (#535)
+
+### Misc. core functionality
+
+-   Remove class traits `HasBool`, `HasStr`, `HasString`. Functionality is retained using inherent methods on widgets. (#474)
+-   Remove trait `HasScrollBars`; move enum `ScrollBarMode` to `kas-widgets` and revise (#475)
+-   Remove trait `LayoutVisitor`, replacing with trait `MacroDefinedLayout` (#479)
+-   `Id` can now de-duplicate multiple allocated variants constructed independently (#510)
+-   Revise `Id` conversions to/from `u64` (#510, #519)
+-   Add `Linear` and `Affine` transforms (#515)
+-   Remove `Action::RECONFIGURE` (#518)
+-   Implement `PartialOrd` for `Coord`, `Size`, `Offset`, `Vec2` and `DVec`, replacing fns `lt`, `le`, `ge` and `gt` (#533)
+-   Make `Coord` comparable to `Vec2` and `DVec2` using `PartialOrd` and `PartialEq` (#533)
+-   Add `fn clamp` to `Vec2`, `DVec2` (#533)
+-   Replace fn `Scrollable::scroll_axes` with `content_size` (#535)
+
+### Configuration
+
+-   Add trait `ConfigFactory`, allowing configuration of the configuration source (#496)
+-   Automatically determine read/write mode when `KAS_CONFIG` is used to specify a config path (#496)
+-   Temporarily remove read/write support for font configuration (#500)
+
+### Drawing & themes
 
 -   Merge fns `DrawCx::text_effects` and `text` (#458)
--   Remove feature `min_spec` (#458)
--   Use `proc-macro-error2` (#459)
+-   Remove fn `DrawCx::recurse` (#467)
+-   Implement `Layout` for `kas::theme::Text` (#469)
+-   Fix (work around) shader bug on Intel iGPU (#485)
+
+### Text
+
+-   Use Swash to raster glyphs, dropping support for `fontdue` (#498, #501, #503)
+-   Hide parts of `kas_text` from `kas::text` (#498)
+-   Use `fontique` to source system fonts, matching by script (#499, #500)
+-   Remove fn `SizeCx::line_height`; this is unfortunately no longer easy to calculate (#500)
+-   Remove support for HarfBuzz, limiting shaping to Rustybuzz or kerning-only (#501)
+-   Support batched glyph rastering (#502)
+-   Support drawing offset text (#548, #551)
+
+### Event handling
+
+-   Rename fn `EventCx::try_observe` → `try_peek` (#472)
+-   Rename fns `push_async`, `push_async_erased`, `push_spawn` to `send_*` (#487)
+-   Handle `Command::Exit` (<kbd>Ctrl+Q</kbd>) and `Command::Close` (<kbd>Alt+F4</kbd>) (#477)
+-   Add `TimerHandle` (replaces `payload: u64`) (#480)
+-   Add fns `ScrollDelta::is_vertical`, `is_horizontal`, `as_offset`, `as_factor` (#491)
+-   Add click-click-drag gesture (mouse emulation of two-finger scale & rotate) (#492)
+-   Revise kinetic scrolling; standardized press velocity sampling (#494, #520)
+-   Remove fn `EventCx::send_command` (redundant with `EventState::send`) (#516)
+-   Rename enum variant `Event::MouseHover` → `MouseOver` (#530)
+-   Close pop-ups not a parent of a click and do not send `Event::PressStart` to pop-ups first (#530)
+-   Allow widgets not a descendant of an open pop-up to respond to the mouse (#530)
+-   Add type `PressStart` used by variant `Event::PressStart` (#533)
+-   Change type of `Event::PressMove`'s `delta` field from `Offset` to `Vec2` (#533)
+-   Size-optimize `PressSource` (from 16 to 8 bytes) (#533)
+-   Use `HasId` in fn `EventState::depress_with_key` (#540)
+-   Register access keys on widget draw (#542)
+-   Add fn `Window::escapable`, supporting window-closure via Esc key (#550)
+
+### Messages
+
+-   Move `kas::messages::MessageStack` to `kas::runner` (#516)
+-   Support `kas::messages::Activate` in `CheckBox`, `MarkButton` and `RadioBox` (#516)
+-   Add `kas::messages::SetValueF64`, supported by `Slider` and `SpinBox` (#516)
+-   Add `kas::messages::SetValueString`, supported by `EditBox`, `EditField` and `SpinBox` (#516)
+-   Add `kas::messages::SetIndex`, supported by `ComboBox`, `Stack` and `TabStack` (#516)
+
+### Widgets (general)
+
+Widget construction is changed substantially with a new trait `Tile` and many small changes.
+
+-   Move `#[widget { derive=.. }]` support to a new `#[derive_widget]` macro, revising (#460, #461, #507)
+-   Replace `fn Layout::find_id` with fns `Layout::try_probe`, `Tile::probe` (#462, #469, #473)
+-   Remove `Deref`, `DerefMut` impls for any widget with its own `Id` (#465)
+-   Add policy on method modification by `#[widget]` macro (#467)
+-   Add trait `Tile`, split out from `Layout` (#469)
+-   Move fn `id` to `Tile` (#470)
+-   Hide all fields of `widget_core!()` (#470)
+-   Prefer to take `&mut EventState` than return an `Action` in widget-modifying methods (#474, #475)
+-   Let `#[widget]` support `widget_set_rect!` macro, making implementation of fn `rect` optional (#476)
+-   Remove support for input data for layout-macro-generated widgets (#478)
+-   Move fn `rect` to `Layout`; make fns `Layout::{draw, try_probe}` take `&self` (#480)
+-   Improve `WidgetHeirarchy` debugging (#481)
+-   Replaces fns `for_child*` with `get_child*` (#490)
+-   Prefer usage of `#[impl_self]` over `impl_scope!` (#506)
+-   Support `#[widget = expr]` syntax for mapping a child widget's input data (#507)
+-   New `#[collection]` attribute for widgets using `Collection` (#517)
+-   Assume `Data = ()` for widgets without children or event handling (#517)
+-   Replace fn `Tile::num_children` with `child_indices`; allow child `index` to change (#518)
+-   Add argument `index` to fn `Tile::translation` (per-child offset) (#520)
+-   Replace const `Events::NAVIGABLE` with fn `Tile::navigable` (#523)
+-   Add widget `Page` (#540)
+
+### View widgets
+
+-   Replace traits `SharedData`, `ListData`, `MatrixData` with `DataClerk` (#487, #493, #545, #546, #549)
+-   Remove fn `Driver::on_messages` (#493)
+-   Replace widget `FilterBoxList` with `FilterBoxListView`, removing `FilterList` (#487)
+-   Add `MatrixIndex` (#493)
+-   Add fns `Driver::navigable`, `label` to control navigability and optional label of view widgets (#529)
+-   Resize view widgets when any content is too large for the view widget size (#534)
+-   Let fn `DataClerk::len` return enum `DataLen`, supporting data of undefined length (#535, #546)
+-   Add trait `DataGenerator` and struct `GeneratorClerk` (#547)
+
+### Specific widgets and macros
+
+-   `column!`, `row!`, `list!`, `grid!`, `aligned_column!`, `aligned_row!`, `float!` macros moved to `kas-widgets` as by-example macros (#476)
+-   Remove `button!` macro (#476)
+-   Add `kas-widgets::frame!` by-example macro; add fn `Frame::with_background` (#476)
+-   Add `kas-widgets::Float` widget (#476)
+-   Widget/layout macros now support `align` and `pack` as method calls (#476)
+-   Remove support for access to layout-generated storage using `'name` syntax (#476)
+-   Add fn `AdaptWidget::with_state` as constructor for `Adapt` (#476)
+-   Revise trait `SliderValue`, removing `Duration` support (#516)
+-   Rename and revise trait `SpinnerValue` → `SpinValue`, renaming `Spinner` → `SpinBox` (#516)
+-   Let `SpinBox` support showing a unit after its value (#516)
+-   Widgets `Mark` and `MarkButton` require a label on construction (#519)
+-   New widget `SelectableLabel` (#520)
+-   Disable line wrapping in single-line `EditField` (#520)
+-   Add fn `AdaptWidget::with_hidden_label`, widget `WithHiddenLabel` (#529)
 
 ## [0.15.0] — 2024-12-02
 
