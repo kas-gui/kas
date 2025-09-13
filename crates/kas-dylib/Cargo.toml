@@ -1,6 +1,6 @@
 [package]
 name = "kas-dylib"
-version = "0.15.0"
+version = "0.16.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -26,7 +26,7 @@ resvg = ["dep:kas-resvg"]
 docs_rs = ["kas-core/wayland"]
 
 [dependencies]
-kas-core = { version = "0.15.0", path = "../kas-core" }
-kas-widgets = { version = "0.15.0", path = "../kas-widgets" }
-kas-resvg = { version = "0.15.0", path = "../kas-resvg", optional = true }
-kas-wgpu = { version = "0.15.0", path = "../kas-wgpu", default-features = false }
+kas-core = { version = "0.16.0", path = "../kas-core" }
+kas-widgets = { version = "0.16.0", path = "../kas-widgets" }
+kas-resvg = { version = "0.16.0", path = "../kas-resvg", optional = true }
+kas-wgpu = { version = "0.16.0", path = "../kas-wgpu", default-features = false }
