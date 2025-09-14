@@ -1,10 +1,16 @@
 KAS GUI
 =======
 
-[![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg?event=push)](https://github.com/kas-gui/kas/actions)
+[![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg)](https://github.com/kas-gui/kas/actions)
 [![Crates.io](https://img.shields.io/crates/v/kas.svg)](https://crates.io/crates/kas)
 [![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
+
+Links: [Tutorials](https://kas-gui.github.io/tutorials/) — [Wiki](https://github.com/kas-gui/kas/wiki/Getting-started) — [Examples](examples) — [7GUIs](https://github.com/kas-gui/7guis/) — [Blog](https://kas-gui.github.io/blog/) — [Design](https://github.com/kas-gui/design)
+
+
+About Kas
+---------
 
 The Kas GUI system strives to be both fast and follow Alan Kay's slogan:
 
@@ -40,17 +46,7 @@ fn counter() -> impl Widget<Data = ()> {
 
 Concerning making complex things possible, the Kas widget library is built using the same custom widget functionality as is available to Kas users with few exceptions. Check the [`Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html) API docs or browse the [widget library](https://docs.rs/kas/latest/kas/widgets/index.html) and click the "Source" link.
 
-### Documentation
-
--   Docs: [Tutorials](https://kas-gui.github.io/tutorials/),
-    [Wiki: Getting started](https://github.com/kas-gui/kas/wiki/Getting-started)
--   Prose: [Blog](https://kas-gui.github.io/blog/),
-    [Design](https://github.com/kas-gui/design)
--   [API docs](https://docs.rs/kas)
--   Examples: [`examples` dir](examples), [kas-gui/7guis](https://github.com/kas-gui/7guis/).
-
-Capabilities
-------------
+### Capabilities
 
 - [x] Fully keyboard-accessible
 - [x] Screen reader support (partial: kas-gui/kas#509)
