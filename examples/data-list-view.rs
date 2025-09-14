@@ -16,9 +16,6 @@ use kas::widgets::{column, *};
 use kas_view::{DataGenerator, DataLen, GeneratorChanges, GeneratorClerk};
 use std::collections::HashMap;
 
-#[derive(Debug)]
-struct SelectEntry(usize);
-
 #[derive(Clone, Debug)]
 enum Control {
     SetRowLimit(bool),
@@ -26,31 +23,29 @@ enum Control {
     DecrLen,
     IncrLen,
     Reverse,
-    Select(usize, String),
+    Select(usize),
     Update(usize, String),
 }
 
 #[derive(Debug)]
-struct Data {
+struct MyData {
     row_limit: bool,
     len: usize,
     last_change: GeneratorChanges<usize>,
-    last_string: usize,
+    last_key: usize,
     active: usize,
     dir: Direction,
-    active_string: String,
     strings: HashMap<usize, String>,
 }
-impl Data {
+impl MyData {
     fn new(row_limit: bool, len: usize) -> Self {
-        Data {
+        MyData {
             row_limit,
             len,
             last_change: GeneratorChanges::None,
-            last_string: len,
+            last_key: len,
             active: 0,
             dir: Direction::Down,
-            active_string: String::from("Entry 1"),
             strings: HashMap::new(),
         }
     }
@@ -75,18 +70,14 @@ impl Data {
                 self.dir = self.dir.reversed();
                 return;
             }
-            Control::Select(index, text) => {
+            Control::Select(index) => {
                 self.last_change = GeneratorChanges::Any;
                 self.active = index;
-                self.active_string = text;
                 return;
             }
             Control::Update(index, text) => {
                 self.last_change = GeneratorChanges::Range(index..index + 1);
-                self.last_string = self.last_string.max(index);
-                if index == self.active {
-                    self.active_string = text.clone();
-                }
+                self.last_key = self.last_key.max(index);
                 self.strings.insert(index, text);
                 return;
             }
@@ -95,30 +86,29 @@ impl Data {
         self.len = len;
         if self.active >= len && len > 0 {
             self.active = len - 1;
-            self.active_string = self.get_string(self.active);
         }
     }
 }
 
-type Item = (usize, String); // (active index, entry's text)
+type MyItem = (usize, String); // (active index, entry's text)
 
 #[derive(Debug)]
 struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
-    type Data = Item;
+    type Data = MyItem;
 
-    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Item) {
+    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &MyItem) {
         if !edit.has_edit_focus() {
             edit.set_string(cx, data.1.to_string());
         }
     }
 
-    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) -> IsUsed {
-        cx.push(SelectEntry(edit.guard.0));
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &MyItem) -> IsUsed {
+        cx.push(Control::Select(edit.guard.0));
         Used
     }
 
-    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) {
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &MyItem) {
         cx.push(Control::Update(edit.guard.0, edit.clone_string()));
     }
 }
@@ -136,56 +126,18 @@ mod ListEntry {
         #[widget(&())]
         label: Label<String>,
         #[widget]
-        radio: RadioButton<Item>,
+        radio: RadioButton<MyItem>,
         #[widget]
         edit: EditBox<ListEntryGuard>,
     }
 
     impl Events for Self {
-        type Data = Item;
-
-        fn handle_messages(&mut self, cx: &mut EventCx, data: &Item) {
-            if let Some(SelectEntry(n)) = cx.try_pop() {
-                if data.0 != n {
-                    cx.push(Control::Select(n, self.edit.clone_string()));
-                }
-            }
-        }
+        type Data = MyItem;
     }
 }
 
-#[derive(Default)]
-struct Generator;
-impl DataGenerator<usize> for Generator {
-    type Data = Data;
-    type Key = usize;
-    type Item = Item;
-
-    fn update(&mut self, data: &Self::Data) -> GeneratorChanges<usize> {
-        // We assume that `Data::handle` has only been called once since this
-        // method was last called.
-        data.last_change.clone()
-    }
-
-    fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {
-        if data.row_limit {
-            DataLen::Known(data.len)
-        } else {
-            DataLen::LBound((data.active.max(data.last_string) + 1).max(lbound))
-        }
-    }
-
-    fn key(&self, _: &Self::Data, index: usize) -> Option<Self::Key> {
-        Some(index)
-    }
-
-    fn generate(&self, data: &Self::Data, key: &usize) -> Self::Item {
-        (data.active, data.get_string(*key))
-    }
-}
-
-struct MyDriver;
-impl Driver<usize, Item> for MyDriver {
+struct ListEntryDriver;
+impl Driver<usize, MyItem> for ListEntryDriver {
     type Widget = ListEntry;
 
     fn make(&mut self, key: &usize) -> Self::Widget {
@@ -195,8 +147,8 @@ impl Driver<usize, Item> for MyDriver {
             label: Label::new(format!("Entry number {}", n + 1)),
             radio: RadioButton::new_msg(
                 "display this entry",
-                move |_, data: &Item| data.0 == n,
-                move || SelectEntry(n),
+                move |_, data: &MyItem| data.0 == n,
+                move || Control::Select(n),
             ),
             edit: EditBox::new(ListEntryGuard(n)),
         }
@@ -204,6 +156,36 @@ impl Driver<usize, Item> for MyDriver {
 
     fn navigable(_: &Self::Widget) -> bool {
         false
+    }
+}
+
+#[derive(Default)]
+struct Generator;
+impl DataGenerator<usize> for Generator {
+    type Data = MyData;
+    type Key = usize;
+    type Item = MyItem;
+
+    fn update(&mut self, data: &Self::Data) -> GeneratorChanges<usize> {
+        // We assume that `MyData::handle` has only been called once since this
+        // method was last called.
+        data.last_change.clone()
+    }
+
+    fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {
+        if data.row_limit {
+            DataLen::Known(data.len)
+        } else {
+            DataLen::LBound((data.active.max(data.last_key) + 1).max(lbound))
+        }
+    }
+
+    fn key(&self, _: &Self::Data, index: usize) -> Option<Self::Key> {
+        Some(index)
+    }
+
+    fn generate(&self, data: &Self::Data, key: &usize) -> Self::Item {
+        (data.active, data.get_string(*key))
     }
 }
 
@@ -223,21 +205,21 @@ fn main() -> kas::runner::Result<()> {
         .map_any(),
     ];
 
-    let data = Data::new(false, 5);
+    let data = MyData::new(false, 5);
 
     let clerk = GeneratorClerk::new(Generator::default());
-    let list = ListView::new(clerk, MyDriver).on_update(|cx, list, data: &Data| {
+    let list = ListView::new(clerk, ListEntryDriver).on_update(|cx, list, data: &MyData| {
         list.set_direction(cx, data.dir);
     });
     let tree = column![
         "Demonstration of dynamic widget creation / deletion",
-        CheckButton::new("Explicit row limit:", |_, data: &Data| data.row_limit)
+        CheckButton::new("Explicit row limit:", |_, data: &MyData| data.row_limit)
             .with_msg(Control::SetRowLimit),
         controls
-            .map(|data: &Data| &data.len)
-            .on_update(|cx, _, data: &Data| cx.set_disabled(!data.row_limit)),
+            .map(|data: &MyData| &data.len)
+            .on_update(|cx, _, data: &MyData| cx.set_disabled(!data.row_limit)),
         "Contents of selected entry:",
-        Text::new(|_, data: &Data| data.active_string.clone()),
+        Text::new(|_, data: &MyData| data.get_string(data.active)),
         Separator::new(),
         ScrollBars::new(list).with_fixed_bars(false, true),
     ];
