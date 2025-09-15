@@ -151,15 +151,17 @@ impl EventState {
         };
     }
 
-    /// Attempts to set a fallback to receive [`Event::Command`]
+    /// Sets the fallback recipient of [`Event::Command`]
     ///
-    /// In case a navigation key is pressed (see [`Command`]) but no widget has
-    /// navigation focus, then, if a fallback has been set, that widget will
-    /// receive the key via [`Event::Command`].
+    /// Where a key-press translates to a [`Command`], this is first sent to
+    /// widgets with applicable key, selection and/or navigation focus as an
+    /// [`Event::Command`]. If this event goes unhandled and a fallback
+    /// recipient is set using this method, then this fallback recipient will
+    /// be sent the same event.
     ///
-    /// Only one widget can be a fallback, and the *first* to set itself wins.
-    /// This is primarily used to allow scroll-region widgets to
-    /// respond to navigation keys when no widget has focus.
+    /// There may be one fallback recipient per window; do not use an [`Id`]
+    /// from another window. If this method is called multiple times, the last
+    /// such call succeeds.
     pub fn register_nav_fallback(&mut self, id: Id) {
         if self.nav_fallback.is_none() {
             log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
