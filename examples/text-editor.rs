@@ -31,11 +31,31 @@ impl EditGuard for Guard {
     type Data = ();
 }
 
-fn editor() -> impl Widget<Data = ()> {
-    EditBox::new(Guard)
-        .with_multi_line(true)
-        .with_lines(5.0, 20.0)
-        .with_width_em(10.0, 30.0)
+#[impl_self]
+mod Editor {
+    #[widget]
+    #[layout(self.editor)]
+    struct Editor {
+        core: widget_core!(),
+        #[widget]
+        editor: EditBox<Guard>,
+    }
+
+    impl Events for Self {
+        type Data = ();
+    }
+
+    impl Self {
+        fn new() -> Self {
+            Editor {
+                core: Default::default(),
+                editor: EditBox::new(Guard)
+                    .with_multi_line(true)
+                    .with_lines(5.0, 20.0)
+                    .with_width_em(10.0, 30.0),
+            }
+        }
+    }
 }
 
 fn main() -> kas::runner::Result<()> {
@@ -44,7 +64,7 @@ fn main() -> kas::runner::Result<()> {
     let theme = kas::theme::FlatTheme::new();
     let app = kas::runner::Runner::with_theme(theme).build(())?;
 
-    let ui = column![menus(), editor()];
+    let ui = column![menus(), Editor::new()];
     let window = Window::new(ui, "Editor");
     app.with(window).run()
 }
