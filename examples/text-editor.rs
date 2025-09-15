@@ -6,7 +6,25 @@
 //! A simple text editor
 
 use kas::prelude::*;
-use kas::widgets::{EditBox, EditGuard};
+use kas::widgets::{Button, EditBox, EditGuard, Filler, column, row};
+
+#[autoimpl(Clone, Debug)]
+enum EditorAction {
+    New,
+    Open,
+    Save,
+    SaveAs,
+}
+
+fn menus() -> impl Widget<Data = ()> {
+    row![
+        Button::label_msg("&New", EditorAction::New),
+        Button::label_msg("&Open", EditorAction::Open),
+        Button::label_msg("&Save", EditorAction::Save),
+        Button::label_msg("Save&As", EditorAction::SaveAs),
+        Filler::low()
+    ]
+}
 
 struct Guard;
 impl EditGuard for Guard {
@@ -25,6 +43,8 @@ fn main() -> kas::runner::Result<()> {
 
     let theme = kas::theme::FlatTheme::new();
     let app = kas::runner::Runner::with_theme(theme).build(())?;
-    let window = Window::new(editor(), "Editor");
+
+    let ui = column![menus(), editor()];
+    let window = Window::new(ui, "Editor");
     app.with(window).run()
 }
