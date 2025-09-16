@@ -64,6 +64,10 @@ impl EventState {
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
+        if !self.pending_send_targets.is_empty() {
+            runner.set_send_targets(&mut self.pending_send_targets);
+        }
+
         self.with(runner, window, messages, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
@@ -86,7 +90,18 @@ impl EventState {
             }
 
             let window_id = Id::ROOT.make_child(cx.window_id.get().cast());
-            while let Some((id, msg)) = cx.send_queue.pop_front() {
+            while let Some((mut id, msg)) = cx.send_queue.pop_front() {
+                if !id.is_valid() {
+                    id = match cx.runner.send_target_for(msg.type_id()) {
+                        Some(target) => target,
+                        None => {
+                            // Perhaps ConfigCx::set_send_target_for should have been called?
+                            log::warn!(target: "kas_core::erased", "no send target for: {msg:?}");
+                            continue;
+                        }
+                    }
+                }
+
                 if window_id.is_ancestor_of(&id) {
                     cx.send_or_replay(win.as_node(data), id, msg);
                 } else {

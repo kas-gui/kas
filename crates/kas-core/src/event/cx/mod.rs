@@ -7,6 +7,7 @@
 
 use linear_map::{LinearMap, set::LinearSet};
 use smallvec::SmallVec;
+use std::any::TypeId;
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
@@ -95,6 +96,7 @@ pub struct EventState {
     send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
+    pub(super) pending_send_targets: Vec<(TypeId, Id)>,
     // Widget requiring update
     pending_update: Option<Id>,
     // Optional new target for selection focus. bool is true if this also gains key focus.
@@ -134,6 +136,7 @@ impl EventState {
             frame_updates: Default::default(),
             need_frame_update: false,
             send_queue: Default::default(),
+            pending_send_targets: vec![],
             fut_messages: vec![],
             pending_update: None,
             pending_sel_focus: None,

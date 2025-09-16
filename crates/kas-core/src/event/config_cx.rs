@@ -11,6 +11,8 @@ use crate::layout::AlignPair;
 use crate::text::format::FormattableText;
 use crate::theme::{Feature, SizeCx, Text, ThemeSize};
 use crate::{Id, Node};
+use std::any::TypeId;
+use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::event::{Event, EventCx};
@@ -91,6 +93,15 @@ impl<'a> ConfigCx<'a> {
     pub fn text_configure<T: FormattableText>(&self, text: &mut Text<T>) {
         let class = text.class();
         self.sh.text_configure(text, class);
+    }
+
+    /// Set a target for messages of a specific type when sent to `Id::default()`
+    ///
+    /// Messages of this type sent to `Id::default()` from any window will be
+    /// sent to `id`.
+    pub fn set_send_target_for<M: Debug + 'static>(&mut self, id: Id) {
+        let type_id = TypeId::of::<M>();
+        self.pending_send_targets.push((type_id, id));
     }
 }
 

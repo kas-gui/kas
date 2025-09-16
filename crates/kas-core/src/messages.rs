@@ -15,7 +15,7 @@ use crate::event::PhysicalKey;
 #[allow(unused)] use crate::event::{EventCx, EventState};
 use crate::geom::Offset;
 use crate::window::Icon;
-use std::any::Any;
+use std::any::{Any, TypeId};
 use std::fmt::Debug;
 
 /// Synthetically trigger a "click" action
@@ -107,6 +107,11 @@ impl Erased {
     /// Returns `true` if the inner type is the same as `T`.
     pub fn is<T: 'static>(&self) -> bool {
         (&*self.0 as &dyn Any).is::<T>()
+    }
+
+    /// Returns the [`TypeId`] of the erased message
+    pub fn type_id(&self) -> TypeId {
+        (&*self.0 as &dyn Any).type_id()
     }
 
     /// Attempt to downcast self to a concrete type.

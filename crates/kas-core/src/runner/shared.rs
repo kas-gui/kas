@@ -16,7 +16,7 @@ use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdF
 use crate::{Action, Id, draw};
 use std::any::TypeId;
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 use std::task::Waker;
 
@@ -32,6 +32,7 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
     pub(super) theme: T,
     pub(super) pending: VecDeque<Pending<Data, G, T>>,
     pub(super) send_queue: VecDeque<(Id, Erased)>,
+    send_targets: HashMap<TypeId, Id>,
     pub(super) waker: Waker,
     #[cfg(feature = "accesskit")]
     pub(super) proxy: super::Proxy,
@@ -82,6 +83,7 @@ where
                 theme,
                 pending: Default::default(),
                 send_queue: Default::default(),
+                send_targets: Default::default(),
                 waker,
                 #[cfg(feature = "accesskit")]
                 proxy,
@@ -169,6 +171,12 @@ pub(crate) trait RunnerT {
 
     /// Send a message to another window
     fn send_erased(&mut self, id: Id, msg: Erased);
+
+    /// Set send targets
+    fn set_send_targets(&mut self, targets: &mut Vec<(TypeId, Id)>);
+
+    /// Find a send target for `type_id`, if any
+    fn send_target_for(&self, type_id: TypeId) -> Option<Id>;
 
     /// Attempt to get clipboard contents
     ///
@@ -261,6 +269,18 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
 
     fn send_erased(&mut self, id: Id, msg: Erased) {
         self.send_queue.push_back((id, msg));
+    }
+
+    /// Set send targets
+    fn set_send_targets(&mut self, targets: &mut Vec<(TypeId, Id)>) {
+        for (type_id, id) in targets.drain(..) {
+            self.send_targets.insert(type_id, id);
+        }
+    }
+
+    /// Find a send target for `type_id`, if any
+    fn send_target_for(&self, type_id: TypeId) -> Option<Id> {
+        self.send_targets.get(&type_id).cloned()
     }
 
     fn get_clipboard(&mut self) -> Option<String> {

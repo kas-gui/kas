@@ -39,10 +39,13 @@ impl EventState {
     /// [pop](EventCx::try_pop) or [peek](EventCx::try_peek) the message from
     /// [`Events::handle_messages`].
     ///
-    /// ### Inter-window sending
+    /// ### Send target
     ///
     /// The target `id` may be under another window. In this case, sending may
     /// be delayed slightly.
+    ///
+    /// If `id = Id::default()` and a [send target](super::ConfigCx::set_send_target_for)
+    /// has been assigned for `M`, then `msg` will be sent to that target.
     pub fn send<M: Debug + 'static>(&mut self, id: Id, msg: M) {
         self.send_erased(id, Erased::new(msg));
     }
