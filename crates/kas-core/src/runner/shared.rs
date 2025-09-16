@@ -8,14 +8,15 @@
 use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform};
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl};
+use crate::messages::Erased;
 use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
-use crate::{Action, draw};
+use crate::{Action, Id, draw};
 use std::any::TypeId;
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 use std::task::Waker;
 
@@ -29,7 +30,10 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
     clipboard: Option<Clipboard>,
     pub(super) draw: Option<draw::SharedState<G::Shared>>,
     pub(super) theme: T,
+    pub(super) messages: MessageStack,
     pub(super) pending: VecDeque<Pending<Data, G, T>>,
+    pub(super) send_queue: VecDeque<(Id, Erased)>,
+    send_targets: HashMap<TypeId, Id>,
     pub(super) waker: Waker,
     #[cfg(feature = "accesskit")]
     pub(super) proxy: super::Proxy,
@@ -78,7 +82,10 @@ where
                 clipboard,
                 draw: None,
                 theme,
+                messages: MessageStack::new(),
                 pending: Default::default(),
+                send_queue: Default::default(),
+                send_targets: Default::default(),
                 waker,
                 #[cfg(feature = "accesskit")]
                 proxy,
@@ -89,16 +96,35 @@ where
         })
     }
 
-    pub(crate) fn handle_messages(&mut self, messages: &mut MessageStack) {
-        if messages.reset_and_has_any() {
-            let count = messages.get_op_count();
-            self.data.handle_messages(messages);
-            if messages.get_op_count() != count {
-                self.shared
-                    .pending
-                    .push_back(Pending::Action(Action::UPDATE));
+    /// Flush pending messages
+    pub(crate) fn handle_messages(&mut self) {
+        if self.shared.messages.reset_and_has_any() {
+            let mut i = self.shared.messages.stack.len();
+            while i > 0 {
+                i -= 1;
+                if self.shared.messages.stack[i].is_sent() {
+                    continue;
+                }
+
+                let type_id = self.shared.messages.stack[i].type_id();
+                if let Some(target) = self.shared.send_targets.get(&type_id) {
+                    let msg = self.shared.messages.stack.remove(i);
+                    self.shared.send_queue.push_back((target.clone(), msg));
+                }
+            }
+
+            if !self.shared.messages.stack.is_empty() {
+                let count = self.shared.messages.get_op_count();
+                self.data.handle_messages(&mut self.shared.messages);
+                if self.shared.messages.get_op_count() != count {
+                    self.shared
+                        .pending
+                        .push_back(Pending::Action(Action::UPDATE));
+                }
             }
         }
+
+        self.shared.messages.count = 0;
     }
 
     pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), Error> {
@@ -163,6 +189,21 @@ pub(crate) trait RunnerT {
 
     /// Exit the application
     fn exit(&mut self);
+
+    /// Access the message stack (read-only)
+    fn message_stack(&self) -> &MessageStack;
+
+    /// Access the message stack (mutable)
+    fn message_stack_mut(&mut self) -> &mut MessageStack;
+
+    /// Send a message to another window
+    fn send_erased(&mut self, id: Id, msg: Erased);
+
+    /// Set send targets
+    fn set_send_targets(&mut self, targets: &mut Vec<(TypeId, Id)>);
+
+    /// Find a send target for `type_id`, if any
+    fn send_target_for(&self, type_id: TypeId) -> Option<Id>;
 
     /// Attempt to get clipboard contents
     ///
@@ -251,6 +292,30 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
 
     fn exit(&mut self) {
         self.pending.push_back(Pending::Exit);
+    }
+
+    fn message_stack(&self) -> &MessageStack {
+        &self.messages
+    }
+
+    fn message_stack_mut(&mut self) -> &mut MessageStack {
+        &mut self.messages
+    }
+
+    fn send_erased(&mut self, id: Id, msg: Erased) {
+        self.send_queue.push_back((id, msg));
+    }
+
+    /// Set send targets
+    fn set_send_targets(&mut self, targets: &mut Vec<(TypeId, Id)>) {
+        for (type_id, id) in targets.drain(..) {
+            self.send_targets.insert(type_id, id);
+        }
+    }
+
+    /// Find a send target for `type_id`, if any
+    fn send_target_for(&self, type_id: TypeId) -> Option<Id> {
+        self.send_targets.get(&type_id).cloned()
     }
 
     fn get_clipboard(&mut self) -> Option<String> {

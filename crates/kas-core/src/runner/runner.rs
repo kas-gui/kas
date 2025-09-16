@@ -7,6 +7,7 @@
 
 use super::{AppData, GraphicsInstance, Platform, ProxyAction, Result, State};
 use crate::config::{Config, ConfigFactory};
+#[allow(unused)] use crate::event::ConfigCx;
 use crate::theme::Theme;
 use crate::window::{WindowId, WindowIdFactory};
 use std::cell::RefCell;
@@ -220,10 +221,11 @@ impl Proxy {
             .map_err(|_| ClosedError)
     }
 
-    /// Send a message to [`AppData`]
+    /// Send a message to [`AppData`] or a set recipient
     ///
     /// This is similar to [`EventCx::push`](crate::event::EventCx::push),
-    /// but can only be handled by top-level [`AppData`].
+    /// but can only be handled by top-level [`AppData`] or a recipient set
+    /// using [`ConfigCx::set_send_target_for`].
     pub fn push<M: std::fmt::Debug + Send + 'static>(
         &mut self,
         msg: M,

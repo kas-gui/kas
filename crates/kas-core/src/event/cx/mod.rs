@@ -7,6 +7,7 @@
 
 use linear_map::{LinearMap, set::LinearSet};
 use smallvec::SmallVec;
+use std::any::TypeId;
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
@@ -19,7 +20,7 @@ use crate::config::{ConfigMsg, WindowConfig};
 use crate::draw::DrawShared;
 use crate::geom::{Offset, Rect, Vec2};
 use crate::messages::Erased;
-use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
+use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
 use crate::window::{PopupDescriptor, Window, WindowId};
 use crate::{Action, HasId, Id, Node};
@@ -95,6 +96,7 @@ pub struct EventState {
     send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
+    pub(super) pending_send_targets: Vec<(TypeId, Id)>,
     // Widget requiring update
     pending_update: Option<Id>,
     // Optional new target for selection focus. bool is true if this also gains key focus.
@@ -134,6 +136,7 @@ impl EventState {
             frame_updates: Default::default(),
             need_frame_update: false,
             send_queue: Default::default(),
+            pending_send_targets: vec![],
             fut_messages: vec![],
             pending_update: None,
             pending_sel_focus: None,
@@ -181,14 +184,12 @@ impl EventState {
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
-        messages: &'a mut MessageStack,
         f: F,
     ) {
         let mut cx = EventCx {
             state: self,
             runner,
             window,
-            messages,
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
@@ -380,7 +381,6 @@ pub struct EventCx<'a> {
     state: &'a mut EventState,
     runner: &'a mut dyn RunnerT,
     window: &'a dyn WindowDataErased,
-    messages: &'a mut MessageStack,
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,

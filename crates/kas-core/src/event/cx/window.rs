@@ -6,8 +6,9 @@
 //! Event state: window management
 
 use super::{EventCx, EventState, PopupState};
+use crate::cast::Cast;
 use crate::event::{Event, FocusSource};
-use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
+use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId};
@@ -59,11 +60,14 @@ impl EventState {
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
-        messages: &'a mut MessageStack,
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
-        self.with(runner, window, messages, |cx| {
+        if !self.pending_send_targets.is_empty() {
+            runner.set_send_targets(&mut self.pending_send_targets);
+        }
+
+        self.with(runner, window, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
@@ -84,13 +88,28 @@ impl EventState {
                 cx.set_sel_focus(cx.window, win.as_node(data), pending);
             }
 
-            while let Some((id, msg)) = cx.send_queue.pop_front() {
-                cx.send_or_replay(win.as_node(data), id, msg);
-            }
+            // Poll futures; these may push messages to cx.send_queue.
+            cx.poll_futures();
 
-            // Poll futures. TODO(opt): this does not need to happen so often,
-            // but just in frame_update is insufficient.
-            cx.poll_futures(win.as_node(data));
+            let window_id = Id::ROOT.make_child(cx.window_id.get().cast());
+            while let Some((mut id, msg)) = cx.send_queue.pop_front() {
+                if !id.is_valid() {
+                    id = match cx.runner.send_target_for(msg.type_id()) {
+                        Some(target) => target,
+                        None => {
+                            // Perhaps ConfigCx::set_send_target_for should have been called?
+                            log::warn!(target: "kas_core::erased", "no send target for: {msg:?}");
+                            continue;
+                        }
+                    }
+                }
+
+                if window_id.is_ancestor_of(&id) {
+                    cx.send_or_replay(win.as_node(data), id, msg);
+                } else {
+                    cx.runner.send_erased(id, msg);
+                }
+            }
 
             // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
             if cx.action.contains(Action::REGION_MOVED) {
