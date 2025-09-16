@@ -127,6 +127,19 @@ where
     fn about_to_wait(&mut self, el: &ActiveEventLoop) {
         self.flush_pending(el);
         self.state.handle_messages();
+
+        // Distribute inter-window messages.
+        // NOTE: sending of these messages will be delayed until the next call to flush_pending.
+        while let Some((id, msg)) = self.state.shared.send_queue.pop_front() {
+            let mut window_id = id.window_id();
+            if let Some(win_id) = self.popups.get(&window_id) {
+                window_id = *win_id;
+            }
+            if let Some(window) = self.windows.get_mut(&window_id) {
+                window.send_erased(id, msg);
+            }
+        }
+
         self.resumes.sort_by_key(|item| item.0);
 
         if self.windows.is_empty() {
@@ -249,17 +262,5 @@ where
                 true
             }
         });
-
-        // Distribute inter-window messages.
-        // NOTE: sending of these messages will be delayed until the next call to flush_pending.
-        while let Some((id, msg)) = self.state.shared.send_queue.pop_front() {
-            let mut window_id = id.window_id();
-            if let Some(win_id) = self.popups.get(&window_id) {
-                window_id = *win_id;
-            }
-            if let Some(window) = self.windows.get_mut(&window_id) {
-                window.send_erased(id, msg);
-            }
-        }
     }
 }

@@ -8,7 +8,8 @@
 use super::{EventCx, EventState};
 use crate::event::{Command, Event, Scroll, ScrollDelta, Used};
 use crate::messages::Erased;
-#[allow(unused)] use crate::{Events, Layout};
+#[allow(unused)]
+use crate::{Events, Layout, event::ConfigCx};
 use crate::{Id, Node};
 use std::fmt::Debug;
 use std::task::Poll;
@@ -126,6 +127,10 @@ impl<'a> EventCx<'a> {
     /// The message may be [popped](EventCx::try_pop) or
     /// [peeked](EventCx::try_peek) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
+    ///
+    /// If not handled during the widget tree traversal and
+    /// [a target is set for `M`](ConfigCx::set_send_target_for) then `msg` is
+    /// sent to this target.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
     }
@@ -133,10 +138,6 @@ impl<'a> EventCx<'a> {
     /// Push a type-erased message to the stack
     ///
     /// This is a lower-level variant of [`Self::push`].
-    ///
-    /// The message may be [popped](EventCx::try_pop) or
-    /// [peeked](EventCx::try_peek) from [`Events::handle_messages`]
-    /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.runner.message_stack_mut().push_erased(msg);
     }

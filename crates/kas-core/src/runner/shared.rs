@@ -96,16 +96,32 @@ where
         })
     }
 
+    /// Flush pending messages
     pub(crate) fn handle_messages(&mut self) {
         if self.shared.messages.reset_and_has_any() {
-            let count = self.shared.messages.get_op_count();
-            self.data.handle_messages(&mut self.shared.messages);
-            if self.shared.messages.get_op_count() != count {
-                self.shared
-                    .pending
-                    .push_back(Pending::Action(Action::UPDATE));
+            let mut i = self.shared.messages.stack.len();
+            while i > 0 {
+                i -= 1;
+
+                let type_id = self.shared.messages.stack[i].type_id();
+                if let Some(target) = self.shared.send_targets.get(&type_id) {
+                    let msg = self.shared.messages.stack.remove(i);
+                    self.shared.send_queue.push_back((target.clone(), msg));
+                }
+            }
+
+            if !self.shared.messages.stack.is_empty() {
+                let count = self.shared.messages.get_op_count();
+                self.data.handle_messages(&mut self.shared.messages);
+                if self.shared.messages.get_op_count() != count {
+                    self.shared
+                        .pending
+                        .push_back(Pending::Action(Action::UPDATE));
+                }
             }
         }
+
+        self.shared.messages.count = 0;
     }
 
     pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), Error> {
