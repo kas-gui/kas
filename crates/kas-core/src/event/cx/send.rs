@@ -264,7 +264,7 @@ impl<'a> EventCx<'a> {
         used
     }
 
-    pub(super) fn poll_futures(&mut self, mut widget: Node<'_>) {
+    pub(super) fn poll_futures(&mut self) {
         let mut i = 0;
         while i < self.state.fut_messages.len() {
             let (_, fut) = &mut self.state.fut_messages[i];
@@ -276,9 +276,8 @@ impl<'a> EventCx<'a> {
                 Poll::Ready(msg) => {
                     let (id, _) = self.state.fut_messages.remove(i);
 
-                    // Replay message. This could push another future; if it
-                    // does we should poll it immediately to start its work.
-                    self.send_or_replay(widget.re(), id, msg);
+                    // Send via queue to support send targets and inter-window sending
+                    self.send_queue.push_back((id, msg));
                 }
             }
         }
