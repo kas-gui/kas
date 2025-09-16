@@ -9,6 +9,7 @@
 #![allow(clippy::precedence)]
 
 use crate::cast::{Cast, Conv};
+use crate::window::WindowId;
 use hash_hasher::{HashBuildHasher, HashedMap};
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -574,6 +575,12 @@ impl Id {
             }
             Variant::Slice(path) => Id(IntOrPtr::new_iter(path.iter().cloned().chain(once(key)))),
         }
+    }
+
+    /// Get a [`WindowId`], assuming that the first component is this
+    pub(crate) fn window_id(&self) -> WindowId {
+        let index = self.next_key_after(&Id::ROOT).unwrap();
+        WindowId::try_from(index.cast()).unwrap()
     }
 
     /// Convert to a [`NonZeroU64`] representation

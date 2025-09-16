@@ -38,6 +38,11 @@ impl EventState {
     /// The message is pushed to the message stack. The target widget may
     /// [pop](EventCx::try_pop) or [peek](EventCx::try_peek) the message from
     /// [`Events::handle_messages`].
+    ///
+    /// ### Inter-window sending
+    ///
+    /// The target `id` may be under another window. In this case, sending may
+    /// be delayed slightly.
     pub fn send<M: Debug + 'static>(&mut self, id: Id, msg: M) {
         self.send_erased(id, Erased::new(msg));
     }

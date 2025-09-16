@@ -8,11 +8,12 @@
 use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform};
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl};
+use crate::messages::Erased;
 use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
-use crate::{Action, draw};
+use crate::{Action, Id, draw};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -30,6 +31,7 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
     pub(super) draw: Option<draw::SharedState<G::Shared>>,
     pub(super) theme: T,
     pub(super) pending: VecDeque<Pending<Data, G, T>>,
+    pub(super) send_queue: VecDeque<(Id, Erased)>,
     pub(super) waker: Waker,
     #[cfg(feature = "accesskit")]
     pub(super) proxy: super::Proxy,
@@ -79,6 +81,7 @@ where
                 draw: None,
                 theme,
                 pending: Default::default(),
+                send_queue: Default::default(),
                 waker,
                 #[cfg(feature = "accesskit")]
                 proxy,
@@ -163,6 +166,9 @@ pub(crate) trait RunnerT {
 
     /// Exit the application
     fn exit(&mut self);
+
+    /// Send a message to another window
+    fn send_erased(&mut self, id: Id, msg: Erased);
 
     /// Attempt to get clipboard contents
     ///
@@ -251,6 +257,10 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
 
     fn exit(&mut self) {
         self.pending.push_back(Pending::Exit);
+    }
+
+    fn send_erased(&mut self, id: Id, msg: Erased) {
+        self.send_queue.push_back((id, msg));
     }
 
     fn get_clipboard(&mut self) -> Option<String> {

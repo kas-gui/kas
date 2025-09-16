@@ -54,6 +54,10 @@ impl WindowId {
     pub(crate) fn get(self) -> u32 {
         self.0.get()
     }
+
+    pub(crate) fn try_from(index: u32) -> Option<Self> {
+        NonZeroU32::new(index).map(WindowId)
+    }
 }
 
 /// Constructor for [`WindowId`]

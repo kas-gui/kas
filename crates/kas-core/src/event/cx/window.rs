@@ -6,6 +6,7 @@
 //! Event state: window management
 
 use super::{EventCx, EventState, PopupState};
+use crate::cast::Cast;
 use crate::event::{Event, FocusSource};
 use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
@@ -84,8 +85,13 @@ impl EventState {
                 cx.set_sel_focus(cx.window, win.as_node(data), pending);
             }
 
+            let window_id = Id::ROOT.make_child(cx.window_id.get().cast());
             while let Some((id, msg)) = cx.send_queue.pop_front() {
-                cx.send_or_replay(win.as_node(data), id, msg);
+                if window_id.is_ancestor_of(&id) {
+                    cx.send_or_replay(win.as_node(data), id, msg);
+                } else {
+                    cx.runner.send_erased(id, msg);
+                }
             }
 
             // Poll futures. TODO(opt): this does not need to happen so often,
