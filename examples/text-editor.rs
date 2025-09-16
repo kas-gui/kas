@@ -43,6 +43,19 @@ mod Editor {
 
     impl Events for Self {
         type Data = ();
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.set_send_target_for::<EditorAction>(self.id());
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx<'_>, _: &()) {
+            if let Some(msg) = cx.try_pop() {
+                match msg {
+                    EditorAction::New => self.editor.set_string(cx, String::new()),
+                    _ => todo!(),
+                }
+            }
+        }
     }
 
     impl Self {
