@@ -30,6 +30,7 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
     clipboard: Option<Clipboard>,
     pub(super) draw: Option<draw::SharedState<G::Shared>>,
     pub(super) theme: T,
+    pub(super) messages: MessageStack,
     pub(super) pending: VecDeque<Pending<Data, G, T>>,
     pub(super) send_queue: VecDeque<(Id, Erased)>,
     send_targets: HashMap<TypeId, Id>,
@@ -81,6 +82,7 @@ where
                 clipboard,
                 draw: None,
                 theme,
+                messages: MessageStack::new(),
                 pending: Default::default(),
                 send_queue: Default::default(),
                 send_targets: Default::default(),
@@ -94,11 +96,11 @@ where
         })
     }
 
-    pub(crate) fn handle_messages(&mut self, messages: &mut MessageStack) {
-        if messages.reset_and_has_any() {
-            let count = messages.get_op_count();
-            self.data.handle_messages(messages);
-            if messages.get_op_count() != count {
+    pub(crate) fn handle_messages(&mut self) {
+        if self.shared.messages.reset_and_has_any() {
+            let count = self.shared.messages.get_op_count();
+            self.data.handle_messages(&mut self.shared.messages);
+            if self.shared.messages.get_op_count() != count {
                 self.shared
                     .pending
                     .push_back(Pending::Action(Action::UPDATE));
@@ -168,6 +170,12 @@ pub(crate) trait RunnerT {
 
     /// Exit the application
     fn exit(&mut self);
+
+    /// Access the message stack (read-only)
+    fn message_stack(&self) -> &MessageStack;
+
+    /// Access the message stack (mutable)
+    fn message_stack_mut(&mut self) -> &mut MessageStack;
 
     /// Send a message to another window
     fn send_erased(&mut self, id: Id, msg: Erased);
@@ -265,6 +273,14 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
 
     fn exit(&mut self) {
         self.pending.push_back(Pending::Exit);
+    }
+
+    fn message_stack(&self) -> &MessageStack {
+        &self.messages
+    }
+
+    fn message_stack_mut(&mut self) -> &mut MessageStack {
+        &mut self.messages
     }
 
     fn send_erased(&mut self, id: Id, msg: Erased) {

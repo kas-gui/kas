@@ -77,9 +77,8 @@ where
                 }
             }
             ProxyAction::Message(msg) => {
-                let mut stack = super::MessageStack::new();
-                stack.push_erased(msg.into_erased());
-                self.state.handle_messages(&mut stack);
+                // Message is pushed in self.about_to_wait()
+                self.state.shared.messages.push_erased(msg.into_erased());
             }
             ProxyAction::WakeAsync => {
                 // We don't need to do anything here since about_to_wait will poll all futures.
@@ -127,6 +126,7 @@ where
 
     fn about_to_wait(&mut self, el: &ActiveEventLoop) {
         self.flush_pending(el);
+        self.state.handle_messages();
         self.resumes.sort_by_key(|item| item.0);
 
         if self.windows.is_empty() {

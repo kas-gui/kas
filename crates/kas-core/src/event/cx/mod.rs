@@ -20,7 +20,7 @@ use crate::config::{ConfigMsg, WindowConfig};
 use crate::draw::DrawShared;
 use crate::geom::{Offset, Rect, Vec2};
 use crate::messages::Erased;
-use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
+use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
 use crate::window::{PopupDescriptor, Window, WindowId};
 use crate::{Action, HasId, Id, Node};
@@ -184,14 +184,12 @@ impl EventState {
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
-        messages: &'a mut MessageStack,
         f: F,
     ) {
         let mut cx = EventCx {
             state: self,
             runner,
             window,
-            messages,
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
@@ -383,7 +381,6 @@ pub struct EventCx<'a> {
     state: &'a mut EventState,
     runner: &'a mut dyn RunnerT,
     window: &'a dyn WindowDataErased,
-    messages: &'a mut MessageStack,
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,

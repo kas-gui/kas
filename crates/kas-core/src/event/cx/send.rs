@@ -138,31 +138,31 @@ impl<'a> EventCx<'a> {
     /// [peeked](EventCx::try_peek) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
-        self.messages.push_erased(msg);
+        self.runner.message_stack_mut().push_erased(msg);
     }
 
     /// True if the message stack is non-empty
     pub fn has_msg(&self) -> bool {
-        self.messages.has_any()
+        self.runner.message_stack().has_any()
     }
 
     /// Try popping the last message from the stack with the given type
     ///
     /// This method may be called from [`Events::handle_messages`].
     pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
-        self.messages.try_pop()
+        self.runner.message_stack_mut().try_pop()
     }
 
     /// Try observing the last message on the stack without popping
     ///
     /// This method may be called from [`Events::handle_messages`].
     pub fn try_peek<M: Debug + 'static>(&self) -> Option<&M> {
-        self.messages.try_peek()
+        self.runner.message_stack().try_peek()
     }
 
     /// Debug the last message on the stack, if any
     pub fn peek_debug(&self) -> Option<&dyn Debug> {
-        self.messages.peek_debug()
+        self.runner.message_stack().peek_debug()
     }
 
     /// Get the message stack operation count
@@ -171,7 +171,7 @@ impl<'a> EventCx<'a> {
     /// used to test whether a message handler did anything.
     #[inline]
     pub fn msg_op_count(&self) -> usize {
-        self.messages.get_op_count()
+        self.runner.message_stack().get_op_count()
     }
 
     /// Set a scroll action
@@ -209,7 +209,7 @@ impl<'a> EventCx<'a> {
         } else {
             debug_assert!(self.scroll == Scroll::None);
             debug_assert!(self.last_child.is_none());
-            self.messages.set_base();
+            self.runner.message_stack_mut().set_base();
             log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
             self.target_is_disabled = false;
@@ -227,7 +227,7 @@ impl<'a> EventCx<'a> {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.scroll = scroll;
-        self.messages.set_base();
+        self.runner.message_stack_mut().set_base();
 
         self.target_is_disabled = false;
         widget._replay(self, id);
@@ -239,7 +239,7 @@ impl<'a> EventCx<'a> {
     pub(super) fn send_event(&mut self, mut widget: Node<'_>, mut id: Id, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
-        self.messages.set_base();
+        self.runner.message_stack_mut().set_base();
         log::trace!(target: "kas_core::event", "send_event: id={id}: {event:?}");
 
         // TODO(opt): we should be able to use binary search here

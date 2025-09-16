@@ -7,7 +7,7 @@
 
 use super::common::WindowSurface;
 use super::shared::State;
-use super::{AppData, GraphicsInstance, MessageStack, Platform};
+use super::{AppData, GraphicsInstance, Platform};
 use crate::cast::{Cast, CastApprox};
 use crate::config::{Config, WindowConfig};
 use crate::draw::PassType;
@@ -260,15 +260,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if let Some(ref mut window) = self.window {
             self.ev_state.suspended(&mut state.shared);
 
-            let mut messages = MessageStack::new();
             let action = self.ev_state.flush_pending(
                 &mut state.shared,
                 window,
-                &mut messages,
                 &mut self.widget,
                 &state.data,
             );
-            state.handle_messages(&mut messages);
 
             self.window = None;
             !action.contains(Action::CLOSE)
@@ -325,12 +322,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             }
             WindowEvent::RedrawRequested => self.do_draw(state).is_err(),
             event => {
-                let mut messages = MessageStack::new();
-                self.ev_state
-                    .with(&mut state.shared, window, &mut messages, |cx| {
-                        cx.handle_winit(&mut self.widget, &state.data, event);
-                    });
-                state.handle_messages(&mut messages);
+                self.ev_state.with(&mut state.shared, window, |cx| {
+                    cx.handle_winit(&mut self.widget, &state.data, event);
+                });
                 false
             }
         }
@@ -345,15 +339,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return (Action::empty(), None);
         };
 
-        let mut messages = MessageStack::new();
-        let action = self.ev_state.flush_pending(
-            &mut state.shared,
-            window,
-            &mut messages,
-            &mut self.widget,
-            &state.data,
-        );
-        state.handle_messages(&mut messages);
+        let action =
+            self.ev_state
+                .flush_pending(&mut state.shared, window, &mut self.widget, &state.data);
 
         if action.contains(Action::CLOSE) {
             return (action, None);
@@ -444,12 +432,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 .accesskit
                 .update_if_active(|| self.ev_state.accesskit_tree_update(&self.widget)),
             WE::ActionRequested(request) => {
-                let mut messages = MessageStack::new();
-                self.ev_state
-                    .with(&mut state.shared, window, &mut messages, |cx| {
-                        cx.handle_accesskit_action(self.widget.as_node(&state.data), request);
-                    });
-                state.handle_messages(&mut messages);
+                self.ev_state.with(&mut state.shared, window, |cx| {
+                    cx.handle_accesskit_action(self.widget.as_node(&state.data), request);
+                });
             }
             WE::AccessibilityDeactivated => {
                 self.ev_state.disable_accesskit();
@@ -467,20 +452,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             window.request_redraw();
         }
 
-        let mut messages = MessageStack::new();
         let widget = self.widget.as_node(&state.data);
 
         if Some(requested_resume) == self.ev_state.next_resume() {
-            self.ev_state
-                .with(&mut state.shared, window, &mut messages, |cx| {
-                    cx.update_timer(widget);
-                });
+            self.ev_state.with(&mut state.shared, window, |cx| {
+                cx.update_timer(widget);
+            });
         } else {
             #[allow(clippy::drop_non_drop)]
             drop(widget); // make the borrow checker happy
         }
-
-        state.handle_messages(&mut messages);
     }
 
     /// Add or reposition a pop-up
@@ -587,13 +568,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return Ok(());
         };
 
-        let mut messages = MessageStack::new();
         let widget = self.widget.as_node(&state.data);
-        self.ev_state
-            .with(&mut state.shared, window, &mut messages, |cx| {
-                cx.frame_update(widget);
-            });
-        state.handle_messages(&mut messages);
+        self.ev_state.with(&mut state.shared, window, |cx| {
+            cx.frame_update(widget);
+        });
 
         #[cfg(feature = "accesskit")]
         if self.ev_state.accesskit_is_enabled() {

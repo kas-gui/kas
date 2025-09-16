@@ -8,7 +8,7 @@
 use super::{EventCx, EventState, PopupState};
 use crate::cast::Cast;
 use crate::event::{Event, FocusSource};
-use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
+use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId};
@@ -60,7 +60,6 @@ impl EventState {
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
-        messages: &'a mut MessageStack,
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
@@ -68,7 +67,7 @@ impl EventState {
             runner.set_send_targets(&mut self.pending_send_targets);
         }
 
-        self.with(runner, window, messages, |cx| {
+        self.with(runner, window, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
