@@ -102,6 +102,9 @@ where
             let mut i = self.shared.messages.stack.len();
             while i > 0 {
                 i -= 1;
+                if self.shared.messages.stack[i].is_sent() {
+                    continue;
+                }
 
                 let type_id = self.shared.messages.stack[i].type_id();
                 if let Some(target) = self.shared.send_targets.get(&type_id) {

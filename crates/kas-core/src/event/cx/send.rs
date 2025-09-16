@@ -194,7 +194,7 @@ impl<'a> EventCx<'a> {
     /// Send a few message types as an Event, replay other messages as if pushed by `id`
     ///
     /// Optionally, push `msg` and set `scroll` as if pushed/set by `id`.
-    pub(super) fn send_or_replay(&mut self, mut widget: Node<'_>, id: Id, msg: Erased) {
+    pub(super) fn send_or_replay(&mut self, mut widget: Node<'_>, id: Id, mut msg: Erased) {
         if msg.is::<Command>() {
             let cmd = *msg.downcast().unwrap();
             if !self.send_event(widget, id, Event::Command(cmd, None)) {
@@ -214,6 +214,7 @@ impl<'a> EventCx<'a> {
             log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
             self.target_is_disabled = false;
+            msg.set_sent();
             self.push_erased(msg);
             widget._replay(self, id);
             self.last_child = None;
