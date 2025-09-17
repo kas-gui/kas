@@ -210,7 +210,14 @@ where
                             .add_popup(&self.data, id, popup);
                     }
                 }
-                Pending::AddWindow(id, mut window) => {
+                Pending::AddWindow(id, window) => {
+                    let mut window = Box::new(Window::new(
+                        self.shared.config.clone(),
+                        self.shared.platform,
+                        id,
+                        window,
+                    ));
+
                     log::debug!("Pending: adding window {}", window.widget.title());
                     if !self.suspended {
                         match window.resume(&mut self.shared, &self.data, el) {

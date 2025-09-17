@@ -12,7 +12,7 @@ mod shared;
 mod window;
 
 use crate::messages::Erased;
-use crate::window::{PopupDescriptor, WindowId};
+use crate::window::{BoxedWindow, PopupDescriptor, WindowId};
 use event_loop::Loop;
 pub(crate) use shared::RunnerT;
 use shared::Shared;
@@ -169,13 +169,10 @@ impl AppData for () {
     fn suspended(&mut self) {}
 }
 
-#[crate::autoimpl(Debug)]
-enum Pending<A: AppData, G: GraphicsInstance, T: kas::theme::Theme<G::Shared>> {
+enum Pending<A: AppData> {
     AddPopup(WindowId, WindowId, PopupDescriptor),
     RepositionPopup(WindowId, PopupDescriptor),
-    // NOTE: we don't need G, T here if we construct the Window later.
-    // But this way we can pass a single boxed value.
-    AddWindow(WindowId, Box<Window<A, G, T>>),
+    AddWindow(WindowId, BoxedWindow<A>),
     CloseWindow(WindowId),
     Action(kas::Action),
     Exit,
@@ -201,222 +198,9 @@ impl From<accesskit_winit::Event> for ProxyAction {
 #[cfg(test)]
 mod test {
     use super::*;
-    use raw_window_handle as rwh;
-    use std::time::Instant;
-
-    struct Draw;
-    impl crate::draw::DrawImpl for Draw {
-        fn common_mut(&mut self) -> &mut crate::draw::WindowCommon {
-            todo!()
-        }
-
-        fn new_pass(
-            &mut self,
-            _: crate::draw::PassId,
-            _: crate::prelude::Rect,
-            _: crate::prelude::Offset,
-            _: crate::draw::PassType,
-        ) -> crate::draw::PassId {
-            todo!()
-        }
-
-        fn get_clip_rect(&self, _: crate::draw::PassId) -> crate::prelude::Rect {
-            todo!()
-        }
-
-        fn rect(
-            &mut self,
-            _: crate::draw::PassId,
-            _: crate::geom::Quad,
-            _: crate::draw::color::Rgba,
-        ) {
-            todo!()
-        }
-
-        fn frame(
-            &mut self,
-            _: crate::draw::PassId,
-            _: crate::geom::Quad,
-            _: crate::geom::Quad,
-            _: crate::draw::color::Rgba,
-        ) {
-            todo!()
-        }
-    }
-    impl crate::draw::DrawRoundedImpl for Draw {
-        fn rounded_line(
-            &mut self,
-            _: crate::draw::PassId,
-            _: crate::geom::Vec2,
-            _: crate::geom::Vec2,
-            _: f32,
-            _: crate::draw::color::Rgba,
-        ) {
-            todo!()
-        }
-
-        fn circle(
-            &mut self,
-            _: crate::draw::PassId,
-            _: crate::geom::Quad,
-            _: f32,
-            _: crate::draw::color::Rgba,
-        ) {
-            todo!()
-        }
-
-        fn circle_2col(
-            &mut self,
-            _: crate::draw::PassId,
-            _: crate::geom::Quad,
-            _: crate::draw::color::Rgba,
-            _: crate::draw::color::Rgba,
-        ) {
-            todo!()
-        }
-
-        fn rounded_frame(
-            &mut self,
-            _: crate::draw::PassId,
-            _: crate::geom::Quad,
-            _: crate::geom::Quad,
-            _: f32,
-            _: crate::draw::color::Rgba,
-        ) {
-            todo!()
-        }
-
-        fn rounded_frame_2col(
-            &mut self,
-            _: crate::draw::PassId,
-            _: crate::geom::Quad,
-            _: crate::geom::Quad,
-            _: crate::draw::color::Rgba,
-            _: crate::draw::color::Rgba,
-        ) {
-            todo!()
-        }
-    }
-
-    struct DrawShared;
-    impl crate::draw::DrawSharedImpl for DrawShared {
-        type Draw = Draw;
-
-        fn max_texture_dimension_2d(&self) -> u32 {
-            todo!()
-        }
-
-        fn set_raster_config(&mut self, _: &crate::config::RasterConfig) {
-            todo!()
-        }
-
-        fn image_alloc(
-            &mut self,
-            _: (u32, u32),
-        ) -> std::result::Result<crate::draw::ImageId, crate::draw::AllocError> {
-            todo!()
-        }
-
-        fn image_upload(&mut self, _: crate::draw::ImageId, _: &[u8], _: crate::draw::ImageFormat) {
-            todo!()
-        }
-
-        fn image_free(&mut self, _: crate::draw::ImageId) {
-            todo!()
-        }
-
-        fn image_size(&self, _: crate::draw::ImageId) -> Option<(u32, u32)> {
-            todo!()
-        }
-
-        fn draw_image(
-            &self,
-            _: &mut Self::Draw,
-            _: crate::draw::PassId,
-            _: crate::draw::ImageId,
-            _: crate::geom::Quad,
-        ) {
-            todo!()
-        }
-
-        fn draw_text(
-            &mut self,
-            _: &mut Self::Draw,
-            _: crate::draw::PassId,
-            _: crate::geom::Vec2,
-            _: crate::geom::Quad,
-            _: &kas_text::TextDisplay,
-            _: crate::draw::color::Rgba,
-        ) {
-            todo!()
-        }
-
-        fn draw_text_effects(
-            &mut self,
-            _: &mut Self::Draw,
-            _: crate::draw::PassId,
-            _: crate::geom::Vec2,
-            _: crate::geom::Quad,
-            _: &kas_text::TextDisplay,
-            _: &[kas_text::Effect],
-            _: &[crate::draw::color::Rgba],
-        ) {
-            todo!()
-        }
-    }
-
-    struct Surface;
-    impl WindowSurface for Surface {
-        type Shared = DrawShared;
-
-        fn size(&self) -> crate::prelude::Size {
-            todo!()
-        }
-
-        fn configure(&mut self, _: &mut Self::Shared, _: crate::prelude::Size) -> bool {
-            todo!()
-        }
-
-        fn draw_iface<'iface>(
-            &'iface mut self,
-            _: &'iface mut crate::draw::SharedState<Self::Shared>,
-        ) -> crate::draw::DrawIface<'iface, Self::Shared> {
-            todo!()
-        }
-
-        fn common_mut(&mut self) -> &mut crate::draw::WindowCommon {
-            todo!()
-        }
-
-        fn present(&mut self, _: &mut Self::Shared, _: crate::draw::color::Rgba) -> Instant {
-            todo!()
-        }
-    }
-
-    struct AGB;
-    impl GraphicsInstance for AGB {
-        type Shared = DrawShared;
-
-        type Surface<'a> = Surface;
-
-        fn new_shared(&mut self, _: Option<&Self::Surface<'_>>) -> Result<Self::Shared> {
-            todo!()
-        }
-
-        fn new_surface<'window, W>(&mut self, _: W, _: bool) -> Result<Self::Surface<'window>>
-        where
-            W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
-            Self: Sized,
-        {
-            todo!()
-        }
-    }
 
     #[test]
     fn size_of_pending() {
-        assert_eq!(
-            std::mem::size_of::<Pending<(), AGB, crate::theme::SimpleTheme>>(),
-            40
-        );
+        assert_eq!(std::mem::size_of::<Pending<()>>(), 40);
     }
 }

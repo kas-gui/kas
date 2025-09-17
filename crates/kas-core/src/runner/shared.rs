@@ -33,7 +33,7 @@ pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>
     pub(super) draw: Option<SharedState<G::Shared>>,
     pub(super) theme: T,
     pub(super) messages: MessageStack,
-    pub(super) pending: VecDeque<Pending<Data, G, T>>,
+    pub(super) pending: VecDeque<Pending<Data>>,
     pub(super) send_queue: VecDeque<(Id, Erased)>,
     send_targets: HashMap<TypeId, Id>,
     pub(super) waker: Waker,
@@ -262,13 +262,8 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
         let id = self.window_id_factory.make_next();
-        let window = Box::new(super::Window::new(
-            self.config.clone(),
-            self.platform,
-            id,
-            window.boxed(),
-        ));
-        self.pending.push_back(Pending::AddWindow(id, window));
+        self.pending
+            .push_back(Pending::AddWindow(id, window.boxed()));
         id
     }
 
