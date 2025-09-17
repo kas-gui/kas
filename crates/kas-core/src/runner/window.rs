@@ -17,7 +17,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::Erased;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
-use crate::window::{Decorations, PopupDescriptor, Window as WindowWidget, WindowId};
+use crate::window::{Decorations, PopupDescriptor, Window as WindowWidget, WindowErased, WindowId};
 use crate::{Action, Id, Layout, Tile, Widget, autoimpl};
 use std::cell::RefCell;
 use std::mem::take;
@@ -131,14 +131,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             ideal.height = max_size.height;
         }
 
+        let props = self.widget.properties();
         let mut attrs = WindowAttributes::default();
         attrs.inner_size = Some(ideal.into());
         attrs.title = self.widget.title().to_string();
         attrs.visible = false;
-        attrs.transparent = self.widget.transparent();
-        attrs.decorations = self.widget.decorations() == Decorations::Server;
-        attrs.window_icon = self.widget.icon();
-        let (restrict_min, restrict_max) = self.widget.restrictions();
+        let transparent = props.transparent();
+        attrs.transparent = transparent;
+        attrs.decorations = props.decorations() == Decorations::Server;
+        attrs.window_icon = props.icon();
+        let (restrict_min, restrict_max) = props.restrictions();
         if restrict_min {
             let min = solve_cache
                 .min(true)
@@ -215,9 +217,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
         let window = Arc::new(window);
-        let mut surface = shared
-            .instance
-            .new_surface(window.clone(), self.widget.transparent())?;
+        let mut surface = shared.instance.new_surface(window.clone(), transparent)?;
         shared.resume(&surface)?;
         surface.configure(&mut shared.draw.as_mut().unwrap().draw, size);
 
@@ -542,7 +542,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         self.widget.resize_popups(&mut cx, data);
 
         // Size restrictions may have changed due to content or size (line wrapping)
-        let (restrict_min, restrict_max) = self.widget.restrictions();
+        let (restrict_min, restrict_max) = self.widget.properties().restrictions();
         if restrict_min {
             let min = window.solve_cache.min(true).as_physical();
             window.set_min_inner_size(Some(min));
@@ -609,7 +609,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         // widget requested a resize during draw. Likely it's better not to do
         // this even if the frame is imperfect.
 
-        let clear_color = if self.widget.transparent() {
+        let clear_color = if self.widget.properties().transparent() {
             Rgba::TRANSPARENT
         } else {
             shared.theme.clear_color()

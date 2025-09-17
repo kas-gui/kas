@@ -17,10 +17,59 @@ use crate::{Action, Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 
-pub(crate) trait WindowErased {
-    fn as_tile(&self) -> &dyn Tile;
+pub(crate) trait WindowErased: Tile {
+    fn properties(&self) -> &Properties;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
     fn close_tooltip(&mut self, cx: &mut EventCx);
+}
+
+/// Window properties
+pub(crate) struct Properties {
+    icon: Option<Icon>, // initial icon, if any
+    decorations: Decorations,
+    restrictions: (bool, bool),
+    drag_anywhere: bool,
+    transparent: bool,
+    escapable: bool,
+    alt_bypass: bool,
+    disable_nav_focus: bool,
+}
+
+impl Default for Properties {
+    fn default() -> Self {
+        Properties {
+            icon: None,
+            decorations: Decorations::Server,
+            restrictions: (true, false),
+            drag_anywhere: true,
+            transparent: false,
+            escapable: false,
+            alt_bypass: false,
+            disable_nav_focus: false,
+        }
+    }
+}
+
+impl Properties {
+    /// Get the window's icon, if any
+    pub(crate) fn icon(&self) -> Option<Icon> {
+        self.icon.clone()
+    }
+
+    /// Get the preference for window decorations
+    pub fn decorations(&self) -> Decorations {
+        self.decorations
+    }
+
+    /// Get window resizing restrictions: `(restrict_min, restrict_max)`
+    pub fn restrictions(&self) -> (bool, bool) {
+        self.restrictions
+    }
+
+    /// Get whether this window should use transparent rendering
+    pub fn transparent(&self) -> bool {
+        self.transparent
+    }
 }
 
 #[impl_self]
@@ -38,14 +87,7 @@ mod Window {
     #[widget]
     pub struct Window<Data: 'static> {
         core: widget_core!(),
-        icon: Option<Icon>, // initial icon, if any
-        decorations: Decorations,
-        restrictions: (bool, bool),
-        drag_anywhere: bool,
-        transparent: bool,
-        escapable: bool,
-        alt_bypass: bool,
-        disable_nav_focus: bool,
+        props: Properties,
         #[widget]
         inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
@@ -79,7 +121,7 @@ mod Window {
             let mut inner = self.inner.size_rules(sizer.re(), axis);
 
             self.bar_h = 0;
-            if matches!(self.decorations, Decorations::Toolkit) {
+            if matches!(self.props.decorations, Decorations::Toolkit) {
                 let bar = self.title_bar.size_rules(sizer.re(), axis);
                 if axis.is_horizontal() {
                     inner.max_with(bar);
@@ -99,7 +141,10 @@ mod Window {
             let _ = self.b_se.size_rules(sizer.re(), axis);
             let _ = self.b_sw.size_rules(sizer.re(), axis);
 
-            if matches!(self.decorations, Decorations::Border | Decorations::Toolkit) {
+            if matches!(
+                self.props.decorations,
+                Decorations::Border | Decorations::Toolkit
+            ) {
                 let frame = sizer.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
@@ -221,18 +266,18 @@ mod Window {
         type Data = Data;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            if cx.platform().is_wayland() && self.decorations == Decorations::Server {
+            if cx.platform().is_wayland() && self.props.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
                 // usually preferred where supported (e.g. KDE).
-                self.decorations = Decorations::Toolkit;
+                self.props.decorations = Decorations::Toolkit;
             }
 
-            if self.alt_bypass {
+            if self.props.alt_bypass {
                 cx.config.alt_bypass = true;
             }
 
-            if self.disable_nav_focus {
+            if self.props.disable_nav_focus {
                 cx.config.nav_focus = false;
             }
         }
@@ -242,12 +287,12 @@ mod Window {
                 Event::Command(Command::Escape, _) => {
                     if let Some(id) = self.popups.last().map(|desc| desc.0) {
                         cx.close_window(id);
-                    } else if self.escapable {
+                    } else if self.props.escapable {
                         cx.window_action(Action::CLOSE);
                     }
                     Used
                 }
-                Event::PressStart(_) if self.drag_anywhere => {
+                Event::PressStart(_) if self.props.drag_anywhere => {
                     cx.drag_window();
                     Used
                 }
@@ -262,19 +307,19 @@ mod Window {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(kas::messages::SetWindowTitle(title)) = cx.try_pop() {
                 self.title_bar.set_title(cx, title);
-                if self.decorations == Decorations::Server
+                if self.props.decorations == Decorations::Server
                     && let Some(w) = cx.winit_window()
                 {
                     w.set_title(self.title());
                 }
             } else if let Some(kas::messages::SetWindowIcon(icon)) = cx.try_pop() {
-                if self.decorations == Decorations::Server
+                if self.props.decorations == Decorations::Server
                     && let Some(w) = cx.winit_window()
                 {
                     w.set_window_icon(icon);
                     return; // do not set self.icon
                 }
-                self.icon = icon;
+                self.props.icon = icon;
             }
         }
 
@@ -285,8 +330,8 @@ mod Window {
     }
 
     impl WindowErased for Self {
-        fn as_tile(&self) -> &dyn Tile {
-            self
+        fn properties(&self) -> &Properties {
+            &self.props
         }
 
         fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String) {
@@ -319,14 +364,7 @@ impl<Data: 'static> Window<Data> {
     pub fn new_boxed(ui: Box<dyn Widget<Data = Data>>, title: impl ToString) -> Self {
         Window {
             core: Default::default(),
-            icon: None,
-            decorations: Decorations::Server,
-            restrictions: (true, false),
-            drag_anywhere: true,
-            transparent: false,
-            escapable: false,
-            alt_bypass: false,
-            disable_nav_focus: false,
+            props: Properties::default(),
             inner: ui,
             tooltip: Popup::new(Label::default(), Direction::Down).align(Align::Center),
             title_bar: TitleBar::new(title),
@@ -350,22 +388,17 @@ impl<Data: 'static> Window<Data> {
         self.title_bar.title()
     }
 
-    /// Get the window's icon, if any
-    pub(crate) fn icon(&mut self) -> Option<Icon> {
-        self.icon.clone()
-    }
-
     /// Set the window's icon (inline)
     ///
     /// Default: `None`
     pub fn with_icon(mut self, icon: impl Into<Option<Icon>>) -> Self {
-        self.icon = icon.into();
+        self.props.icon = icon.into();
         self
     }
 
     /// Get the preference for window decorations
     pub fn decorations(&self) -> Decorations {
-        self.decorations
+        self.props.decorations
     }
 
     /// Set the preference for window decorations
@@ -379,13 +412,13 @@ impl<Data: 'static> Window<Data> {
     ///
     /// Default: [`Decorations::Server`].
     pub fn with_decorations(mut self, decorations: Decorations) -> Self {
-        self.decorations = decorations;
+        self.props.decorations = decorations;
         self
     }
 
     /// Get window resizing restrictions: `(restrict_min, restrict_max)`
     pub fn restrictions(&self) -> (bool, bool) {
-        self.restrictions
+        self.props.restrictions
     }
 
     /// Whether to limit the maximum size of a window
@@ -399,7 +432,7 @@ impl<Data: 'static> Window<Data> {
     /// If `restrict_max`, the window may not be sized above the ideal size.
     /// Default value: `false`.
     pub fn with_restrictions(mut self, restrict_min: bool, restrict_max: bool) -> Self {
-        self.restrictions = (restrict_min, restrict_max);
+        self.props.restrictions = (restrict_min, restrict_max);
         let resizable = !restrict_min || !restrict_max;
         self.b_w.set_resizable(resizable);
         self.b_e.set_resizable(resizable);
@@ -414,7 +447,7 @@ impl<Data: 'static> Window<Data> {
 
     /// Get "drag anywhere" state
     pub fn drag_anywhere(&self) -> bool {
-        self.drag_anywhere
+        self.props.drag_anywhere
     }
 
     /// Whether to allow dragging the window from the background
@@ -422,13 +455,13 @@ impl<Data: 'static> Window<Data> {
     /// If true, then any unhandled click+drag in the window may be used to
     /// drag the window on supported platforms. Default value: `true`.
     pub fn with_drag_anywhere(mut self, drag_anywhere: bool) -> Self {
-        self.drag_anywhere = drag_anywhere;
+        self.props.drag_anywhere = drag_anywhere;
         self
     }
 
     /// Get whether this window should use transparent rendering
     pub fn transparent(&self) -> bool {
-        self.transparent
+        self.props.transparent
     }
 
     /// Whether the window supports transparency
@@ -443,13 +476,13 @@ impl<Data: 'static> Window<Data> {
     ///
     /// Default: `false`.
     pub fn with_transparent(mut self, transparent: bool) -> Self {
-        self.transparent = transparent;
+        self.props.transparent = transparent;
         self
     }
 
     /// Enable closure via <kbd>Escape</kbd> key
     pub fn escapable(mut self) -> Self {
-        self.escapable = true;
+        self.props.escapable = true;
         self
     }
 
@@ -458,7 +491,7 @@ impl<Data: 'static> Window<Data> {
     /// Access keys usually require that <kbd>Alt</kbd> be held. This method
     /// allows access keys to be activated without holding <kbd>Alt</kbd>.
     pub fn with_alt_bypass(mut self) -> Self {
-        self.alt_bypass = true;
+        self.props.alt_bypass = true;
         self
     }
 
@@ -467,7 +500,7 @@ impl<Data: 'static> Window<Data> {
     /// Usually, widgets may be focussed and this focus may be navigated using
     /// the <kbd>Tab</kbd> key. This method prevents widgets from gaining focus.
     pub fn without_nav_focus(mut self) -> Self {
-        self.disable_nav_focus = true;
+        self.props.disable_nav_focus = true;
         self
     }
 
