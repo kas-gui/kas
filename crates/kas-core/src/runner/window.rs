@@ -111,10 +111,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let config = self.ev_state.config();
         let mut theme_window = shared.theme.new_window(config);
 
-        self.ev_state
-            .full_configure(theme_window.size(), &mut self.widget, data);
+        let mut node = self.widget.as_node(data);
+        self.ev_state.full_configure(theme_window.size(), node.re());
 
-        let node = self.widget.as_node(data);
         let sizer = SizeCx::new(theme_window.size());
         let mut solve_cache = SolveCache::find_constraints(node, sizer);
 
@@ -164,10 +163,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             shared.theme.update_window(&mut theme_window, config);
 
             // Update text size which is assigned during configure
-            self.ev_state
-                .full_configure(theme_window.size(), &mut self.widget, data);
+            let mut node = self.widget.as_node(data);
+            self.ev_state.full_configure(theme_window.size(), node.re());
 
-            let node = self.widget.as_node(data);
             let sizer = SizeCx::new(theme_window.size());
             solve_cache = SolveCache::find_constraints(node, sizer);
 
@@ -263,7 +261,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
             let action = self
                 .ev_state
-                .flush_pending(shared, window, &mut self.widget, data);
+                .flush_pending(shared, window, self.widget.as_node(data));
 
             self.window = None;
             !action.contains(Action::CLOSE)
@@ -342,7 +340,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let action = self
             .ev_state
-            .flush_pending(shared, window, &mut self.widget, data);
+            .flush_pending(shared, window, self.widget.as_node(data));
 
         if action.contains(Action::CLOSE) {
             return (action, None);
@@ -509,7 +507,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         self.ev_state
-            .full_configure(window.theme_window.size(), &mut self.widget, data);
+            .full_configure(window.theme_window.size(), self.widget.as_node(data));
 
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }

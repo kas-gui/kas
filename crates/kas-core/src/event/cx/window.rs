@@ -12,7 +12,7 @@ use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId};
-use crate::{Action, Id, Tile, Widget};
+use crate::{Action, Id, Node, Tile, Widget};
 use winit::window::ResizeDirection;
 
 impl EventState {
@@ -56,12 +56,11 @@ impl EventState {
     }
 
     /// Handle all pending items before event loop sleeps
-    pub(crate) fn flush_pending<'a, A>(
+    pub(crate) fn flush_pending<'a>(
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
-        win: &mut Window<A>,
-        data: &A,
+        mut node: Node,
     ) -> Action {
         if !self.pending_send_targets.is_empty() {
             runner.set_send_targets(&mut self.pending_send_targets);
@@ -69,23 +68,23 @@ impl EventState {
 
         self.with(runner, window, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
-                cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
+                cx.send_event(node.re(), id, Event::PopupClosed(wid));
             }
 
-            cx.mouse_handle_pending(win.as_node(data));
-            cx.touch_handle_pending(win.as_node(data));
+            cx.mouse_handle_pending(node.re());
+            cx.touch_handle_pending(node.re());
 
             if let Some(id) = cx.pending_update.take() {
-                win.as_node(data).find_node(&id, |node| cx.update(node));
+                node.find_node(&id, |node| cx.update(node));
             }
 
             if cx.pending_nav_focus.is_some() {
-                cx.handle_pending_nav_focus(win.as_node(data));
+                cx.handle_pending_nav_focus(node.re());
             }
 
             // Update sel focus after nav focus:
             if let Some(pending) = cx.pending_sel_focus.take() {
-                cx.set_sel_focus(cx.window, win.as_node(data), pending);
+                cx.set_sel_focus(cx.window, node.re(), pending);
             }
 
             // Poll futures; these may push messages to cx.send_queue.
@@ -105,7 +104,7 @@ impl EventState {
                 }
 
                 if window_id.is_ancestor_of(&id) {
-                    cx.send_or_replay(win.as_node(data), id, msg);
+                    cx.send_or_replay(node.re(), id, msg);
                 } else {
                     cx.runner.send_erased(id, msg);
                 }

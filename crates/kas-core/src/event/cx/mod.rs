@@ -22,7 +22,7 @@ use crate::geom::{Offset, Rect, Vec2};
 use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
-use crate::window::{PopupDescriptor, Window, WindowId};
+use crate::window::{PopupDescriptor, WindowId};
 use crate::{Action, HasId, Id, Node};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
@@ -159,12 +159,7 @@ impl EventState {
     /// [`Id`] identifiers and call widgets' [`Events::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub(crate) fn full_configure<A>(
-        &mut self,
-        sizer: &dyn ThemeSize,
-        win: &mut Window<A>,
-        data: &A,
-    ) {
+    pub(crate) fn full_configure(&mut self, sizer: &dyn ThemeSize, node: Node) {
         let id = Id::ROOT.make_child(self.window_id.get().cast());
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
@@ -172,7 +167,7 @@ impl EventState {
         // These are recreated during configure:
         self.nav_fallback = None;
 
-        ConfigCx::new(sizer, self).configure(win.as_node(data), id);
+        ConfigCx::new(sizer, self).configure(node, id);
         self.action |= Action::REGION_MOVED;
     }
 
