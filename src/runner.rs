@@ -237,7 +237,7 @@ where
             self.state.config().clone(),
             self.state.platform(),
             id,
-            window,
+            Box::new(window),
         ));
         self.windows.push(win);
         id

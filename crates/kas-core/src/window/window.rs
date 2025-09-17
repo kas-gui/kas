@@ -14,7 +14,7 @@ use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::widgets::{Border, Label, TitleBar};
 use crate::{Action, Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
-use kas_macros::{impl_self, widget_set_rect};
+use kas_macros::{autoimpl, impl_self, widget_set_rect};
 use smallvec::SmallVec;
 
 // TODO(Rust): replace with type-alias-impl-trait when available
@@ -33,7 +33,10 @@ impl<'a> Iterator for PopupIterator<'a> {
     }
 }
 
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub(crate) trait WindowErased: Tile {
+    /// Get the window's title
+    fn title(&self) -> &str;
     fn properties(&self) -> &Properties;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
     fn close_tooltip(&mut self, cx: &mut EventCx);
@@ -43,6 +46,7 @@ pub(crate) trait WindowErased: Tile {
     fn iter_popups(&self) -> PopupIterator<'_>;
 }
 
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub(crate) trait WindowWidget: WindowErased + Widget {
     /// Add a pop-up as a layer in the current window
     ///
@@ -374,6 +378,10 @@ mod Window {
     }
 
     impl WindowErased for Self {
+        fn title(&self) -> &str {
+            self.title_bar.title()
+        }
+
         fn properties(&self) -> &Properties {
             &self.props
         }
@@ -555,13 +563,7 @@ impl<Data: 'static> Window<Data> {
 }
 
 impl<Data: 'static> WindowWidget for Window<Data> {
-    fn add_popup(
-        &mut self,
-        cx: &mut ConfigCx,
-        data: &Data,
-        id: WindowId,
-        popup: PopupDescriptor,
-    ) {
+    fn add_popup(&mut self, cx: &mut ConfigCx, data: &Data, id: WindowId, popup: PopupDescriptor) {
         let index = 'index: {
             for i in 0..self.popups.len() {
                 if self.popups[i].0 == id {
