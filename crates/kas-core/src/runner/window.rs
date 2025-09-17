@@ -17,7 +17,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::Erased;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
-use crate::window::{Decorations, PopupDescriptor, Window as WindowWidget, WindowErased, WindowId};
+use crate::window::{Decorations, PopupDescriptor, Window as WindowWidget, WindowWidget as _, WindowErased, WindowId};
 use crate::{Action, Id, Layout, Tile, Widget, autoimpl};
 use std::cell::RefCell;
 use std::mem::take;

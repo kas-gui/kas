@@ -43,9 +43,29 @@ pub(crate) trait WindowErased: Tile {
     fn iter_popups(&self) -> PopupIterator<'_>;
 }
 
-pub(crate) trait WindowWidget: WindowErased + Widget {}
+pub(crate) trait WindowWidget: WindowErased + Widget {
+    /// Add a pop-up as a layer in the current window
+    ///
+    /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
+    fn add_popup(
+        &mut self,
+        cx: &mut ConfigCx,
+        data: &Self::Data,
+        id: WindowId,
+        popup: PopupDescriptor,
+    );
 
-impl<W: WindowErased + Widget> WindowWidget for W {}
+    /// Trigger closure of a pop-up
+    ///
+    /// If the given `id` refers to a pop-up, it should be closed.
+    fn remove_popup(&mut self, cx: &mut ConfigCx, id: WindowId);
+
+    /// Resize popups
+    ///
+    /// This is called immediately after [`Layout::set_rect`] to resize
+    /// existing pop-ups.
+    fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Self::Data);
+}
 
 /// Window properties
 pub(crate) struct Properties {
@@ -532,11 +552,10 @@ impl<Data: 'static> Window<Data> {
         self.props.disable_nav_focus = true;
         self
     }
+}
 
-    /// Add a pop-up as a layer in the current window
-    ///
-    /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
-    pub(crate) fn add_popup(
+impl<Data: 'static> WindowWidget for Window<Data> {
+    fn add_popup(
         &mut self,
         cx: &mut ConfigCx,
         data: &Data,
@@ -562,10 +581,7 @@ impl<Data: 'static> Window<Data> {
         cx.action(self.id(), Action::REGION_MOVED);
     }
 
-    /// Trigger closure of a pop-up
-    ///
-    /// If the given `id` refers to a pop-up, it should be closed.
-    pub(crate) fn remove_popup(&mut self, cx: &mut ConfigCx, id: WindowId) {
+    fn remove_popup(&mut self, cx: &mut ConfigCx, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
@@ -575,11 +591,7 @@ impl<Data: 'static> Window<Data> {
         }
     }
 
-    /// Resize popups
-    ///
-    /// This is called immediately after [`Layout::set_rect`] to resize
-    /// existing pop-ups.
-    pub(crate) fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
+    fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
         for i in 0..self.popups.len() {
             self.resize_popup(cx, data, i);
         }
