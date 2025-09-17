@@ -11,8 +11,8 @@ use crate::event::{Event, FocusSource};
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
-use crate::window::{PopupDescriptor, Window, WindowId};
-use crate::{Action, Id, Node, Tile, Widget};
+use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
+use crate::{Action, Id, Node, Tile};
 use winit::window::ResizeDirection;
 
 impl EventState {
@@ -356,7 +356,7 @@ impl<'a> EventCx<'a> {
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     pub(crate) fn handle_winit<A>(
         &mut self,
-        win: &mut Window<A>,
+        win: &mut dyn WindowWidget<Data = A>,
         data: &A,
         event: winit::event::WindowEvent,
     ) {

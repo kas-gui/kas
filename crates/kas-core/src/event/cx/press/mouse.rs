@@ -10,9 +10,9 @@ use crate::event::{
     Event, EventCx, EventState, FocusSource, NavAdvance, PressStart, ScrollDelta, TimerHandle,
 };
 use crate::geom::{Affine, Coord, DVec2, Vec2};
-use crate::window::Window;
 use crate::window::WindowErased;
-use crate::{Action, Id, Layout, Node, TileExt, Widget};
+use crate::window::WindowWidget;
+use crate::{Action, Id, Layout, Node, TileExt};
 use cast::{CastApprox, CastFloat};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -327,7 +327,7 @@ impl<'a> EventCx<'a> {
     /// Handle mouse cursor motion.
     pub(in crate::event::cx) fn handle_cursor_moved<A>(
         &mut self,
-        win: &mut Window<A>,
+        win: &mut dyn WindowWidget<Data = A>,
         data: &A,
         position: DVec2,
     ) {

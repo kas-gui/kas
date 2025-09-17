@@ -23,6 +23,10 @@ pub(crate) trait WindowErased: Tile {
     fn close_tooltip(&mut self, cx: &mut EventCx);
 }
 
+pub(crate) trait WindowWidget: WindowErased + Widget {}
+
+impl<W: WindowErased + Widget> WindowWidget for W {}
+
 /// Window properties
 pub(crate) struct Properties {
     icon: Option<Icon>, // initial icon, if any
@@ -610,7 +614,7 @@ impl<Data: 'static> Window<Data> {
         };
         self.popups[index].2 = t;
         let r = r + t; // work in translated coordinate space
-        let result = self.as_node(data).find_node(&popup.id, |mut node| {
+        let result = Widget::as_node(self, data).find_node(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();
