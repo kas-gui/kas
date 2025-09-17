@@ -11,6 +11,7 @@ use crate::dir::{Direction, Directional};
 use crate::event::{Command, ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
+use crate::runner::AppData;
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::widgets::{Border, Label, TitleBar};
 use crate::{Action, Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
@@ -133,7 +134,7 @@ mod Window {
     ///
     /// [`kas::messages::SetWindowIcon`] may be used to set the icon.
     #[widget]
-    pub struct Window<Data: 'static> {
+    pub struct Window<Data: AppData> {
         core: widget_core!(),
         props: Properties,
         #[widget]
@@ -411,7 +412,7 @@ mod Window {
     }
 }
 
-impl<Data: 'static> Window<Data> {
+impl<Data: AppData> Window<Data> {
     /// Construct a window with a `W: Widget` and a title
     pub fn new(ui: impl Widget<Data = Data> + 'static, title: impl ToString) -> Self {
         Self::new_boxed(Box::new(ui), title)
@@ -562,7 +563,7 @@ impl<Data: 'static> Window<Data> {
     }
 }
 
-impl<Data: 'static> WindowWidget for Window<Data> {
+impl<Data: AppData> WindowWidget for Window<Data> {
     fn add_popup(&mut self, cx: &mut ConfigCx, data: &Data, id: WindowId, popup: PopupDescriptor) {
         let index = 'index: {
             for i in 0..self.popups.len() {
@@ -600,7 +601,7 @@ impl<Data: 'static> WindowWidget for Window<Data> {
     }
 }
 
-impl<Data: 'static> Window<Data> {
+impl<Data: AppData> Window<Data> {
     fn resize_popup(&mut self, cx: &mut ConfigCx, data: &Data, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect

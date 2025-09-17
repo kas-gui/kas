@@ -16,6 +16,7 @@
 use crate::{Button, EditBox, Filler, Label, adapt::AdaptWidgetAny};
 use kas::event::NamedKey;
 use kas::prelude::*;
+use kas::runner::AppData;
 use kas::text::format::FormattableText;
 
 #[derive(Copy, Clone, Debug)]
@@ -46,7 +47,7 @@ mod MessageBox {
         }
 
         /// Build a [`Window`]
-        pub fn into_window<A: 'static>(self, title: impl ToString) -> Window<A> {
+        pub fn into_window<A: AppData>(self, title: impl ToString) -> Window<A> {
             Window::new(self.map_any(), title).with_restrictions(true, true)
         }
     }
@@ -122,7 +123,7 @@ mod TextEdit {
         }
 
         /// Build a [`Window`]
-        pub fn into_window<A: 'static>(self, title: impl ToString) -> Window<A> {
+        pub fn into_window<A: AppData>(self, title: impl ToString) -> Window<A> {
             Window::new(self.map_any(), title)
         }
 

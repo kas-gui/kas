@@ -8,7 +8,7 @@
 use super::{EventCx, EventState, PopupState};
 use crate::cast::Cast;
 use crate::event::{Event, FocusSource};
-use crate::runner::{Platform, RunnerT, WindowDataErased};
+use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
@@ -222,7 +222,7 @@ impl<'a> EventCx<'a> {
     /// Caveat: if an error occurs opening the new window it will not be
     /// reported (except via log messages).
     #[inline]
-    pub fn add_window<Data: 'static>(&mut self, window: Window<Data>) -> WindowId {
+    pub fn add_window<Data: AppData>(&mut self, window: Window<Data>) -> WindowId {
         let data_type_id = std::any::TypeId::of::<Data>();
         unsafe {
             let window: Window<()> = std::mem::transmute(window);
