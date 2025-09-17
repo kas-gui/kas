@@ -266,7 +266,7 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
             self.config.clone(),
             self.platform,
             id,
-            Box::new(window),
+            window.boxed(),
         ));
         self.pending.push_back(Pending::AddWindow(id, window));
         id

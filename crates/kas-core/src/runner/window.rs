@@ -17,7 +17,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::Erased;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
-use crate::window::{Decorations, PopupDescriptor, WindowId, WindowWidget};
+use crate::window::{BoxedWindow, Decorations, PopupDescriptor, WindowId, WindowWidget};
 use crate::{Action, Id, Layout, Tile, Widget, autoimpl};
 use std::cell::RefCell;
 use std::mem::take;
@@ -66,12 +66,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         config: Rc<RefCell<Config>>,
         platform: Platform,
         window_id: WindowId,
-        widget: Box<dyn WindowWidget<Data = A>>,
+        widget: BoxedWindow<A>,
     ) -> Self {
         let config = WindowConfig::new(config);
         Window {
             _data: std::marker::PhantomData,
-            widget,
+            widget: widget.0,
             ev_state: EventState::new(window_id, config, platform),
             window: None,
         }
