@@ -45,6 +45,9 @@ jobs:
         run: |
           cargo test --manifest-path crates/kas-resvg/Cargo.toml --features kas/wayland
           cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features --features kas/wayland
+      - name: Test kas-view
+        run: |
+          cargo test --manifest-path crates/kas-view/Cargo.toml --all-features --features kas/wayland
       - name: Test kas-wgpu
         run: |
           cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features kas/wayland
@@ -99,6 +102,8 @@ jobs:
         run: cargo test --manifest-path crates/kas-widgets/Cargo.toml --features kas/x11
       - name: Test kas-resvg
         run: cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features --features kas/wayland
+      - name: Test kas-view
+        run: cargo test --manifest-path crates/kas-view/Cargo.toml --all-features --features kas/wayland
       - name: Test kas-wgpu
         run: cargo test --manifest-path crates/kas-wgpu/Cargo.toml --features kas/x11
       - name: Test kas-dylib

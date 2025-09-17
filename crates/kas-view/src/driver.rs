@@ -51,6 +51,9 @@ use std::default::Default;
 ///     fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
 ///         // Text has no metadata that needs to be reset
 ///     }
+///     fn navigable(widget: &Self::Widget) -> bool {
+///         true
+///     }
 /// }
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
