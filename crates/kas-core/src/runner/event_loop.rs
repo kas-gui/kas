@@ -5,7 +5,7 @@
 
 //! Event loop and handling
 
-use super::{AppData, GraphicsInstance, Pending, SharedState};
+use super::{AppData, GraphicsInstance, Pending, Shared};
 use super::{ProxyAction, Window};
 use crate::theme::Theme;
 use crate::{Action, window::WindowId};
@@ -29,7 +29,7 @@ where
     /// Translates our WindowId to winit's
     id_map: HashMap<ww::WindowId, WindowId>,
     /// Shared application state
-    shared: SharedState<A, G, T>,
+    shared: Shared<A, G, T>,
     /// User-provided application data
     data: A,
     /// Timer resumes: (time, window identifier)
@@ -175,7 +175,7 @@ where
 {
     pub(super) fn new(
         mut windows: Vec<Box<Window<A, G, T>>>,
-        shared: SharedState<A, G, T>,
+        shared: Shared<A, G, T>,
         data: A,
     ) -> Self {
         Loop {

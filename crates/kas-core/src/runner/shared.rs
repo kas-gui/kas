@@ -7,13 +7,13 @@
 
 use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform};
 use crate::config::Config;
-use crate::draw::{DrawShared, DrawSharedImpl};
+use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
 use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
-use crate::{Action, Id, draw};
+use crate::{Action, Id};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -23,14 +23,14 @@ use std::task::Waker;
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// Runner state shared by all windows and used by [`RunnerT`]
-pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
+pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
     config_writer: Option<Box<dyn FnMut(&Config)>>,
     pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
     pub(super) instance: G,
-    pub(super) draw: Option<draw::SharedState<G::Shared>>,
+    pub(super) draw: Option<SharedState<G::Shared>>,
     pub(super) theme: T,
     pub(super) messages: MessageStack,
     pub(super) pending: VecDeque<Pending<Data, G, T>>,
@@ -42,7 +42,7 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
     window_id_factory: WindowIdFactory,
 }
 
-impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> SharedState<A, G, T>
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Shared<A, G, T>
 where
     T::Window: kas::theme::Window,
 {
@@ -66,7 +66,7 @@ where
             }
         };
 
-        Ok(SharedState {
+        Ok(Shared {
             platform,
             config_writer,
             config,
@@ -119,7 +119,7 @@ where
         if self.draw.is_none() {
             let mut draw_shared = self.instance.new_shared(Some(surface))?;
             draw_shared.set_raster_config(self.config.borrow().font.raster());
-            self.draw = Some(kas::draw::SharedState::new(draw_shared));
+            self.draw = Some(SharedState::new(draw_shared));
         }
 
         Ok(())
@@ -235,7 +235,7 @@ pub(crate) trait RunnerT {
     fn waker(&self) -> &std::task::Waker;
 }
 
-impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
+impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared<Data, G, T> {
     fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId {
         let id = self.window_id_factory.make_next();
         self.pending

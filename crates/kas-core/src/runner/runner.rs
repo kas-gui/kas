@@ -5,7 +5,7 @@
 
 //! [`Runner`] and supporting elements
 
-use super::{AppData, GraphicsInstance, Platform, ProxyAction, Result, SharedState};
+use super::{AppData, GraphicsInstance, Platform, ProxyAction, Result, Shared};
 use crate::config::{Config, ConfigFactory};
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::theme::Theme;
@@ -77,7 +77,7 @@ impl PreLaunchState {
         theme: T,
         windows: Vec<Box<super::Window<Data, G, T>>>,
     ) -> Result<()> {
-        let shared = SharedState::new(
+        let shared = Shared::new(
             self.platform,
             graphical,
             theme,

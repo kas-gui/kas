@@ -6,7 +6,7 @@
 //! Window types
 
 use super::common::WindowSurface;
-use super::shared::SharedState;
+use super::shared::Shared;
 use super::{AppData, GraphicsInstance, Platform};
 use crate::cast::{Cast, CastApprox};
 use crate::config::{Config, WindowConfig};
@@ -85,7 +85,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Open (resume) a window
     pub(super) fn resume(
         &mut self,
-        shared: &mut SharedState<A, G, T>,
+        shared: &mut Shared<A, G, T>,
         data: &A,
         el: &ActiveEventLoop,
     ) -> super::Result<winit::window::WindowId> {
@@ -257,7 +257,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Close (suspend) the window, keeping state (widget)
     ///
     /// Returns `true` unless this `Window` should be destoyed.
-    pub(super) fn suspend(&mut self, shared: &mut SharedState<A, G, T>, data: &A) -> bool {
+    pub(super) fn suspend(&mut self, shared: &mut Shared<A, G, T>, data: &A) -> bool {
         if let Some(ref mut window) = self.window {
             self.ev_state.suspended(shared);
 
@@ -277,7 +277,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Returns `true` to force polling temporarily.
     pub(super) fn handle_event(
         &mut self,
-        shared: &mut SharedState<A, G, T>,
+        shared: &mut Shared<A, G, T>,
         data: &A,
         event: WindowEvent,
     ) -> bool {
@@ -333,7 +333,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Handle all pending items before event loop sleeps
     pub(super) fn flush_pending(
         &mut self,
-        shared: &mut SharedState<A, G, T>,
+        shared: &mut Shared<A, G, T>,
         data: &A,
     ) -> (Action, Option<Instant>) {
         let Some(ref window) = self.window else {
@@ -377,7 +377,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Handle an action (excludes handling of CLOSE and EXIT)
     pub(super) fn handle_action(
         &mut self,
-        shared: &mut SharedState<A, G, T>,
+        shared: &mut Shared<A, G, T>,
         data: &A,
         mut action: Action,
     ) {
@@ -422,7 +422,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     #[cfg(feature = "accesskit")]
     pub(super) fn accesskit_event(
         &mut self,
-        shared: &mut SharedState<A, G, T>,
+        shared: &mut Shared<A, G, T>,
         data: &A,
         event: accesskit_winit::WindowEvent,
     ) {
@@ -448,7 +448,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
     pub(super) fn update_timer(
         &mut self,
-        shared: &mut SharedState<A, G, T>,
+        shared: &mut Shared<A, G, T>,
         data: &A,
         requested_resume: Instant,
     ) {
@@ -566,11 +566,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     ///
     /// Returns an error when drawing is aborted and further event handling may
     /// be needed before a redraw.
-    pub(super) fn do_draw(
-        &mut self,
-        shared: &mut SharedState<A, G, T>,
-        data: &A,
-    ) -> Result<(), ()> {
+    pub(super) fn do_draw(&mut self, shared: &mut Shared<A, G, T>, data: &A) -> Result<(), ()> {
         let start = Instant::now();
         let Some(ref mut window) = self.window else {
             return Ok(());
