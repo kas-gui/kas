@@ -22,7 +22,7 @@ use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
-/// Runner state used by [`RunnerT`]
+/// Runner state shared by all windows and used by [`RunnerT`]
 pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
     config_writer: Option<Box<dyn FnMut(&Config)>>,
@@ -42,20 +42,13 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
     window_id_factory: WindowIdFactory,
 }
 
-/// Runner state shared by all windows
-pub(super) struct State<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
-    pub(super) shared: SharedState<Data, G, T>,
-    pub(super) data: Data,
-}
-
-impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> State<Data, G, T>
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> SharedState<A, G, T>
 where
     T::Window: kas::theme::Window,
 {
     /// Construct
     pub(super) fn new(
         platform: Platform,
-        data: Data,
         instance: G,
         theme: T,
         config: Rc<RefCell<Config>>,
@@ -73,79 +66,72 @@ where
             }
         };
 
-        Ok(State {
-            shared: SharedState {
-                platform,
-                config_writer,
-                config,
-                #[cfg(feature = "clipboard")]
-                clipboard,
-                instance,
-                draw: None,
-                theme,
-                messages: MessageStack::new(),
-                pending: Default::default(),
-                send_queue: Default::default(),
-                send_targets: Default::default(),
-                waker,
-                #[cfg(feature = "accesskit")]
-                proxy,
-                window_id_factory,
-            },
-            data,
+        Ok(SharedState {
+            platform,
+            config_writer,
+            config,
+            #[cfg(feature = "clipboard")]
+            clipboard,
+            instance,
+            draw: None,
+            theme,
+            messages: MessageStack::new(),
+            pending: Default::default(),
+            send_queue: Default::default(),
+            send_targets: Default::default(),
+            waker,
+            #[cfg(feature = "accesskit")]
+            proxy,
+            window_id_factory,
         })
     }
 
     /// Flush pending messages
-    pub(crate) fn handle_messages(&mut self) {
-        if self.shared.messages.reset_and_has_any() {
-            let mut i = self.shared.messages.stack.len();
+    pub(crate) fn handle_messages<Data: AppData>(&mut self, data: &mut Data) {
+        if self.messages.reset_and_has_any() {
+            let mut i = self.messages.stack.len();
             while i > 0 {
                 i -= 1;
-                if self.shared.messages.stack[i].is_sent() {
+                if self.messages.stack[i].is_sent() {
                     continue;
                 }
 
-                let type_id = self.shared.messages.stack[i].type_id();
-                if let Some(target) = self.shared.send_targets.get(&type_id) {
-                    let msg = self.shared.messages.stack.remove(i);
-                    self.shared.send_queue.push_back((target.clone(), msg));
+                let type_id = self.messages.stack[i].type_id();
+                if let Some(target) = self.send_targets.get(&type_id) {
+                    let msg = self.messages.stack.remove(i);
+                    self.send_queue.push_back((target.clone(), msg));
                 }
             }
 
-            if !self.shared.messages.stack.is_empty() {
-                let count = self.shared.messages.get_op_count();
-                self.data.handle_messages(&mut self.shared.messages);
-                if self.shared.messages.get_op_count() != count {
-                    self.shared
-                        .pending
-                        .push_back(Pending::Action(Action::UPDATE));
+            if !self.messages.stack.is_empty() {
+                let count = self.messages.get_op_count();
+                data.handle_messages(&mut self.messages);
+                if self.messages.get_op_count() != count {
+                    self.pending.push_back(Pending::Action(Action::UPDATE));
                 }
             }
         }
 
-        self.shared.messages.count = 0;
+        self.messages.count = 0;
     }
 
     pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), Error> {
-        if self.shared.draw.is_none() {
-            let mut draw_shared = self.shared.instance.new_shared(Some(surface))?;
-            draw_shared.set_raster_config(self.shared.config.borrow().font.raster());
-            self.shared.draw = Some(kas::draw::SharedState::new(draw_shared));
+        if self.draw.is_none() {
+            let mut draw_shared = self.instance.new_shared(Some(surface))?;
+            draw_shared.set_raster_config(self.config.borrow().font.raster());
+            self.draw = Some(kas::draw::SharedState::new(draw_shared));
         }
 
         Ok(())
     }
 
     pub(crate) fn suspended(&mut self) {
-        self.data.suspended();
-
-        if let Some(writer) = self.shared.config_writer.as_mut() {
-            self.shared.config.borrow_mut().write_if_dirty(writer);
+        if let Some(writer) = self.config_writer.as_mut() {
+            self.config.borrow_mut().write_if_dirty(writer);
         }
 
         // NOTE: we assume that all windows are suspended when this is called
-        self.shared.draw = None;
+        self.draw = None;
     }
 }
 

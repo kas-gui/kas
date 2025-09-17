@@ -15,7 +15,7 @@ use crate::messages::Erased;
 use crate::window::{PopupDescriptor, WindowId};
 use event_loop::Loop;
 pub(crate) use shared::RunnerT;
-use shared::State;
+use shared::SharedState;
 use std::fmt::Debug;
 pub use window::Window;
 pub(crate) use window::WindowDataErased;
