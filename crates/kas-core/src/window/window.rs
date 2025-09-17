@@ -17,10 +17,30 @@ use crate::{Action, Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 
+// TODO(Rust): replace with type-alias-impl-trait when available
+pub(crate) struct PopupIterator<'a>(usize, &'a [(WindowId, PopupDescriptor, Offset)]);
+impl<'a> Iterator for PopupIterator<'a> {
+    type Item = &'a PopupDescriptor;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let i = self.0;
+        if i < self.1.len() {
+            self.0 = i + 1;
+            Some(&self.1[i].1)
+        } else {
+            None
+        }
+    }
+}
+
 pub(crate) trait WindowErased: Tile {
     fn properties(&self) -> &Properties;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
     fn close_tooltip(&mut self, cx: &mut EventCx);
+
+    /// Iterate over popups
+    #[cfg(feature = "accesskit")]
+    fn iter_popups(&self) -> PopupIterator<'_>;
 }
 
 pub(crate) trait WindowWidget: WindowErased + Widget {}
@@ -346,6 +366,11 @@ mod Window {
         fn close_tooltip(&mut self, cx: &mut EventCx) {
             self.tooltip.close(cx);
         }
+
+        #[cfg(feature = "accesskit")]
+        fn iter_popups(&self) -> PopupIterator<'_> {
+            PopupIterator(0, &self.popups)
+        }
     }
 
     impl std::fmt::Debug for Self {
@@ -558,12 +583,6 @@ impl<Data: 'static> Window<Data> {
         for i in 0..self.popups.len() {
             self.resize_popup(cx, data, i);
         }
-    }
-
-    /// Iterate over popups
-    #[cfg(feature = "accesskit")]
-    pub(crate) fn iter_popups(&self) -> impl Iterator<Item = &PopupDescriptor> {
-        self.popups.iter().map(|(_, popup, _)| popup)
     }
 }
 
