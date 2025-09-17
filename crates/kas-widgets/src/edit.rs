@@ -591,6 +591,12 @@ mod EditBox {
         pub fn guard(&self) -> &G {
             &self.inner.guard
         }
+
+        /// Access the edit guard mutably
+        #[inline]
+        pub fn guard_mut(&mut self) -> &mut G {
+            &mut self.inner.guard
+        }
     }
 }
 
