@@ -13,6 +13,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
 use crate::runner::AppData;
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
+use crate::widgets::adapt::MapAny;
 use crate::widgets::{Border, Label, TitleBar};
 use crate::{Action, Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{autoimpl, impl_self, widget_set_rect};
@@ -411,6 +412,34 @@ mod Window {
                 .field("core", &self.core)
                 .field("title", &self.title_bar.title())
                 .finish()
+        }
+    }
+}
+
+impl Window<()> {
+    /// Map data type.
+    ///
+    /// Expectation: the window will be configured and sized after this.
+    pub(crate) fn map_any<Data: AppData>(self) -> Window<Data> {
+        Window {
+            core: Default::default(),
+            props: self.props,
+            // TODO(opt): maybe we shoudn't box here?
+            inner: Box::new(MapAny::new(self.inner)),
+            tooltip: self.tooltip,
+            title_bar: self.title_bar,
+            b_w: self.b_w,
+            b_e: self.b_e,
+            b_n: self.b_n,
+            b_s: self.b_s,
+            b_nw: self.b_nw,
+            b_ne: self.b_ne,
+            b_sw: self.b_sw,
+            b_se: self.b_se,
+            bar_h: 0,
+            dec_offset: Default::default(),
+            dec_size: Default::default(),
+            popups: self.popups,
         }
     }
 }

@@ -154,13 +154,10 @@ pub(crate) trait RunnerT {
     /// Resize and reposition an existing pop-up
     fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor);
 
-    /// Add a window
-    ///
-    /// Toolkits typically allow windows to be added directly, before start of
-    /// the event loop (e.g. `kas_wgpu::Toolkit::add`).
-    ///
-    /// This method is an alternative allowing a window to be added from an
-    /// event handler, albeit without error handling.
+    /// Add a window to the UI at run-time.
+    fn add_dataless_window(&mut self, window: WindowWidget<()>) -> WindowId;
+
+    /// Add a window to the UI at run-time.
     ///
     /// Safety: this method *should* require generic parameter `Data` (data type
     /// passed to the `Runner`). Realising this would require adding this type
@@ -245,6 +242,13 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
 
     fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor) {
         self.pending.push_back(Pending::RepositionPopup(id, popup));
+    }
+
+    fn add_dataless_window(&mut self, window: WindowWidget<()>) -> WindowId {
+        let id = self.window_id_factory.make_next();
+        self.pending
+            .push_back(Pending::AddWindow(id, window.map_any().boxed()));
+        id
     }
 
     unsafe fn add_window(&mut self, window: WindowWidget<()>, data_type_id: TypeId) -> WindowId {

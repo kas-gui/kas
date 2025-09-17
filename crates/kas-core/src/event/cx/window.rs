@@ -209,18 +209,31 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    /// Add a window
+    /// Add a data-less window
     ///
-    /// Typically an application adds at least one window before the event-loop
-    /// starts (see `kas_wgpu::Toolkit::add`), however that method is not
-    /// available to a running UI. This method may be used instead.
+    /// This method may be used to attach a new window to the UI at run-time.
+    /// This method supports windows which do not take data; see also
+    /// [`Self::add_window`].
+    ///
+    /// Adding the window is infallible. Opening the new window is theoretically
+    /// fallible (unlikely assuming a window has already been opened).
+    #[inline]
+    pub fn add_dataless_window(&mut self, window: Window<()>) -> WindowId {
+        self.runner.add_dataless_window(window)
+    }
+
+    /// Add a window able to access top-level app data
+    ///
+    /// This method may be used to attach a new window to the UI at run-time.
+    /// See also [`Self::add_dataless_window`] for a variant which does not
+    /// require a `Data` parameter.
     ///
     /// Requirement: the type `Data` must match the type of data passed to the
     /// [`Runner`](https://docs.rs/kas/latest/kas/runner/struct.Runner.html)
     /// and used by other windows. If not, a run-time error will result.
     ///
-    /// Caveat: if an error occurs opening the new window it will not be
-    /// reported (except via log messages).
+    /// Adding the window is infallible. Opening the new window is theoretically
+    /// fallible (unlikely assuming a window has already been opened).
     #[inline]
     pub fn add_window<Data: AppData>(&mut self, window: Window<Data>) -> WindowId {
         let data_type_id = std::any::TypeId::of::<Data>();
