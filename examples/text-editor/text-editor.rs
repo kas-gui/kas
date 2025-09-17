@@ -57,12 +57,16 @@ mod Editor {
                 match msg {
                     EditorAction::New => self.editor.set_string(cx, String::new()),
                     EditorAction::Open => {
+                        let mut picker = rfd::AsyncFileDialog::new()
+                            .add_filter("Plain text", &["txt"])
+                            .set_title("Open file");
+                        if let Some(window) = cx.winit_window() {
+                            picker = picker.set_parent(window);
+                        }
                         cx.send_async(self.id(), async {
-                            let opt_file = rfd::AsyncFileDialog::new().add_filter("Plain text", &["txt"])
-                                .set_title("Open file")
-                                .pick_file()
-                                .await;
-                            let Some(file) = opt_file else { return OpenFile(None); };
+                            let Some(file) = picker.pick_file().await else {
+                                return OpenFile(None);
+                            };
 
                             let contents = file.read().await;
                             match String::from_utf8(contents) {
