@@ -7,6 +7,7 @@
 
 use kas::prelude::*;
 use kas::widgets::{Button, EditBox, EditGuard, Filler, column, row};
+use std::error::Error;
 
 #[autoimpl(Clone, Debug)]
 enum EditorAction {
@@ -15,6 +16,9 @@ enum EditorAction {
     Save,
     SaveAs,
 }
+
+#[derive(Debug)]
+struct OpenFile(Option<String>);
 
 fn menus() -> impl Widget<Data = ()> {
     row![
@@ -52,8 +56,34 @@ mod Editor {
             if let Some(msg) = cx.try_pop() {
                 match msg {
                     EditorAction::New => self.editor.set_string(cx, String::new()),
+                    EditorAction::Open => {
+                        cx.send_async(self.id(), async {
+                            let opt_file = rfd::AsyncFileDialog::new().add_filter("Plain text", &["txt"])
+                                .set_title("Open file")
+                                .pick_file()
+                                .await;
+                            let Some(file) = opt_file else { return OpenFile(None); };
+
+                            let contents = file.read().await;
+                            match String::from_utf8(contents) {
+                                Ok(text) => OpenFile(Some(text)),
+                                Err(err) => {
+                                    // TODO: display error in UI
+                                    log::warn!("Input is invalid UTF-8: {err}");
+                                    let mut source = err.source();
+                                    while let Some(err) = source {
+                                        log::warn!("Cause: {err}");
+                                        source = err.source();
+                                    }
+                                    OpenFile(None)
+                                }
+                            }
+                        });
+                    }
                     _ => todo!(),
                 }
+            } else if let Some(OpenFile(Some(text))) = cx.try_pop() {
+                self.editor.set_string(cx, text);
             }
         }
     }
