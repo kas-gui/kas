@@ -50,6 +50,11 @@ mod MessageBox {
         pub fn into_window<A: AppData>(self, title: impl ToString) -> Window<A> {
             Window::new(self.map_any(), title).with_restrictions(true, true)
         }
+
+        /// Display as a modal window with the given `title`
+        pub fn display(self, cx: &mut EventCx, title: impl ToString) {
+            cx.add_dataless_window(self.into_window(title));
+        }
     }
 
     // TODO: call register_nav_fallback and close on Command::Escape, Enter
