@@ -492,11 +492,9 @@ mod EditBox {
 
         fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {
             // Inner may have resized itself, hence we update sizes now.
-            let rect = Rect {
-                pos: self.rect().pos + self.frame_offset,
-                size: self.rect().size - self.frame_size,
-            };
-            let _ = self.scroll.set_sizes(rect.size, self.inner.typeset_size());
+            let pos = self.rect().pos + self.frame_offset;
+            let size = self.update_content_size();
+            let rect = Rect { pos, size };
             self.scroll.scroll(cx, self.id(), rect, scroll);
             self.update_scroll_bar(cx);
         }
@@ -543,6 +541,12 @@ mod EditBox {
             }
         }
 
+        fn update_content_size(&mut self) -> Size {
+            let size = self.rect().size - self.frame_size;
+            let _ = self.scroll.set_sizes(size, self.inner.typeset_size());
+            size
+        }
+
         fn update_scroll_bar(&mut self, cx: &mut EventState) {
             let max_offset = self.scroll.max_offset().1;
             self.vert_bar
@@ -565,7 +569,10 @@ mod EditBox {
         // Set text contents from a `str`
         #[inline]
         pub fn set_str(&mut self, cx: &mut EventState, text: &str) {
-            self.inner.set_str(cx, text);
+            if self.inner.set_str(cx, text) {
+                self.update_content_size();
+                self.update_scroll_bar(cx);
+            }
         }
 
         /// Set text contents from a `String`
@@ -573,13 +580,22 @@ mod EditBox {
         /// This method does not call action handlers on the [`EditGuard`].
         #[inline]
         pub fn set_string(&mut self, cx: &mut EventState, text: String) {
-            self.inner.set_string(cx, text);
+            if self.inner.set_string(cx, text) {
+                self.update_content_size();
+                self.update_scroll_bar(cx);
+            }
         }
 
         /// Access the edit guard
         #[inline]
         pub fn guard(&self) -> &G {
             &self.inner.guard
+        }
+
+        /// Access the edit guard mutably
+        #[inline]
+        pub fn guard_mut(&mut self) -> &mut G {
+            &mut self.inner.guard
         }
     }
 }
@@ -1186,20 +1202,27 @@ mod EditField {
             self.text.clone_string()
         }
 
-        // Set text contents from a `str`
+        /// Set text contents from a `str`
+        ///
+        /// Returns `true` if the text may have changed.
         #[inline]
-        pub fn set_str(&mut self, cx: &mut EventState, text: &str) {
+        pub fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
             if self.text.as_str() != text {
                 self.set_string(cx, text.to_string());
+                true
+            } else {
+                false
             }
         }
 
         /// Set text contents from a `String`
         ///
         /// This method does not call action handlers on the [`EditGuard`].
-        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
+        ///
+        /// Returns `true` if the text is ready and may have changed.
+        pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
             if !self.text.set_string(string) || !self.text.prepare() {
-                return;
+                return false;
             }
 
             self.current.clear_active();
@@ -1209,6 +1232,7 @@ mod EditField {
                 self.set_ime_cursor_area(cx);
             }
             self.set_error_state(cx, false);
+            true
         }
 
         /// Replace selected text

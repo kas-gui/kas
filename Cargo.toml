@@ -161,4 +161,5 @@ members = [
     "crates/kas-widgets",
     "crates/kas-view",
     "examples/mandlebrot",
+    "examples/text-editor",
 ]
