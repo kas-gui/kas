@@ -83,6 +83,7 @@ pub(crate) struct Properties {
     escapable: bool,
     alt_bypass: bool,
     disable_nav_focus: bool,
+    pub(crate) modal_parent: Option<WindowId>,
 }
 
 impl Default for Properties {
@@ -96,6 +97,7 @@ impl Default for Properties {
             escapable: false,
             alt_bypass: false,
             disable_nav_focus: false,
+            modal_parent: None,
         }
     }
 }
@@ -598,6 +600,22 @@ impl<Data: AppData> Window<Data> {
     pub fn without_nav_focus(mut self) -> Self {
         self.props.disable_nav_focus = true;
         self
+    }
+
+    /// Set the window as being modal with the given `parent`
+    ///
+    /// If set, this window is considered modal: it is owned by `parent`, is not
+    /// listed on the taskbar, and prevents interaction with `parent` until it
+    /// has been closed.
+    ///
+    /// **Implementation status:** partially implement on Windows only.
+    /// This feature uses [`WindowAttributesExtWindows`]'s `with_owner_window`
+    /// and `with_skip_taskbar` methods where available.
+    /// Winit currently provides no equivalents for other platforms.
+    ///
+    /// [`WindowAttributesExtWindows`]: https://docs.rs/winit/latest/winit/platform/windows/trait.WindowAttributesExtWindows.html
+    pub fn set_modal_with_parent(&mut self, parent: WindowId) {
+        self.props.modal_parent = Some(parent);
     }
 }
 

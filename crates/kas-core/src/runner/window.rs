@@ -19,6 +19,8 @@ use crate::messages::Erased;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
 use crate::window::{BoxedWindow, Decorations, PopupDescriptor, WindowId, WindowWidget};
 use crate::{Action, Id, Layout, Tile, Widget, autoimpl};
+#[cfg(windows_platform)]
+use raw_window_handle::HasWindowHandle;
 use std::cell::RefCell;
 use std::mem::take;
 use std::rc::Rc;
@@ -82,12 +84,18 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         self.ev_state.window_id
     }
 
+    #[inline]
+    pub(super) fn winit_window(&self) -> Option<&winit::window::Window> {
+        self.window.as_ref().map(|d| &*d.window)
+    }
+
     /// Open (resume) a window
     pub(super) fn resume(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
         el: &ActiveEventLoop,
+        #[allow(unused)] modal_parent: Option<&winit::window::Window>,
     ) -> super::Result<winit::window::WindowId> {
         let time = Instant::now();
 
@@ -152,6 +160,17 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             attrs.max_inner_size = Some(ideal.into());
         } else {
             attrs.max_inner_size = Some(max_size.into());
+        }
+        #[cfg(windows_platform)]
+        if let Some(handle) = modal_parent.and_then(|p| p.window_handle().ok()) {
+            use winit::platform::windows::WindowAttributesExtWindows;
+            attrs = attrs.with_skip_taskbar(true);
+            match handle.as_raw() {
+                raw_window_handle::RawWindowHandle::Win32(h) => {
+                    attrs = attrs.with_owner_window(h.hwnd.get());
+                }
+                _ => (),
+            }
         }
         let window = el.create_window(attrs)?;
 

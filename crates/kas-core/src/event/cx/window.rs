@@ -217,8 +217,16 @@ impl<'a> EventCx<'a> {
     ///
     /// Adding the window is infallible. Opening the new window is theoretically
     /// fallible (unlikely assuming a window has already been opened).
+    ///
+    /// If `modal`, then the new `window` is considered owned by this window
+    /// (the window the calling widget belongs to), preventing interaction with
+    /// this window until the new `window` has been closed. **Note:** this is
+    /// mostly unimplemented; see [`Window::set_modal_with_parent`].
     #[inline]
-    pub fn add_dataless_window(&mut self, window: Window<()>) -> WindowId {
+    pub fn add_dataless_window(&mut self, mut window: Window<()>, modal: bool) -> WindowId {
+        if modal {
+            window.set_modal_with_parent(self.window_id);
+        }
         self.runner.add_dataless_window(window)
     }
 

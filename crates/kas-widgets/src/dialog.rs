@@ -53,7 +53,7 @@ mod MessageBox {
 
         /// Display as a modal window with the given `title`
         pub fn display(self, cx: &mut EventCx, title: impl ToString) {
-            cx.add_dataless_window(self.into_window(title));
+            cx.add_dataless_window(self.into_window(title), true);
         }
     }
 

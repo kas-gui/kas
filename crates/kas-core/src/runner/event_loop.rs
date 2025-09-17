@@ -99,7 +99,7 @@ where
     fn resumed(&mut self, el: &ActiveEventLoop) {
         if self.suspended {
             for window in self.windows.values_mut() {
-                match window.resume(&mut self.shared, &self.data, el) {
+                match window.resume(&mut self.shared, &self.data, el, None) {
                     Ok(winit_id) => {
                         self.id_map.insert(winit_id, window.window_id());
                     }
@@ -220,7 +220,13 @@ where
 
                     log::debug!("Pending: adding window {}", window.widget.title());
                     if !self.suspended {
-                        match window.resume(&mut self.shared, &self.data, el) {
+                        let mut modal_parent = None;
+                        if let Some(id) = window.widget.properties().modal_parent {
+                            if let Some(window) = self.windows.get(&id) {
+                                modal_parent = window.winit_window();
+                            }
+                        }
+                        match window.resume(&mut self.shared, &self.data, el, modal_parent) {
                             Ok(winit_id) => {
                                 self.id_map.insert(winit_id, id);
                             }
