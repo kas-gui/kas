@@ -217,6 +217,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
         let window = Arc::new(window);
         let mut surface = state
+            .shared
             .instance
             .new_surface(window.clone(), self.widget.transparent())?;
         state.resume(&surface)?;

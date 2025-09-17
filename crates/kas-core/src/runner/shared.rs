@@ -25,9 +25,11 @@ use std::task::Waker;
 /// Runner state used by [`RunnerT`]
 pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
+    config_writer: Option<Box<dyn FnMut(&Config)>>,
     pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
+    pub(super) instance: G,
     pub(super) draw: Option<draw::SharedState<G::Shared>>,
     pub(super) theme: T,
     pub(super) messages: MessageStack,
@@ -42,10 +44,8 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
 
 /// Runner state shared by all windows
 pub(super) struct State<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
-    pub(super) instance: G,
     pub(super) shared: SharedState<Data, G, T>,
     pub(super) data: Data,
-    config_writer: Option<Box<dyn FnMut(&Config)>>,
 }
 
 impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> State<Data, G, T>
@@ -74,12 +74,13 @@ where
         };
 
         Ok(State {
-            instance,
             shared: SharedState {
                 platform,
+                config_writer,
                 config,
                 #[cfg(feature = "clipboard")]
                 clipboard,
+                instance,
                 draw: None,
                 theme,
                 messages: MessageStack::new(),
@@ -92,7 +93,6 @@ where
                 window_id_factory,
             },
             data,
-            config_writer,
         })
     }
 
@@ -129,7 +129,7 @@ where
 
     pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), Error> {
         if self.shared.draw.is_none() {
-            let mut draw_shared = self.instance.new_shared(Some(surface))?;
+            let mut draw_shared = self.shared.instance.new_shared(Some(surface))?;
             draw_shared.set_raster_config(self.shared.config.borrow().font.raster());
             self.shared.draw = Some(kas::draw::SharedState::new(draw_shared));
         }
@@ -140,7 +140,7 @@ where
     pub(crate) fn suspended(&mut self) {
         self.data.suspended();
 
-        if let Some(writer) = self.config_writer.as_mut() {
+        if let Some(writer) = self.shared.config_writer.as_mut() {
             self.shared.config.borrow_mut().write_if_dirty(writer);
         }
 
