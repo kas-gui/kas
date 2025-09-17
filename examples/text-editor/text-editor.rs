@@ -6,7 +6,7 @@
 //! A simple text editor
 
 use kas::prelude::*;
-use kas::widgets::{Button, EditBox, EditGuard, Filler, column, row};
+use kas::widgets::{Button, EditBox, EditField, EditGuard, Filler, column, row};
 use std::error::Error;
 
 #[autoimpl(Clone, Debug)]
@@ -30,9 +30,16 @@ fn menus() -> impl Widget<Data = ()> {
     ]
 }
 
-struct Guard;
+#[derive(Default)]
+struct Guard {
+    edited: bool,
+}
 impl EditGuard for Guard {
     type Data = ();
+
+    fn edit(edit: &mut EditField<Self>, _: &mut EventCx<'_>, _: &Self::Data) {
+        edit.guard.edited = true;
+    }
 }
 
 #[impl_self]
@@ -55,7 +62,10 @@ mod Editor {
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, _: &()) {
             if let Some(msg) = cx.try_pop() {
                 match msg {
-                    EditorAction::New => self.editor.set_string(cx, String::new()),
+                    EditorAction::New => {
+                        self.editor.set_string(cx, String::new());
+                        self.editor.guard_mut().edited = false;
+                    }
                     EditorAction::Open => {
                         let mut picker = rfd::AsyncFileDialog::new()
                             .add_filter("Plain text", &["txt"])
@@ -88,6 +98,7 @@ mod Editor {
                 }
             } else if let Some(OpenFile(Some(text))) = cx.try_pop() {
                 self.editor.set_string(cx, text);
+                self.editor.guard_mut().edited = false;
             }
         }
     }
@@ -96,7 +107,7 @@ mod Editor {
         fn new() -> Self {
             Editor {
                 core: Default::default(),
-                editor: EditBox::new(Guard)
+                editor: EditBox::new(Guard::default())
                     .with_multi_line(true)
                     .with_lines(5.0, 20.0)
                     .with_width_em(10.0, 30.0),
