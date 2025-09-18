@@ -97,6 +97,7 @@ mod AlertUnsaved {
     ])]
     pub struct AlertUnsaved<T: FormattableText + 'static> {
         core: widget_core!(),
+        parent: Id,
         title: String,
         #[widget]
         label: Label<T>,
@@ -113,6 +114,7 @@ mod AlertUnsaved {
         pub fn new(message: T) -> Self {
             AlertUnsaved {
                 core: Default::default(),
+                parent: Id::default(),
                 title: "Unsaved changes".to_string(),
                 label: Label::new(message),
                 save: Button::label_msg("&Save", UnsavedResult::Save),
@@ -128,7 +130,10 @@ mod AlertUnsaved {
         }
 
         /// Display as a modal window
-        pub fn display(mut self, cx: &mut EventCx) {
+        ///
+        /// On closure, an [`UnsavedResult`] message will be sent to `parent`.
+        pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
+            self.parent = parent;
             let title = std::mem::take(&mut self.title);
             let window = Window::new(self.map_any(), title).with_restrictions(true, true);
             cx.add_dataless_window(window, true);
@@ -143,17 +148,34 @@ mod AlertUnsaved {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            match event {
-                Event::Command(Command::Escape, _) | Event::Command(Command::Enter, _) => {
-                    cx.window_action(Action::CLOSE);
-                    Used
+            let result = match event {
+                Event::Command(Command::Escape, _) => UnsavedResult::Cancel,
+                Event::Command(Command::Enter, _) => {
+                    if let Some(focus) = cx.nav_focus() {
+                        if self.save.is_ancestor_of(focus) {
+                            UnsavedResult::Save
+                        } else if self.discard.is_ancestor_of(focus) {
+                            UnsavedResult::Discard
+                        } else if self.cancel.is_ancestor_of(focus) {
+                            UnsavedResult::Cancel
+                        } else {
+                            return Unused;
+                        }
+                    } else {
+                        return Unused;
+                    }
                 }
-                _ => Unused,
-            }
+                _ => return Unused,
+            };
+
+            cx.send(self.parent.clone(), result);
+            cx.window_action(Action::CLOSE);
+            Used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(result) = cx.try_pop::<UnsavedResult>() {
+                cx.send(self.parent.clone(), result);
                 cx.action(self, Action::CLOSE);
             }
         }

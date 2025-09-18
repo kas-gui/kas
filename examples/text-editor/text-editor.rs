@@ -50,6 +50,7 @@ mod Editor {
         core: widget_core!(),
         #[widget]
         editor: EditBox<Guard>,
+        pending: Option<EditorAction>,
     }
 
     impl Events for Self {
@@ -60,50 +61,32 @@ mod Editor {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, _: &()) {
-            if let Some(msg) = cx.try_pop() {
+            if let Some(action) = cx.try_pop() {
                 if self.editor.guard().edited
-                    && matches!(msg, EditorAction::New | EditorAction::Open)
+                    && matches!(action, EditorAction::New | EditorAction::Open)
                 {
+                    self.pending = Some(action);
                     dialog::AlertUnsaved::new("The document has been modified. Do you want to save or discard the changes?")
                         .with_title("Open document")
-                        .display(cx);
+                        .display_for(cx, self.id());
                     return;
                 }
 
-                match msg {
-                    EditorAction::New => {
-                        self.editor.set_string(cx, String::new());
-                        self.editor.guard_mut().edited = false;
+                self.do_action(cx, action);
+            } else if let Some(result) = cx.try_pop() {
+                match result {
+                    dialog::UnsavedResult::Save => {
+                        // TODO: save
                     }
-                    EditorAction::Open => {
-                        let mut picker = rfd::AsyncFileDialog::new()
-                            .add_filter("Plain text", &["txt"])
-                            .set_title("Open file");
-                        if let Some(window) = cx.winit_window() {
-                            picker = picker.set_parent(window);
-                        }
-                        cx.send_async(self.id(), async {
-                            let Some(file) = picker.pick_file().await else {
-                                return OpenFile(None);
-                            };
+                    dialog::UnsavedResult::Discard => (),
+                    dialog::UnsavedResult::Cancel => {
+                        self.pending = None;
+                        return;
+                    }
+                }
 
-                            let contents = file.read().await;
-                            match String::from_utf8(contents) {
-                                Ok(text) => OpenFile(Some(text)),
-                                Err(err) => {
-                                    // TODO: display error in UI
-                                    log::warn!("Input is invalid UTF-8: {err}");
-                                    let mut source = err.source();
-                                    while let Some(err) = source {
-                                        log::warn!("Cause: {err}");
-                                        source = err.source();
-                                    }
-                                    OpenFile(None)
-                                }
-                            }
-                        });
-                    }
-                    _ => todo!(),
+                if let Some(action) = self.pending.take() {
+                    self.do_action(cx, action);
                 }
             } else if let Some(OpenFile(Some(text))) = cx.try_pop() {
                 self.editor.set_string(cx, text);
@@ -120,6 +103,45 @@ mod Editor {
                     .with_multi_line(true)
                     .with_lines(5.0, 20.0)
                     .with_width_em(10.0, 30.0),
+                pending: None,
+            }
+        }
+
+        fn do_action(&mut self, cx: &mut EventCx<'_>, action: EditorAction) {
+            match action {
+                EditorAction::New => {
+                    self.editor.set_string(cx, String::new());
+                    self.editor.guard_mut().edited = false;
+                }
+                EditorAction::Open => {
+                    let mut picker = rfd::AsyncFileDialog::new()
+                        .add_filter("Plain text", &["txt"])
+                        .set_title("Open file");
+                    if let Some(window) = cx.winit_window() {
+                        picker = picker.set_parent(window);
+                    }
+                    cx.send_async(self.id(), async {
+                        let Some(file) = picker.pick_file().await else {
+                            return OpenFile(None);
+                        };
+
+                        let contents = file.read().await;
+                        match String::from_utf8(contents) {
+                            Ok(text) => OpenFile(Some(text)),
+                            Err(err) => {
+                                // TODO: display error in UI
+                                log::warn!("Input is invalid UTF-8: {err}");
+                                let mut source = err.source();
+                                while let Some(err) = source {
+                                    log::warn!("Cause: {err}");
+                                    source = err.source();
+                                }
+                                OpenFile(None)
+                            }
+                        }
+                    });
+                }
+                _ => todo!(),
             }
         }
     }
