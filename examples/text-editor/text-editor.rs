@@ -6,6 +6,7 @@
 //! A simple text editor
 
 use kas::prelude::*;
+use kas::widgets::dialog::MessageBox;
 use kas::widgets::{Button, EditBox, EditField, EditGuard, Filler, column, row};
 use std::error::Error;
 
@@ -61,6 +62,14 @@ mod Editor {
 
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, _: &()) {
             if let Some(msg) = cx.try_pop() {
+                if self.editor.guard().edited
+                    && matches!(msg, EditorAction::New | EditorAction::Open)
+                {
+                    MessageBox::new("Refusing operation due to edited contents")
+                        .display(cx, "Open document");
+                    return;
+                }
+
                 match msg {
                     EditorAction::New => {
                         self.editor.set_string(cx, String::new());

@@ -8,11 +8,11 @@
 use super::{EventCx, EventState, PopupState};
 use crate::cast::Cast;
 use crate::event::{Event, FocusSource};
-use crate::runner::{Platform, RunnerT, WindowDataErased};
+use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
-use crate::window::{PopupDescriptor, Window, WindowId};
-use crate::{Action, Id, Tile, Widget};
+use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
+use crate::{Action, Id, Node, Tile};
 use winit::window::ResizeDirection;
 
 impl EventState {
@@ -56,12 +56,11 @@ impl EventState {
     }
 
     /// Handle all pending items before event loop sleeps
-    pub(crate) fn flush_pending<'a, A>(
+    pub(crate) fn flush_pending<'a>(
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
-        win: &mut Window<A>,
-        data: &A,
+        mut node: Node,
     ) -> Action {
         if !self.pending_send_targets.is_empty() {
             runner.set_send_targets(&mut self.pending_send_targets);
@@ -69,23 +68,23 @@ impl EventState {
 
         self.with(runner, window, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
-                cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
+                cx.send_event(node.re(), id, Event::PopupClosed(wid));
             }
 
-            cx.mouse_handle_pending(win.as_node(data));
-            cx.touch_handle_pending(win.as_node(data));
+            cx.mouse_handle_pending(node.re());
+            cx.touch_handle_pending(node.re());
 
             if let Some(id) = cx.pending_update.take() {
-                win.as_node(data).find_node(&id, |node| cx.update(node));
+                node.find_node(&id, |node| cx.update(node));
             }
 
             if cx.pending_nav_focus.is_some() {
-                cx.handle_pending_nav_focus(win.as_node(data));
+                cx.handle_pending_nav_focus(node.re());
             }
 
             // Update sel focus after nav focus:
             if let Some(pending) = cx.pending_sel_focus.take() {
-                cx.set_sel_focus(cx.window, win.as_node(data), pending);
+                cx.set_sel_focus(cx.window, node.re(), pending);
             }
 
             // Poll futures; these may push messages to cx.send_queue.
@@ -105,7 +104,7 @@ impl EventState {
                 }
 
                 if window_id.is_ancestor_of(&id) {
-                    cx.send_or_replay(win.as_node(data), id, msg);
+                    cx.send_or_replay(node.re(), id, msg);
                 } else {
                     cx.runner.send_erased(id, msg);
                 }
@@ -210,20 +209,41 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    /// Add a window
+    /// Add a data-less window
     ///
-    /// Typically an application adds at least one window before the event-loop
-    /// starts (see `kas_wgpu::Toolkit::add`), however that method is not
-    /// available to a running UI. This method may be used instead.
+    /// This method may be used to attach a new window to the UI at run-time.
+    /// This method supports windows which do not take data; see also
+    /// [`Self::add_window`].
+    ///
+    /// Adding the window is infallible. Opening the new window is theoretically
+    /// fallible (unlikely assuming a window has already been opened).
+    ///
+    /// If `modal`, then the new `window` is considered owned by this window
+    /// (the window the calling widget belongs to), preventing interaction with
+    /// this window until the new `window` has been closed. **Note:** this is
+    /// mostly unimplemented; see [`Window::set_modal_with_parent`].
+    #[inline]
+    pub fn add_dataless_window(&mut self, mut window: Window<()>, modal: bool) -> WindowId {
+        if modal {
+            window.set_modal_with_parent(self.window_id);
+        }
+        self.runner.add_dataless_window(window)
+    }
+
+    /// Add a window able to access top-level app data
+    ///
+    /// This method may be used to attach a new window to the UI at run-time.
+    /// See also [`Self::add_dataless_window`] for a variant which does not
+    /// require a `Data` parameter.
     ///
     /// Requirement: the type `Data` must match the type of data passed to the
     /// [`Runner`](https://docs.rs/kas/latest/kas/runner/struct.Runner.html)
     /// and used by other windows. If not, a run-time error will result.
     ///
-    /// Caveat: if an error occurs opening the new window it will not be
-    /// reported (except via log messages).
+    /// Adding the window is infallible. Opening the new window is theoretically
+    /// fallible (unlikely assuming a window has already been opened).
     #[inline]
-    pub fn add_window<Data: 'static>(&mut self, window: Window<Data>) -> WindowId {
+    pub fn add_window<Data: AppData>(&mut self, window: Window<Data>) -> WindowId {
         let data_type_id = std::any::TypeId::of::<Data>();
         unsafe {
             let window: Window<()> = std::mem::transmute(window);
@@ -357,7 +377,7 @@ impl<'a> EventCx<'a> {
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     pub(crate) fn handle_winit<A>(
         &mut self,
-        win: &mut Window<A>,
+        win: &mut dyn WindowWidget<Data = A>,
         data: &A,
         event: winit::event::WindowEvent,
     ) {

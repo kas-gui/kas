@@ -237,7 +237,7 @@ where
             self.state.config().clone(),
             self.state.platform(),
             id,
-            window,
+            window.boxed(),
         ));
         self.windows.push(win);
         id

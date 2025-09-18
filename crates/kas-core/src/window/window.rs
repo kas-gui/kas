@@ -11,17 +11,121 @@ use crate::dir::{Direction, Directional};
 use crate::event::{Command, ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
+use crate::runner::AppData;
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
+use crate::widgets::adapt::MapAny;
 use crate::widgets::{Border, Label, TitleBar};
 use crate::{Action, Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
-use kas_macros::{impl_self, widget_set_rect};
+use kas_macros::{autoimpl, impl_self, widget_set_rect};
 use smallvec::SmallVec;
 
-pub(crate) trait WindowErased {
-    fn as_tile(&self) -> &dyn Tile;
+// TODO(Rust): replace with type-alias-impl-trait when available
+pub(crate) struct PopupIterator<'a>(usize, &'a [(WindowId, PopupDescriptor, Offset)]);
+impl<'a> Iterator for PopupIterator<'a> {
+    type Item = &'a PopupDescriptor;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let i = self.0;
+        if i < self.1.len() {
+            self.0 = i + 1;
+            Some(&self.1[i].1)
+        } else {
+            None
+        }
+    }
+}
+
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
+pub(crate) trait WindowErased: Tile {
+    /// Get the window's title
+    fn title(&self) -> &str;
+    fn properties(&self) -> &Properties;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
     fn close_tooltip(&mut self, cx: &mut EventCx);
+
+    /// Iterate over popups
+    #[cfg(feature = "accesskit")]
+    fn iter_popups(&self) -> PopupIterator<'_>;
 }
+
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
+pub(crate) trait WindowWidget: WindowErased + Widget {
+    /// Add a pop-up as a layer in the current window
+    ///
+    /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
+    fn add_popup(
+        &mut self,
+        cx: &mut ConfigCx,
+        data: &Self::Data,
+        id: WindowId,
+        popup: PopupDescriptor,
+    );
+
+    /// Trigger closure of a pop-up
+    ///
+    /// If the given `id` refers to a pop-up, it should be closed.
+    fn remove_popup(&mut self, cx: &mut ConfigCx, id: WindowId);
+
+    /// Resize popups
+    ///
+    /// This is called immediately after [`Layout::set_rect`] to resize
+    /// existing pop-ups.
+    fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Self::Data);
+}
+
+/// Window properties
+pub(crate) struct Properties {
+    icon: Option<Icon>, // initial icon, if any
+    decorations: Decorations,
+    restrictions: (bool, bool),
+    drag_anywhere: bool,
+    transparent: bool,
+    escapable: bool,
+    alt_bypass: bool,
+    disable_nav_focus: bool,
+    pub(crate) modal_parent: Option<WindowId>,
+}
+
+impl Default for Properties {
+    fn default() -> Self {
+        Properties {
+            icon: None,
+            decorations: Decorations::Server,
+            restrictions: (true, false),
+            drag_anywhere: true,
+            transparent: false,
+            escapable: false,
+            alt_bypass: false,
+            disable_nav_focus: false,
+            modal_parent: None,
+        }
+    }
+}
+
+impl Properties {
+    /// Get the window's icon, if any
+    pub(crate) fn icon(&self) -> Option<Icon> {
+        self.icon.clone()
+    }
+
+    /// Get the preference for window decorations
+    pub fn decorations(&self) -> Decorations {
+        self.decorations
+    }
+
+    /// Get window resizing restrictions: `(restrict_min, restrict_max)`
+    pub fn restrictions(&self) -> (bool, bool) {
+        self.restrictions
+    }
+
+    /// Get whether this window should use transparent rendering
+    pub fn transparent(&self) -> bool {
+        self.transparent
+    }
+}
+
+/// A boxed [`Window`]
+pub struct BoxedWindow<Data: 'static>(pub(crate) Box<dyn WindowWidget<Data = Data>>);
 
 #[impl_self]
 mod Window {
@@ -36,16 +140,9 @@ mod Window {
     ///
     /// [`kas::messages::SetWindowIcon`] may be used to set the icon.
     #[widget]
-    pub struct Window<Data: 'static> {
+    pub struct Window<Data: AppData> {
         core: widget_core!(),
-        icon: Option<Icon>, // initial icon, if any
-        decorations: Decorations,
-        restrictions: (bool, bool),
-        drag_anywhere: bool,
-        transparent: bool,
-        escapable: bool,
-        alt_bypass: bool,
-        disable_nav_focus: bool,
+        props: Properties,
         #[widget]
         inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
@@ -79,7 +176,7 @@ mod Window {
             let mut inner = self.inner.size_rules(sizer.re(), axis);
 
             self.bar_h = 0;
-            if matches!(self.decorations, Decorations::Toolkit) {
+            if matches!(self.props.decorations, Decorations::Toolkit) {
                 let bar = self.title_bar.size_rules(sizer.re(), axis);
                 if axis.is_horizontal() {
                     inner.max_with(bar);
@@ -99,7 +196,10 @@ mod Window {
             let _ = self.b_se.size_rules(sizer.re(), axis);
             let _ = self.b_sw.size_rules(sizer.re(), axis);
 
-            if matches!(self.decorations, Decorations::Border | Decorations::Toolkit) {
+            if matches!(
+                self.props.decorations,
+                Decorations::Border | Decorations::Toolkit
+            ) {
                 let frame = sizer.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
@@ -221,18 +321,18 @@ mod Window {
         type Data = Data;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            if cx.platform().is_wayland() && self.decorations == Decorations::Server {
+            if cx.platform().is_wayland() && self.props.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
                 // usually preferred where supported (e.g. KDE).
-                self.decorations = Decorations::Toolkit;
+                self.props.decorations = Decorations::Toolkit;
             }
 
-            if self.alt_bypass {
+            if self.props.alt_bypass {
                 cx.config.alt_bypass = true;
             }
 
-            if self.disable_nav_focus {
+            if self.props.disable_nav_focus {
                 cx.config.nav_focus = false;
             }
         }
@@ -242,12 +342,12 @@ mod Window {
                 Event::Command(Command::Escape, _) => {
                     if let Some(id) = self.popups.last().map(|desc| desc.0) {
                         cx.close_window(id);
-                    } else if self.escapable {
+                    } else if self.props.escapable {
                         cx.window_action(Action::CLOSE);
                     }
                     Used
                 }
-                Event::PressStart(_) if self.drag_anywhere => {
+                Event::PressStart(_) if self.props.drag_anywhere => {
                     cx.drag_window();
                     Used
                 }
@@ -262,19 +362,19 @@ mod Window {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(kas::messages::SetWindowTitle(title)) = cx.try_pop() {
                 self.title_bar.set_title(cx, title);
-                if self.decorations == Decorations::Server
+                if self.props.decorations == Decorations::Server
                     && let Some(w) = cx.winit_window()
                 {
                     w.set_title(self.title());
                 }
             } else if let Some(kas::messages::SetWindowIcon(icon)) = cx.try_pop() {
-                if self.decorations == Decorations::Server
+                if self.props.decorations == Decorations::Server
                     && let Some(w) = cx.winit_window()
                 {
                     w.set_window_icon(icon);
                     return; // do not set self.icon
                 }
-                self.icon = icon;
+                self.props.icon = icon;
             }
         }
 
@@ -285,8 +385,12 @@ mod Window {
     }
 
     impl WindowErased for Self {
-        fn as_tile(&self) -> &dyn Tile {
-            self
+        fn title(&self) -> &str {
+            self.title_bar.title()
+        }
+
+        fn properties(&self) -> &Properties {
+            &self.props
         }
 
         fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String) {
@@ -296,6 +400,11 @@ mod Window {
 
         fn close_tooltip(&mut self, cx: &mut EventCx) {
             self.tooltip.close(cx);
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn iter_popups(&self) -> PopupIterator<'_> {
+            PopupIterator(0, &self.popups)
         }
     }
 
@@ -309,7 +418,35 @@ mod Window {
     }
 }
 
-impl<Data: 'static> Window<Data> {
+impl Window<()> {
+    /// Map data type.
+    ///
+    /// Expectation: the window will be configured and sized after this.
+    pub(crate) fn map_any<Data: AppData>(self) -> Window<Data> {
+        Window {
+            core: Default::default(),
+            props: self.props,
+            // TODO(opt): maybe we shoudn't box here?
+            inner: Box::new(MapAny::new(self.inner)),
+            tooltip: self.tooltip,
+            title_bar: self.title_bar,
+            b_w: self.b_w,
+            b_e: self.b_e,
+            b_n: self.b_n,
+            b_s: self.b_s,
+            b_nw: self.b_nw,
+            b_ne: self.b_ne,
+            b_sw: self.b_sw,
+            b_se: self.b_se,
+            bar_h: 0,
+            dec_offset: Default::default(),
+            dec_size: Default::default(),
+            popups: self.popups,
+        }
+    }
+}
+
+impl<Data: AppData> Window<Data> {
     /// Construct a window with a `W: Widget` and a title
     pub fn new(ui: impl Widget<Data = Data> + 'static, title: impl ToString) -> Self {
         Self::new_boxed(Box::new(ui), title)
@@ -319,14 +456,7 @@ impl<Data: 'static> Window<Data> {
     pub fn new_boxed(ui: Box<dyn Widget<Data = Data>>, title: impl ToString) -> Self {
         Window {
             core: Default::default(),
-            icon: None,
-            decorations: Decorations::Server,
-            restrictions: (true, false),
-            drag_anywhere: true,
-            transparent: false,
-            escapable: false,
-            alt_bypass: false,
-            disable_nav_focus: false,
+            props: Properties::default(),
             inner: ui,
             tooltip: Popup::new(Label::default(), Direction::Down).align(Align::Center),
             title_bar: TitleBar::new(title),
@@ -345,27 +475,28 @@ impl<Data: 'static> Window<Data> {
         }
     }
 
+    /// Convert into a [`BoxedWindow`]
+    #[inline]
+    pub fn boxed(self) -> BoxedWindow<Data> {
+        BoxedWindow(Box::new(self))
+    }
+
     /// Get the window's title
     pub fn title(&self) -> &str {
         self.title_bar.title()
-    }
-
-    /// Get the window's icon, if any
-    pub(crate) fn icon(&mut self) -> Option<Icon> {
-        self.icon.clone()
     }
 
     /// Set the window's icon (inline)
     ///
     /// Default: `None`
     pub fn with_icon(mut self, icon: impl Into<Option<Icon>>) -> Self {
-        self.icon = icon.into();
+        self.props.icon = icon.into();
         self
     }
 
     /// Get the preference for window decorations
     pub fn decorations(&self) -> Decorations {
-        self.decorations
+        self.props.decorations
     }
 
     /// Set the preference for window decorations
@@ -379,13 +510,13 @@ impl<Data: 'static> Window<Data> {
     ///
     /// Default: [`Decorations::Server`].
     pub fn with_decorations(mut self, decorations: Decorations) -> Self {
-        self.decorations = decorations;
+        self.props.decorations = decorations;
         self
     }
 
     /// Get window resizing restrictions: `(restrict_min, restrict_max)`
     pub fn restrictions(&self) -> (bool, bool) {
-        self.restrictions
+        self.props.restrictions
     }
 
     /// Whether to limit the maximum size of a window
@@ -399,7 +530,7 @@ impl<Data: 'static> Window<Data> {
     /// If `restrict_max`, the window may not be sized above the ideal size.
     /// Default value: `false`.
     pub fn with_restrictions(mut self, restrict_min: bool, restrict_max: bool) -> Self {
-        self.restrictions = (restrict_min, restrict_max);
+        self.props.restrictions = (restrict_min, restrict_max);
         let resizable = !restrict_min || !restrict_max;
         self.b_w.set_resizable(resizable);
         self.b_e.set_resizable(resizable);
@@ -414,7 +545,7 @@ impl<Data: 'static> Window<Data> {
 
     /// Get "drag anywhere" state
     pub fn drag_anywhere(&self) -> bool {
-        self.drag_anywhere
+        self.props.drag_anywhere
     }
 
     /// Whether to allow dragging the window from the background
@@ -422,13 +553,13 @@ impl<Data: 'static> Window<Data> {
     /// If true, then any unhandled click+drag in the window may be used to
     /// drag the window on supported platforms. Default value: `true`.
     pub fn with_drag_anywhere(mut self, drag_anywhere: bool) -> Self {
-        self.drag_anywhere = drag_anywhere;
+        self.props.drag_anywhere = drag_anywhere;
         self
     }
 
     /// Get whether this window should use transparent rendering
     pub fn transparent(&self) -> bool {
-        self.transparent
+        self.props.transparent
     }
 
     /// Whether the window supports transparency
@@ -443,13 +574,13 @@ impl<Data: 'static> Window<Data> {
     ///
     /// Default: `false`.
     pub fn with_transparent(mut self, transparent: bool) -> Self {
-        self.transparent = transparent;
+        self.props.transparent = transparent;
         self
     }
 
     /// Enable closure via <kbd>Escape</kbd> key
     pub fn escapable(mut self) -> Self {
-        self.escapable = true;
+        self.props.escapable = true;
         self
     }
 
@@ -458,7 +589,7 @@ impl<Data: 'static> Window<Data> {
     /// Access keys usually require that <kbd>Alt</kbd> be held. This method
     /// allows access keys to be activated without holding <kbd>Alt</kbd>.
     pub fn with_alt_bypass(mut self) -> Self {
-        self.alt_bypass = true;
+        self.props.alt_bypass = true;
         self
     }
 
@@ -467,20 +598,29 @@ impl<Data: 'static> Window<Data> {
     /// Usually, widgets may be focussed and this focus may be navigated using
     /// the <kbd>Tab</kbd> key. This method prevents widgets from gaining focus.
     pub fn without_nav_focus(mut self) -> Self {
-        self.disable_nav_focus = true;
+        self.props.disable_nav_focus = true;
         self
     }
 
-    /// Add a pop-up as a layer in the current window
+    /// Set the window as being modal with the given `parent`
     ///
-    /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
-    pub(crate) fn add_popup(
-        &mut self,
-        cx: &mut ConfigCx,
-        data: &Data,
-        id: WindowId,
-        popup: PopupDescriptor,
-    ) {
+    /// If set, this window is considered modal: it is owned by `parent`, is not
+    /// listed on the taskbar, and prevents interaction with `parent` until it
+    /// has been closed.
+    ///
+    /// **Implementation status:** partially implement on Windows only.
+    /// This feature uses [`WindowAttributesExtWindows`]'s `with_owner_window`
+    /// and `with_skip_taskbar` methods where available.
+    /// Winit currently provides no equivalents for other platforms.
+    ///
+    /// [`WindowAttributesExtWindows`]: https://docs.rs/winit/latest/winit/platform/windows/trait.WindowAttributesExtWindows.html
+    pub fn set_modal_with_parent(&mut self, parent: WindowId) {
+        self.props.modal_parent = Some(parent);
+    }
+}
+
+impl<Data: AppData> WindowWidget for Window<Data> {
+    fn add_popup(&mut self, cx: &mut ConfigCx, data: &Data, id: WindowId, popup: PopupDescriptor) {
         let index = 'index: {
             for i in 0..self.popups.len() {
                 if self.popups[i].0 == id {
@@ -500,10 +640,7 @@ impl<Data: 'static> Window<Data> {
         cx.action(self.id(), Action::REGION_MOVED);
     }
 
-    /// Trigger closure of a pop-up
-    ///
-    /// If the given `id` refers to a pop-up, it should be closed.
-    pub(crate) fn remove_popup(&mut self, cx: &mut ConfigCx, id: WindowId) {
+    fn remove_popup(&mut self, cx: &mut ConfigCx, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
@@ -513,24 +650,14 @@ impl<Data: 'static> Window<Data> {
         }
     }
 
-    /// Resize popups
-    ///
-    /// This is called immediately after [`Layout::set_rect`] to resize
-    /// existing pop-ups.
-    pub(crate) fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
+    fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
         for i in 0..self.popups.len() {
             self.resize_popup(cx, data, i);
         }
     }
-
-    /// Iterate over popups
-    #[cfg(feature = "accesskit")]
-    pub(crate) fn iter_popups(&self) -> impl Iterator<Item = &PopupDescriptor> {
-        self.popups.iter().map(|(_, popup, _)| popup)
-    }
 }
 
-impl<Data: 'static> Window<Data> {
+impl<Data: AppData> Window<Data> {
     fn resize_popup(&mut self, cx: &mut ConfigCx, data: &Data, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
@@ -577,7 +704,7 @@ impl<Data: 'static> Window<Data> {
         };
         self.popups[index].2 = t;
         let r = r + t; // work in translated coordinate space
-        let result = self.as_node(data).find_node(&popup.id, |mut node| {
+        let result = Widget::as_node(self, data).find_node(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();

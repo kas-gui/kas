@@ -5,7 +5,7 @@
 
 //! [`Runner`] and supporting elements
 
-use super::{AppData, GraphicsInstance, Platform, ProxyAction, Result, State};
+use super::{AppData, GraphicsInstance, Platform, ProxyAction, Result, Shared};
 use crate::config::{Config, ConfigFactory};
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::theme::Theme;
@@ -77,9 +77,8 @@ impl PreLaunchState {
         theme: T,
         windows: Vec<Box<super::Window<Data, G, T>>>,
     ) -> Result<()> {
-        let state = State::new(
+        let shared = Shared::<Data, _, _>::new(
             self.platform,
-            data,
             graphical,
             theme,
             self.config,
@@ -90,7 +89,7 @@ impl PreLaunchState {
             self.window_id_factory,
         )?;
 
-        let mut l = super::Loop::new(windows, state);
+        let mut l = super::Loop::new(windows, shared, data);
         self.el.run_app(&mut l)?;
         Ok(())
     }

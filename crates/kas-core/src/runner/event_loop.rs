@@ -5,7 +5,7 @@
 
 //! Event loop and handling
 
-use super::{AppData, GraphicsInstance, Pending, State};
+use super::{AppData, GraphicsInstance, Pending, Shared};
 use super::{ProxyAction, Window};
 use crate::theme::Theme;
 use crate::{Action, window::WindowId};
@@ -28,8 +28,10 @@ where
     popups: HashMap<WindowId, WindowId>,
     /// Translates our WindowId to winit's
     id_map: HashMap<ww::WindowId, WindowId>,
-    /// Application state passed from Toolkit
-    state: State<A, G, T>,
+    /// Shared application state
+    shared: Shared<A, G, T>,
+    /// User-provided application data
+    data: A,
     /// Timer resumes: (time, window identifier)
     resumes: Vec<(Instant, WindowId)>,
 }
@@ -53,7 +55,7 @@ where
                     first_future = i;
 
                     if let Some(w) = self.windows.get_mut(&resume.1) {
-                        w.update_timer(&mut self.state, resume.0)
+                        w.update_timer(&mut self.shared, &self.data, resume.0)
                     }
                 }
 
@@ -78,7 +80,7 @@ where
             }
             ProxyAction::Message(msg) => {
                 // Message is pushed in self.about_to_wait()
-                self.state.shared.messages.push_erased(msg.into_erased());
+                self.shared.messages.push_erased(msg.into_erased());
             }
             ProxyAction::WakeAsync => {
                 // We don't need to do anything here since about_to_wait will poll all futures.
@@ -88,7 +90,7 @@ where
                 if let Some(id) = self.id_map.get(&window_id)
                     && let Some(window) = self.windows.get_mut(id)
                 {
-                    window.accesskit_event(&mut self.state, event);
+                    window.accesskit_event(&mut self.shared, &self.data, event);
                 }
             }
         }
@@ -97,7 +99,7 @@ where
     fn resumed(&mut self, el: &ActiveEventLoop) {
         if self.suspended {
             for window in self.windows.values_mut() {
-                match window.resume(&mut self.state, el) {
+                match window.resume(&mut self.shared, &self.data, el, None) {
                     Ok(winit_id) => {
                         self.id_map.insert(winit_id, window.window_id());
                     }
@@ -118,7 +120,7 @@ where
     ) {
         if let Some(id) = self.id_map.get(&window_id)
             && let Some(window) = self.windows.get_mut(id)
-            && window.handle_event(&mut self.state, event)
+            && window.handle_event(&mut self.shared, &self.data, event)
         {
             el.set_control_flow(ControlFlow::Poll);
         }
@@ -126,11 +128,11 @@ where
 
     fn about_to_wait(&mut self, el: &ActiveEventLoop) {
         self.flush_pending(el);
-        self.state.handle_messages();
+        self.shared.handle_messages(&mut self.data);
 
         // Distribute inter-window messages.
         // NOTE: sending of these messages will be delayed until the next call to flush_pending.
-        while let Some((id, msg)) = self.state.shared.send_queue.pop_front() {
+        while let Some((id, msg)) = self.shared.send_queue.pop_front() {
             let mut window_id = id.window_id();
             if let Some(win_id) = self.popups.get(&window_id) {
                 window_id = *win_id;
@@ -155,8 +157,9 @@ where
     fn suspended(&mut self, _: &ActiveEventLoop) {
         if !self.suspended {
             self.windows
-                .retain(|_, window| window.suspend(&mut self.state));
-            self.state.suspended();
+                .retain(|_, window| window.suspend(&mut self.shared, &self.data));
+            self.data.suspended();
+            self.shared.suspended();
             self.suspended = true;
         }
     }
@@ -170,20 +173,25 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Loop<A, G, T>
 where
     T::Window: kas::theme::Window,
 {
-    pub(super) fn new(mut windows: Vec<Box<Window<A, G, T>>>, state: State<A, G, T>) -> Self {
+    pub(super) fn new(
+        mut windows: Vec<Box<Window<A, G, T>>>,
+        shared: Shared<A, G, T>,
+        data: A,
+    ) -> Self {
         Loop {
             suspended: true,
             windows: windows.drain(..).map(|w| (w.window_id(), w)).collect(),
             popups: Default::default(),
             id_map: Default::default(),
-            state,
+            shared,
+            data,
             resumes: vec![],
         }
     }
 
     fn flush_pending(&mut self, el: &ActiveEventLoop) {
         let mut close_all = false;
-        while let Some(pending) = self.state.shared.pending.pop_front() {
+        while let Some(pending) = self.shared.pending.pop_front() {
             match pending {
                 Pending::AddPopup(parent_id, id, popup) => {
                     log::debug!("Pending: adding overlay");
@@ -191,22 +199,34 @@ where
                     self.windows
                         .get_mut(&parent_id)
                         .unwrap()
-                        .add_popup(&mut self.state, id, popup);
+                        .add_popup(&self.data, id, popup);
                     self.popups.insert(id, parent_id);
                 }
                 Pending::RepositionPopup(id, popup) => {
                     if let Some(parent_id) = self.popups.get(&id) {
-                        self.windows.get_mut(parent_id).unwrap().add_popup(
-                            &mut self.state,
-                            id,
-                            popup,
-                        );
+                        self.windows
+                            .get_mut(parent_id)
+                            .unwrap()
+                            .add_popup(&self.data, id, popup);
                     }
                 }
-                Pending::AddWindow(id, mut window) => {
+                Pending::AddWindow(id, window) => {
+                    let mut window = Box::new(Window::new(
+                        self.shared.config.clone(),
+                        self.shared.platform,
+                        id,
+                        window,
+                    ));
+
                     log::debug!("Pending: adding window {}", window.widget.title());
                     if !self.suspended {
-                        match window.resume(&mut self.state, el) {
+                        let mut modal_parent = None;
+                        if let Some(id) = window.widget.properties().modal_parent {
+                            if let Some(window) = self.windows.get(&id) {
+                                modal_parent = window.winit_window();
+                            }
+                        }
+                        match window.resume(&mut self.shared, &self.data, el, modal_parent) {
                             Ok(winit_id) => {
                                 self.id_map.insert(winit_id, id);
                             }
@@ -233,7 +253,7 @@ where
                         el.set_control_flow(ControlFlow::Poll);
                     } else {
                         for (_, window) in self.windows.iter_mut() {
-                            window.handle_action(&mut self.state, action);
+                            window.handle_action(&mut self.shared, &self.data, action);
                         }
                     }
                 }
@@ -243,18 +263,18 @@ where
 
         self.resumes.clear();
         self.windows.retain(|window_id, window| {
-            let (action, resume) = window.flush_pending(&mut self.state);
+            let (action, resume) = window.flush_pending(&mut self.shared, &self.data);
             if let Some(instant) = resume {
                 self.resumes.push((instant, *window_id));
             }
 
             if close_all || action.contains(Action::CLOSE) {
-                window.suspend(&mut self.state);
+                window.suspend(&mut self.shared, &self.data);
 
                 // Call flush_pending again since suspend may queue messages.
                 // We don't care about the returned Action or resume times since
                 // the window is being destroyed.
-                let _ = window.flush_pending(&mut self.state);
+                let _ = window.flush_pending(&mut self.shared, &self.data);
 
                 self.id_map.retain(|_, v| v != window_id);
                 false

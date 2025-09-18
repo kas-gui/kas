@@ -5,8 +5,8 @@
 
 //! Public items common to all backends
 
-use crate::draw::DrawSharedImpl;
-use crate::draw::{DrawIface, WindowCommon, color::Rgba};
+use crate::draw::color::Rgba;
+use crate::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use crate::geom::Size;
 use raw_window_handle as rwh;
 use std::time::Instant;

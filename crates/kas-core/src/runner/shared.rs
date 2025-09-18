@@ -7,13 +7,13 @@
 
 use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform};
 use crate::config::Config;
-use crate::draw::{DrawShared, DrawSharedImpl};
+use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
 use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
-use crate::{Action, Id, draw};
+use crate::{Action, Id};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -22,16 +22,18 @@ use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
-/// Runner state used by [`RunnerT`]
-pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
+/// Runner state shared by all windows and used by [`RunnerT`]
+pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
+    config_writer: Option<Box<dyn FnMut(&Config)>>,
     pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
-    pub(super) draw: Option<draw::SharedState<G::Shared>>,
+    pub(super) instance: G,
+    pub(super) draw: Option<SharedState<G::Shared>>,
     pub(super) theme: T,
     pub(super) messages: MessageStack,
-    pub(super) pending: VecDeque<Pending<Data, G, T>>,
+    pub(super) pending: VecDeque<Pending<Data>>,
     pub(super) send_queue: VecDeque<(Id, Erased)>,
     send_targets: HashMap<TypeId, Id>,
     pub(super) waker: Waker,
@@ -40,22 +42,13 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
     window_id_factory: WindowIdFactory,
 }
 
-/// Runner state shared by all windows
-pub(super) struct State<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
-    pub(super) instance: G,
-    pub(super) shared: SharedState<Data, G, T>,
-    pub(super) data: Data,
-    config_writer: Option<Box<dyn FnMut(&Config)>>,
-}
-
-impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> State<Data, G, T>
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Shared<A, G, T>
 where
     T::Window: kas::theme::Window,
 {
     /// Construct
     pub(super) fn new(
         platform: Platform,
-        data: Data,
         instance: G,
         theme: T,
         config: Rc<RefCell<Config>>,
@@ -73,79 +66,72 @@ where
             }
         };
 
-        Ok(State {
-            instance,
-            shared: SharedState {
-                platform,
-                config,
-                #[cfg(feature = "clipboard")]
-                clipboard,
-                draw: None,
-                theme,
-                messages: MessageStack::new(),
-                pending: Default::default(),
-                send_queue: Default::default(),
-                send_targets: Default::default(),
-                waker,
-                #[cfg(feature = "accesskit")]
-                proxy,
-                window_id_factory,
-            },
-            data,
+        Ok(Shared {
+            platform,
             config_writer,
+            config,
+            #[cfg(feature = "clipboard")]
+            clipboard,
+            instance,
+            draw: None,
+            theme,
+            messages: MessageStack::new(),
+            pending: Default::default(),
+            send_queue: Default::default(),
+            send_targets: Default::default(),
+            waker,
+            #[cfg(feature = "accesskit")]
+            proxy,
+            window_id_factory,
         })
     }
 
     /// Flush pending messages
-    pub(crate) fn handle_messages(&mut self) {
-        if self.shared.messages.reset_and_has_any() {
-            let mut i = self.shared.messages.stack.len();
+    pub(crate) fn handle_messages<Data: AppData>(&mut self, data: &mut Data) {
+        if self.messages.reset_and_has_any() {
+            let mut i = self.messages.stack.len();
             while i > 0 {
                 i -= 1;
-                if self.shared.messages.stack[i].is_sent() {
+                if self.messages.stack[i].is_sent() {
                     continue;
                 }
 
-                let type_id = self.shared.messages.stack[i].type_id();
-                if let Some(target) = self.shared.send_targets.get(&type_id) {
-                    let msg = self.shared.messages.stack.remove(i);
-                    self.shared.send_queue.push_back((target.clone(), msg));
+                let type_id = self.messages.stack[i].type_id();
+                if let Some(target) = self.send_targets.get(&type_id) {
+                    let msg = self.messages.stack.remove(i);
+                    self.send_queue.push_back((target.clone(), msg));
                 }
             }
 
-            if !self.shared.messages.stack.is_empty() {
-                let count = self.shared.messages.get_op_count();
-                self.data.handle_messages(&mut self.shared.messages);
-                if self.shared.messages.get_op_count() != count {
-                    self.shared
-                        .pending
-                        .push_back(Pending::Action(Action::UPDATE));
+            if !self.messages.stack.is_empty() {
+                let count = self.messages.get_op_count();
+                data.handle_messages(&mut self.messages);
+                if self.messages.get_op_count() != count {
+                    self.pending.push_back(Pending::Action(Action::UPDATE));
                 }
             }
         }
 
-        self.shared.messages.count = 0;
+        self.messages.count = 0;
     }
 
     pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), Error> {
-        if self.shared.draw.is_none() {
+        if self.draw.is_none() {
             let mut draw_shared = self.instance.new_shared(Some(surface))?;
-            draw_shared.set_raster_config(self.shared.config.borrow().font.raster());
-            self.shared.draw = Some(kas::draw::SharedState::new(draw_shared));
+            draw_shared.set_raster_config(self.config.borrow().font.raster());
+            self.draw = Some(SharedState::new(draw_shared));
         }
 
         Ok(())
     }
 
     pub(crate) fn suspended(&mut self) {
-        self.data.suspended();
-
         if let Some(writer) = self.config_writer.as_mut() {
-            self.shared.config.borrow_mut().write_if_dirty(writer);
+            self.config.borrow_mut().write_if_dirty(writer);
         }
 
         // NOTE: we assume that all windows are suspended when this is called
-        self.shared.draw = None;
+        self.draw = None;
     }
 }
 
@@ -168,13 +154,10 @@ pub(crate) trait RunnerT {
     /// Resize and reposition an existing pop-up
     fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor);
 
-    /// Add a window
-    ///
-    /// Toolkits typically allow windows to be added directly, before start of
-    /// the event loop (e.g. `kas_wgpu::Toolkit::add`).
-    ///
-    /// This method is an alternative allowing a window to be added from an
-    /// event handler, albeit without error handling.
+    /// Add a window to the UI at run-time.
+    fn add_dataless_window(&mut self, window: WindowWidget<()>) -> WindowId;
+
+    /// Add a window to the UI at run-time.
     ///
     /// Safety: this method *should* require generic parameter `Data` (data type
     /// passed to the `Runner`). Realising this would require adding this type
@@ -249,7 +232,7 @@ pub(crate) trait RunnerT {
     fn waker(&self) -> &std::task::Waker;
 }
 
-impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
+impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared<Data, G, T> {
     fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId {
         let id = self.window_id_factory.make_next();
         self.pending
@@ -259,6 +242,13 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
 
     fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor) {
         self.pending.push_back(Pending::RepositionPopup(id, popup));
+    }
+
+    fn add_dataless_window(&mut self, window: WindowWidget<()>) -> WindowId {
+        let id = self.window_id_factory.make_next();
+        self.pending
+            .push_back(Pending::AddWindow(id, window.map_any().boxed()));
+        id
     }
 
     unsafe fn add_window(&mut self, window: WindowWidget<()>, data_type_id: TypeId) -> WindowId {
@@ -276,13 +266,8 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
         let id = self.window_id_factory.make_next();
-        let window = Box::new(super::Window::new(
-            self.config.clone(),
-            self.platform,
-            id,
-            window,
-        ));
-        self.pending.push_back(Pending::AddWindow(id, window));
+        self.pending
+            .push_back(Pending::AddWindow(id, window.boxed()));
         id
     }
 
