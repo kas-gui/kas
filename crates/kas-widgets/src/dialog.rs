@@ -80,6 +80,86 @@ mod MessageBox {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum UnsavedResult {
+    Save,
+    Discard,
+    Cancel,
+}
+
+#[impl_self]
+mod AlertUnsaved {
+    /// Alert user that they have unsaved changes
+    #[widget]
+    #[layout(column! [
+        self.label,
+        row![self.save, self.discard, self.cancel],
+    ])]
+    pub struct AlertUnsaved<T: FormattableText + 'static> {
+        core: widget_core!(),
+        title: String,
+        #[widget]
+        label: Label<T>,
+        #[widget]
+        save: Button<AccessLabel>,
+        #[widget]
+        discard: Button<AccessLabel>,
+        #[widget]
+        cancel: Button<AccessLabel>,
+    }
+
+    impl Self {
+        /// Construct
+        pub fn new(message: T) -> Self {
+            AlertUnsaved {
+                core: Default::default(),
+                title: "Unsaved changes".to_string(),
+                label: Label::new(message),
+                save: Button::label_msg("&Save", UnsavedResult::Save),
+                discard: Button::label_msg("&Discard", UnsavedResult::Discard),
+                cancel: Button::label_msg("&Cancel", UnsavedResult::Cancel),
+            }
+        }
+
+        /// Set a custom window title
+        pub fn with_title(mut self, title: impl ToString) -> Self {
+            self.title = title.to_string();
+            self
+        }
+
+        /// Display as a modal window
+        pub fn display(mut self, cx: &mut EventCx) {
+            let title = std::mem::take(&mut self.title);
+            let window = Window::new(self.map_any(), title).with_restrictions(true, true);
+            cx.add_dataless_window(window, true);
+        }
+    }
+
+    impl Events for Self {
+        type Data = ();
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            match event {
+                Event::Command(Command::Escape, _) | Event::Command(Command::Enter, _) => {
+                    cx.window_action(Action::CLOSE);
+                    Used
+                }
+                _ => Unused,
+            }
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(result) = cx.try_pop::<UnsavedResult>() {
+                cx.action(self, Action::CLOSE);
+            }
+        }
+    }
+}
+
 /// Message sent by [`TextEdit`] on closure.
 #[derive(Debug)]
 pub enum TextEditResult {

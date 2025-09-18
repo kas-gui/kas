@@ -6,8 +6,7 @@
 //! A simple text editor
 
 use kas::prelude::*;
-use kas::widgets::dialog::MessageBox;
-use kas::widgets::{Button, EditBox, EditField, EditGuard, Filler, column, row};
+use kas::widgets::{Button, EditBox, EditField, EditGuard, Filler, column, dialog, row};
 use std::error::Error;
 
 #[autoimpl(Clone, Debug)]
@@ -65,8 +64,9 @@ mod Editor {
                 if self.editor.guard().edited
                     && matches!(msg, EditorAction::New | EditorAction::Open)
                 {
-                    MessageBox::new("Refusing operation due to edited contents")
-                        .display(cx, "Open document");
+                    dialog::AlertUnsaved::new("The document has been modified. Do you want to save or discard the changes?")
+                        .with_title("Open document")
+                        .display(cx);
                     return;
                 }
 
