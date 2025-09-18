@@ -7,6 +7,7 @@
 
 use kas::prelude::*;
 use kas::widgets::{Button, EditBox, EditField, EditGuard, Filler, column, dialog, row};
+use rfd::FileHandle;
 use std::error::Error;
 
 #[autoimpl(Clone, Debug)]
@@ -18,7 +19,10 @@ enum EditorAction {
 }
 
 #[derive(Debug)]
-struct OpenFile(Option<String>);
+struct OpenFile(Option<FileHandle>);
+
+#[derive(Debug)]
+struct SetContents(Option<String>);
 
 fn menus() -> impl Widget<Data = ()> {
     row![
@@ -51,6 +55,7 @@ mod Editor {
         #[widget]
         editor: EditBox<Guard>,
         pending: Option<EditorAction>,
+        file: Option<FileHandle>,
     }
 
     impl Events for Self {
@@ -88,7 +93,28 @@ mod Editor {
                 if let Some(action) = self.pending.take() {
                     self.do_action(cx, action);
                 }
-            } else if let Some(OpenFile(Some(text))) = cx.try_pop() {
+            } else if let Some(OpenFile(file)) = cx.try_pop() {
+                // Assume that no actions handled since the open was requested
+                self.file = file.clone();
+                if let Some(file) = file {
+                    cx.send_async(self.id(), async move {
+                        let contents = file.read().await;
+                        match String::from_utf8(contents) {
+                            Ok(text) => SetContents(Some(text)),
+                            Err(err) => {
+                                // TODO: display error in UI
+                                log::warn!("Input is invalid UTF-8: {err}");
+                                let mut source = err.source();
+                                while let Some(err) = source {
+                                    log::warn!("Cause: {err}");
+                                    source = err.source();
+                                }
+                                SetContents(None)
+                            }
+                        }
+                    });
+                }
+            } else if let Some(SetContents(Some(text))) = cx.try_pop() {
                 self.editor.set_string(cx, text);
                 self.editor.guard_mut().edited = false;
             }
@@ -104,6 +130,7 @@ mod Editor {
                     .with_lines(5.0, 20.0)
                     .with_width_em(10.0, 30.0),
                 pending: None,
+                file: None,
             }
         }
 
@@ -120,26 +147,7 @@ mod Editor {
                     if let Some(window) = cx.winit_window() {
                         picker = picker.set_parent(window);
                     }
-                    cx.send_async(self.id(), async {
-                        let Some(file) = picker.pick_file().await else {
-                            return OpenFile(None);
-                        };
-
-                        let contents = file.read().await;
-                        match String::from_utf8(contents) {
-                            Ok(text) => OpenFile(Some(text)),
-                            Err(err) => {
-                                // TODO: display error in UI
-                                log::warn!("Input is invalid UTF-8: {err}");
-                                let mut source = err.source();
-                                while let Some(err) = source {
-                                    log::warn!("Cause: {err}");
-                                    source = err.source();
-                                }
-                                OpenFile(None)
-                            }
-                        }
-                    });
+                    cx.send_async(self.id(), async { OpenFile(picker.pick_file().await) });
                 }
                 _ => todo!(),
             }
