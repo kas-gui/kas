@@ -10,7 +10,7 @@ use kas::widgets::{Button, EditBox, EditField, EditGuard, Filler, column, dialog
 use rfd::FileHandle;
 use std::error::Error;
 
-#[autoimpl(Clone, Debug)]
+#[autoimpl(Clone, Debug, PartialEq, Eq)]
 enum EditorAction {
     New,
     Open,
@@ -22,7 +22,13 @@ enum EditorAction {
 struct OpenFile(Option<FileHandle>);
 
 #[derive(Debug)]
+struct SaveFile(Option<FileHandle>);
+
+#[derive(Debug)]
 struct SetContents(Option<String>);
+
+#[derive(Debug)]
+struct Saved(std::io::Result<()>);
 
 fn menus() -> impl Widget<Data = ()> {
     row![
@@ -79,9 +85,12 @@ mod Editor {
 
                 self.do_action(cx, action);
             } else if let Some(result) = cx.try_pop() {
+                // Handle the result of AlertUnsaved dialog:
                 match result {
                     dialog::UnsavedResult::Save => {
-                        // TODO: save
+                        // self.pending will be handled by Saved handler
+                        self.do_action(cx, EditorAction::Save);
+                        return;
                     }
                     dialog::UnsavedResult::Discard => (),
                     dialog::UnsavedResult::Cancel => {
@@ -114,9 +123,29 @@ mod Editor {
                         }
                     });
                 }
+            } else if let Some(SaveFile(file)) = cx.try_pop() {
+                self.file = file;
+                self.do_action(cx, EditorAction::Save);
             } else if let Some(SetContents(Some(text))) = cx.try_pop() {
                 self.editor.set_string(cx, text);
                 self.editor.guard_mut().edited = false;
+            } else if let Some(Saved(result)) = cx.try_pop() {
+                match result {
+                    Ok(()) => self.editor.guard_mut().edited = false,
+                    Err(err) => {
+                        // TODO: display error in UI
+                        log::warn!("File save error: {err}");
+                        let mut source = err.source();
+                        while let Some(err) = source {
+                            log::warn!("Cause: {err}");
+                            source = err.source();
+                        }
+                    }
+                }
+
+                if let Some(action) = self.pending.take() {
+                    self.do_action(cx, action);
+                }
             }
         }
     }
@@ -139,6 +168,7 @@ mod Editor {
                 EditorAction::New => {
                     self.editor.set_string(cx, String::new());
                     self.editor.guard_mut().edited = false;
+                    self.file = None;
                 }
                 EditorAction::Open => {
                     let mut picker = rfd::AsyncFileDialog::new()
@@ -149,7 +179,24 @@ mod Editor {
                     }
                     cx.send_async(self.id(), async { OpenFile(picker.pick_file().await) });
                 }
-                _ => todo!(),
+                EditorAction::Save | EditorAction::SaveAs => {
+                    if action == EditorAction::Save
+                        && let Some(file) = self.file.clone()
+                    {
+                        let contents = self.editor.clone_string();
+                        cx.send_async(self.id(), async move {
+                            Saved(file.write(contents.as_str().as_bytes()).await)
+                        });
+                    } else {
+                        let mut picker = rfd::AsyncFileDialog::new()
+                            .add_filter("Plain text", &["txt"])
+                            .set_title("Save file");
+                        if let Some(window) = cx.winit_window() {
+                            picker = picker.set_parent(window);
+                        }
+                        cx.send_async(self.id(), async { SaveFile(picker.save_file().await) });
+                    }
+                }
             }
         }
     }
