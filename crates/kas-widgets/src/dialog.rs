@@ -13,8 +13,7 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
-use crate::{Button, EditBox, Filler, Label, adapt::AdaptWidgetAny};
-use kas::event::NamedKey;
+use crate::{AccessLabel, Button, EditBox, Filler, Label, adapt::AdaptWidgetAny};
 use kas::prelude::*;
 use kas::runner::AppData;
 use kas::text::format::FormattableText;
@@ -32,7 +31,7 @@ mod MessageBox {
         #[widget]
         label: Label<T>,
         #[widget]
-        button: Button<Label<&'static str>>,
+        button: Button<AccessLabel>,
     }
 
     impl Self {
@@ -41,8 +40,7 @@ mod MessageBox {
             MessageBox {
                 core: Default::default(),
                 label: Label::new(message),
-                button: Button::new_msg(Label::new("Ok"), MessageBoxOk)
-                    .with_access_key(NamedKey::Enter.into()),
+                button: Button::label_msg("&Ok", MessageBoxOk),
             }
         }
 
@@ -57,7 +55,6 @@ mod MessageBox {
         }
     }
 
-    // TODO: call register_nav_fallback and close on Command::Escape, Enter
     impl Events for Self {
         type Data = ();
 
