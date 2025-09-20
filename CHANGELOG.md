@@ -2,6 +2,25 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1] — 2025-09-20
+
+### Window management
+
+-   Add fn `EventCx::add_dataless_window`, similar to fn `add_window` but without requiring a `Data` type parameter (#560)
+-   Add fn `Window::set_modal_with_parent` to support modal windows at the API level (mostly unimplemented) (#560)
+
+### Message handling
+
+-   Support sending all messages of a specifc type to a pre-set widget (#557)
+-   Support sending messages to a widget from another window (#557)
+
+### Specific widgets
+
+-   Let fns `EditBox::set_str` and `set_string` update the content size and scroll bar (#559)
+-   Add fn `EditBox::guard_mut` (#559)
+-   Add fn `dialog::MessageBox::display` to construct as a modal window (#560)
+-   Add dialogs `AlertUnsaved` and `AlertError` along with result types (#561)
+
 ## [0.16.0] — 2025-09-13
 
 A major new feature is support for screen readers and similar accessibility tools via AccessKit. The result is reasonably functional, though does not yet support input (`EditField`) contents. Implementation in #521, #527; tracking issue is #509.
