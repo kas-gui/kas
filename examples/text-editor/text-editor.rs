@@ -8,7 +8,6 @@
 use kas::prelude::*;
 use kas::widgets::{Button, EditBox, EditField, EditGuard, Filler, column, dialog, row};
 use rfd::FileHandle;
-use std::error::Error;
 
 #[autoimpl(Clone, Debug, PartialEq, Eq)]
 enum EditorAction {
@@ -25,7 +24,7 @@ struct OpenFile(Option<FileHandle>);
 struct SaveFile(Option<FileHandle>);
 
 #[derive(Debug)]
-struct SetContents(Option<String>);
+struct SetContents(Vec<u8>);
 
 #[derive(Debug)]
 struct Saved(std::io::Result<()>);
@@ -106,43 +105,37 @@ mod Editor {
                 // Assume that no actions handled since the open was requested
                 self.file = file.clone();
                 if let Some(file) = file {
-                    cx.send_async(self.id(), async move {
-                        let contents = file.read().await;
-                        match String::from_utf8(contents) {
-                            Ok(text) => SetContents(Some(text)),
-                            Err(err) => {
-                                // TODO: display error in UI
-                                log::warn!("Input is invalid UTF-8: {err}");
-                                let mut source = err.source();
-                                while let Some(err) = source {
-                                    log::warn!("Cause: {err}");
-                                    source = err.source();
-                                }
-                                SetContents(None)
-                            }
-                        }
-                    });
+                    cx.send_async(self.id(), async move { SetContents(file.read().await) });
                 }
             } else if let Some(SaveFile(file)) = cx.try_pop() {
                 self.file = file;
                 self.do_action(cx, EditorAction::Save);
-            } else if let Some(SetContents(Some(text))) = cx.try_pop() {
+            } else if let Some(SetContents(bytes)) = cx.try_pop() {
+                let text = match String::from_utf8(bytes) {
+                    Ok(text) => text,
+                    Err(err) => {
+                        dialog::AlertError::new("Input is invalid UTF-8:", &err)
+                            .display_for(cx, self.id());
+                        String::new()
+                    }
+                };
+
                 self.editor.set_string(cx, text);
                 self.editor.guard_mut().edited = false;
             } else if let Some(Saved(result)) = cx.try_pop() {
                 match result {
                     Ok(()) => self.editor.guard_mut().edited = false,
                     Err(err) => {
-                        // TODO: display error in UI
-                        log::warn!("File save error: {err}");
-                        let mut source = err.source();
-                        while let Some(err) = source {
-                            log::warn!("Cause: {err}");
-                            source = err.source();
-                        }
+                        dialog::AlertError::new("Error saving file:", &err)
+                            .display_for(cx, self.id());
+                        return;
                     }
                 }
 
+                if let Some(action) = self.pending.take() {
+                    self.do_action(cx, action);
+                }
+            } else if let Some(dialog::ErrorResult) = cx.try_pop() {
                 if let Some(action) = self.pending.take() {
                     self.do_action(cx, action);
                 }

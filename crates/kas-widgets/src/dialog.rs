@@ -13,10 +13,12 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
-use crate::{AccessLabel, Button, EditBox, Filler, Label, adapt::AdaptWidgetAny};
+use crate::{AccessLabel, Button, EditBox, Filler, Label, ScrollLabel, adapt::AdaptWidgetAny};
 use kas::prelude::*;
 use kas::runner::AppData;
 use kas::text::format::FormattableText;
+use std::error::Error;
+use std::fmt::Write;
 
 #[derive(Copy, Clone, Debug)]
 struct MessageBoxOk;
@@ -74,6 +76,96 @@ mod MessageBox {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(MessageBoxOk) = cx.try_pop() {
+                cx.action(self, Action::CLOSE);
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct ErrorResult;
+
+#[impl_self]
+mod AlertError {
+    /// Alert user about an error
+    #[widget]
+    #[layout(column! [
+        self.label,
+        self.details,
+        self.ok,
+    ])]
+    pub struct AlertError<T: FormattableText + 'static> {
+        core: widget_core!(),
+        parent: Id,
+        title: String,
+        #[widget]
+        label: Label<T>,
+        #[widget]
+        details: ScrollLabel<String>,
+        #[widget]
+        ok: Button<AccessLabel>,
+    }
+
+    impl Self {
+        /// Construct
+        pub fn new(message: T, error: &dyn Error) -> Self {
+            let mut details = format!("{error}");
+            let mut source = error.source();
+            while let Some(error) = source {
+                write!(&mut details, "\nCause: {error}").expect("write! to String failed");
+                source = error.source();
+            }
+
+            AlertError {
+                core: Default::default(),
+                parent: Id::default(),
+                title: "Error".to_string(),
+                label: Label::new(message),
+                details: ScrollLabel::new(details),
+                ok: Button::label_msg("&Ok", ErrorResult),
+            }
+        }
+
+        /// Set a custom window title
+        pub fn with_title(mut self, title: impl ToString) -> Self {
+            self.title = title.to_string();
+            self
+        }
+
+        /// Display as a modal window
+        ///
+        /// On closure, an [`ErrorResult`] message will be sent to `parent`.
+        pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
+            self.parent = parent;
+            let title = std::mem::take(&mut self.title);
+            let window = Window::new(self.map_any(), title).with_restrictions(true, true);
+            cx.add_dataless_window(window, true);
+        }
+    }
+
+    impl Events for Self {
+        type Data = ();
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            let result = match event {
+                Event::Command(Command::Escape, _) | Event::Command(Command::Enter, _) => {
+                    ErrorResult
+                }
+                _ => return Unused,
+            };
+
+            cx.send(self.parent.clone(), result);
+            cx.window_action(Action::CLOSE);
+            Used
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(result) = cx.try_pop::<ErrorResult>() {
+                cx.send(self.parent.clone(), result);
                 cx.action(self, Action::CLOSE);
             }
         }
