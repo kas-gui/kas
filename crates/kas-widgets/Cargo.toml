@@ -1,6 +1,6 @@
 [package]
 name = "kas-widgets"
-version = "0.16.0"
+version = "0.16.1"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -27,7 +27,7 @@ kas-macros = { version = "0.16.0", path = "../kas-macros" }
 linear-map = "1.2.0"
 
 # We must rename this package since macros expect kas to be in scope:
-kas = { version = "0.16.0", package = "kas-core", path = "../kas-core" }
+kas = { version = "0.16.1", package = "kas-core", path = "../kas-core" }
 
 [lints.clippy]
 collapsible_else_if = "allow"
