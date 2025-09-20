@@ -83,6 +83,7 @@ mod Editor {
                 }
 
                 self.do_action(cx, action);
+                return;
             } else if let Some(result) = cx.try_pop() {
                 // Handle the result of AlertUnsaved dialog:
                 match result {
@@ -97,19 +98,17 @@ mod Editor {
                         return;
                     }
                 }
-
-                if let Some(action) = self.pending.take() {
-                    self.do_action(cx, action);
-                }
             } else if let Some(OpenFile(file)) = cx.try_pop() {
                 // Assume that no actions handled since the open was requested
                 self.file = file.clone();
                 if let Some(file) = file {
                     cx.send_async(self.id(), async move { SetContents(file.read().await) });
                 }
+                return;
             } else if let Some(SaveFile(file)) = cx.try_pop() {
                 self.file = file;
                 self.do_action(cx, EditorAction::Save);
+                return;
             } else if let Some(SetContents(bytes)) = cx.try_pop() {
                 let text = match String::from_utf8(bytes) {
                     Ok(text) => text,
@@ -131,14 +130,13 @@ mod Editor {
                         return;
                     }
                 }
-
-                if let Some(action) = self.pending.take() {
-                    self.do_action(cx, action);
-                }
             } else if let Some(dialog::ErrorResult) = cx.try_pop() {
-                if let Some(action) = self.pending.take() {
-                    self.do_action(cx, action);
-                }
+            } else {
+                return;
+            }
+
+            if let Some(action) = self.pending.take() {
+                self.do_action(cx, action);
             }
         }
     }
