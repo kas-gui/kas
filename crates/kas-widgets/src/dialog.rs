@@ -13,11 +13,12 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
-use crate::{Button, EditBox, Filler, Label, adapt::AdaptWidgetAny};
-use kas::event::NamedKey;
+use crate::{AccessLabel, Button, EditBox, Filler, Label, ScrollLabel, adapt::AdaptWidgetAny};
 use kas::prelude::*;
 use kas::runner::AppData;
 use kas::text::format::FormattableText;
+use std::error::Error;
+use std::fmt::Write;
 
 #[derive(Copy, Clone, Debug)]
 struct MessageBoxOk;
@@ -32,7 +33,7 @@ mod MessageBox {
         #[widget]
         label: Label<T>,
         #[widget]
-        button: Button<Label<&'static str>>,
+        button: Button<AccessLabel>,
     }
 
     impl Self {
@@ -41,8 +42,7 @@ mod MessageBox {
             MessageBox {
                 core: Default::default(),
                 label: Label::new(message),
-                button: Button::new_msg(Label::new("Ok"), MessageBoxOk)
-                    .with_access_key(NamedKey::Enter.into()),
+                button: Button::label_msg("&Ok", MessageBoxOk),
             }
         }
 
@@ -57,7 +57,6 @@ mod MessageBox {
         }
     }
 
-    // TODO: call register_nav_fallback and close on Command::Escape, Enter
     impl Events for Self {
         type Data = ();
 
@@ -77,6 +76,198 @@ mod MessageBox {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(MessageBoxOk) = cx.try_pop() {
+                cx.action(self, Action::CLOSE);
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct ErrorResult;
+
+#[impl_self]
+mod AlertError {
+    /// Alert user about an error
+    #[widget]
+    #[layout(column! [
+        self.label,
+        self.details,
+        self.ok,
+    ])]
+    pub struct AlertError<T: FormattableText + 'static> {
+        core: widget_core!(),
+        parent: Id,
+        title: String,
+        #[widget]
+        label: Label<T>,
+        #[widget]
+        details: ScrollLabel<String>,
+        #[widget]
+        ok: Button<AccessLabel>,
+    }
+
+    impl Self {
+        /// Construct
+        pub fn new(message: T, error: &dyn Error) -> Self {
+            let mut details = format!("{error}");
+            let mut source = error.source();
+            while let Some(error) = source {
+                write!(&mut details, "\nCause: {error}").expect("write! to String failed");
+                source = error.source();
+            }
+
+            AlertError {
+                core: Default::default(),
+                parent: Id::default(),
+                title: "Error".to_string(),
+                label: Label::new(message),
+                details: ScrollLabel::new(details),
+                ok: Button::label_msg("&Ok", ErrorResult),
+            }
+        }
+
+        /// Set a custom window title
+        pub fn with_title(mut self, title: impl ToString) -> Self {
+            self.title = title.to_string();
+            self
+        }
+
+        /// Display as a modal window
+        ///
+        /// On closure, an [`ErrorResult`] message will be sent to `parent`.
+        pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
+            self.parent = parent;
+            let title = std::mem::take(&mut self.title);
+            let window = Window::new(self.map_any(), title).with_restrictions(true, true);
+            cx.add_dataless_window(window, true);
+        }
+    }
+
+    impl Events for Self {
+        type Data = ();
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            let result = match event {
+                Event::Command(Command::Escape, _) | Event::Command(Command::Enter, _) => {
+                    ErrorResult
+                }
+                _ => return Unused,
+            };
+
+            cx.send(self.parent.clone(), result);
+            cx.window_action(Action::CLOSE);
+            Used
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(result) = cx.try_pop::<ErrorResult>() {
+                cx.send(self.parent.clone(), result);
+                cx.action(self, Action::CLOSE);
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum UnsavedResult {
+    Save,
+    Discard,
+    Cancel,
+}
+
+#[impl_self]
+mod AlertUnsaved {
+    /// Alert user that they have unsaved changes
+    #[widget]
+    #[layout(column! [
+        self.label,
+        row![self.save, self.discard, self.cancel],
+    ])]
+    pub struct AlertUnsaved<T: FormattableText + 'static> {
+        core: widget_core!(),
+        parent: Id,
+        title: String,
+        #[widget]
+        label: Label<T>,
+        #[widget]
+        save: Button<AccessLabel>,
+        #[widget]
+        discard: Button<AccessLabel>,
+        #[widget]
+        cancel: Button<AccessLabel>,
+    }
+
+    impl Self {
+        /// Construct
+        pub fn new(message: T) -> Self {
+            AlertUnsaved {
+                core: Default::default(),
+                parent: Id::default(),
+                title: "Unsaved changes".to_string(),
+                label: Label::new(message),
+                save: Button::label_msg("&Save", UnsavedResult::Save),
+                discard: Button::label_msg("&Discard", UnsavedResult::Discard),
+                cancel: Button::label_msg("&Cancel", UnsavedResult::Cancel),
+            }
+        }
+
+        /// Set a custom window title
+        pub fn with_title(mut self, title: impl ToString) -> Self {
+            self.title = title.to_string();
+            self
+        }
+
+        /// Display as a modal window
+        ///
+        /// On closure, an [`UnsavedResult`] message will be sent to `parent`.
+        pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
+            self.parent = parent;
+            let title = std::mem::take(&mut self.title);
+            let window = Window::new(self.map_any(), title).with_restrictions(true, true);
+            cx.add_dataless_window(window, true);
+        }
+    }
+
+    impl Events for Self {
+        type Data = ();
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            let result = match event {
+                Event::Command(Command::Escape, _) => UnsavedResult::Cancel,
+                Event::Command(Command::Enter, _) => {
+                    if let Some(focus) = cx.nav_focus() {
+                        if self.save.is_ancestor_of(focus) {
+                            UnsavedResult::Save
+                        } else if self.discard.is_ancestor_of(focus) {
+                            UnsavedResult::Discard
+                        } else if self.cancel.is_ancestor_of(focus) {
+                            UnsavedResult::Cancel
+                        } else {
+                            return Unused;
+                        }
+                    } else {
+                        return Unused;
+                    }
+                }
+                _ => return Unused,
+            };
+
+            cx.send(self.parent.clone(), result);
+            cx.window_action(Action::CLOSE);
+            Used
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(result) = cx.try_pop::<UnsavedResult>() {
+                cx.send(self.parent.clone(), result);
                 cx.action(self, Action::CLOSE);
             }
         }
