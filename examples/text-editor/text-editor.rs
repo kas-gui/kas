@@ -176,7 +176,7 @@ mod Editor {
                     {
                         let contents = self.editor.clone_string();
                         cx.send_async(self.id(), async move {
-                            Saved(file.write(contents.as_str().as_bytes()).await)
+                            Saved(file.write(contents.as_bytes()).await)
                         });
                     } else {
                         let mut picker = rfd::AsyncFileDialog::new()

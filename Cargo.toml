@@ -7,7 +7,7 @@ rust-version = "1.88.0"
 
 [package]
 name = "kas"
-version = "0.16.0"
+version = "0.16.1"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -134,9 +134,9 @@ x11 = ["kas-core/x11"]
 unsafe_node = ["kas-core/unsafe_node"]
 
 [dependencies]
-kas-core = { version = "0.16.0", path = "crates/kas-core" }
+kas-core = { version = "0.16.1", path = "crates/kas-core" }
 kas-dylib = { version = "0.16.0", path = "crates/kas-dylib", optional = true }
-kas-widgets = { version = "0.16.0", path = "crates/kas-widgets" }
+kas-widgets = { version = "0.16.1", path = "crates/kas-widgets" }
 kas-view = { version = "0.16.0", path = "crates/kas-view", optional = true }
 kas-resvg = { version = "0.16.0", path = "crates/kas-resvg", optional = true }
 
