@@ -240,6 +240,9 @@ pub trait Tile: Layout {
     ///
     /// The callee may usually assume that it occupies `coord` and may thus
     /// return its own [`Id`] when no child occupies the input `coord`.
+    /// If there are cases where a click within [`Layout::rect`] should be
+    /// considered a miss (non-rectangular hit-testing) then
+    /// [`Layout::try_probe`] must be implemented instead.
     ///
     /// If the [`Self::translation`] is non-zero for any child, then the
     /// coordinate passed to that child must be translated:
@@ -247,10 +250,8 @@ pub trait Tile: Layout {
     ///
     /// ## Default implementation
     ///
-    /// The `#[widget]` macro may implement this method as:
-    /// ```ignore
-    /// MacroDefinedLayout::try_probe(self, coord).unwrap_or_else(|| self.id())
-    /// ```
+    /// The `#[widget]` macro provides a default implementation returning the
+    /// result of [`Self::id`] for childless widgets.
     fn probe(&self, coord: Coord) -> Id
     where
         Self: Sized,

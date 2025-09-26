@@ -135,12 +135,11 @@ pub trait Layout {
     ///
     /// # Implementation
     ///
-    /// Widgets should implement [`Tile::probe`] instead, in which case an
-    /// implemention of this method will be provided:
+    /// In most cases widgets should implement [`Tile::probe`] instead, in which
+    /// case the following implemention of this method will be provided:
     /// ```ignore
     /// self.rect().contains(coord).then(|| self.probe(coord))
     /// ```
-    /// Derive-mode widgets may implement either method.
     ///
     /// ## Default implementation
     ///

@@ -588,6 +588,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     };
 
     let mut widget_set_rect_span = None;
+    let mut try_probe_span = None;
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
@@ -662,10 +663,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                emit_error!(
-                    f,
-                    "Implementations are expected to impl `fn probe`, not `try_probe`"
-                );
+                try_probe_span = Some(f.span());
             }
         } else if let Some(method) = fn_try_probe {
             layout_impl.items.push(Verbatim(method));
@@ -756,7 +754,14 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         }
 
-        if !has_item("probe") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "probe") {
+            if let Some(span) = try_probe_span
+                && let ImplItem::Fn(f) = &mut tile_impl.items[*index]
+            {
+                emit_error!(f, "implementation conflicts with fn try_probe";
+                note = span => "this implementation overrides fn probe");
+            }
+        } else {
             tile_impl.items.push(Verbatim(fn_probe));
         }
     } else {
