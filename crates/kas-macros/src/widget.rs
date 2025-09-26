@@ -22,25 +22,8 @@ use syn::{parse_quote, parse2};
 /// behaviour is a panic.
 pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
+    let layout = crate::make_layout::Tree::try_parse(scope)?;
     let name = &scope.ident;
-
-    let mut layout: Option<crate::make_layout::Tree> = None;
-    let mut other_attrs = Vec::with_capacity(scope.attrs.len());
-    for attr in scope.attrs.drain(..) {
-        if *attr.path() == parse_quote! { layout } {
-            match attr.meta {
-                Meta::List(list) => {
-                    layout = Some(parse2(list.tokens)?);
-                }
-                _ => {
-                    return Err(Error::new(attr.span(), "expected `#[layout(...)]`"));
-                }
-            };
-        } else {
-            other_attrs.push(attr);
-        }
-    }
-    scope.attrs = other_attrs;
 
     let mut widget_impl = None;
     let mut layout_impl = None;

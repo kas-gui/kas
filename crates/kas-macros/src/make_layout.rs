@@ -5,13 +5,14 @@
 
 use crate::collection::{CellInfo, GridDimensions, NameGenerator};
 use crate::widget_args::{Child, ChildIdent};
+use impl_tools_lib::scope::Scope;
 use proc_macro_error2::emit_error;
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
-use syn::parse::{Parse, ParseStream, Result};
+use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{Expr, Ident, LitStr, Member, Token};
-use syn::{braced, bracketed, parenthesized, token};
+use syn::{Expr, Ident, LitStr, Member, Meta, Token};
+use syn::{braced, bracketed, parenthesized, parse_quote, parse2, token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -41,6 +42,30 @@ pub struct StorageFields {
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
+    /// Attempt to parse a layout tree from Scope item attribute
+    ///
+    /// Removes the attribute if found. Fails on a syntax error.
+    pub fn try_parse(scope: &mut Scope) -> Result<Option<Self>> {
+        let mut layout: Option<Self> = None;
+        let mut other_attrs = Vec::with_capacity(scope.attrs.len());
+        for attr in scope.attrs.drain(..) {
+            if *attr.path() == parse_quote! { layout } {
+                match attr.meta {
+                    Meta::List(list) => {
+                        layout = Some(parse2(list.tokens)?);
+                    }
+                    _ => {
+                        return Err(Error::new(attr.span(), "expected `#[layout(...)]`"));
+                    }
+                };
+            } else {
+                other_attrs.push(attr);
+            }
+        }
+        scope.attrs = other_attrs;
+        Ok(layout)
+    }
+
     pub fn storage_fields(&self, children: &mut Vec<Child>) -> StorageFields {
         let mut fields = StorageFields::default();
         self.0.append_fields(&mut fields, children);
