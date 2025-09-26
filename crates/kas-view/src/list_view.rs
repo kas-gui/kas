@@ -773,6 +773,22 @@ mod ListView {
                 }
             });
         }
+
+        fn probe(&self, coord: Coord) -> Id {
+            if self.scroll.is_kinetic_scrolling() {
+                return self.id();
+            }
+
+            let coord = coord + self.translation(0);
+            for child in &self.widgets[..self.cur_len.cast()] {
+                if child.token.is_some()
+                    && let Some(id) = child.item.try_probe(coord)
+                {
+                    return id;
+                }
+            }
+            self.id()
+        }
     }
 
     impl Tile for Self {
@@ -810,22 +826,6 @@ mod ListView {
         #[inline]
         fn translation(&self, _: usize) -> Offset {
             self.scroll_offset() + self.virtual_offset()
-        }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if self.scroll.is_kinetic_scrolling() {
-                return self.id();
-            }
-
-            let coord = coord + self.translation(0);
-            for child in &self.widgets[..self.cur_len.cast()] {
-                if child.token.is_some()
-                    && let Some(id) = child.item.try_probe(coord)
-                {
-                    return id;
-                }
-            }
-            self.id()
         }
     }
 

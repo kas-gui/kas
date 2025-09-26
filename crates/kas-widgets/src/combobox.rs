@@ -52,6 +52,12 @@ mod ComboBox {
         on_select: Option<Box<dyn Fn(&mut EventCx, V)>>,
     }
 
+    impl Layout for Self {
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
+    }
+
     impl Tile for Self {
         fn navigable(&self) -> bool {
             true
@@ -68,10 +74,6 @@ mod ComboBox {
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
-        }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
         }
     }
 

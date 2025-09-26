@@ -104,6 +104,12 @@ mod WithLabel {
         }
     }
 
+    impl Layout for Self {
+        fn probe(&self, _: Coord) -> Id {
+            self.inner.id()
+        }
+    }
+
     impl Tile for Self {
         fn role_child_properties(&self, cx: &mut dyn RoleCx, index: usize) {
             if index == widget_index!(self.inner) {
@@ -113,10 +119,6 @@ mod WithLabel {
 
         fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
             from.xor(Some(widget_index!(self.inner)))
-        }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.inner.id()
         }
     }
 

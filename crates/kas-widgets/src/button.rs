@@ -104,6 +104,10 @@ mod Button {
             }
             kas::MacroDefinedLayout::draw(self, draw);
         }
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
     }
 
     impl Tile for Self {
@@ -113,10 +117,6 @@ mod Button {
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Button
-        }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
         }
     }
 

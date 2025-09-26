@@ -306,13 +306,6 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         fn translation(&self, index: usize) -> ::kas::geom::Offset {
             self.#inner.translation(index)
         }
-        #[inline]
-        fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id
-        where
-            Self: Sized,
-        {
-            self.#inner.probe(coord)
-        }
     };
 
     let fn_role = quote! {

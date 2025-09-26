@@ -20,7 +20,7 @@ mod CursorWidget {
         cursor: CursorIcon,
     }
 
-    impl Tile for Self {
+    impl Layout for Self {
         fn probe(&self, _: Coord) -> Id {
             // This widget takes mouse focus, not self.label
             self.id()

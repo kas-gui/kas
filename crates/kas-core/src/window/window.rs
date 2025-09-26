@@ -283,12 +283,6 @@ mod Window {
             }
             self.inner.draw(draw.re());
         }
-    }
-
-    impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::Window
-        }
 
         fn probe(&self, coord: Coord) -> Id {
             for (_, popup, translation) in self.popups.iter().rev() {
@@ -314,6 +308,12 @@ mod Window {
                 .or_else(|| self.b_sw.try_probe(coord))
                 .or_else(|| self.b_se.try_probe(coord))
                 .unwrap_or_else(|| self.id())
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Window
         }
     }
 

@@ -106,6 +106,14 @@ mod MenuBar {
             let rect = self.rect();
             solver.for_children(&self.widgets, rect, |w| w.draw(draw.re()));
         }
+
+        fn probe(&self, coord: Coord) -> Id {
+            let solver = RowPositionSolver::new(self.direction);
+            solver
+                .find_child(&self.widgets, coord)
+                .and_then(|child| child.try_probe(coord))
+                .unwrap_or_else(|| self.id())
+        }
     }
 
     impl Tile for Self {
@@ -119,14 +127,6 @@ mod MenuBar {
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets.get(index).map(|w| w.as_tile())
-        }
-
-        fn probe(&self, coord: Coord) -> Id {
-            let solver = RowPositionSolver::new(self.direction);
-            solver
-                .find_child(&self.widgets, coord)
-                .and_then(|child| child.try_probe(coord))
-                .unwrap_or_else(|| self.id())
         }
     }
 

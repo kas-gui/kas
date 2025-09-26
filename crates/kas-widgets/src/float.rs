@@ -148,12 +148,6 @@ mod Float {
                 }
             }
         }
-    }
-
-    impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::None
-        }
 
         fn probe(&self, coord: Coord) -> Id {
             for i in 0..self.widgets.len() {
@@ -164,6 +158,12 @@ mod Float {
                 }
             }
             self.id()
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::None
         }
     }
 }

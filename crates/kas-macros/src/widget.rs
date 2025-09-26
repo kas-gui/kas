@@ -36,8 +36,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let mut child_node = None;
     let mut find_child_index = None;
     let mut make_child_id = None;
-    let mut have_fn_probe = false;
-    for (index, impl_) in scope.impls.iter().enumerate() {
+    let mut fn_probe = None;
+    for (index, impl_) in scope.impls.iter_mut().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
                 || *path == parse_quote! { kas::Widget }
@@ -72,6 +72,25 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 if layout_impl.is_none() {
                     layout_impl = Some(index);
                 }
+
+                let mut index = None;
+                for (i, item) in impl_.items.iter().enumerate() {
+                    if let ImplItem::Fn(item) = item {
+                        if item.sig.ident == "probe" {
+                            index = Some(i);
+                            break;
+                        }
+                    }
+                }
+                fn_probe = index.map(|i| impl_.items.remove(i));
+            } else if *path == parse_quote! { ::kas::LayoutFnProbe }
+                || *path == parse_quote! { kas::LayoutFnProbe }
+                || *path == parse_quote! { LayoutFnProbe }
+            {
+                emit_error!(
+                    impl_, "LayoutFnProbe should not be implemented directly";
+                    note = "move implementation of fn probe to Layout";
+                );
             } else if *path == parse_quote! { ::kas::Tile }
                 || *path == parse_quote! { kas::Tile }
                 || *path == parse_quote! { Tile }
@@ -86,8 +105,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                             get_child = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "probe" {
-                            have_fn_probe = true;
                         }
                     }
                 }
@@ -433,12 +450,12 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let fn_rect;
     let mut fn_size_rules = None;
     let fn_set_rect;
-    let mut fn_try_probe = (have_fn_probe || children.is_empty()).then_some(quote! {
+    let mut fn_try_probe = (fn_probe.is_some() || children.is_empty()).then_some(quote! {
         fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
             #[cfg(debug_assertions)]
             self.#core.status.require_rect(&self.#core._id);
 
-            self.rect().contains(coord).then(|| ::kas::Tile::probe(self, coord))
+            self.rect().contains(coord).then(|| ::kas::LayoutFnProbe::probe(self, coord))
         }
     });
     let mut fn_draw = None;
@@ -531,7 +548,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         };
 
-        if !have_fn_probe {
+        if fn_probe.is_none() {
             fn_try_probe = Some(quote! {
                 fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                     #[cfg(debug_assertions)]
@@ -573,6 +590,15 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         };
 
+        if fn_probe.is_none() && children.is_empty() {
+            fn_probe = Some(parse_quote! {
+                #[inline]
+                fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id {
+                    ::kas::Tile::id(self)
+                }
+            });
+        }
+
         fn_nav_next = Ok(quote! {
             fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                 ::kas::util::nav_next(reverse, from, self.child_indices())
@@ -580,15 +606,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         });
     }
 
-    let fn_probe = quote! {
-        #[inline]
-        fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id {
-            ::kas::Tile::id(self)
-        }
-    };
-
     let mut widget_set_rect_span = None;
-    let mut try_probe_span = None;
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
@@ -662,8 +680,12 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
-            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                try_probe_span = Some(f.span());
+            if let Some(ref method) = fn_probe {
+                let span = layout_impl.items[*index].span();
+                emit_error!(
+                    method, "implementation conflicts with fn try_probe";
+                    note = span => "this implementation overrides fn probe"
+                );
             }
         } else if let Some(method) = fn_try_probe {
             layout_impl.items.push(Verbatim(method));
@@ -711,6 +733,14 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         });
     }
 
+    if let Some(method) = fn_probe {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::LayoutFnProbe for #impl_target {
+                #method
+            }
+        });
+    }
+
     let required_tile_methods = required_tile_methods(&name.to_string(), &core_path);
 
     if let Some(index) = tile_impl {
@@ -753,17 +783,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 }
             }
         }
-
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "probe") {
-            if let Some(span) = try_probe_span
-                && let ImplItem::Fn(f) = &mut tile_impl.items[*index]
-            {
-                emit_error!(f, "implementation conflicts with fn try_probe";
-                note = span => "this implementation overrides fn probe");
-            }
-        } else {
-            tile_impl.items.push(Verbatim(fn_probe));
-        }
     } else {
         #[cfg(feature = "nightly-pedantic")]
         if fn_role.is_none() {
@@ -792,7 +811,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #fn_get_child
                 #fn_child_indices
                 #fn_nav_next
-                #fn_probe
             }
         });
     }
