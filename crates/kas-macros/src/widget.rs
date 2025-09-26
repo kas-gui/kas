@@ -36,6 +36,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let mut child_node = None;
     let mut find_child_index = None;
     let mut make_child_id = None;
+    let mut have_fn_probe = false;
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
@@ -85,6 +86,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                             get_child = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "probe" {
+                            have_fn_probe = true;
                         }
                     }
                 }
@@ -430,10 +433,14 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let fn_rect;
     let mut fn_size_rules = None;
     let fn_set_rect;
-    let mut probe = quote! {
-        ::kas::Tile::id(self)
-    };
-    let fn_try_probe;
+    let mut fn_try_probe = (have_fn_probe || children.is_empty()).then_some(quote! {
+        fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            #[cfg(debug_assertions)]
+            self.#core.status.require_rect(&self.#core._id);
+
+            self.rect().contains(coord).then(|| ::kas::Tile::probe(self, coord))
+        }
+    });
     let mut fn_draw = None;
     if let Some(tree) = layout {
         // TODO(opt): omit field widget.core._rect if not set here
@@ -524,14 +531,16 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         };
 
-        fn_try_probe = quote! {
-            fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                #[cfg(debug_assertions)]
-                self.#core.status.require_rect(&self.#core._id);
+        if !have_fn_probe {
+            fn_try_probe = Some(quote! {
+                fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                    #[cfg(debug_assertions)]
+                    self.#core.status.require_rect(&self.#core._id);
 
-                self.rect().contains(coord).then(|| ::kas::Tile::probe(self, coord))
-            }
-        };
+                    ::kas::MacroDefinedLayout::try_probe(self, coord)
+                }
+            });
+        }
 
         fn_draw = Some(quote! {
             fn draw(&self, draw: ::kas::theme::DrawCx) {
@@ -541,11 +550,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 ::kas::MacroDefinedLayout::draw(self, draw);
             }
         });
-
-        probe = quote! {
-            ::kas::MacroDefinedLayout::try_probe(self, coord)
-                    .unwrap_or_else(|| ::kas::Tile::id(self))
-        };
     } else {
         // TODO(opt): omit field widget.core._rect if a custom `fn rect` defintion is used
         fn_rect = quote! {
@@ -569,15 +573,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         };
 
-        fn_try_probe = quote! {
-            fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                #[cfg(debug_assertions)]
-                self.#core.status.require_rect(&self.#core._id);
-
-                self.rect().contains(coord).then(|| ::kas::Tile::probe(self, coord))
-            }
-        };
-
         fn_nav_next = Ok(quote! {
             fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                 ::kas::util::nav_next(reverse, from, self.child_indices())
@@ -588,7 +583,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let fn_probe = quote! {
         #[inline]
         fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id {
-            #probe
+            ::kas::Tile::id(self)
         }
     };
 
@@ -672,8 +667,10 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     "Implementations are expected to impl `fn probe`, not `try_probe`"
                 );
             }
+        } else if let Some(method) = fn_try_probe {
+            layout_impl.items.push(Verbatim(method));
         } else {
-            layout_impl.items.push(Verbatim(fn_try_probe));
+            emit_error!(layout_impl, "expected definition of fn try_probe");
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
@@ -702,7 +699,9 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         } else if let Some(method) = fn_draw {
             layout_impl.items.push(Verbatim(method));
         }
-    } else if let Some(fn_size_rules) = fn_size_rules {
+    } else if let Some(fn_size_rules) = fn_size_rules
+        && let Some(fn_try_probe) = fn_try_probe
+    {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
                 #fn_rect
