@@ -114,10 +114,6 @@ mod SubMenu {
                 self.mark.draw(draw.re());
             }
         }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
-        }
     }
 
     impl Tile for Self {
@@ -139,6 +135,10 @@ mod SubMenu {
 
     impl Events for Self {
         type Data = Data;
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {
@@ -354,15 +354,6 @@ mod MenuView {
                 child.draw(draw.re());
             }
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            for child in self.list.iter() {
-                if let Some(id) = child.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
-        }
     }
 
     impl Tile for Self {
@@ -376,6 +367,17 @@ mod MenuView {
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.list.get(index).map(|w| w.as_tile())
+        }
+    }
+
+    impl Events for Self {
+        fn probe(&self, coord: Coord) -> Id {
+            for child in self.list.iter() {
+                if let Some(id) = child.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
         }
     }
 

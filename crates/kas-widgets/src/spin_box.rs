@@ -365,13 +365,6 @@ mod SpinBox {
             self.b_up.draw(draw.re());
             self.b_down.draw(draw.re());
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            self.b_up
-                .try_probe(coord)
-                .or_else(|| self.b_down.try_probe(coord))
-                .unwrap_or_else(|| self.edit.id())
-        }
     }
 
     impl Tile for Self {
@@ -387,6 +380,13 @@ mod SpinBox {
 
     impl Events for Self {
         type Data = A;
+
+        fn probe(&self, coord: Coord) -> Id {
+            self.b_up
+                .try_probe(coord)
+                .or_else(|| self.b_down.try_probe(coord))
+                .unwrap_or_else(|| self.edit.id())
+        }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.unit);

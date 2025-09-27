@@ -123,16 +123,6 @@ mod ScrollRegion {
                 self.inner.draw(draw.re());
             });
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if self.scroll.is_kinetic_scrolling() {
-                return self.id();
-            }
-
-            self.inner
-                .try_probe(coord + self.scroll_offset())
-                .unwrap_or_else(|| self.id())
-        }
     }
 
     impl Tile for Self {
@@ -151,6 +141,16 @@ mod ScrollRegion {
 
     impl Events for Self {
         type Data = W::Data;
+
+        fn probe(&self, coord: Coord) -> Id {
+            if self.scroll.is_kinetic_scrolling() {
+                return self.id();
+            }
+
+            self.inner
+                .try_probe(coord + self.scroll_offset())
+                .unwrap_or_else(|| self.id())
+        }
 
         fn mouse_over_icon(&self) -> Option<CursorIcon> {
             self.scroll

@@ -210,6 +210,16 @@ mod Grid {
                 }
             }
         }
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::None
+        }
+    }
+
+    impl Events for Self {
+        type Data = C::Data;
 
         fn probe(&self, coord: Coord) -> Id {
             for n in 0..self.widgets.len() {
@@ -220,12 +230,6 @@ mod Grid {
                 }
             }
             self.id()
-        }
-    }
-
-    impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::None
         }
     }
 }

@@ -300,15 +300,6 @@ mod Slider {
             let dir = self.direction.as_direction();
             draw.slider(self.rect(), &self.grip, dir);
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if self.on_move.is_some() {
-                if let Some(id) = self.grip.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
-        }
     }
 
     impl Tile for Self {
@@ -331,6 +322,15 @@ mod Slider {
         const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = A;
+
+        fn probe(&self, coord: Coord) -> Id {
+            if self.on_move.is_some() {
+                if let Some(id) = self.grip.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
+        }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let v = (self.state_fn)(cx, data);

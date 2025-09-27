@@ -338,13 +338,6 @@ mod ScrollBar {
                 draw.scroll_bar(self.rect(), &self.grip, dir);
             }
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if self.invisible && self.max_value == 0 {
-                return self.id();
-            }
-            self.grip.try_probe(coord).unwrap_or_else(|| self.id())
-        }
     }
 
     impl Tile for Self {
@@ -361,6 +354,13 @@ mod ScrollBar {
         const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = ();
+
+        fn probe(&self, coord: Coord) -> Id {
+            if self.invisible && self.max_value == 0 {
+                return self.id();
+            }
+            self.grip.try_probe(coord).unwrap_or_else(|| self.id())
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
@@ -623,6 +623,10 @@ mod ScrollBars {
                 }
             }
         }
+    }
+
+    impl Events for Self {
+        type Data = W::Data;
 
         fn probe(&self, coord: Coord) -> Id {
             self.vert_bar
@@ -631,10 +635,6 @@ mod ScrollBars {
                 .or_else(|| self.inner.try_probe(coord))
                 .unwrap_or_else(|| self.id())
         }
-    }
-
-    impl Events for Self {
-        type Data = W::Data;
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let index = cx.last_child();

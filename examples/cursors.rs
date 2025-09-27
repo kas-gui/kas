@@ -20,15 +20,13 @@ mod CursorWidget {
         cursor: CursorIcon,
     }
 
-    impl Layout for Self {
+    impl Events for Self {
+        type Data = ();
+
         fn probe(&self, _: Coord) -> Id {
             // This widget takes mouse focus, not self.label
             self.id()
         }
-    }
-
-    impl Events for Self {
-        type Data = ();
 
         fn mouse_over_icon(&self) -> Option<CursorIcon> {
             Some(self.cursor)

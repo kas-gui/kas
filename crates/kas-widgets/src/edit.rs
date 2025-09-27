@@ -426,18 +426,6 @@ mod EditBox {
                 self.vert_bar.draw(draw.re());
             }
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if self.scroll.max_offset().1 > 0 {
-                if let Some(id) = self.vert_bar.try_probe(coord) {
-                    return id;
-                }
-            }
-
-            // If coord is over self but not over self.vert_bar, we assign
-            // the event to self.inner without further question.
-            self.inner.id()
-        }
     }
 
     impl Tile for Self {
@@ -459,6 +447,18 @@ mod EditBox {
 
     impl Events for Self {
         type Data = G::Data;
+
+        fn probe(&self, coord: Coord) -> Id {
+            if self.scroll.max_offset().1 > 0 {
+                if let Some(id) = self.vert_bar.try_probe(coord) {
+                    return id;
+                }
+            }
+
+            // If coord is over self but not over self.vert_bar, we assign
+            // the event to self.inner without further question.
+            self.inner.id()
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             let rect = Rect {
@@ -936,10 +936,6 @@ mod EditField {
         fn draw(&self, draw: DrawCx) {
             self.draw_with_offset(draw, self.rect(), Offset::ZERO);
         }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
-        }
     }
 
     impl Tile for Self {
@@ -961,6 +957,10 @@ mod EditField {
         const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = G::Data;
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
 
         #[inline]
         fn mouse_over_icon(&self) -> Option<CursorIcon> {

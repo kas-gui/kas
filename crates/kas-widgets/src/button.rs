@@ -104,10 +104,6 @@ mod Button {
             }
             kas::MacroDefinedLayout::draw(self, draw);
         }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
-        }
     }
 
     impl Tile for Self {
@@ -124,6 +120,10 @@ mod Button {
         const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = W::Data;
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &W::Data, event: Event) -> IsUsed {
             event.on_click(cx, self.id(), |cx| {

@@ -773,22 +773,6 @@ mod ListView {
                 }
             });
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if self.scroll.is_kinetic_scrolling() {
-                return self.id();
-            }
-
-            let coord = coord + self.translation(0);
-            for child in &self.widgets[..self.cur_len.cast()] {
-                if child.token.is_some()
-                    && let Some(id) = child.item.try_probe(coord)
-                {
-                    return id;
-                }
-            }
-            self.id()
-        }
     }
 
     impl Tile for Self {
@@ -840,6 +824,22 @@ mod ListView {
         fn make_child_id(&mut self, _: usize) -> Id {
             // We configure children in map_view_widgets and do not want this method to be called
             unimplemented!()
+        }
+
+        fn probe(&self, coord: Coord) -> Id {
+            if self.scroll.is_kinetic_scrolling() {
+                return self.id();
+            }
+
+            let coord = coord + self.translation(0);
+            for child in &self.widgets[..self.cur_len.cast()] {
+                if child.token.is_some()
+                    && let Some(id) = child.item.try_probe(coord)
+                {
+                    return id;
+                }
+            }
+            self.id()
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {

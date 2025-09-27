@@ -104,12 +104,6 @@ mod WithLabel {
         }
     }
 
-    impl Layout for Self {
-        fn probe(&self, _: Coord) -> Id {
-            self.inner.id()
-        }
-    }
-
     impl Tile for Self {
         fn role_child_properties(&self, cx: &mut dyn RoleCx, index: usize) {
             if index == widget_index!(self.inner) {
@@ -124,6 +118,10 @@ mod WithLabel {
 
     impl Events for Self {
         type Data = W::Data;
+
+        fn probe(&self, _: Coord) -> Id {
+            self.inner.id()
+        }
 
         fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
             let id = self.make_child_id(widget_index!(self.inner));
