@@ -38,10 +38,6 @@ mod MenuEntry {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
         }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
-        }
     }
 
     impl Tile for Self {
@@ -82,6 +78,10 @@ mod MenuEntry {
 
     impl Events for Self {
         type Data = ();
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
@@ -145,10 +145,6 @@ mod MenuToggle {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             kas::MacroDefinedLayout::draw(self, draw);
         }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.checkbox.id()
-        }
     }
 
     impl Tile for Self {
@@ -161,6 +157,10 @@ mod MenuToggle {
 
     impl Events for Self {
         type Data = A;
+
+        fn probe(&self, _: Coord) -> Id {
+            self.checkbox.id()
+        }
 
         fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
             let id = self.make_child_id(widget_index!(self.checkbox));

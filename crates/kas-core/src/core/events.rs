@@ -7,9 +7,9 @@
 
 #[allow(unused)] use super::Layout;
 use super::{Tile, Widget};
-use crate::Id;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
+use crate::{Id, geom::Coord};
 #[allow(unused)] use kas_macros as macros;
 
 /// Widget event-handling
@@ -86,6 +86,42 @@ pub trait Events: Widget + Sized {
     #[inline]
     fn make_child_id(&mut self, index: usize) -> Id {
         self.id_ref().make_child(index)
+    }
+
+    /// Probe a coordinate for a widget's [`Id`]
+    ///
+    /// Returns the [`Id`] of the widget expected to handle clicks and touch
+    /// events at the given `coord`. Typically this is the lowest descendant in
+    /// the widget tree at the given `coord`, but it is not required to be; e.g.
+    /// a `Button` may use an inner widget as a label but return its own [`Id`]
+    /// to indicate that the button (not the inner label) handles clicks.
+    ///
+    /// # Calling
+    ///
+    /// Call [`Layout::try_probe`] instead.
+    ///
+    /// # Implementation
+    ///
+    /// The callee may usually assume that it occupies `coord` and may thus
+    /// return its own [`Id`] when no child occupies the input `coord`.
+    /// If there are cases where a click within [`Layout::rect`] should be
+    /// considered a miss (non-rectangular hit-testing) then
+    /// [`Layout::try_probe`] must be implemented instead.
+    ///
+    /// If the [`Tile::translation`] is non-zero for any child, then the
+    /// coordinate passed to that child must be translated:
+    /// `coord + translation`.
+    ///
+    /// ## Default implementation
+    ///
+    /// The default implementation returns `self.id()` and may be used for
+    /// childless widgets. If the [`layout`](macro@crate::layout) attribute
+    /// macro is used or an explicit implementation of [`Layout::try_probe`] is
+    /// provided, these are used instead of the default implementation of this
+    /// method.
+    fn probe(&self, coord: Coord) -> Id {
+        let _ = coord;
+        self.id()
     }
 
     /// Configure self

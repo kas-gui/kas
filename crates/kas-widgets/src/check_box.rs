@@ -212,10 +212,6 @@ mod CheckButton {
             let dir = self.direction();
             shrink_to_text(&mut self.rect(), dir, &self.label);
         }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.inner.id()
-        }
     }
 
     impl Tile for Self {
@@ -232,6 +228,10 @@ mod CheckButton {
 
     impl Events for Self {
         type Data = A;
+
+        fn probe(&self, _: Coord) -> Id {
+            self.inner.id()
+        }
 
         fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
             let id = self.make_child_id(widget_index!(self.inner));

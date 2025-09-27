@@ -136,16 +136,6 @@ mod Stack {
                 entry.0.draw(draw.re());
             }
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if let Some(entry) = self.widgets.get(self.active) {
-                debug_assert_eq!(entry.1, State::Sized);
-                if let Some(id) = entry.0.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
-        }
     }
 
     impl Tile for Self {
@@ -216,6 +206,16 @@ mod Stack {
                     return self.id_ref().make_child(key);
                 }
             }
+        }
+
+        fn probe(&self, coord: Coord) -> Id {
+            if let Some(entry) = self.widgets.get(self.active) {
+                debug_assert_eq!(entry.1, State::Sized);
+                if let Some(id) = entry.0.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
         }
 
         fn configure(&mut self, _: &mut ConfigCx) {

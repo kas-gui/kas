@@ -52,12 +52,6 @@ mod ComboBox {
         on_select: Option<Box<dyn Fn(&mut EventCx, V)>>,
     }
 
-    impl Layout for Self {
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
-        }
-    }
-
     impl Tile for Self {
         fn navigable(&self) -> bool {
             true
@@ -81,6 +75,10 @@ mod ComboBox {
         const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = A;
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let msg = (self.state_fn)(cx, data);

@@ -349,12 +349,6 @@ mod ScrollText {
                 draw.with_pass(|draw| self.vert_bar.draw(draw));
             }
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            self.vert_bar
-                .try_probe(coord)
-                .unwrap_or_else(|| self.label.id())
-        }
     }
 
     impl Tile for Self {
@@ -445,6 +439,12 @@ mod ScrollText {
 
     impl Events for Self {
         type Data = A;
+
+        fn probe(&self, coord: Coord) -> Id {
+            self.vert_bar
+                .try_probe(coord)
+                .unwrap_or_else(|| self.label.id())
+        }
 
         #[inline]
         fn mouse_over_icon(&self) -> Option<CursorIcon> {

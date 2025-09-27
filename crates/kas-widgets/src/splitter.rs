@@ -237,29 +237,6 @@ mod Splitter {
                 draw.separator(w.rect())
             });
         }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if !self.size_solved {
-                debug_assert!(false);
-                return self.id();
-            }
-
-            // find_child should gracefully handle the case that a coord is between
-            // widgets, so there's no harm (and only a small performance loss) in
-            // calling it twice.
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child(&self.widgets, coord) {
-                return child.try_probe(coord).unwrap_or_else(|| self.id());
-            }
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child(&self.grips, coord) {
-                return child.try_probe(coord).unwrap_or_else(|| self.id());
-            }
-
-            self.id()
-        }
     }
 
     impl Tile for Self {
@@ -289,6 +266,29 @@ mod Splitter {
         fn make_child_id(&mut self, child_index: usize) -> Id {
             let is_grip = (child_index & 1) != 0;
             self.make_next_id(is_grip, child_index / 2)
+        }
+
+        fn probe(&self, coord: Coord) -> Id {
+            if !self.size_solved {
+                debug_assert!(false);
+                return self.id();
+            }
+
+            // find_child should gracefully handle the case that a coord is between
+            // widgets, so there's no harm (and only a small performance loss) in
+            // calling it twice.
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            if let Some(child) = solver.find_child(&self.widgets, coord) {
+                return child.try_probe(coord).unwrap_or_else(|| self.id());
+            }
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            if let Some(child) = solver.find_child(&self.grips, coord) {
+                return child.try_probe(coord).unwrap_or_else(|| self.id());
+            }
+
+            self.id()
         }
 
         fn configure(&mut self, _: &mut ConfigCx) {

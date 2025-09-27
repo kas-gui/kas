@@ -44,12 +44,6 @@ mod Tab {
         }
     }
 
-    impl Layout for Self {
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
-        }
-    }
-
     impl Tile for Self {
         fn navigable(&self) -> bool {
             true
@@ -65,6 +59,10 @@ mod Tab {
         const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = ();
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
             event.on_click(cx, self.id(), |cx| cx.push(Select))
