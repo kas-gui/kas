@@ -30,6 +30,13 @@ use kas_macros::autoimpl;
 /// `#[impl_self]`) or provide default implementations of its methods (if an
 /// explicit impl of `Layout` is found but some methods are missing).
 ///
+/// ## Foreign items
+///
+/// The [`#widget`] macro permits implementation of the following items within
+/// `impl Layout`:
+///
+/// -   `fn` [`LayoutFnProbe::probe`]
+///
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Layout {
