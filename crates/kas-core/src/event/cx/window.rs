@@ -242,8 +242,16 @@ impl<'a> EventCx<'a> {
     ///
     /// Adding the window is infallible. Opening the new window is theoretically
     /// fallible (unlikely assuming a window has already been opened).
+    ///
+    /// If `modal`, then the new `window` is considered owned by this window
+    /// (the window the calling widget belongs to), preventing interaction with
+    /// this window until the new `window` has been closed. **Note:** this is
+    /// mostly unimplemented; see [`Window::set_modal_with_parent`].
     #[inline]
-    pub fn add_window<Data: AppData>(&mut self, window: Window<Data>) -> WindowId {
+    pub fn add_window<Data: AppData>(&mut self, mut window: Window<Data>, modal: bool) -> WindowId {
+        if modal {
+            window.set_modal_with_parent(self.window_id);
+        }
         let data_type_id = std::any::TypeId::of::<Data>();
         unsafe {
             let window: Window<()> = std::mem::transmute(window);
