@@ -86,10 +86,8 @@ use kas_macros::autoimpl;
 /// -   **Introspection** methods [`Tile::find_child_index`] and
 ///     [`Events::make_child_id`] have default implementations which *usually*
 ///     suffice.
-/// -   **Layout** is specified either via [layout syntax](macros::widget#layout-1)
-///     or via implementation of at least [`Layout::size_rules`] and
-///     [`Layout::draw`] (optionally also `set_rect`, `nav_next`, `translation`
-///     and [`Tile::probe`]).
+/// -   **Layout** is specified either via [`layout`](macro@crate::layout) macro
+///     or via implementation of at least [`Layout`].
 ///-    **Event handling** is optional, implemented through [`Events`].
 ///
 /// For examples, check the source code of widgets in the widgets library

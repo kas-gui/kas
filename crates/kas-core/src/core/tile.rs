@@ -5,7 +5,7 @@
 
 //! Layout, Tile and TileExt traits
 
-use crate::geom::{Coord, Offset, Rect};
+use crate::geom::{Offset, Rect};
 use crate::util::IdentifyWidget;
 use crate::{ChildIndices, HasId, Id, Layout, Role, RoleCx};
 use kas_macros::autoimpl;
@@ -205,58 +205,18 @@ pub trait Tile: Layout {
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
     /// *and* child widgets need to implement this.
-    /// Such widgets must also implement [`Tile::probe`] and (if they scroll)
-    /// [`Events::handle_scroll`].
+    /// Such widgets must also implement [`Layout::try_probe`] and (if they
+    /// scroll) [`Events::handle_scroll`].
     ///
-    /// Affects event handling via [`Tile::probe`] and affects the positioning
-    /// of pop-up menus. [`Layout::draw`] must be implemented directly using
-    /// [`DrawCx::with_clip_region`] to offset contents.
+    /// Affects event handling via [`Layout::try_probe`] and affects the
+    /// positioning of pop-up menus. [`Layout::draw`] must be implemented
+    /// directly using [`DrawCx::with_clip_region`] to offset contents.
     ///
     /// Default implementation: return [`Offset::ZERO`]
     #[inline]
     fn translation(&self, index: usize) -> Offset {
         let _ = index;
         Offset::ZERO
-    }
-
-    /// Probe a coordinate for a widget's [`Id`]
-    ///
-    /// Returns the [`Id`] of the widget expected to handle clicks and touch
-    /// events at the given `coord`. Typically this is the lowest descendant in
-    /// the widget tree at the given `coord`, but it is not required to be; e.g.
-    /// a `Button` may use an inner widget as a label but return its own [`Id`]
-    /// to indicate that the button (not the inner label) handles clicks.
-    ///
-    /// # Calling
-    ///
-    /// **Prefer to call [`Layout::try_probe`] instead**.
-    ///
-    /// ## Call order
-    ///
-    /// It is expected that [`Layout::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
-    ///
-    /// # Implementation
-    ///
-    /// The callee may usually assume that it occupies `coord` and may thus
-    /// return its own [`Id`] when no child occupies the input `coord`.
-    ///
-    /// If the [`Self::translation`] is non-zero for any child, then the
-    /// coordinate passed to that child must be translated:
-    /// `coord + translation`.
-    ///
-    /// ## Default implementation
-    ///
-    /// The `#[widget]` macro may implement this method as:
-    /// ```ignore
-    /// MacroDefinedLayout::try_probe(self, coord).unwrap_or_else(|| self.id())
-    /// ```
-    fn probe(&self, coord: Coord) -> Id
-    where
-        Self: Sized,
-    {
-        let _ = coord;
-        unimplemented!() // make rustdoc show that this is a provided method
     }
 }
 

@@ -338,6 +338,13 @@ mod ScrollBar {
                 draw.scroll_bar(self.rect(), &self.grip, dir);
             }
         }
+
+        fn probe(&self, coord: Coord) -> Id {
+            if self.invisible && self.max_value == 0 {
+                return self.id();
+            }
+            self.grip.try_probe(coord).unwrap_or_else(|| self.id())
+        }
     }
 
     impl Tile for Self {
@@ -347,13 +354,6 @@ mod ScrollBar {
                 value: self.value,
                 max_value: self.max_value,
             }
-        }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if self.invisible && self.max_value == 0 {
-                return self.id();
-            }
-            self.grip.try_probe(coord).unwrap_or_else(|| self.id())
         }
     }
 
@@ -623,9 +623,7 @@ mod ScrollBars {
                 }
             }
         }
-    }
 
-    impl Tile for Self {
         fn probe(&self, coord: Coord) -> Id {
             self.vert_bar
                 .try_probe(coord)

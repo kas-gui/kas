@@ -237,29 +237,6 @@ mod Splitter {
                 draw.separator(w.rect())
             });
         }
-    }
-
-    impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::Splitter
-        }
-
-        #[inline]
-        fn child_indices(&self) -> ChildIndices {
-            (0..self.widgets.len() + self.grips.len()).into()
-        }
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            if (index & 1) != 0 {
-                self.grips.get(index >> 1).map(|w| w.as_tile())
-            } else {
-                self.widgets.get_tile(index >> 1)
-            }
-        }
-
-        fn find_child_index(&self, id: &Id) -> Option<usize> {
-            id.next_key_after(self.id_ref())
-                .and_then(|k| self.id_map.get(&k).cloned())
-        }
 
         fn probe(&self, coord: Coord) -> Id {
             if !self.size_solved {
@@ -282,6 +259,29 @@ mod Splitter {
             }
 
             self.id()
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Splitter
+        }
+
+        #[inline]
+        fn child_indices(&self) -> ChildIndices {
+            (0..self.widgets.len() + self.grips.len()).into()
+        }
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            if (index & 1) != 0 {
+                self.grips.get(index >> 1).map(|w| w.as_tile())
+            } else {
+                self.widgets.get_tile(index >> 1)
+            }
+        }
+
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
+            id.next_key_after(self.id_ref())
+                .and_then(|k| self.id_map.get(&k).cloned())
         }
     }
 

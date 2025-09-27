@@ -426,6 +426,18 @@ mod EditBox {
                 self.vert_bar.draw(draw.re());
             }
         }
+
+        fn probe(&self, coord: Coord) -> Id {
+            if self.scroll.max_offset().1 > 0 {
+                if let Some(id) = self.vert_bar.try_probe(coord) {
+                    return id;
+                }
+            }
+
+            // If coord is over self but not over self.vert_bar, we assign
+            // the event to self.inner without further question.
+            self.inner.id()
+        }
     }
 
     impl Tile for Self {
@@ -442,18 +454,6 @@ mod EditBox {
             } else {
                 Offset::ZERO
             }
-        }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if self.scroll.max_offset().1 > 0 {
-                if let Some(id) = self.vert_bar.try_probe(coord) {
-                    return id;
-                }
-            }
-
-            // If coord is over self but not over self.vert_bar, we assign
-            // the event to self.inner without further question.
-            self.inner.id()
         }
     }
 
@@ -936,6 +936,10 @@ mod EditField {
         fn draw(&self, draw: DrawCx) {
             self.draw_with_offset(draw, self.rect(), Offset::ZERO);
         }
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
     }
 
     impl Tile for Self {
@@ -950,10 +954,6 @@ mod EditField {
                 cursor: self.selection.edit_index(),
                 sel_index: self.selection.sel_index(),
             }
-        }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
         }
     }
 

@@ -114,6 +114,10 @@ mod SubMenu {
                 self.mark.draw(draw.re());
             }
         }
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
     }
 
     impl Tile for Self {
@@ -130,10 +134,6 @@ mod SubMenu {
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
-        }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
         }
     }
 
@@ -354,6 +354,15 @@ mod MenuView {
                 child.draw(draw.re());
             }
         }
+
+        fn probe(&self, coord: Coord) -> Id {
+            for child in self.list.iter() {
+                if let Some(id) = child.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
+        }
     }
 
     impl Tile for Self {
@@ -367,15 +376,6 @@ mod MenuView {
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.list.get(index).map(|w| w.as_tile())
-        }
-
-        fn probe(&self, coord: Coord) -> Id {
-            for child in self.list.iter() {
-                if let Some(id) = child.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
         }
     }
 

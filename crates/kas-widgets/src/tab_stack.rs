@@ -44,6 +44,12 @@ mod Tab {
         }
     }
 
+    impl Layout for Self {
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
+    }
+
     impl Tile for Self {
         fn navigable(&self) -> bool {
             true
@@ -52,10 +58,6 @@ mod Tab {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_label(self.label.id());
             Role::Tab
-        }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
         }
     }
 

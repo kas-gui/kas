@@ -293,6 +293,14 @@ mod List {
             let solver = RowPositionSolver::new(self.direction);
             solver.for_children(&self.widgets, draw.get_clip_rect(), |w| w.draw(draw.re()));
         }
+
+        fn probe(&self, coord: Coord) -> Id {
+            let solver = RowPositionSolver::new(self.direction);
+            solver
+                .find_child(&self.widgets, coord)
+                .and_then(|child| child.try_probe(coord))
+                .unwrap_or_else(|| self.id())
+        }
     }
 
     impl Tile for Self {
@@ -303,14 +311,6 @@ mod List {
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
-        }
-
-        fn probe(&self, coord: Coord) -> Id {
-            let solver = RowPositionSolver::new(self.direction);
-            solver
-                .find_child(&self.widgets, coord)
-                .and_then(|child| child.try_probe(coord))
-                .unwrap_or_else(|| self.id())
         }
     }
 

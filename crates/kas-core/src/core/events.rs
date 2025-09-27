@@ -17,12 +17,17 @@ use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused}
 /// This trait governs event handling as part of a [`Widget`] implementation.
 /// It is used by the [`#widget`] macro to generate hidden [`Widget`] methods.
 ///
-/// The implementation of this method may be omitted where no event-handling is
+/// # Implementation
+///
+/// The implementation of this trait may be omitted where no event-handling is
 /// required. All methods have a default implementation.
 ///
-/// Type [`Widget::Data`] may be specified in `impl Events { ... }` instead of
-/// in `impl Widget { ... }` (this is permitted since it allows may `#[widget]`
-/// definitions to omit `impl Widget { ... }` altogether).
+/// ## Foreign items
+///
+/// The [`#widget`] macro permits implementation of the following items within
+/// `impl Events`:
+///
+/// -   `type` [`Widget::Data`]
 ///
 /// # Widget lifecycle
 ///

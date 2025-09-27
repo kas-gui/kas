@@ -212,6 +212,10 @@ mod CheckButton {
             let dir = self.direction();
             shrink_to_text(&mut self.rect(), dir, &self.label);
         }
+
+        fn probe(&self, _: Coord) -> Id {
+            self.inner.id()
+        }
     }
 
     impl Tile for Self {
@@ -223,10 +227,6 @@ mod CheckButton {
 
         fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
             from.xor(Some(widget_index!(self.inner)))
-        }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.inner.id()
         }
     }
 

@@ -38,6 +38,10 @@ mod MenuEntry {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
         }
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
     }
 
     impl Tile for Self {
@@ -48,10 +52,6 @@ mod MenuEntry {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_label(self.label.id());
             Role::Button
-        }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.id()
         }
     }
 
@@ -145,6 +145,10 @@ mod MenuToggle {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             kas::MacroDefinedLayout::draw(self, draw);
         }
+
+        fn probe(&self, _: Coord) -> Id {
+            self.checkbox.id()
+        }
     }
 
     impl Tile for Self {
@@ -152,10 +156,6 @@ mod MenuToggle {
             if index == widget_index!(self.checkbox) {
                 cx.set_label(self.label.id());
             }
-        }
-
-        fn probe(&self, _: Coord) -> Id {
-            self.checkbox.id()
         }
     }
 

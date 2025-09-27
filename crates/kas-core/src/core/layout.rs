@@ -30,6 +30,13 @@ use kas_macros::autoimpl;
 /// `#[impl_self]`) or provide default implementations of its methods (if an
 /// explicit impl of `Layout` is found but some methods are missing).
 ///
+/// ## Foreign items
+///
+/// The [`#widget`] macro permits implementation of the following items within
+/// `impl Layout`:
+///
+/// -   `fn` [`LayoutFnProbe::probe`]
+///
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Layout {
@@ -135,17 +142,20 @@ pub trait Layout {
     ///
     /// # Implementation
     ///
-    /// Widgets should implement [`Tile::probe`] instead, in which case an
-    /// implemention of this method will be provided:
+    /// In most cases widgets should implement
+    /// [`fn probe`](LayoutFnProbe::probe) instead; the `#[widget]` macro can
+    /// use it to implement `try_probe` as follows:
     /// ```ignore
     /// self.rect().contains(coord).then(|| self.probe(coord))
     /// ```
-    /// Derive-mode widgets may implement either method.
     ///
     /// ## Default implementation
     ///
     /// Non-widgets do not have an [`Id`], and therefore should use the default
     /// implementation which simply returns `None`.
+    ///
+    /// Widgets without any children (including layout children) may use the
+    /// default implementation of [`fn probe`](LayoutFnProbe::probe).
     fn try_probe(&self, coord: Coord) -> Option<Id> {
         let _ = coord;
         None
@@ -180,6 +190,43 @@ pub trait Layout {
     /// limitation that widgets cannot easily detect a parent's state while
     /// being drawn).
     fn draw(&self, draw: DrawCx);
+}
+
+/// `fn probe` for [`Layout`]
+///
+/// This trait should not be implemented directly. Instead, the
+/// [`widget`](crate::widget) macro allows implementation of
+/// [`probe`](Self::probe) within an implementation of [`Layout`].
+pub trait LayoutFnProbe: Sized {
+    /// Probe a coordinate for a widget's [`Id`]
+    ///
+    /// Returns the [`Id`] of the widget expected to handle clicks and touch
+    /// events at the given `coord`. Typically this is the lowest descendant in
+    /// the widget tree at the given `coord`, but it is not required to be; e.g.
+    /// a `Button` may use an inner widget as a label but return its own [`Id`]
+    /// to indicate that the button (not the inner label) handles clicks.
+    ///
+    /// # Calling
+    ///
+    /// Call [`Layout::try_probe`] instead.
+    ///
+    /// # Implementation
+    ///
+    /// The callee may usually assume that it occupies `coord` and may thus
+    /// return its own [`Id`] when no child occupies the input `coord`.
+    /// If there are cases where a click within [`Layout::rect`] should be
+    /// considered a miss (non-rectangular hit-testing) then
+    /// [`Layout::try_probe`] must be implemented instead.
+    ///
+    /// If the [`Tile::translation`] is non-zero for any child, then the
+    /// coordinate passed to that child must be translated:
+    /// `coord + translation`.
+    ///
+    /// ## Default implementation
+    ///
+    /// The `#[widget]` macro provides a default implementation returning the
+    /// result of [`Tile::id`] for childless widgets.
+    fn probe(&self, coord: Coord) -> Id;
 }
 
 /// Macro-defined layout

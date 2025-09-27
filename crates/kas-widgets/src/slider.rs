@@ -300,6 +300,15 @@ mod Slider {
             let dir = self.direction.as_direction();
             draw.slider(self.rect(), &self.grip, dir);
         }
+
+        fn probe(&self, coord: Coord) -> Id {
+            if self.on_move.is_some() {
+                if let Some(id) = self.grip.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
+        }
     }
 
     impl Tile for Self {
@@ -315,15 +324,6 @@ mod Slider {
                 value: self.value.cast(),
                 direction: self.direction.as_direction(),
             }
-        }
-
-        fn probe(&self, coord: Coord) -> Id {
-            if self.on_move.is_some() {
-                if let Some(id) = self.grip.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
         }
     }
 
