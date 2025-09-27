@@ -12,7 +12,7 @@ use crate::config::{AutoFactory, Config, ConfigFactory};
 use crate::draw::DrawSharedImpl;
 use crate::theme::Theme;
 use crate::window::{Window, WindowId};
-pub use kas_core::runner::{AppData, ClosedError, Error, MessageStack, Platform, Proxy, Result};
+pub use kas_core::runner::{AppData, ClosedError, Error, Platform, Proxy, ReadMessage, Result};
 use kas_core::runner::{GraphicsInstance, PreLaunchState};
 use kas_core::theme::FlatTheme;
 use kas_wgpu::draw::CustomPipeBuilder;
