@@ -1,0 +1,308 @@
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License in the LICENSE-APACHE file or at:
+//     https://www.apache.org/licenses/LICENSE-2.0
+
+//! The [`EditField`] and [`EditBox`] widgets, plus supporting items
+
+use super::EditField;
+use kas::prelude::*;
+use std::fmt::{Debug, Display};
+use std::marker::PhantomData;
+use std::str::FromStr;
+
+/// Event-handling *guard* for [`EditField`], [`EditBox`]
+///
+/// This is the most generic interface; see also constructors of [`EditField`],
+/// [`EditBox`] for common use-cases.
+///
+/// All methods on this trait are passed a reference to the [`EditField`] as
+/// parameter. The guard itself is a public field: `edit.guard`.
+///
+/// All methods have a default implementation which does nothing.
+///
+/// [`EditBox`]: super::EditBox
+pub trait EditGuard: Sized {
+    /// Data type
+    type Data;
+
+    /// Configure guard
+    ///
+    /// This function is called when the attached widget is configured.
+    fn configure(edit: &mut EditField<Self>, cx: &mut ConfigCx) {
+        let _ = (edit, cx);
+    }
+
+    /// Update guard
+    ///
+    /// This function is called when input data is updated.
+    ///
+    /// Note that this method may be called during editing as a result of a
+    /// message sent by [`Self::edit`] or another cause. It is recommended to
+    /// ignore updates for editable widgets with key focus
+    /// ([`EditField::has_edit_focus`]) to avoid overwriting user input;
+    /// [`Self::focus_lost`] may update the content instead.
+    /// For read-only fields this is not recommended (but `has_edit_focus` will
+    /// not be true anyway).
+    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Self::Data) {
+        let _ = (edit, cx, data);
+    }
+
+    /// Activation guard
+    ///
+    /// This function is called when the widget is "activated", for example by
+    /// the Enter/Return key for single-line edit boxes. Its result is returned
+    /// from `handle_event`.
+    ///
+    /// The default implementation:
+    ///
+    /// -   If the field is editable, calls [`Self::focus_lost`] and returns
+    ///     returns [`Used`].
+    /// -   If the field is not editable, returns [`Unused`].
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) -> IsUsed {
+        if edit.is_editable() {
+            Self::focus_lost(edit, cx, data);
+            Used
+        } else {
+            Unused
+        }
+    }
+
+    /// Focus-gained guard
+    ///
+    /// This function is called when the widget gains keyboard input focus.
+    fn focus_gained(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) {
+        let _ = (edit, cx, data);
+    }
+
+    /// Focus-lost guard
+    ///
+    /// This function is called when the widget loses keyboard input focus.
+    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) {
+        let _ = (edit, cx, data);
+    }
+
+    /// Edit guard
+    ///
+    /// This function is called when contents are updated by the user.
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) {
+        let _ = (edit, cx, data);
+    }
+}
+
+/// Ignore all events and data updates
+///
+/// This guard should probably not be used for a functional user-interface but
+/// may be useful in mock UIs.
+#[autoimpl(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct DefaultGuard<A>(PhantomData<A>);
+impl<A: 'static> EditGuard for DefaultGuard<A> {
+    type Data = A;
+}
+
+#[impl_self]
+mod StringGuard {
+    /// An [`EditGuard`] for read-only strings
+    ///
+    /// This may be used with read-only edit fields, essentially resulting in a
+    /// fancier version of [`Text`](crate::Text) or
+    /// [`ScrollText`](crate::ScrollText).
+    #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
+    pub struct StringGuard<A> {
+        value_fn: Box<dyn Fn(&A) -> String>,
+        on_afl: Option<Box<dyn Fn(&mut EventCx, &A, &str)>>,
+        edited: bool,
+    }
+
+    impl Self {
+        /// Construct with a value function
+        ///
+        /// On update, `value_fn` is used to extract a value from input data.
+        /// If, however, the input field has focus, the update is ignored.
+        ///
+        /// No other action happens unless [`Self::with_msg`] is used.
+        pub fn new(value_fn: impl Fn(&A) -> String + 'static) -> Self {
+            StringGuard {
+                value_fn: Box::new(value_fn),
+                on_afl: None,
+                edited: false,
+            }
+        }
+
+        /// Call the handler `f` on activation / focus loss
+        ///
+        /// On field **a**ctivation and **f**ocus **l**oss (AFL) after an edit,
+        /// `f` is called.
+        pub fn with(mut self, f: impl Fn(&mut EventCx, &A, &str) + 'static) -> Self {
+            debug_assert!(self.on_afl.is_none());
+            self.on_afl = Some(Box::new(f));
+            self
+        }
+
+        /// Send the message generated by `f` on activation / focus loss
+        ///
+        /// On field **a**ctivation and **f**ocus **l**oss (AFL) after an edit,
+        /// `f` is used to construct a message to be emitted via [`EventCx::push`].
+        pub fn with_msg<M: Debug + 'static>(self, f: impl Fn(&str) -> M + 'static) -> Self {
+            self.with(move |cx, _, value| cx.push(f(value)))
+        }
+    }
+
+    impl EditGuard for Self {
+        type Data = A;
+
+        fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
+            if edit.guard.edited {
+                edit.guard.edited = false;
+                if let Some(ref on_afl) = edit.guard.on_afl {
+                    return on_afl(cx, data, edit.as_str());
+                }
+            }
+
+            // Reset data on focus loss (update is inhibited with focus).
+            // No need if we just sent a message (should cause an update).
+            let string = (edit.guard.value_fn)(data);
+            edit.set_string(cx, string);
+        }
+
+        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
+            if !edit.has_edit_focus() {
+                let string = (edit.guard.value_fn)(data);
+                edit.set_string(cx, string);
+            }
+        }
+
+        fn edit(edit: &mut EditField<Self>, _: &mut EventCx, _: &Self::Data) {
+            edit.guard.edited = true;
+        }
+    }
+}
+
+#[impl_self]
+mod ParseGuard {
+    /// An [`EditGuard`] for parsable types
+    ///
+    /// This guard displays a value formatted from input data, updates the error
+    /// state according to parse success on each keystroke, and sends a message
+    /// on focus loss (where successful parsing occurred).
+    #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
+    pub struct ParseGuard<A, T: Debug + Display + FromStr> {
+        parsed: Option<T>,
+        value_fn: Box<dyn Fn(&A) -> T>,
+        on_afl: Box<dyn Fn(&mut EventCx, T)>,
+    }
+
+    impl Self {
+        /// Construct
+        ///
+        /// On update, `value_fn` is used to extract a value from input data
+        /// which is then formatted as a string via [`Display`].
+        /// If, however, the input field has focus, the update is ignored.
+        ///
+        /// On every edit, the guard attempts to parse the field's input as type
+        /// `T` via [`FromStr`], caching the result and setting the error state.
+        ///
+        /// On field activation and focus loss when a `T` value is cached (see
+        /// previous paragraph), `on_afl` is used to construct a message to be
+        /// emitted via [`EventCx::push`]. The cached value is then cleared to
+        /// avoid sending duplicate messages.
+        pub fn new<M: Debug + 'static>(
+            value_fn: impl Fn(&A) -> T + 'static,
+            on_afl: impl Fn(T) -> M + 'static,
+        ) -> Self {
+            ParseGuard {
+                parsed: None,
+                value_fn: Box::new(value_fn),
+                on_afl: Box::new(move |cx, value| cx.push(on_afl(value))),
+            }
+        }
+    }
+
+    impl EditGuard for Self {
+        type Data = A;
+
+        fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
+            if let Some(value) = edit.guard.parsed.take() {
+                (edit.guard.on_afl)(cx, value);
+            } else {
+                // Reset data on focus loss (update is inhibited with focus).
+                // No need if we just sent a message (should cause an update).
+                let value = (edit.guard.value_fn)(data);
+                edit.set_string(cx, format!("{value}"));
+            }
+        }
+
+        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
+            edit.guard.parsed = edit.as_str().parse().ok();
+            edit.set_error_state(cx, edit.guard.parsed.is_none());
+        }
+
+        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
+            if !edit.has_edit_focus() {
+                let value = (edit.guard.value_fn)(data);
+                edit.set_string(cx, format!("{value}"));
+                edit.guard.parsed = None;
+            }
+        }
+    }
+}
+
+#[impl_self]
+mod InstantParseGuard {
+    /// An as-you-type [`EditGuard`] for parsable types
+    ///
+    /// This guard displays a value formatted from input data, updates the error
+    /// state according to parse success on each keystroke, and sends a message
+    /// immediately (where successful parsing occurred).
+    #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
+    pub struct InstantParseGuard<A, T: Debug + Display + FromStr> {
+        value_fn: Box<dyn Fn(&A) -> T>,
+        on_afl: Box<dyn Fn(&mut EventCx, T)>,
+    }
+
+    impl Self {
+        /// Construct
+        ///
+        /// On update, `value_fn` is used to extract a value from input data
+        /// which is then formatted as a string via [`Display`].
+        /// If, however, the input field has focus, the update is ignored.
+        ///
+        /// On every edit, the guard attempts to parse the field's input as type
+        /// `T` via [`FromStr`]. On success, the result is converted to a
+        /// message via `on_afl` then emitted via [`EventCx::push`].
+        pub fn new<M: Debug + 'static>(
+            value_fn: impl Fn(&A) -> T + 'static,
+            on_afl: impl Fn(T) -> M + 'static,
+        ) -> Self {
+            InstantParseGuard {
+                value_fn: Box::new(value_fn),
+                on_afl: Box::new(move |cx, value| cx.push(on_afl(value))),
+            }
+        }
+    }
+
+    impl EditGuard for Self {
+        type Data = A;
+
+        fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
+            // Always reset data on focus loss
+            let value = (edit.guard.value_fn)(data);
+            edit.set_string(cx, format!("{value}"));
+        }
+
+        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
+            let result = edit.as_str().parse();
+            edit.set_error_state(cx, result.is_err());
+            if let Ok(value) = result {
+                (edit.guard.on_afl)(cx, value);
+            }
+        }
+
+        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
+            if !edit.has_edit_focus() {
+                let value = (edit.guard.value_fn)(data);
+                edit.set_string(cx, format!("{value}"));
+            }
+        }
+    }
+}
