@@ -264,16 +264,34 @@ mod SelectableText {
                     Used
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
-                    TextInputAction::Used | TextInputAction::Finish => Used,
+                    TextInputAction::Used => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::Focus { coord, action } => {
+                    TextInputAction::CursorStart {
+                        coord,
+                        clear,
+                        repeats,
+                    } => {
                         self.set_cursor_from_coord(cx, coord);
-                        self.selection.action(&self.text, action);
+                        self.selection.set_anchor(clear);
+                        if repeats > 1 {
+                            self.selection.expand(&self.text, repeats >= 3);
+                        }
 
+                        if !self.has_sel_focus {
+                            cx.request_sel_focus(self.id(), FocusSource::Pointer);
+                        }
+                        Used
+                    }
+                    TextInputAction::CursorMove { coord, repeats } => {
+                        self.set_cursor_from_coord(cx, coord);
+                        if repeats > 1 {
+                            self.selection.expand(&self.text, repeats >= 3);
+                        }
+                        Used
+                    }
+                    TextInputAction::CursorEnd { .. } => {
                         if self.has_sel_focus {
                             self.set_primary(cx);
-                        } else {
-                            cx.request_sel_focus(self.id(), FocusSource::Pointer);
                         }
                         Used
                     }

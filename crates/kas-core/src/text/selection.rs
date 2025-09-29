@@ -12,25 +12,6 @@ use kas_text::{TextDisplay, format::FormattableText};
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
-/// Action used by [`crate::event::components::TextInput`]
-#[derive(Default)]
-pub struct SelectionAction {
-    pub anchor: bool,
-    pub clear: bool,
-    pub repeats: u32,
-}
-
-impl SelectionAction {
-    /// Construct
-    pub fn new(anchor: bool, clear: bool, repeats: u32) -> Self {
-        SelectionAction {
-            anchor,
-            clear,
-            repeats,
-        }
-    }
-}
-
 /// Text-selection logic
 ///
 /// This struct holds the index of the edit cursor and selection position, which
@@ -133,6 +114,19 @@ impl SelectionHelper {
         range
     }
 
+    /// Set the anchor to the edit position
+    ///
+    /// This is used to start a drag-selection. If `clear`, then the selection
+    /// position is also set to the edit position.
+    ///
+    /// [`Self::expand`] may be used to expand the selection from this anchor.
+    pub fn set_anchor(&mut self, clear: bool) {
+        self.anchor = self.edit;
+        if clear {
+            self.sel = self.edit;
+        }
+    }
+
     /// Set the anchor position to the start of the selection range
     pub fn set_anchor_to_range_start(&mut self) {
         self.anchor = self.range().start;
@@ -147,23 +141,23 @@ impl SelectionHelper {
         self.anchor..self.edit
     }
 
-    /// Expand the selection from the range between edit index and anchor index
+    /// Expand the selection from the range between edit and anchor positions
     ///
-    /// This moves both edit index and selection index. To obtain repeatable behaviour,
-    /// first set `self.anchor_pos`.
-    /// then before each time this method is called set the edit position.
+    /// This moves both edit index and selection index. To obtain repeatable
+    /// behaviour on drag-selection, set the anchor ([`Self::set_anchor`])
+    /// initially, then set the edit position and call this method each time
+    /// the cursor moves.
     ///
-    /// If `repeats <= 2`, the selection is expanded by words, otherwise it is
-    /// expanded by lines. Line expansion only works if text is line-wrapped
-    /// (layout has been solved).
-    fn expand<T: FormattableText>(&mut self, text: &Text<T>, repeats: u32) {
+    /// The selection is expanded by words or lines (if `lines`). Line expansion
+    /// requires that text has been prepared ([`Text::prepare`]).
+    pub fn expand<T: FormattableText>(&mut self, text: &Text<T>, lines: bool) {
         let string = text.as_str();
         let mut range = self.edit..self.anchor;
         if range.start > range.end {
             std::mem::swap(&mut range.start, &mut range.end);
         }
         let (mut start, mut end);
-        if repeats <= 2 {
+        if !lines {
             end = string[range.start..]
                 .char_indices()
                 .nth(1)
@@ -197,19 +191,6 @@ impl SelectionHelper {
         }
         self.sel = start;
         self.edit = end;
-    }
-
-    /// Handle an action
-    pub fn action<T: FormattableText>(&mut self, text: &Text<T>, action: SelectionAction) {
-        if action.anchor {
-            self.anchor = self.edit;
-        }
-        if action.clear {
-            self.set_empty();
-        }
-        if action.repeats > 1 {
-            self.expand(text, action.repeats);
-        }
     }
 
     /// Return a [`Rect`] encompassing the cursor(s) and selection

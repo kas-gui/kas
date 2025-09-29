@@ -606,6 +606,19 @@ impl Text<String> {
         self.set_max_status(Status::New);
     }
 
+    /// Insert a `text` at the given position
+    ///
+    /// This may be used to edit the raw text instead of replacing it.
+    /// One must call [`Text::prepare`] afterwards.
+    ///
+    /// Currently this is not significantly more efficient than
+    /// [`Text::set_text`]. This may change in the future (TODO).
+    #[inline]
+    pub fn insert_str(&mut self, index: usize, text: &str) {
+        self.text.insert_str(index, text);
+        self.set_max_status(Status::New);
+    }
+
     /// Replace a section of text
     ///
     /// This may be used to edit the raw text instead of replacing it.
