@@ -103,12 +103,18 @@ where
                 }
             }
 
-            if !self.messages.stack.is_empty() {
-                let count = self.messages.get_op_count();
-                data.handle_messages(&mut self.messages);
-                if self.messages.get_op_count() != count {
-                    self.pending.push_back(Pending::Action(Action::UPDATE));
+            let start_count = self.messages.get_op_count();
+            let mut last_count = start_count;
+            while !self.messages.stack.is_empty() {
+                data.handle_message(&mut self.messages);
+                if self.messages.get_op_count() == last_count {
+                    break;
+                } else {
+                    last_count = self.messages.get_op_count();
                 }
+            }
+            if self.messages.get_op_count() != start_count {
+                self.pending.push_back(Pending::Action(Action::UPDATE));
             }
         }
 

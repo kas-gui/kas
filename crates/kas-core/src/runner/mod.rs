@@ -38,7 +38,7 @@ pub extern crate raw_window_handle;
 /// used through that, thus the interface here is incomplete.
 #[must_use]
 #[derive(Debug, Default)]
-pub struct MessageStack {
+pub(crate) struct MessageStack {
     base: usize,
     count: usize,
     stack: Vec<Erased>,
@@ -47,7 +47,7 @@ pub struct MessageStack {
 impl MessageStack {
     /// Construct an empty stack
     #[inline]
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         MessageStack::default()
     }
 
@@ -88,16 +88,31 @@ impl MessageStack {
         self.count = self.count.wrapping_add(1);
         self.stack.push(msg);
     }
+}
 
+/// This trait allows peeking and popping messages from the stack
+pub trait ReadMessage {
     /// Pop a type-erased message from the stack, if non-empty
+    fn pop_erased(&mut self) -> Option<Erased>;
+
+    /// Try popping the last message from the stack with the given type
+    fn try_pop<M: Debug + 'static>(&mut self) -> Option<M>;
+
+    /// Try observing the last message on the stack without popping
+    fn try_peek<M: Debug + 'static>(&self) -> Option<&M>;
+
+    /// Debug the last message on the stack, if any
+    fn peek_debug(&self) -> Option<&dyn Debug>;
+}
+
+impl ReadMessage for MessageStack {
     #[inline]
-    pub fn pop_erased(&mut self) -> Option<Erased> {
+    fn pop_erased(&mut self) -> Option<Erased> {
         self.count = self.count.wrapping_add(1);
         self.stack.pop()
     }
 
-    /// Try popping the last message from the stack with the given type
-    pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
+    fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
         if self.has_any() && self.stack.last().map(|m| m.is::<M>()).unwrap_or(false) {
             self.count = self.count.wrapping_add(1);
             self.stack.pop().unwrap().downcast::<M>().ok().map(|m| *m)
@@ -106,8 +121,7 @@ impl MessageStack {
         }
     }
 
-    /// Try observing the last message on the stack without popping
-    pub fn try_peek<M: Debug + 'static>(&self) -> Option<&M> {
+    fn try_peek<M: Debug + 'static>(&self) -> Option<&M> {
         if self.has_any() {
             self.stack.last().and_then(|m| m.downcast_ref::<M>())
         } else {
@@ -115,8 +129,7 @@ impl MessageStack {
         }
     }
 
-    /// Debug the last message on the stack, if any
-    pub fn peek_debug(&self) -> Option<&dyn Debug> {
+    fn peek_debug(&self) -> Option<&dyn Debug> {
         self.stack.last().map(Erased::debug)
     }
 }
@@ -145,12 +158,15 @@ impl Drop for MessageStack {
 /// TODO: should we pass some type of interface to the runner to these methods?
 /// We could pass a `&mut dyn RunnerT` easily, but that trait is not public.
 pub trait AppData: 'static {
-    /// Handle messages
+    /// Handle a message
     ///
-    /// This is the last message handler: it is called when, after traversing
-    /// the widget tree (see [kas::event] module doc), a message is left on the
-    /// stack. Unhandled messages will result in warnings in the log.
-    fn handle_messages(&mut self, messages: &mut MessageStack);
+    /// This is the last message handler. If, traversing the widget tree
+    /// (see [kas::event] module doc), the message stack is not empty, this
+    /// method is called repeatedly until either the message stack is empty or
+    /// the last call did not remove a message from the stack.
+    ///
+    /// Unhandled messages will result in warnings in the log.
+    fn handle_message(&mut self, messages: &mut impl ReadMessage);
 
     /// Application is being suspended
     ///
@@ -165,7 +181,7 @@ pub trait AppData: 'static {
 }
 
 impl AppData for () {
-    fn handle_messages(&mut self, _: &mut MessageStack) {}
+    fn handle_message(&mut self, _: &mut impl ReadMessage) {}
     fn suspended(&mut self) {}
 }
 

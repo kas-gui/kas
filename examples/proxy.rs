@@ -24,7 +24,7 @@ struct AppData {
 }
 
 impl kas::runner::AppData for AppData {
-    fn handle_messages(&mut self, messages: &mut kas::runner::MessageStack) {
+    fn handle_message(&mut self, messages: &mut impl kas::runner::ReadMessage) {
         if let Some(SetColor(color)) = messages.try_pop() {
             self.color = Some(color);
         }

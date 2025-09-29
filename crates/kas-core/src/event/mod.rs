@@ -36,8 +36,7 @@
 //!         call [`Events::handle_event`]
 //!     -   If the message stack is non-empty (see [`EventCx::push`]),
 //!         call [`Events::handle_messages`].
-//! 7.  If the message stack is not empty, call
-//!     [`AppData::handle_messages`](crate::runner::AppData::handle_messages).
+//! 7.  If the message stack is not empty, call [`AppData::handle_message`].
 //! 8.  Clear any messages still on the message stack, printing a warning to the
 //!     log. Messages *should* be handled during unwinding, though not doing so
 //!     is safe (and possibly useful during development).
@@ -65,7 +64,8 @@ pub use winit::event::{ElementState, KeyEvent, MouseButton};
 pub use winit::keyboard::{Key, ModifiersState, NamedKey, PhysicalKey};
 pub use winit::window::{CursorIcon, ImePurpose}; // used by Key
 
-#[allow(unused)] use crate::{Events, Widget};
+#[allow(unused)]
+use crate::{Events, Widget, runner::AppData};
 pub use config_cx::ConfigCx;
 pub use cx::*;
 pub use event::*;
