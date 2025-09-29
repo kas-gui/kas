@@ -748,12 +748,7 @@ impl<G: EditGuard> EditField<G> {
             self.text.replace_range(selection.clone(), text);
             self.selection.set_all(selection.start + text.len());
         } else {
-            // TODO(kas-text) support the following:
-            // self.text.insert_str(index, text);
-            let mut s = self.text.clone_string();
-            s.insert_str(index, text);
-            self.text.set_text(s);
-            // END workaround
+            self.text.insert_str(index, text);
             self.selection.set_all(index + text.len());
         }
         self.edit_x_coord = None;
