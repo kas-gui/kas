@@ -171,7 +171,7 @@ mod EditField {
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
             match event {
                 Event::NavFocus(source) if source == FocusSource::Key => {
-                    if !self.has_key_focus && !self.current.is_select() {
+                    if !self.has_key_focus && !self.input_handler.is_selecting() {
                         let ime = Some(ImePurpose::Normal);
                         cx.request_key_focus(self.id(), ime, source);
                     }
@@ -195,6 +195,7 @@ mod EditField {
                     Used
                 }
                 Event::ImeFocus => {
+                    self.input_handler.stop_selecting();
                     self.current = CurrentAction::ImeStart;
                     self.set_ime_cursor_area(cx);
                     Used
@@ -214,6 +215,7 @@ mod EditField {
                 Event::LostSelFocus => {
                     // IME focus without selection focus is impossible, so we can clear all current actions
                     self.current = CurrentAction::None;
+                    self.input_handler.stop_selecting();
                     self.selection.set_empty();
                     cx.redraw(self);
                     Used
@@ -251,6 +253,7 @@ mod EditField {
                             return Used;
                         }
                     }
+                    self.input_handler.stop_selecting();
 
                     let range = self.selection.anchor_to_edit_range();
                     self.text.replace_range(range.clone(), text);
@@ -270,6 +273,7 @@ mod EditField {
                         self.selection.set_anchor_to_range_start();
                     }
                     self.current = CurrentAction::None;
+                    self.input_handler.stop_selecting();
 
                     let range = self.selection.anchor_to_edit_range();
                     self.text.replace_range(range.clone(), text);
@@ -285,7 +289,7 @@ mod EditField {
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     if let Some(content) = cx.get_primary() {
                         self.set_cursor_from_coord(cx, press.coord);
-                        self.current.clear_selection();
+                        self.input_handler.stop_selecting();
                         self.selection.set_empty();
                         let index = self.selection.edit_index();
                         let range = self.trim_paste(&content);
@@ -324,10 +328,9 @@ mod EditField {
                         if !self.has_key_focus {
                             cx.request_key_focus(self.id(), None, FocusSource::Pointer);
                         }
-                        self.current = CurrentAction::DragSelect;
                         Used
                     }
-                    TextInputAction::CursorMove { coord, repeats } if self.current.is_select() => {
+                    TextInputAction::CursorMove { coord, repeats } => {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
                             self.selection.expand(&self.text, repeats >= 3);
@@ -335,14 +338,12 @@ mod EditField {
 
                         Used
                     }
-                    TextInputAction::CursorEnd { .. } if self.current.is_select() => {
-                        self.current = CurrentAction::None;
+                    TextInputAction::CursorEnd { .. } => {
                         self.set_primary(cx);
                         let ime = Some(ImePurpose::Normal);
                         cx.request_key_focus(self.id(), ime, FocusSource::Pointer);
                         Used
                     }
-                    _ => Used,
                 },
             }
         }
@@ -431,6 +432,7 @@ mod EditField {
                 return false;
             }
 
+            self.input_handler.stop_selecting();
             self.current.clear_active();
             self.selection.set_max_len(self.text.str_len());
             cx.redraw(&self);
@@ -571,7 +573,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        debug_assert!(self.current == CurrentAction::None);
+        debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
         let text = text.to_string();
         let len = text.len();
         self.text.set_string(text);
@@ -720,7 +722,7 @@ impl<G: EditGuard> EditField<G> {
             return Unused;
         }
 
-        self.current.clear_selection();
+        self.input_handler.stop_selecting();
         let index = self.selection.edit_index();
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
@@ -765,6 +767,7 @@ impl<G: EditGuard> EditField<G> {
 
         enum Action<'a> {
             None,
+            Deselect,
             Activate,
             Edit,
             Insert(&'a str, LastEdit),
@@ -776,10 +779,7 @@ impl<G: EditGuard> EditField<G> {
             Command::Escape | Command::Deselect
                 if !self.current.is_active_ime() && !selection.is_empty() =>
             {
-                self.current.clear_selection();
-                self.selection.set_empty();
-                cx.redraw(&self);
-                Action::None
+                Action::Deselect
             }
             Command::Activate => Action::Activate,
             Command::Enter if shift || !multi_line => Action::Activate,
@@ -986,11 +986,17 @@ impl<G: EditGuard> EditField<G> {
         }
 
         if !matches!(action, Action::None) {
+            self.input_handler.stop_selecting();
             self.current = CurrentAction::None;
         }
 
         let result = match action {
             Action::None => EditAction::None,
+            Action::Deselect => {
+                self.selection.set_empty();
+                cx.redraw(&self);
+                EditAction::None
+            }
             Action::Activate => EditAction::Activate,
             Action::Edit => EditAction::Edit,
             Action::Insert(s, edit) => {

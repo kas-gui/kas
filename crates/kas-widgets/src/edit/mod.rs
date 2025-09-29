@@ -35,32 +35,21 @@ enum EditAction {
 enum CurrentAction {
     #[default]
     None,
-    DragSelect,
     ImeStart,
     ImeEdit,
 }
 
 impl CurrentAction {
-    fn is_select(self) -> bool {
-        matches!(self, CurrentAction::DragSelect)
-    }
-
     fn is_ime(self) -> bool {
         matches!(self, CurrentAction::ImeStart | CurrentAction::ImeEdit)
     }
 
     fn is_active_ime(self) -> bool {
-        false
+        false // FIXME?
     }
 
     fn clear_active(&mut self) {
-        if matches!(self, CurrentAction::DragSelect | CurrentAction::ImeEdit) {
-            *self = CurrentAction::None;
-        }
-    }
-
-    fn clear_selection(&mut self) {
-        if matches!(self, CurrentAction::DragSelect) {
+        if matches!(self, CurrentAction::ImeEdit) {
             *self = CurrentAction::None;
         }
     }

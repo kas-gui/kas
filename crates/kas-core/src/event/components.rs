@@ -544,4 +544,20 @@ impl TextInput {
             _ => Action::Unused,
         }
     }
+
+    /// Is there an on-going selection action?
+    ///
+    /// This is true when the last action delivered was
+    /// [`TextInputAction::CursorStart`] or [`TextInputAction::Cursor::Move`].
+    #[inline]
+    pub fn is_selecting(&self) -> bool {
+        matches!(&self.phase, Phase::Cursor(_, _))
+    }
+
+    /// Interrupt an on-going selection action, if any
+    pub fn stop_selecting(&mut self) {
+        if self.is_selecting() {
+            self.phase = Phase::None;
+        }
+    }
 }
