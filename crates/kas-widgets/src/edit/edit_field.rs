@@ -287,10 +287,11 @@ mod EditField {
                     press.grab_click(self.id()).complete(cx)
                 }
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
+                    self.set_cursor_from_coord(cx, press.coord);
+                    self.input_handler.stop_selecting();
+                    self.selection.set_empty();
+
                     if let Some(content) = cx.get_primary() {
-                        self.set_cursor_from_coord(cx, press.coord);
-                        self.input_handler.stop_selecting();
-                        self.selection.set_empty();
                         let index = self.selection.edit_index();
                         let range = self.trim_paste(&content);
                         let len = range.len();
@@ -306,6 +307,9 @@ mod EditField {
 
                         G::edit(self, cx, data);
                     }
+
+                    let ime = Some(ImePurpose::Normal);
+                    cx.request_key_focus(self.id(), ime, FocusSource::Pointer);
                     Used
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {

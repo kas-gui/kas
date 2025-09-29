@@ -548,7 +548,7 @@ impl TextInput {
     /// Is there an on-going selection action?
     ///
     /// This is true when the last action delivered was
-    /// [`TextInputAction::CursorStart`] or [`TextInputAction::Cursor::Move`].
+    /// [`TextInputAction::CursorStart`] or [`TextInputAction::CursorMove`].
     #[inline]
     pub fn is_selecting(&self) -> bool {
         matches!(&self.phase, Phase::Cursor(_, _))
