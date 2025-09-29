@@ -649,20 +649,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             );
         }
 
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
-            if let Some(span2) = fn_probe_span {
-                let span = layout_impl.items[*index].span();
-                emit_error!(
-                    span2, "implementation conflicts with fn try_probe";
-                    note = span => "this implementation overrides fn probe"
-                );
-            }
-        } else if let Some(method) = fn_try_probe {
-            layout_impl.items.push(Verbatim(method));
-        } else {
-            emit_error!(layout_impl, "expected definition of fn try_probe");
-        }
-
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
             if let Some(ref core) = core_data {
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
@@ -689,15 +675,12 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         } else if let Some(method) = fn_draw {
             layout_impl.items.push(Verbatim(method));
         }
-    } else if let Some(fn_size_rules) = fn_size_rules
-        && let Some(fn_try_probe) = fn_try_probe
-    {
+    } else if let Some(fn_size_rules) = fn_size_rules {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
                 #fn_rect
                 #fn_size_rules
                 #fn_set_rect
-                #fn_try_probe
                 #fn_draw
             }
         });
@@ -736,6 +719,23 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         }
 
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
+            if let Some(span2) = fn_probe_span {
+                let span = tile_impl.items[*index].span();
+                emit_error!(
+                    span2, "implementation conflicts with fn try_probe";
+                    note = span => "this implementation overrides fn probe"
+                );
+            }
+        } else if let Some(method) = fn_try_probe {
+            tile_impl.items.push(Verbatim(method));
+        } else {
+            emit_error!(
+                tile_impl,
+                "expected definition of fn Events::probe or fn Tile::try_probe"
+            );
+        }
+
         if !has_item("nav_next") {
             match fn_nav_next {
                 Ok(method) => tile_impl.items.push(Verbatim(method)),
@@ -758,6 +758,13 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             );
         }
 
+        if fn_try_probe.is_none() {
+            emit_error!(
+                attr_span,
+                "expected definition of fn Events::probe or fn Tile::try_probe"
+            );
+        }
+
         let fn_nav_next = match fn_nav_next {
             Ok(method) => Some(method),
             Err((span, msg)) => {
@@ -772,6 +779,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #fn_role
                 #fn_get_child
                 #fn_child_indices
+                #fn_try_probe
                 #fn_nav_next
             }
         });

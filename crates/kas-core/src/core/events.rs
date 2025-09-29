@@ -49,7 +49,7 @@ use crate::{Id, geom::Coord};
 ///
 ///     This method may be called again at any time.
 /// 5.  The widget is ready for event-handling and drawing
-///     ([`Events::handle_event`], [`Layout::try_probe`], [`Layout::draw`]).
+///     ([`Events::handle_event`], [`Tile::try_probe`], [`Layout::draw`]).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout
@@ -98,7 +98,7 @@ pub trait Events: Widget + Sized {
     ///
     /// # Calling
     ///
-    /// Call [`Layout::try_probe`] instead.
+    /// Call [`Tile::try_probe`] instead.
     ///
     /// # Implementation
     ///
@@ -106,7 +106,7 @@ pub trait Events: Widget + Sized {
     /// return its own [`Id`] when no child occupies the input `coord`.
     /// If there are cases where a click within [`Layout::rect`] should be
     /// considered a miss (non-rectangular hit-testing) then
-    /// [`Layout::try_probe`] must be implemented instead.
+    /// [`Tile::try_probe`] must be implemented instead.
     ///
     /// If the [`Tile::translation`] is non-zero for any child, then the
     /// coordinate passed to that child must be translated:
@@ -116,7 +116,7 @@ pub trait Events: Widget + Sized {
     ///
     /// The default implementation returns `self.id()` and may be used for
     /// childless widgets. If the [`layout`](macro@crate::layout) attribute
-    /// macro is used or an explicit implementation of [`Layout::try_probe`] is
+    /// macro is used or an explicit implementation of [`Tile::try_probe`] is
     /// provided, these are used instead of the default implementation of this
     /// method.
     fn probe(&self, coord: Coord) -> Id {

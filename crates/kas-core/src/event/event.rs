@@ -113,7 +113,7 @@ pub enum Event<'a> {
     /// Motion events for the grabbed mouse pointer or touched finger are sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
-    /// outside the window or [`crate::Layout::try_probe`] failed).
+    /// outside the window or [`crate::Tile::try_probe`] failed).
     ///
     /// This event may be sent 10+ times per frame, thus it is important that
     /// the handler be fast. It may be useful to schedule a pre-draw update
@@ -134,7 +134,7 @@ pub enum Event<'a> {
     /// sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
-    /// outside the window or [`crate::Layout::try_probe`] failed).
+    /// outside the window or [`crate::Tile::try_probe`] failed).
     PressEnd { press: Press, success: bool },
     /// Update from a timer
     ///

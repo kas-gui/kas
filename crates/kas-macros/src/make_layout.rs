@@ -844,7 +844,7 @@ impl Layout {
                 }
 
                 toks.append_all(quote! {
-                    if let Some(id) = ::kas::Layout::try_probe(&#expr, coord) {
+                    if let Some(id) = ::kas::Tile::try_probe(&#expr, coord) {
                         Some(id)
                     } else
                 });
@@ -855,7 +855,7 @@ impl Layout {
                 }
 
                 toks.append_all(quote! {
-                    if let Some(id) = ::kas::Layout::try_probe(&#core_path.#stor, coord) {
+                    if let Some(id) = ::kas::Tile::try_probe(&#core_path.#stor, coord) {
                         Some(id)
                     } else
                 });

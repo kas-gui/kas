@@ -5,7 +5,7 @@
 
 //! Layout, Tile and TileExt traits
 
-use crate::geom::{Offset, Rect};
+use crate::geom::{Coord, Offset, Rect};
 use crate::util::IdentifyWidget;
 use crate::{ChildIndices, HasId, Id, Layout, Role, RoleCx};
 use kas_macros::autoimpl;
@@ -175,6 +175,35 @@ pub trait Tile: Layout {
         id.next_key_after(self.id_ref())
     }
 
+    /// Probe a coordinate for a widget's [`Id`]
+    ///
+    /// Returns the [`Id`] of the widget expected to handle clicks and touch
+    /// events at the given `coord`, or `None` if `self` does not occupy this
+    /// `coord`. Typically the result is the lowest descendant in
+    /// the widget tree at the given `coord`, but it is not required to be; e.g.
+    /// a `Button` may use an inner widget as a label but return its own [`Id`]
+    /// to indicate that the button (not the inner label) handles clicks.
+    ///
+    /// # Calling
+    ///
+    /// ## Call order
+    ///
+    /// It is expected that [`Layout::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    ///
+    /// # Implementation
+    ///
+    /// In most cases widgets should implement
+    /// [`Events::probe`] instead; the `#[widget]` macro can
+    /// use it to implement `try_probe` as follows:
+    /// ```ignore
+    /// self.rect().contains(coord).then(|| self.probe(coord))
+    /// ```
+    fn try_probe(&self, coord: Coord) -> Option<Id> {
+        let _ = coord;
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
+
     /// Navigation in spatial order
     ///
     /// Controls <kbd>Tab</kbd> navigation order of children.
@@ -205,10 +234,10 @@ pub trait Tile: Layout {
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
     /// *and* child widgets need to implement this.
-    /// Such widgets must also implement [`Layout::try_probe`] and (if they
+    /// Such widgets must also implement [`Tile::try_probe`] and (if they
     /// scroll) [`Events::handle_scroll`].
     ///
-    /// Affects event handling via [`Layout::try_probe`] and affects the
+    /// Affects event handling via [`Tile::try_probe`] and affects the
     /// positioning of pop-up menus. [`Layout::draw`] must be implemented
     /// directly using [`DrawCx::with_clip_region`] to offset contents.
     ///
