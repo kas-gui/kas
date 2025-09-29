@@ -34,7 +34,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 #
 # Note: only some examples build in this configuration; others need view,
 # markdown, resvg. Recommended also: clipboard, ron (or some config format).
-minimal = ["wgpu", "wayland", "vulkan", "dx12", "metal"]
+minimal = ["wayland", "vulkan", "dx12", "metal"]
 # All recommended features for optimal experience
 default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn", "accesskit"]
 # All standard test target features
@@ -64,10 +64,10 @@ view = ["dep:kas-view"]
 wgpu = ["dep:kas-wgpu"]
 
 # WGPU backends
-vulkan = ["kas-wgpu?/vulkan"]
-gles = ["kas-wgpu?/gles"]
-dx12 = ["kas-wgpu?/dx12"]
-metal = ["kas-wgpu?/metal"]
+vulkan = ["wgpu", "kas-wgpu/vulkan"]
+gles = ["wgpu", "kas-wgpu/gles"]
+dx12 = ["wgpu", "kas-wgpu/dx12"]
+metal = ["wgpu", "kas-wgpu/metal"]
 
 # Enables documentation of APIs for graphics library and platform backends.
 # This API is not intended for use by end-user applications and
