@@ -9,7 +9,7 @@ use super::*;
 use crate::{ScrollBar, ScrollMsg};
 use kas::event::Scroll;
 use kas::event::components::ScrollComponent;
-use kas::messages::SetValueText;
+use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, TextClass};
 use std::fmt::{Debug, Display};
@@ -174,7 +174,9 @@ mod EditBox {
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
                 self.set_scroll_offset(cx, offset);
             }
-            // TODO: pass ReplaceSelectedText to inner widget?
+            if let Some(&ReplaceSelectedText(_)) = cx.try_peek() {
+                self.inner.handle_messages(cx, data);
+            }
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {
