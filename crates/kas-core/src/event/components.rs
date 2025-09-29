@@ -8,8 +8,6 @@
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
-#[allow(unused)]
-use crate::text::{SelectionAction, SelectionHelper};
 use crate::{Action, Id};
 use kas_macros::impl_default;
 use std::time::Instant;
@@ -413,9 +411,9 @@ impl ScrollComponent {
 #[derive(Clone, Debug, PartialEq)]
 enum Phase {
     None,
-    Start(PressSource, Coord), // source, coord
-    Pan(PressSource),          // source
-    Cursor(PressSource),       // source
+    PressStart(PressSource, Coord), // source, coord
+    Pan(PressSource),               // source
+    Cursor(PressSource, Coord),     // source
 }
 
 /// Handles text selection and panning from mouse and touch events
@@ -430,27 +428,29 @@ pub enum TextInputAction {
     Used,
     /// Event not used
     Unused,
-    /// Set the text cursor near to `coord` (mouse or touch position)
+    /// Set the text cursor near to `coord`
     ///
-    /// If `action.anchor`, this is a new set-focus action; the selection anchor
-    /// should be set to the current position (this is used to expand the
-    /// selection on double- or triple-click). If `!action.anchor`, this is an
-    /// update due to pointer motion used to drag a selection.
-    ///
-    /// To handle:
-    ///
-    /// 1.  Translate `coord` to a text index and call [`SelectionHelper::set_edit_index`].
-    /// 2.  Call [`SelectionHelper::action`].
-    /// 3.  If supporting the primary buffer (Unix), set its contents now if the
-    ///     widget has selection focus or otherwise when handling
-    ///     [`Event::SelFocus`] for a pointer source.
-    /// 4.  Request keyboard or selection focus if not already gained.
-    Focus {
+    /// This corresponds to a mouse click or touch action. It may be followed by
+    /// [`Self::CursorMove`] and will be concluded by [`Self::CursorEnd`].
+    CursorStart {
+        /// The click coordinate
         coord: Coord,
-        action: SelectionAction,
+        /// Whether to clear any prior selection (true unless Shift is held)
+        clear: bool,
+        /// Number of clicks in sequence (e.g. 2 for double-click)
+        repeats: u32,
     },
-    /// Current action is concluded
-    Finish,
+    /// Drag-select text
+    CursorMove {
+        coord: Coord,
+        /// Number of clicks in sequence (e.g. 2 for double-click)
+        repeats: u32,
+    },
+    /// End of text cursor placement or text positioning
+    ///
+    /// The widget may wish to request keyboard focus in case it does not yet
+    /// have it. The widget should set the primary buffer (Unix).
+    CursorEnd { coord: Coord },
 }
 
 impl TextInput {
@@ -468,7 +468,7 @@ impl TextInput {
             Event::PressStart(press) if press.is_primary() => {
                 let mut action = Action::Used;
                 let icon = if press.is_touch() {
-                    self.phase = Phase::Start(*press, press.coord());
+                    self.phase = Phase::PressStart(*press, press.coord());
                     let delay = cx.config().event().touch_select_delay();
                     cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
                     None
@@ -477,14 +477,11 @@ impl TextInput {
                         self.phase = Phase::Pan(*press);
                         Some(CursorIcon::Grabbing)
                     } else {
-                        self.phase = Phase::Cursor(*press);
-                        action = Action::Focus {
+                        self.phase = Phase::Cursor(*press, press.coord());
+                        action = Action::CursorStart {
                             coord: press.coord(),
-                            action: SelectionAction {
-                                anchor: true,
-                                clear: !cx.modifiers().shift_key(),
-                                repeats: press.repetitions(),
-                            },
+                            clear: !cx.modifiers().shift_key(),
+                            repeats: press.repetitions(),
                         };
                         None
                     }
@@ -498,7 +495,7 @@ impl TextInput {
                 action
             }
             Event::PressMove { press, delta } => match self.phase {
-                Phase::Start(source, start_coord) if *press == source => {
+                Phase::PressStart(source, start_coord) if *press == source => {
                     let delta = press.coord - start_coord;
                     if cx.config_test_pan_thresh(delta) {
                         self.phase = Phase::Pan(source);
@@ -510,29 +507,36 @@ impl TextInput {
                     cx.set_scroll(Scroll::Offset(delta));
                     Action::Used
                 }
-                Phase::Cursor(source) if *press == source => Action::Focus {
-                    coord: press.coord,
-                    action: SelectionAction::new(false, false, press.repetitions()),
-                },
+                Phase::Cursor(source, _) if *press == source => {
+                    self.phase = Phase::Cursor(source, press.coord);
+                    Action::CursorMove {
+                        coord: press.coord,
+                        repeats: press.repetitions(),
+                    }
+                }
                 _ => Action::Used,
             },
-            Event::PressEnd { press, .. } => {
-                if let Phase::Pan(source) = self.phase
-                    && *press == source
-                    && let Some(vel) = cx.press_velocity(source)
-                {
-                    let rest = Vec2::ZERO;
-                    cx.set_scroll(Scroll::Kinetic(KineticStart { vel, rest }));
+            Event::PressEnd { press, .. } => match std::mem::take(&mut self.phase) {
+                Phase::None | Phase::PressStart(_, _) => Action::Used,
+                Phase::Pan(source) => {
+                    if *press == source
+                        && let Some(vel) = cx.press_velocity(source)
+                    {
+                        let rest = Vec2::ZERO;
+                        cx.set_scroll(Scroll::Kinetic(KineticStart { vel, rest }));
+                    }
+
+                    Action::Used
                 }
-                self.phase = Phase::None;
-                Action::Finish
-            }
+                Phase::Cursor(_, coord) => Action::CursorEnd { coord },
+            },
             Event::Timer(TIMER_SELECT) => match self.phase {
-                Phase::Start(touch_id, coord) => {
-                    self.phase = Phase::Cursor(touch_id);
-                    Action::Focus {
+                Phase::PressStart(touch_id, coord) => {
+                    self.phase = Phase::Cursor(touch_id, coord);
+                    Action::CursorStart {
                         coord,
-                        action: SelectionAction::new(true, !cx.modifiers().shift_key(), 1),
+                        clear: !cx.modifiers().shift_key(),
+                        repeats: 1,
                     }
                 }
                 _ => Action::Unused,

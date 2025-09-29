@@ -307,23 +307,37 @@ mod EditField {
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::Used => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::Focus { coord, action }
-                        if self.current.is_select() || action.anchor =>
-                    {
+                    TextInputAction::CursorStart {
+                        coord,
+                        clear,
+                        repeats,
+                    } => {
                         if self.current.is_ime() {
                             cx.cancel_ime_focus(self.id());
                         }
-                        self.current = CurrentAction::DragSelect;
                         self.set_cursor_from_coord(cx, coord);
-                        self.selection.action(&self.text, action);
-
-                        if self.has_key_focus {
-                            self.set_primary(cx);
+                        self.selection.set_anchor(clear);
+                        if repeats > 1 {
+                            self.selection.expand(&self.text, repeats >= 3);
                         }
+
+                        if !self.has_key_focus {
+                            cx.request_key_focus(self.id(), None, FocusSource::Pointer);
+                        }
+                        self.current = CurrentAction::DragSelect;
                         Used
                     }
-                    TextInputAction::Finish if self.current.is_select() => {
+                    TextInputAction::CursorMove { coord, repeats } if self.current.is_select() => {
+                        self.set_cursor_from_coord(cx, coord);
+                        if repeats > 1 {
+                            self.selection.expand(&self.text, repeats >= 3);
+                        }
+
+                        Used
+                    }
+                    TextInputAction::CursorEnd { .. } if self.current.is_select() => {
                         self.current = CurrentAction::None;
+                        self.set_primary(cx);
                         let ime = Some(ImePurpose::Normal);
                         cx.request_key_focus(self.id(), ime, FocusSource::Pointer);
                         Used
