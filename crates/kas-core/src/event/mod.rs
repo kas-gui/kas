@@ -16,7 +16,7 @@
 //!
 //! 1.  Determine the target's [`Id`]. For example, this may be
 //!     the [`nav_focus`](EventState::nav_focus) or may be determined from
-//!     from mouse/touch coordinates by calling [`try_probe`](crate::Layout::try_probe).
+//!     from mouse/touch coordinates by calling [`try_probe`](crate::Tile::try_probe).
 //! 2.  If the target is [disabled](EventState::is_disabled), then find the
 //!     top-most ancestor which is disabled and make that the target, but
 //!     inhibit calling of [`Events::handle_event`] on this widget (but still

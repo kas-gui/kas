@@ -13,7 +13,9 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
-use crate::{AccessLabel, Button, EditBox, Filler, Label, ScrollLabel, adapt::AdaptWidgetAny};
+use crate::{
+    AccessLabel, Button, EditBox, Filler, ScrollLabel, SelectableLabel, adapt::AdaptWidgetAny,
+};
 use kas::prelude::*;
 use kas::runner::AppData;
 use kas::text::format::FormattableText;
@@ -31,7 +33,7 @@ mod MessageBox {
     pub struct MessageBox<T: FormattableText + 'static> {
         core: widget_core!(),
         #[widget]
-        label: Label<T>,
+        label: SelectableLabel<T>,
         #[widget]
         button: Button<AccessLabel>,
     }
@@ -41,7 +43,7 @@ mod MessageBox {
         pub fn new(message: T) -> Self {
             MessageBox {
                 core: Default::default(),
-                label: Label::new(message),
+                label: SelectableLabel::new(message),
                 button: Button::label_msg("&Ok", MessageBoxOk),
             }
         }
@@ -99,7 +101,7 @@ mod AlertError {
         parent: Id,
         title: String,
         #[widget]
-        label: Label<T>,
+        label: SelectableLabel<T>,
         #[widget]
         details: ScrollLabel<String>,
         #[widget]
@@ -120,7 +122,7 @@ mod AlertError {
                 core: Default::default(),
                 parent: Id::default(),
                 title: "Error".to_string(),
-                label: Label::new(message),
+                label: SelectableLabel::new(message),
                 details: ScrollLabel::new(details),
                 ok: Button::label_msg("&Ok", ErrorResult),
             }
@@ -138,7 +140,7 @@ mod AlertError {
         pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
             self.parent = parent;
             let title = std::mem::take(&mut self.title);
-            let window = Window::new(self.map_any(), title).with_restrictions(true, true);
+            let window = Window::new(self, title).with_restrictions(true, true);
             cx.add_dataless_window(window, true);
         }
     }
@@ -192,7 +194,7 @@ mod AlertUnsaved {
         parent: Id,
         title: String,
         #[widget]
-        label: Label<T>,
+        label: SelectableLabel<T>,
         #[widget]
         save: Button<AccessLabel>,
         #[widget]
@@ -208,7 +210,7 @@ mod AlertUnsaved {
                 core: Default::default(),
                 parent: Id::default(),
                 title: "Unsaved changes".to_string(),
-                label: Label::new(message),
+                label: SelectableLabel::new(message),
                 save: Button::label_msg("&Save", UnsavedResult::Save),
                 discard: Button::label_msg("&Discard", UnsavedResult::Discard),
                 cancel: Button::label_msg("&Cancel", UnsavedResult::Cancel),
@@ -227,7 +229,7 @@ mod AlertUnsaved {
         pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
             self.parent = parent;
             let title = std::mem::take(&mut self.title);
-            let window = Window::new(self.map_any(), title).with_restrictions(true, true);
+            let window = Window::new(self, title).with_restrictions(true, true);
             cx.add_dataless_window(window, true);
         }
     }

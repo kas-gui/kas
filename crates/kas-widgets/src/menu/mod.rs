@@ -48,7 +48,7 @@ pub struct SubItems<'a> {
 /// Trait governing menus, sub-menus and menu-entries
 ///
 /// Implementations will automatically receive nav focus on mouse-over, thus
-/// should ensure that [`Layout::try_probe`] returns the identifier of the
+/// should ensure that [`Tile::try_probe`] returns the identifier of the
 /// widget which should be focussed, and that this widget has
 /// [`Tile::navigable`] return true.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]

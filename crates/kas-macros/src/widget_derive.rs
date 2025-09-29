@@ -278,10 +278,6 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
             layout_impl.items.push(Verbatim(fn_set_rect));
         }
 
-        if !has_item("try_probe") {
-            layout_impl.items.push(Verbatim(fn_try_probe));
-        }
-
         if !has_item("draw") {
             layout_impl.items.push(Verbatim(fn_draw));
         }
@@ -291,7 +287,6 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
                 #fn_rect
                 #fn_size_rules
                 #fn_set_rect
-                #fn_try_probe
                 #fn_draw
             }
         });
@@ -325,12 +320,17 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         if !has_item("role") {
             tile_impl.items.push(Verbatim(fn_role));
         }
+
+        if !has_item("try_probe") {
+            tile_impl.items.push(Verbatim(fn_try_probe));
+        }
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
                 #tile_methods
                 #fn_role
+                #fn_try_probe
             }
         });
     }

@@ -9,8 +9,7 @@ use super::{EventCx, EventState};
 use crate::event::{Command, Event, Scroll, ScrollDelta, Used};
 use crate::messages::Erased;
 use crate::runner::ReadMessage;
-#[allow(unused)]
-use crate::{Events, Layout, event::ConfigCx};
+#[allow(unused)] use crate::{Events, Tile, event::ConfigCx};
 use crate::{Id, Node};
 use std::fmt::Debug;
 use std::task::Poll;
@@ -20,7 +19,7 @@ impl EventState {
     ///
     /// When calling this method, be aware that some widgets use an inner
     /// component to handle events, thus calling with the outer widget's `id`
-    /// may not have the desired effect. [`Layout::try_probe`] and
+    /// may not have the desired effect. [`Tile::try_probe`] and
     /// [`EventState::next_nav_focus`] are usually able to find the appropriate
     /// event-handling target.
     ///

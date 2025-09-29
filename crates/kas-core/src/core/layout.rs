@@ -5,9 +5,8 @@
 
 //! Layout, Tile and TileExt traits
 
-use crate::Id;
 use crate::event::ConfigCx;
-use crate::geom::{Coord, Rect};
+use crate::geom::Rect;
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
 use kas_macros::autoimpl;
@@ -94,7 +93,7 @@ pub trait Layout {
     /// Required: [`Self::size_rules`] is called for both axes before this
     /// method is called, and that this method has been called *after* the last
     /// call to [`Self::size_rules`] *before* any of the following methods:
-    /// [`Layout::try_probe`], [`Layout::draw`], [`Events::handle_event`].
+    /// [`Tile::try_probe`], [`Layout::draw`], [`Events::handle_event`].
     ///
     /// # Implementation
     ///
@@ -116,43 +115,6 @@ pub trait Layout {
     ///
     /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
-
-    /// Probe a coordinate for a widget's [`Id`]
-    ///
-    /// Returns the [`Id`] of the widget expected to handle clicks and touch
-    /// events at the given `coord`, or `None` if `self` does not occupy this
-    /// `coord`. Typically the result is the lowest descendant in
-    /// the widget tree at the given `coord`, but it is not required to be; e.g.
-    /// a `Button` may use an inner widget as a label but return its own [`Id`]
-    /// to indicate that the button (not the inner label) handles clicks.
-    ///
-    /// # Calling
-    ///
-    /// ## Call order
-    ///
-    /// It is expected that [`Layout::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
-    ///
-    /// # Implementation
-    ///
-    /// In most cases widgets should implement
-    /// [`Events::probe`] instead; the `#[widget]` macro can
-    /// use it to implement `try_probe` as follows:
-    /// ```ignore
-    /// self.rect().contains(coord).then(|| self.probe(coord))
-    /// ```
-    ///
-    /// ## Default implementation
-    ///
-    /// Non-widgets do not have an [`Id`], and therefore should use the default
-    /// implementation which simply returns `None`.
-    ///
-    /// Widgets without any children (including layout children) may use the
-    /// default implementation of [`Events::probe`].
-    fn try_probe(&self, coord: Coord) -> Option<Id> {
-        let _ = coord;
-        None
-    }
 
     /// Draw a widget and its children
     ///
@@ -203,9 +165,6 @@ pub trait MacroDefinedLayout {
 
     /// Set size and position
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
-
-    /// Probe a coordinate for a widget's [`Id`]
-    fn try_probe(&self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
     fn draw(&self, draw: DrawCx);
