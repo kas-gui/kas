@@ -204,9 +204,6 @@ pub trait MacroDefinedLayout {
     /// Set size and position
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
 
-    /// Probe a coordinate for a widget's [`Id`]
-    fn try_probe(&self, coord: Coord) -> Option<Id>;
-
     /// Draw a widget and its children
     fn draw(&self, draw: DrawCx);
 }

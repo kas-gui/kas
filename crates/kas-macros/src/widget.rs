@@ -453,7 +453,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         });
         let tree_size_rules = tree.size_rules(&core_path);
         let tree_set_rect = tree.set_rect(&core_path);
-        let tree_try_probe = tree.try_probe(&core_path);
         let tree_draw = tree.draw(&core_path);
         fn_nav_next = tree.nav_next(children.iter());
 
@@ -482,11 +481,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 ) {
                     #set_rect
                     #tree_set_rect
-                }
-
-                #[inline]
-                fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    #tree_try_probe
                 }
 
                 #[inline]
@@ -531,13 +525,15 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         };
 
-        if fn_probe_span.is_none() {
+        if fn_probe_span.is_none()
+            && let Some(toks) = tree.try_probe(&core_path, &children)
+        {
             fn_try_probe = Some(quote! {
                 fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                     #[cfg(debug_assertions)]
                     self.#core.status.require_rect(&self.#core._id);
 
-                    ::kas::MacroDefinedLayout::try_probe(self, coord)
+                    #toks
                 }
             });
         }

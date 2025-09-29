@@ -88,19 +88,13 @@ impl Tree {
     }
 
     /// Yield an implementation of `fn try_probe`
-    pub fn try_probe(&self, core_path: &Toks) -> Toks {
-        let mut targets = Vec::new();
-        self.0.probe_targets(core_path, &mut targets);
+    ///
+    /// Returns `None` if any probe target is not in `children`.
+    pub fn try_probe(&self, core_path: &Toks, children: &[Child]) -> Option<Toks> {
         let mut toks = Toks::new();
-        for target in &targets {
-            toks.append_all(quote! {
-                if let Some(id) = ::kas::Layout::try_probe(&#target, coord) {
-                    Some(id)
-                } else
-            });
-        }
+        self.0.try_probe_recurse(core_path, children, &mut toks)?;
         toks.append_all(quote! { { None } });
-        toks
+        Some(toks)
     }
 
     /// Yield an implementation of `fn draw`
@@ -834,26 +828,49 @@ impl Layout {
     }
 
     /// Yield an implementation of `fn draw`
-    fn probe_targets(&self, core_path: &Toks, targets: &mut Vec<Toks>) {
-        match self {
+    fn try_probe_recurse(
+        &self,
+        core_path: &Toks,
+        children: &[Child],
+        toks: &mut Toks,
+    ) -> Option<()> {
+        Some(match self {
             Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Frame(_, layout, _, _) => {
-                layout.probe_targets(core_path, targets)
+                layout.try_probe_recurse(core_path, children, toks)?
             }
-            Layout::Single(expr) => targets.push(expr.to_token_stream()),
+            Layout::Single(expr) => {
+                if !children.iter().any(|child| matches!(&child.ident, ChildIdent::Field(ident) if &expr.member == ident)) {
+                    return None;
+                }
+
+                toks.append_all(quote! {
+                    if let Some(id) = ::kas::Layout::try_probe(&#expr, coord) {
+                        Some(id)
+                    } else
+                });
+            }
             Layout::Widget(stor, _) | Layout::Label(stor, _) => {
-                targets.push(quote! { #core_path.#stor })
+                if !children.iter().any(|child| matches!(&child.ident, ChildIdent::CoreField(Member::Named(ident)) if stor == ident)) {
+                    return None;
+                }
+
+                toks.append_all(quote! {
+                    if let Some(id) = ::kas::Layout::try_probe(&#core_path.#stor, coord) {
+                        Some(id)
+                    } else
+                });
             }
             Layout::List(_, _, list) | Layout::Float(list) => {
                 for item in list {
-                    item.layout.probe_targets(core_path, targets);
+                    item.layout.try_probe_recurse(core_path, children, toks);
                 }
             }
             Layout::Grid(_, _, list) => {
                 for item in list {
-                    item.layout.probe_targets(core_path, targets);
+                    item.layout.try_probe_recurse(core_path, children, toks);
                 }
             }
-        }
+        })
     }
 
     /// Yield an implementation of `fn draw`
