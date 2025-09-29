@@ -292,16 +292,14 @@ mod EditField {
                     self.selection.set_empty();
 
                     if let Some(content) = cx.get_primary() {
+                        self.save_undo_state(LastEdit::Paste);
+
                         let index = self.selection.edit_index();
                         let range = self.trim_paste(&content);
-                        let len = range.len();
 
-                        self.old_state =
-                            Some((self.text.clone_string(), index, self.selection.sel_index()));
-                        self.last_edit = LastEdit::Paste;
-
-                        self.text.replace_range(index..index, &content[range]);
-                        self.selection.set_all(index + len);
+                        self.text
+                            .replace_range(index..index, &content[range.clone()]);
+                        self.selection.set_all(index + range.len());
                         self.edit_x_coord = None;
                         self.prepare_text(cx);
 
@@ -696,6 +694,19 @@ impl<G: EditGuard> EditField<G> {
         cx.redraw(self);
     }
 
+    fn save_undo_state(&mut self, edit: LastEdit) {
+        if self.last_edit == edit {
+            return;
+        }
+
+        self.old_state = Some((
+            self.text.clone_string(),
+            self.selection.edit_index(),
+            self.selection.sel_index(),
+        ));
+        self.last_edit = edit;
+    }
+
     fn prepare_text(&mut self, cx: &mut EventCx) {
         if self.text.prepare() {
             self.text.ensure_no_left_overhang();
@@ -731,8 +742,7 @@ impl<G: EditGuard> EditField<G> {
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
         if self.last_edit != LastEdit::Insert || have_sel {
-            self.old_state = Some((self.text.clone_string(), index, self.selection.sel_index()));
-            self.last_edit = LastEdit::Insert;
+            self.save_undo_state(LastEdit::Insert);
         }
         if have_sel {
             self.text.replace_range(selection.clone(), text);
@@ -1006,17 +1016,13 @@ impl<G: EditGuard> EditField<G> {
             Action::Insert(s, edit) => {
                 let mut index = cursor;
                 if have_sel {
-                    self.old_state =
-                        Some((self.text.clone_string(), index, self.selection.sel_index()));
-                    self.last_edit = edit;
+                    self.save_undo_state(edit);
 
                     self.text.replace_range(selection.clone(), s);
                     index = selection.start;
                 } else {
                     if self.last_edit != edit {
-                        self.old_state =
-                            Some((self.text.clone_string(), index, self.selection.sel_index()));
-                        self.last_edit = edit;
+                        self.save_undo_state(edit);
                     }
 
                     self.text.replace_range(index..index, s);
@@ -1027,9 +1033,7 @@ impl<G: EditGuard> EditField<G> {
             }
             Action::Delete(sel) => {
                 if self.last_edit != LastEdit::Delete {
-                    self.old_state =
-                        Some((self.text.clone_string(), cursor, self.selection.sel_index()));
-                    self.last_edit = LastEdit::Delete;
+                    self.save_undo_state(LastEdit::Delete);
                 }
 
                 self.text.replace_range(sel.clone(), "");
