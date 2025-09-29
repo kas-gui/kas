@@ -140,7 +140,7 @@ mod AlertError {
         pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
             self.parent = parent;
             let title = std::mem::take(&mut self.title);
-            let window = Window::new(self.map_any(), title).with_restrictions(true, true);
+            let window = Window::new(self, title).with_restrictions(true, true);
             cx.add_dataless_window(window, true);
         }
     }
@@ -229,7 +229,7 @@ mod AlertUnsaved {
         pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
             self.parent = parent;
             let title = std::mem::take(&mut self.title);
-            let window = Window::new(self.map_any(), title).with_restrictions(true, true);
+            let window = Window::new(self, title).with_restrictions(true, true);
             cx.add_dataless_window(window, true);
         }
     }
