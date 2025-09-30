@@ -88,6 +88,21 @@ impl MessageStack {
         self.count = self.count.wrapping_add(1);
         self.stack.push(msg);
     }
+
+    /// Drop remaining messages and reset
+    pub(crate) fn clear(&mut self) {
+        for msg in self.stack.drain(..) {
+            if msg.is::<crate::event::components::KineticStart>() {
+                // We can safely ignore this message
+                continue;
+            }
+
+            log::warn!(target: "kas_core::erased", "unhandled: {msg:?}");
+        }
+
+        self.base = 0;
+        self.count = 0;
+    }
 }
 
 /// This trait allows peeking and popping messages from the stack
@@ -136,14 +151,7 @@ impl ReadMessage for MessageStack {
 
 impl Drop for MessageStack {
     fn drop(&mut self) {
-        for msg in self.stack.drain(..) {
-            if msg.is::<crate::event::components::KineticStart>() {
-                // We can safely ignore this message
-                continue;
-            }
-
-            log::warn!(target: "kas_core::erased", "unhandled: {msg:?}");
-        }
+        self.clear();
     }
 }
 

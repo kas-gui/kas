@@ -16,7 +16,7 @@ type Key = kas::event::Key<kas::event::SmolStr>;
 
 fn key_button(label: &str) -> Button<AccessLabel> {
     let string = AccessString::from(label);
-    let key = string.key().unwrap().clone();
+    let key = string.key().unwrap().0.clone();
     Button::label_msg(string, key)
 }
 fn key_button_with(label: &str, key: Key) -> Button<AccessLabel> {
