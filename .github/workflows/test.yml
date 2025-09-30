@@ -27,8 +27,7 @@ jobs:
           cargo fmt --all -- --check
       - name: Build docs
         run: |
-          cargo doc --all --no-deps -Zwarnings --config 'build.warnings="deny"'
-          cargo doc --features nightly --all --no-deps -Zwarnings --config 'build.warnings="deny"'
+          cargo doc --features stable --all --no-deps -Zwarnings --config 'build.warnings="deny"'
       - name: Test kas-macros
         run: |
           cargo test --manifest-path crates/kas-macros/Cargo.toml
