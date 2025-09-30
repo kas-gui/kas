@@ -13,8 +13,9 @@ use std::ops::{Index, IndexMut};
 /// Make a [`Grid`] widget
 ///
 /// Constructs a table with auto-determined number of rows and columns.
-/// Cells may overlap, in which case behaviour is identical to [`float!`]: the
-/// first declared item is on top.
+///
+/// Cells are allowed to overlap but are not guaranteed to draw correctly in
+/// this case. The first declared widget of the overlap is "on top".
 ///
 /// # Syntax
 ///
@@ -145,9 +146,8 @@ mod Grid {
     /// through widgets with the Tab key currently uses the list order (though it
     /// may be changed in the future to use display order).
     ///
-    /// There is no protection against multiple widgets occupying the same cell.
-    /// If this does happen, the last widget in that cell will appear on top, but
-    /// overlapping widget drawing may not be pretty.
+    /// Cells are allowed to overlap but are not guaranteed to draw correctly in
+    /// this case. The first declared widget of the overlap is "on top".
     ///
     /// ## Alternatives
     ///
@@ -204,7 +204,8 @@ mod Grid {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            for n in 0..self.widgets.len() {
+            // Draw in reverse to show first of overlap on top
+            for n in (0..self.widgets.len()).rev() {
                 if let Some(child) = self.widgets.get_tile(n) {
                     child.draw(draw.re());
                 }
