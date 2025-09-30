@@ -306,12 +306,6 @@ impl EventState {
         self.action |= Action::REGION_MOVED;
     }
 
-    /// Terminate the GUI
-    #[inline]
-    pub fn exit(&mut self) {
-        self.send(Id::ROOT, Command::Exit);
-    }
-
     /// Notify that an [`Action`] should happen
     ///
     /// This causes the given action to happen after event handling.
@@ -431,5 +425,11 @@ impl<'a> EventCx<'a> {
     /// Get a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         self.runner.draw_shared()
+    }
+
+    /// Terminate the GUI
+    #[inline]
+    pub fn exit(&mut self) {
+        self.runner.exit();
     }
 }
