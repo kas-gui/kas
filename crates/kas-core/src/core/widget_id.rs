@@ -577,10 +577,12 @@ impl Id {
         }
     }
 
-    /// Get a [`WindowId`], assuming that the first component is this
-    pub(crate) fn window_id(&self) -> WindowId {
-        let index = self.next_key_after(&Id::ROOT).unwrap();
-        WindowId::try_from(index.cast()).unwrap()
+    /// Get a [`WindowId`]
+    ///
+    /// Returns [`None`] on `Id::default()` and `Id::ROOT`.
+    pub(crate) fn window_id(&self) -> Option<WindowId> {
+        let index = self.next_key_after(&Id::ROOT)?;
+        WindowId::try_from(index.cast())
     }
 
     /// Convert to a [`NonZeroU64`] representation
