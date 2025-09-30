@@ -29,16 +29,12 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 #########  meta / build features  #########
 
-# The minimal feature set needed to run basic applications (with assumptions
-# about target platforms).
-#
-# Note: only some examples build in this configuration; others need view,
-# markdown, resvg. Recommended also: clipboard, ron (or some config format).
-minimal = ["wgpu", "wayland", "vulkan", "dx12", "metal"]
-# All recommended features for optimal experience
-default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn", "accesskit"]
+# Basic support for common platforms
+minimal = ["wayland", "vulkan", "dx12", "metal"]
+# Minimal + strongly recommended features
+default = ["minimal", "clipboard", "shaping"]
 # All standard test target features
-stable = ["default", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"]
+stable = ["default", "view", "image-default-formats", "resvg", "markdown", "spawn", "accesskit", "x11", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics", "kas-core/nightly"]
 # Additional, less recommendation-worthy features
@@ -64,10 +60,10 @@ view = ["dep:kas-view"]
 wgpu = ["dep:kas-wgpu"]
 
 # WGPU backends
-vulkan = ["kas-wgpu?/vulkan"]
-gles = ["kas-wgpu?/gles"]
-dx12 = ["kas-wgpu?/dx12"]
-metal = ["kas-wgpu?/metal"]
+vulkan = ["wgpu", "kas-wgpu/vulkan"]
+gles = ["wgpu", "kas-wgpu/gles"]
+dx12 = ["wgpu", "kas-wgpu/dx12"]
+metal = ["wgpu", "kas-wgpu/metal"]
 
 # Enables documentation of APIs for graphics library and platform backends.
 # This API is not intended for use by end-user applications and
@@ -102,8 +98,15 @@ ron = ["serde", "kas-core/ron"]
 # Enable support for TOML (de)serialisation
 toml = ["serde", "kas-core/toml"]
 
-# Support image loading and decoding
+# Support image loading and decoding (does not imply any formats)
 image = ["kas-core/image", "kas-widgets/image"]
+# Enable all default formats of the image crate
+image-default-formats = ["kas-widgets/image-default-formats"]
+# Selected image formats
+avif = ["kas-widgets/avif"]
+jpeg = ["kas-widgets/jpeg"]
+png = ["kas-widgets/png"]
+webp = ["kas-widgets/webp"]
 
 # Enable resvg module (Canvas + Svg widgets)
 resvg = ["dep:kas-resvg", "kas-resvg?/svg", "kas-dylib?/resvg"]
@@ -147,6 +150,7 @@ optional = true
 default-features = false
 
 [dev-dependencies]
+kas = { path = ".", features = ["view", "markdown", "resvg"] }
 chrono = "0.4"
 env_logger = "0.11"
 log = "0.4"

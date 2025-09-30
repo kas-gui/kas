@@ -20,7 +20,9 @@ use kas_macros::{autoimpl, impl_self, widget_set_rect};
 use smallvec::SmallVec;
 
 // TODO(Rust): replace with type-alias-impl-trait when available
+#[cfg(feature = "accesskit")]
 pub(crate) struct PopupIterator<'a>(usize, &'a [(WindowId, PopupDescriptor, Offset)]);
+#[cfg(feature = "accesskit")]
 impl<'a> Iterator for PopupIterator<'a> {
     type Item = &'a PopupDescriptor;
 
