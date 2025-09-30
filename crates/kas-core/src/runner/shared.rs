@@ -118,7 +118,7 @@ where
             }
         }
 
-        self.messages.count = 0;
+        self.messages.clear();
     }
 
     pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), Error> {
