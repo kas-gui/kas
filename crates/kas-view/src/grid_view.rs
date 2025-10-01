@@ -197,6 +197,15 @@ mod GridView {
         press_target: Option<(usize, C::Key)>,
     }
 
+    impl Default for Self
+    where
+        C: Default,
+        V: Default,
+    {
+        fn default() -> Self {
+            Self::new(C::default(), V::default())
+        }
+    }
     impl Self {
         /// Construct a new instance
         pub fn new(clerk: C, driver: V) -> Self {

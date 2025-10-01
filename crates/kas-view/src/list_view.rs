@@ -164,6 +164,16 @@ mod ListView {
         press_target: Option<(usize, C::Key)>,
     }
 
+    impl Default for Self
+    where
+        C: Default,
+        V: Default,
+        D: Default,
+    {
+        fn default() -> Self {
+            Self::new(C::default(), V::default())
+        }
+    }
     impl Self
     where
         D: Default,
