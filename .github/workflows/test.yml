@@ -14,7 +14,7 @@ jobs:
     name: Nightly, format and Doc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -80,7 +80,7 @@ jobs:
             toolchain: beta
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: MSRV
         if: ${{ matrix.variant == 'MSRV' }}
         run: cp Cargo.lock.msrv Cargo.lock
