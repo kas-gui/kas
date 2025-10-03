@@ -28,7 +28,7 @@ mod Text {
     pub struct Text<A, T: Default + FormattableText + 'static> {
         core: widget_core!(),
         text: theme::Text<T>,
-        text_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
+        text_fn: Box<dyn Fn(&ConfigCx, &A, &mut T) -> bool>,
     }
 
     impl Default for Self
@@ -39,19 +39,68 @@ mod Text {
             Text {
                 core: Default::default(),
                 text: theme::Text::new(T::default(), TextClass::Label(true)),
-                text_fn: Box::new(|_, data| data.into()),
+                text_fn: Box::new(|_, data, text| {
+                    let new_text = data.into();
+                    let changed = new_text != *text;
+                    if changed {
+                        *text = new_text;
+                    }
+                    changed
+                }),
+            }
+        }
+    }
+
+    impl<A> Text<A, String> {
+        /// Construct with an `str` accessor
+        pub fn new_str(as_str: impl Fn(&A) -> &str + 'static) -> Self {
+            Text {
+                core: Default::default(),
+                text: theme::Text::new(String::new(), TextClass::Label(true)),
+                text_fn: Box::new(move |_, data, text| {
+                    let s = as_str(data);
+                    let changed = *text != *s;
+                    if changed {
+                        *text = s.into();
+                    }
+                    changed
+                }),
             }
         }
     }
 
     impl Self {
-        /// Construct with a data binding
-        #[inline]
-        pub fn new(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        /// Construct with a generator function
+        ///
+        /// `gen_text` is called on each widget update to generate text from
+        /// input data.
+        pub fn new_gen(gen_text: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Text {
                 core: Default::default(),
                 text: theme::Text::new(T::default(), TextClass::Label(true)),
-                text_fn: Box::new(text_fn),
+                text_fn: Box::new(move |cx, data, text| {
+                    let new_text = gen_text(cx, data);
+                    let changed = new_text != *text;
+                    if changed {
+                        *text = new_text;
+                    }
+                    changed
+                }),
+            }
+        }
+
+        /// Construct with an update function
+        ///
+        /// `update_text` is called on each widget update to generate text from
+        /// input data. It must return `true` when the input text is changed (or
+        /// updated text will not be displayed) and should return `false`
+        /// otherwise (or the text will be re-prepared needlessly, which can be
+        /// expensive).
+        pub fn new_update(update_text: impl Fn(&ConfigCx, &A, &mut T) -> bool + 'static) -> Self {
+            Text {
+                core: Default::default(),
+                text: theme::Text::new(T::default(), TextClass::Label(true)),
+                text_fn: Box::new(update_text),
             }
         }
 
@@ -135,15 +184,11 @@ mod Text {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            let text = (self.text_fn)(cx, data);
-            if text.as_str() == self.text.as_str() {
-                // NOTE(opt): avoiding re-preparation of text is a *huge*
-                // optimisation. Move into kas-text?
-                return;
+            if (self.text_fn)(cx, data, self.text.text_mut()) {
+                self.text.require_reprepare();
+                let action = self.text.reprepare_action();
+                cx.action(self, action);
             }
-            self.text.set_text(text);
-            let action = self.text.reprepare_action();
-            cx.action(self, action);
         }
     }
 }
@@ -161,10 +206,10 @@ mod Text {
 #[macro_export]
 macro_rules! format_data {
     ($data:ident, $($arg:tt)*) => {
-        $crate::Text::new(move |_, $data| format!($($arg)*))
+        $crate::Text::new_gen(move |_, $data| format!($($arg)*))
     };
     ($data:ident : $data_ty:ty , $($arg:tt)*) => {
-        $crate::Text::new(move |_, $data : $data_ty| format!($($arg)*))
+        $crate::Text::new_gen(move |_, $data : $data_ty| format!($($arg)*))
     };
 }
 
@@ -178,6 +223,6 @@ macro_rules! format_data {
 #[macro_export]
 macro_rules! format_value {
     ($($arg:tt)*) => {
-        $crate::Text::new(move |_, data| format!($($arg)*, data))
+        $crate::Text::new_gen(move |_, data| format!($($arg)*, data))
     };
 }

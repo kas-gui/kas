@@ -173,7 +173,7 @@ fn main() -> kas::runner::Result<()> {
         "Demonstration of dynamic widget creation / deletion",
         controls.map(|data: &Data| &data.len),
         "Contents of selected entry:",
-        Text::new(|_, data: &Data| data.active_string.to_string()),
+        Text::new_str(|data: &Data| &data.active_string),
         Separator::new(),
         ScrollBarRegion::new(list).with_fixed_bars(false, true),
     ];
