@@ -26,6 +26,12 @@ impl<'a: 'b, 'b> AdaptEventCx<'a, 'b> {
         AdaptEventCx { cx, id }
     }
 
+    /// Get the widget's identifier
+    #[inline]
+    pub fn id(&self) -> Id {
+        self.id.clone()
+    }
+
     /// Check whether this widget is disabled
     #[inline]
     pub fn is_disabled(&self) -> bool {
@@ -89,6 +95,12 @@ impl<'a: 'b, 'b> AdaptConfigCx<'a, 'b> {
     #[inline]
     pub fn new(cx: &'b mut ConfigCx<'a>, id: Id) -> Self {
         AdaptConfigCx { cx, id }
+    }
+
+    /// Get the widget's identifier
+    #[inline]
+    pub fn id(&self) -> Id {
+        self.id.clone()
     }
 
     /// Check whether this widget is disabled
