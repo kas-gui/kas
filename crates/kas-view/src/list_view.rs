@@ -137,12 +137,11 @@ mod ListView {
         clerk: C,
         driver: V,
         widgets: Vec<WidgetData<C, V>>,
-        alloc_len: u32,
         data_len: u32,
         token_update: Update,
         rect_update: bool,
         len_is_known: bool,
-        /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
+        /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
         /// First data item mapped to a widget
         first_data: u32,
@@ -227,7 +226,6 @@ mod ListView {
                 clerk,
                 driver,
                 widgets: Default::default(),
-                alloc_len: 0,
                 data_len: 0,
                 token_update: Update::None,
                 rect_update: false,
@@ -480,7 +478,7 @@ mod ListView {
             let offset = self.scroll_offset().extract(self.direction);
             let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
 
-            let alloc_len = self.alloc_len.cast();
+            let alloc_len = self.widgets.len();
             let lbound = first_data + 2 * alloc_len;
             let data_len = self.clerk.len(data, lbound);
             self.len_is_known = data_len.is_known();
@@ -593,8 +591,8 @@ mod ListView {
                 DataChanges::Any => start..end,
             };
 
-            let lbound = self.first_data + 2 * self.alloc_len;
-            let data_len = self.clerk.len(data, lbound.cast());
+            let lbound = usize::conv(self.first_data) + 2 * self.widgets.len();
+            let data_len = self.clerk.len(data, lbound);
             self.len_is_known = data_len.is_known();
             let data_len = data_len.len().cast();
             if data_len != self.data_len {
@@ -607,7 +605,7 @@ mod ListView {
                     return;
                 }
 
-                if self.cur_len != data_len.min(self.alloc_len.cast()) {
+                if self.cur_len != data_len.min(self.widgets.len().cast()) {
                     return self.post_scroll(cx, data);
                 }
             }
@@ -731,13 +729,12 @@ mod ListView {
             self.skip = skip;
             self.update_content_size(cx);
 
-            if skip == 0 {
+            let req_widgets = if skip == 0 {
                 self.skip = 1; // avoid divide by 0
-                self.alloc_len = 0;
-                return;
-            }
-            let req_widgets = usize::conv((size + skip - 1) / skip + 1);
-            self.alloc_len = req_widgets.cast();
+                0
+            } else {
+                usize::conv((size + skip - 1) / skip + 1)
+            };
 
             let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
@@ -868,7 +865,6 @@ mod ListView {
                     token: None,
                     item: ListItem::new(self.driver.make(&key)),
                 });
-                self.alloc_len = len.cast();
             } else {
                 // Force reconfiguration:
                 for w in &mut self.widgets {
@@ -876,7 +872,7 @@ mod ListView {
                 }
             }
 
-            let alloc_len = self.alloc_len.cast();
+            let alloc_len = self.widgets.len();
             let first_data: usize = self.first_data.cast();
             let lbound = first_data + 2 * alloc_len;
             let data_len = self.clerk.len(data, lbound);
