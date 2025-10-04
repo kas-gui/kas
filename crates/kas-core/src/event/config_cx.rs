@@ -55,13 +55,11 @@ impl<'a> ConfigCx<'a> {
     /// [widget lifecycle](crate::Widget#widget-lifecycle) and
     /// [configuration](Events#configuration).
     ///
-    /// Pass the `id` to assign to the widget. This is usually constructed with
-    /// [`Events::make_child_id`].
+    /// Assigns `id` to the widget. This must be valid and is usually
+    /// constructed with [`Events::make_child_id`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
-        if id.is_valid() {
-            widget._configure(self, id);
-        }
+        widget._configure(self, id);
     }
 
     /// Update a widget
