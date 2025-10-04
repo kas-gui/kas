@@ -38,16 +38,15 @@ use crate::{Id, geom::Coord};
 /// and involves calling the following methods in order:
 ///
 /// 1.  [`Events::configure`]
-/// 2.  [`Events::update`]
-/// 3.  [`Events::configure_recurse`]
+/// 2.  [`Events::configure_recurse`]
 ///
-/// Configuration and update may be repeated at any time.
+/// Configuration may be repeated at any time but must be followed by an update.
 ///
 /// ### Update
 ///
 /// Widgets must be updated during configure (see above), since
-/// [`Events::update`] must be called before sizing (except as noted in
-/// [`Layout::size_rules`]) and before other widget methods.
+/// [`Events::update`] must be called before sizing and before other widget
+/// methods.
 ///
 /// Widgets must also be updated after their input data (see [`Widget::Data`])
 /// changes (unless not visible, in which case the update may be postponed until

@@ -853,7 +853,7 @@ mod ListView {
             cx.register_nav_fallback(self.id());
         }
 
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
@@ -872,24 +872,15 @@ mod ListView {
                 }
             }
 
-            let alloc_len = self.widgets.len();
-            let first_data: usize = self.first_data.cast();
-            let lbound = first_data + 2 * alloc_len;
-            let data_len = self.clerk.len(data, lbound);
-            self.len_is_known = data_len.is_known();
-            let data_len = data_len.len();
-            self.data_len = data_len.cast();
-            let cur_len = data_len.min(alloc_len);
-            debug_assert!(cur_len <= self.widgets.len());
-            self.cur_len = cur_len.cast();
-
             self.token_update = Update::Configure;
-            self.map_view_widgets(cx, data, first_data..(first_data + cur_len));
+            // Self::update() will be called next
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
-            if changes != DataChanges::None {
+            if self.token_update != Update::None {
+                self.post_scroll(cx, data);
+            } else if changes != DataChanges::None {
                 self.handle_clerk_update(cx, data, changes);
             }
         }
