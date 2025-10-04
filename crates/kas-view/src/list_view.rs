@@ -92,6 +92,7 @@ mod ListItem {
 #[autoimpl(Debug ignore self.item where C::Token: trait)]
 struct WidgetData<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> {
     token: Option<C::Token>,
+    is_mock: bool,
     item: ListItem<C::Key, C::Item, V>,
 }
 
@@ -533,6 +534,7 @@ mod ListView {
 
                 let force = self.token_update != Update::None;
                 let changes = self.clerk.update_token(data, i, force, &mut w.token);
+                w.is_mock = false;
                 let Some(token) = w.token.as_ref() else {
                     continue;
                 };
@@ -685,7 +687,7 @@ mod ListView {
 
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
-                if w.token.is_some() {
+                if w.token.is_some() || w.is_mock {
                     let child_rules = w.item.size_rules(sizer.re(), axis);
                     rules = rules.max(child_rules);
                 }
@@ -745,7 +747,11 @@ mod ListView {
                 let key = C::Key::default();
                 for _ in avail_widgets..req_widgets {
                     let item = ListItem::new(self.driver.make(&key));
-                    self.widgets.push(WidgetData { token: None, item });
+                    self.widgets.push(WidgetData {
+                        token: None,
+                        is_mock: false,
+                        item,
+                    });
                 }
             }
 
@@ -855,14 +861,13 @@ mod ListView {
 
         fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {
             if self.widgets.is_empty() {
-                // Initial configure: ensure some widgets are loaded to allow
-                // better sizing of self.
+                // Ensure alloc_len > 0 for initial sizing
                 self.skip = 1; // hack: avoid div by 0
-
                 let len = self.ideal_visible.cast();
                 let key = C::Key::default();
                 self.widgets.resize_with(len, || WidgetData {
                     token: None,
+                    is_mock: false,
                     item: ListItem::new(self.driver.make(&key)),
                 });
             } else {
@@ -871,7 +876,6 @@ mod ListView {
                     w.token = None;
                 }
             }
-
             self.token_update = Update::Configure;
             // Self::update() will be called next
         }
@@ -882,6 +886,18 @@ mod ListView {
                 self.post_scroll(cx, data);
             } else if changes != DataChanges::None {
                 self.handle_clerk_update(cx, data, changes);
+            }
+
+            let id = self.id();
+            if self.cur_len == 0
+                && let Some(w) = self.widgets.get_mut(0)
+                && w.token.is_none()
+                && !w.is_mock
+                && let Some(item) = self.clerk.mock_item(data)
+            {
+                // Construct a mock widget for initial sizing
+                cx.configure(w.item.as_node(&item), id);
+                w.is_mock = true;
             }
         }
 
