@@ -29,32 +29,39 @@ use crate::{Id, geom::Coord};
 ///
 /// -   `type` [`Widget::Data`]
 ///
-/// # Widget lifecycle
+/// ## Call order
 ///
-/// 1.  The widget is configured ([`Events::configure`],
-///     [`Events::configure_recurse`]) and immediately updated
-///     ([`Events::update`]).
+/// ### Configuration
 ///
-///     The widget may be re-configured at any time without expectation that
-///     the layout will be resized / set again.
-/// 2.  The widget is updated by calling [`Events::update`] immediately after
-///     it is configured and also after any update to input data (or other data
-///     which may have changed, such as that exposed by [`EventState::config`]).
-/// 3.  The widget is "sized" by calling [`Layout::size_rules`] for the
-///     horizontal axis then for the vertical axis.
+/// It is required that widgets are configured before other methods are called.
+/// This is invoked by calling [`ConfigCx::configure`] or [`EventCx::configure`]
+/// and involves calling the following methods in order:
 ///
-///     These methods may be called again at any time without expectation that
-///     the layout will be set again.
-/// 4.  [`Layout::set_rect`] is called to "set" layout.
+/// 1.  [`Events::configure`]
+/// 2.  [`Events::update`]
+/// 3.  [`Events::configure_recurse`]
 ///
-///     This method may be called again at any time.
-/// 5.  The widget is ready for event-handling and drawing
-///     ([`Events::handle_event`], [`Tile::try_probe`], [`Layout::draw`]).
+/// Configuration and update may be repeated at any time.
 ///
-/// Widgets are responsible for ensuring that their children may observe this
-/// lifecycle. Usually this simply involves inclusion of the child in layout
-/// operations. Steps of the lifecycle may be postponed until a widget becomes
-/// visible.
+/// ### Update
+///
+/// Widgets must be updated after configure before sizing and after their input
+/// data (see [`Widget::Data`]) changes while visible. Updates may happen at
+/// other times (mostly because data-change-detection has false positives).
+/// This involves calling:
+///
+/// 1.  [`Events::update`]
+///
+/// ### Sizing
+///
+/// See [`Layout#sizing`].
+///
+/// It is expected that widgets are sized after [configuration](#configuration)
+/// before any other `Events` methods are called, though it is not required that
+/// sizing is repeated after re-configuration. It might theoretically be
+/// possible to receive a message through [`Events::handle_messages`] before the
+/// widget is sized through [`EventState::send`] (or other `send_*` method)
+/// being called during configuration or update of this widget or a parent.
 ///
 /// [`#widget`]: macros::widget
 pub trait Events: Widget + Sized {
@@ -132,14 +139,20 @@ pub trait Events: Widget + Sized {
     /// Configuration may be repeated at any time. If `id` changes, children
     /// must be assigned new/updated identifiers.
     ///
-    /// [`Self::update`] is always called immediately after this method,
-    /// followed by [`Self::configure_recurse`].
+    /// # Calling
+    ///
+    /// Do not call this method directly; instead use [`ConfigCx::configure`]
+    /// or [`EventCx::configure`]. This will ensure that [`Self::update`] is
+    /// called immediately after this method followed by [`Self::configure_recurse`].
+    ///
+    /// # Implementation
     ///
     /// The window's scale factor (and thus any sizes available through
-    /// [`ConfigCx::size_cx`]) may not be correct initially (some platforms
-    /// construct all windows using scale factor 1) and/or may change in the
-    /// future. Changes to the scale factor result in recalculation of
-    /// [`Layout::size_rules`] but not repeated configuration.
+    /// [`ConfigCx::size_cx`]) may change at run-time; this is common since some
+    /// platforms require sizing with scale factor 1 before . Such changes require resizing (calling [`Layout::size_rules`]
+    /// again) but do not require reconfiguration.
+    ///
+    /// ## Default implementation
     ///
     /// The default implementation does nothing.
     fn configure(&mut self, cx: &mut ConfigCx) {

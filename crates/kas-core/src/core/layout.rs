@@ -29,6 +29,29 @@ use kas_macros::autoimpl;
 /// `#[impl_self]`) or provide default implementations of its methods (if an
 /// explicit impl of `Layout` is found but some methods are missing).
 ///
+/// # Call order
+///
+/// Widgets must be [**configured**](Events#configuration) before any
+/// `Layout` methods are called. This is not applicable to non-widgets.
+///
+/// ### Sizing
+///
+/// Sizing involves calling the following in order:
+///
+/// 1.  [`Layout::size_rules`] for the horizontal axis
+/// 2.  [`Layout::size_rules`] for the vertical axis
+/// 3.  [`Layout::set_rect`]
+///
+/// This order is required initially. Resizing may start at any of the above
+/// steps but must then proceed in-order for all remaining steps. If the scale
+/// factor is changed, then resizing must start from step 1.
+///
+/// Typically parent widgets call these methods from their own implementations
+/// of [`Layout::size_rules`] and [`Layout::set_rect`]. When calling these
+/// methods at other times, be sure to respect the call order.
+///
+/// Other `Layout` methods may only be called once sizing is complete.
+///
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Layout {
@@ -37,63 +60,37 @@ pub trait Layout {
     /// Coordinates are relative to the parent's coordinate space.
     ///
     /// This method is usually implemented by the `#[widget]` macro.
-    /// See also [`kas::widget_set_rect`].
+    /// See also [`widget_set_rect!()`](crate::widget_set_rect).
     fn rect(&self) -> Rect;
 
-    /// Get size rules for the given axis
+    /// Calculate size requirements for an `axis`
+    ///
+    /// This method is used both to initialize a widget at a given scale factor
+    /// and to assess size requirements.
     ///
     /// # Calling
     ///
-    /// This method is called during sizing (see
-    /// [widget lifecycle](Widget#widget-lifecycle)).
-    /// Typically, this method is called twice: first for the horizontal axis,
-    /// second for the vertical axis (with resolved width available through
-    /// the `axis` parameter allowing content wrapping).
-    /// For a description of the widget size model, see [`SizeRules`].
-    ///
-    /// ## Call order
-    ///
-    /// Required: `self` is configured ([`ConfigCx::configure`]) before this
-    /// method is called, and that `size_rules` is called for the
-    /// horizontal axis before it is called for the vertical axis.
-    /// Further, [`Self::set_rect`] must be called after this method before
-    /// drawing or event handling.
+    /// This method is called during sizing (see [above](Layout#call-order)).
     ///
     /// # Implementation
     ///
-    /// This method is expected to cache any size requirements calculated from
-    /// children which would be required for space allocations in
-    /// [`Self::set_rect`]. As an example, the horizontal [`SizeRules`] for a
-    /// row layout is the sum of the rules for each column (plus margins);
-    /// these per-column [`SizeRules`] are also needed to calculate column
-    /// widths in [`Self::size_rules`] once the available size is known.
+    /// For a description of the widget size model, see [`SizeRules`].
     ///
     /// For row/column/grid layouts, a [`crate::layout::RulesSolver`] engine
     /// may be useful.
     ///
     /// ## Default implementation
     ///
-    /// The `#[widget]` macro may implement this method as a wrapper over
-    /// the corresponding [`MacroDefinedLayout`].
+    /// The [`#[layout]`](macro@crate::layout) macro may be used to
+    /// provide a default implementation.
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     ///
     /// # Calling
     ///
-    /// This method is called after [`Self::size_rules`] and may use values
-    /// cached by `size_rules` (in the case `size_rules` is not called first,
-    /// the widget may exhibit incorrect layout but should not panic). This
-    /// method should not write over values cached by `size_rules` since
-    /// `set_rect` may be called multiple times consecutively.
-    /// After `set_rect` is called, the widget must be ready for drawing and event handling.
-    ///
-    /// ## Call order
-    ///
-    /// Required: [`Self::size_rules`] is called for both axes before this
-    /// method is called, and that this method has been called *after* the last
-    /// call to [`Self::size_rules`] *before* any of the following methods:
-    /// [`Tile::try_probe`], [`Layout::draw`], [`Events::handle_event`].
+    /// This method is called to finalize sizing (see
+    /// [above](Layout#call-order)).
     ///
     /// # Implementation
     ///
@@ -110,8 +107,8 @@ pub trait Layout {
     ///
     /// ## Default implementation
     ///
-    /// The `#[widget]` macro may implement this method as a wrapper over
-    /// the corresponding [`MacroDefinedLayout`].
+    /// The [`#[layout]`](macro@crate::layout) macro may be used to
+    /// provide a default implementation.
     ///
     /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
@@ -123,17 +120,12 @@ pub trait Layout {
     /// This method is invoked each frame to draw visible widgets. It should
     /// draw itself and recurse into all visible children.
     ///
-    /// ## Call order
-    ///
-    /// It is expected that [`Self::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
-    ///
     /// # Implementation
     ///
     /// ## Default implementation
     ///
-    /// The `#[widget]` macro may implement this method as a wrapper over
-    /// the corresponding [`MacroDefinedLayout`].
+    /// The [`#[layout]`](macro@crate::layout) macro may be used to
+    /// provide a default implementation.
     ///
     /// ## Method modification
     ///
@@ -149,11 +141,11 @@ pub trait Layout {
 
 /// Macro-defined layout
 ///
-/// This trait is a copy of [`Layout`], implemented by the [`#[layout]`] attribute.
-///
-/// This trait may prove useful to modify the layout code generated by
-/// [`#[layout]`] with additional code. For examples, see the `RadioButton` and
-/// `SpinBox` widgets.
+/// This trait is a copy of [`Layout`], implemented by the
+/// [`#[layout]`](macro@crate::layout) macro. In some cases it is useful to
+/// invoke `kas::MacroDefinedLayout::set_rect` (or other method) from the
+/// corresponding [`Layout`] method to perform some other action before using
+/// the default implementation.
 ///
 /// [`#[layout]`]: kas::layout
 pub trait MacroDefinedLayout {

@@ -25,15 +25,15 @@ use kas_macros::autoimpl;
 ///
 /// # Widget lifecycle
 ///
-/// 1.  The widget is configured ([`Events::configure`]) and immediately updated
-///     ([`Events::update`]).
-/// 2.  The widget has its size-requirements checked by calling
-///     [`Layout::size_rules`] for each axis.
-/// 3.  [`Layout::set_rect`] is called to position elements. This may use data
-///     cached by `size_rules`.
-/// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
-/// 5.  The widget is ready for event-handling and drawing
-///     ([`Events::handle_event`], [`Tile::try_probe`], [`Layout::draw`]).
+/// Widget methods have a specified call order:
+///
+/// 1.  The widget is configured (see [`Events#configuration`])
+/// 2.  The widget is updated ([`Events#update`])
+/// 3.  The widget is sized (see [`Layout#sizing`])
+/// 4.  The widget is ready for other methods to be called
+///
+/// Configuration, update and sizing may be repeated at any time (see above
+/// linked documentation).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout
