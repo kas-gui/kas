@@ -9,7 +9,8 @@ use super::{EventCx, EventState};
 use crate::event::{Command, Event, Scroll, ScrollDelta, Used};
 use crate::messages::Erased;
 use crate::runner::ReadMessage;
-#[allow(unused)] use crate::{Events, Tile, event::ConfigCx};
+#[allow(unused)]
+use crate::{Events, Tile, Widget, event::ConfigCx};
 use crate::{Id, Node};
 use std::fmt::Debug;
 use std::task::Poll;
@@ -47,6 +48,17 @@ impl EventState {
     ///
     /// If `id = Id::default()` and a [send target](super::ConfigCx::set_send_target_for)
     /// has been assigned for `M`, then `msg` will be sent to that target.
+    ///
+    /// ### Ordering and failure
+    ///
+    /// Messages sent via `send` and [`send_erased`](Self::send_erased) should
+    /// be received in the same order sent relative to other messages sent from
+    /// the same window via these methods.
+    ///
+    /// Message delivery may fail for widgets not currently visible. This is
+    /// dependent on widgets implementation of [`Widget::child_node`] (e.g. in
+    /// the case of virtual scrolling, the target may have scrolled out of
+    /// range).
     pub fn send<M: Debug + 'static>(&mut self, id: Id, msg: M) {
         self.send_erased(id, Erased::new(msg));
     }
@@ -66,6 +78,21 @@ impl EventState {
     ///
     /// The future must resolve to a message on completion. Its message is then
     /// sent to `id` via stack traversal identically to [`Self::send`].
+    ///
+    /// ### Cancellation, ordering and failure
+    ///
+    /// Futures passed to these methods should only be cancelled if they fail to
+    /// complete before the window is closed, and even in this case will be
+    /// polled at least once.
+    ///
+    /// Messages sent via `send_async`,
+    /// [`send_async_erased`](Self::send_async_erased) and
+    /// [`send_spawn`](Self::send_spawn) may be received in any order.
+    ///
+    /// Message delivery may fail for widgets not currently visible. This is
+    /// dependent on widgets implementation of [`Widget::child_node`] (e.g. in
+    /// the case of virtual scrolling, the target may have scrolled out of
+    /// range).
     pub fn send_async<Fut, M>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,

@@ -152,7 +152,10 @@ mod Stack {
             (self.active..end).into()
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get(index).map(|(w, _)| w.as_tile())
+            self.widgets
+                .get(index)
+                .filter(|w| w.1 >= State::Configured)
+                .map(|(w, _)| w.as_tile())
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
@@ -250,7 +253,10 @@ mod Stack {
         type Data = A;
 
         fn child_node<'n>(&'n mut self, data: &'n A, index: usize) -> Option<Node<'n>> {
-            self.widgets.get_mut(index).map(|(w, _)| w.as_node(data))
+            self.widgets
+                .get_mut(index)
+                .filter(|w| w.1 >= State::Configured)
+                .map(|(w, _)| w.as_node(data))
         }
     }
 
@@ -323,7 +329,11 @@ impl<A> Stack<A> {
         self
     }
 
-    /// Set the active page
+    /// Change the active page and update
+    ///
+    /// If `index == self.active()` then nothing happens.
+    /// If `index >= self.len()` then nothing will be displayed.
+    /// If the page is changed successfully, the newly active page is updated.
     pub fn set_active(&mut self, cx: &mut ConfigCx, data: &A, index: usize) {
         let old_index = self.active;
         if old_index == index {

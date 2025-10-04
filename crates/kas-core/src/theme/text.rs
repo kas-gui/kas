@@ -161,6 +161,23 @@ impl<T: FormattableText> Text<T> {
         &self.text
     }
 
+    /// Access the formattable text object mutably
+    ///
+    /// If the text is changed, one **must** call [`Self::require_reprepare`]
+    /// after this method then [`Text::prepare`].
+    #[inline]
+    pub fn text_mut(&mut self) -> &mut T {
+        &mut self.text
+    }
+
+    /// Force full repreparation of text
+    ///
+    /// This may be required after calling [`Self::text_mut`].
+    #[inline]
+    pub fn require_reprepare(&mut self) {
+        self.set_max_status(Status::New);
+    }
+
     /// Set the text
     ///
     /// One must call [`Text::prepare`] afterwards and may wish to inspect its

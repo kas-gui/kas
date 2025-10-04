@@ -46,7 +46,7 @@ use std::default::Default;
 /// impl<Key> Driver<Key, f32> for MyDriver {
 ///     type Widget = Text<f32, String>;
 ///     fn make(&mut self, _: &Key) -> Self::Widget {
-///         Text::new(|_, data: &f32| data.to_string())
+///         Text::new_gen(|_, data: &f32| data.to_string())
 ///     }
 ///     fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
 ///         // Text has no metadata that needs to be reset
@@ -105,7 +105,7 @@ macro_rules! impl_via_to_string {
         impl<Key> Driver<Key, $t> for View {
             type Widget = Text<$t, String>;
             fn make(&mut self, _: &Key) -> Self::Widget {
-                Text::new(|_, data: &$t| data.to_string())
+                Text::new_gen(|_, data: &$t| data.to_string())
             }
             fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
                 // Text has no metadata that needs to be reset
