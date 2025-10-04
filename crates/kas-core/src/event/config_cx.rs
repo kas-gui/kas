@@ -16,7 +16,7 @@ use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::event::{Event, EventCx};
-#[allow(unused)] use crate::{Action, Events, Layout};
+#[allow(unused)] use crate::{Action, Events};
 
 /// Widget configuration and update context
 ///
@@ -51,10 +51,9 @@ impl<'a> ConfigCx<'a> {
 
     /// Configure a widget
     ///
-    /// All widgets must be configured after construction (see
-    /// [widget lifecycle](Layout#widget-lifecycle)).
-    /// This method performs complete configuration of the widget by calling
-    /// [`Events::configure`], [`Events::update`], [`Events::configure_recurse`].
+    /// All widgets must be configured after construction; see
+    /// [widget lifecycle](crate::Widget#widget-lifecycle) and
+    /// [configuration](Events#configuration).
     ///
     /// Pass the `id` to assign to the widget. This is usually constructed with
     /// [`Events::make_child_id`].
@@ -67,9 +66,8 @@ impl<'a> ConfigCx<'a> {
 
     /// Update a widget
     ///
-    /// All widgets must be updated after input data changes.
-    /// This method recursively updates the widget by calling
-    /// [`Events::update`] and [`Events::update_recurse`].
+    /// All widgets must be updated after input data changes; see
+    /// [update](Events#update).
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
         widget._update(self);

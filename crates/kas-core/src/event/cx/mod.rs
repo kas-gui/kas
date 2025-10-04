@@ -390,6 +390,10 @@ impl<'a> DerefMut for EventCx<'a> {
 impl<'a> EventCx<'a> {
     /// Configure a widget
     ///
+    /// All widgets must be configured after construction; see
+    /// [widget lifecycle](crate::Widget#widget-lifecycle) and
+    /// [configuration](Events#configuration).
+    ///
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
@@ -398,9 +402,8 @@ impl<'a> EventCx<'a> {
 
     /// Update a widget
     ///
-    /// [`Events::update`] will be called recursively on each child and finally
-    /// `self`. If a widget stores state which it passes to children as input
-    /// data, it should call this (or [`ConfigCx::update`]) after mutating the state.
+    /// All widgets must be updated after input data changes; see
+    /// [update](Events#update).
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
         widget._update(&mut self.config_cx());

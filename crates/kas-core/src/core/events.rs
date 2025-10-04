@@ -45,12 +45,21 @@ use crate::{Id, geom::Coord};
 ///
 /// ### Update
 ///
-/// Widgets must be updated after configure before sizing and after their input
-/// data (see [`Widget::Data`]) changes while visible. Updates may happen at
-/// other times (mostly because data-change-detection has false positives).
-/// This involves calling:
+/// Widgets must be updated during configure (see above), since
+/// [`Events::update`] must be called before sizing (except as noted in
+/// [`Layout::size_rules`]) and before other widget methods.
+///
+/// Widgets must also be updated after their input data (see [`Widget::Data`])
+/// changes (unless not visible, in which case the update may be postponed until
+/// they become visible). Updates may happen at other times (mostly because
+/// data-change-detection has false positives). Note that custom widgets with
+/// state must explicitly update affected children when their state changes.
+///
+/// An update involves calling [`ConfigCx::update`] or [`EventCx::update`],
+/// which then ensure that the following methods are called:
 ///
 /// 1.  [`Events::update`]
+/// 2.  [`Events::update_recurse`]
 ///
 /// ### Sizing
 ///
@@ -133,17 +142,11 @@ pub trait Events: Widget + Sized {
 
     /// Configure self
     ///
-    /// Widgets are *configured* before sizing, drawing and event handling (see
-    /// [widget lifecycle](Widget#widget-lifecycle)).
-    ///
-    /// Configuration may be repeated at any time. If `id` changes, children
-    /// must be assigned new/updated identifiers.
-    ///
     /// # Calling
     ///
-    /// Do not call this method directly; instead use [`ConfigCx::configure`]
-    /// or [`EventCx::configure`]. This will ensure that [`Self::update`] is
-    /// called immediately after this method followed by [`Self::configure_recurse`].
+    /// This method is called as part of [configuration](Self#configuration).
+    ///
+    /// Invoke by calling [`ConfigCx::configure`] or [`EventCx::configure`].
     ///
     /// # Implementation
     ///
@@ -152,8 +155,6 @@ pub trait Events: Widget + Sized {
     /// platforms require sizing with scale factor 1 before . Such changes require resizing (calling [`Layout::size_rules`]
     /// again) but do not require reconfiguration.
     ///
-    /// ## Default implementation
-    ///
     /// The default implementation does nothing.
     fn configure(&mut self, cx: &mut ConfigCx) {
         let _ = cx;
@@ -161,8 +162,13 @@ pub trait Events: Widget + Sized {
 
     /// Configure children
     ///
-    /// This method is called after [`Self::configure`].
-    /// The default implementation configures all children.
+    /// # Calling
+    ///
+    /// This method is called as part of [configuration](Self#configuration).
+    ///
+    /// Invoke by calling [`ConfigCx::configure`] or [`EventCx::configure`].
+    ///
+    /// # Implementation
     ///
     /// An explicit implementation is required in cases where not all children
     /// should be configured immediately (for example, a stack or paged list may
@@ -187,12 +193,14 @@ pub trait Events: Widget + Sized {
 
     /// Update self using input data
     ///
-    /// This method is called immediately after [`Self::configure`] and after
-    /// any input data is updated, before [`Layout::draw`] is called.
-    /// Typically this method is called immediately after the data is updated
-    /// but the call may be delayed until when the widget becomes visible.
+    /// # Calling
     ///
-    /// This method is called before [`Self::update_recurse`].
+    /// This method is called as part of [configuration](Self#configuration)
+    /// and [update](Self#update).
+    ///
+    /// Invoke by calling [`ConfigCx::update`] or [`EventCx::update`].
+    ///
+    /// # Implementation
     ///
     /// The default implementation does nothing.
     fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
@@ -201,9 +209,15 @@ pub trait Events: Widget + Sized {
 
     /// Update children
     ///
-    /// This method is called after [`Self::update`]. It usually configures all
-    /// children. Children should be updated even if their data is `()` or is
-    /// unchanged.
+    /// # Calling
+    ///
+    /// This method is called after [`Self::update`] except during
+    /// [configuration](Self#configuration). Children should be updated even if
+    /// their data is `()` or is unchanged.
+    ///
+    /// Invoke by calling [`ConfigCx::update`] or [`EventCx::update`].
+    ///
+    /// # Implementation
     ///
     /// The default implementation updates children in the range
     /// [`Tile::child_indices`]. This is usually sufficient.
