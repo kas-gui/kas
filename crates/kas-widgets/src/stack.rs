@@ -329,7 +329,11 @@ impl<A> Stack<A> {
         self
     }
 
-    /// Set the active page
+    /// Change the active page and update
+    ///
+    /// If `index == self.active()` then nothing happens.
+    /// If `index >= self.len()` then nothing will be displayed.
+    /// If the page is changed successfully, the newly active page is updated.
     pub fn set_active(&mut self, cx: &mut ConfigCx, data: &A, index: usize) {
         let old_index = self.active;
         if old_index == index {
