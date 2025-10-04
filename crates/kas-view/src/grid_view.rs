@@ -91,6 +91,7 @@ mod GridCell {
 #[autoimpl(Debug ignore self.item where C::Token: trait)]
 struct WidgetData<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
     token: Option<C::Token>,
+    is_mock: bool,
     item: GridCell<C::Key, C::Item, V>,
 }
 
@@ -503,6 +504,7 @@ mod GridView {
 
                     let force = self.token_update != Update::None;
                     let changes = self.clerk.update_token(data, cell, force, &mut w.token);
+                    w.is_mock = false;
                     let Some(token) = w.token.as_ref() else {
                         continue;
                     };
@@ -671,7 +673,7 @@ mod GridView {
 
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
-                if w.token.is_some() {
+                if w.token.is_some() || w.is_mock {
                     let child_rules = w.item.size_rules(sizer.re(), axis);
                     rules = rules.max(child_rules);
                 }
@@ -731,6 +733,7 @@ mod GridView {
                 );
                 self.widgets.resize_with(req_widgets, || WidgetData {
                     token: None,
+                    is_mock: false,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
             }
@@ -850,15 +853,15 @@ mod GridView {
             cx.register_nav_fallback(self.id());
         }
 
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {
             if self.widgets.is_empty() {
-                // Initial configure: ensure some widgets are loaded to allow
-                // better sizing of self.
+                // Ensure alloc_len > 0 for initial sizing
                 self.child_size = Size::splat(1); // hack: avoid div by 0
 
                 let len = self.ideal_len.col * self.ideal_len.row;
                 self.widgets.resize_with(len.cast(), || WidgetData {
                     token: None,
+                    is_mock: false,
                     item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
                 self.alloc_len = self.ideal_len;
@@ -869,34 +872,28 @@ mod GridView {
                 }
             }
 
-            let lbound = GridIndex {
-                col: self.first_data.col + 2 * self.alloc_len.col,
-                row: self.first_data.row + 2 * self.alloc_len.row,
-            };
-            let data_len = self.clerk.len(data, lbound);
-            self.len_is_known = data_len.is_known();
-            let data_len = data_len.len();
-            self.data_len = data_len;
-
-            let col_len = data_len.col.min(self.alloc_len.col);
-            let row_len = data_len.row.min(self.alloc_len.row);
-
-            let cur_len = GridIndex {
-                col: col_len.cast(),
-                row: row_len.cast(),
-            };
-            self.cur_len = cur_len;
-            debug_assert!(self.cur_end() <= self.widgets.len());
-
             self.token_update = Update::Configure;
-            let end = self.first_data + cur_len;
-            self.map_view_widgets(cx, data, self.first_data..end);
+            // Self::update() will be called next
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
-            if changes != DataChanges::None {
+            if self.token_update != Update::None {
+                self.post_scroll(cx, data);
+            } else if changes != DataChanges::None {
                 self.handle_clerk_update(cx, data, changes);
+            }
+
+            let id = self.id();
+            if self.cur_len == GridIndex::ZERO
+                && let Some(w) = self.widgets.get_mut(0)
+                && w.token.is_none()
+                && !w.is_mock
+                && let Some(item) = self.clerk.mock_item(data)
+            {
+                // Construct a mock widget for initial sizing
+                cx.configure(w.item.as_node(&item), id);
+                w.is_mock = true;
             }
         }
 
