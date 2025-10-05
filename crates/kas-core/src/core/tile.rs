@@ -27,6 +27,11 @@ use kas_macros::autoimpl;
 /// `Tile` may not be implemented directly; it will be implemented by the
 /// [`#widget`] macro.
 ///
+/// # Call order
+///
+/// Widgets must be configured (see [`Events#configuration`]) before any `Tile`
+/// method is called.
+///
 /// # Tree reflection
 ///
 /// `Tile` offers a reflection API over the widget tree via

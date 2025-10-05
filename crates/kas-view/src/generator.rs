@@ -114,6 +114,18 @@ pub trait DataGenerator<Index> {
     /// The `key` will be the result of [`Self::key`] for an `index` less than
     /// [`Self::len`].
     fn generate(&self, data: &Self::Data, key: &Self::Key) -> Self::Item;
+
+    /// Get a mock data item for sizing purposes
+    ///
+    /// This method is called if no data items are available when initially
+    /// sizing the view. If an item is returned, then a mock view widget is
+    /// created using this data in order to determine size requirements.
+    ///
+    /// The default implementation returns `None`.
+    fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
+        let _ = data;
+        None
+    }
 }
 
 /// An implementation of [`DataClerk`] for data generators
@@ -124,6 +136,7 @@ pub struct GeneratorClerk<Index, G: DataGenerator<Index>> {
 
 impl<Index: Default, G: DataGenerator<Index>> GeneratorClerk<Index, G> {
     /// Construct a `GeneratorClerk`
+    #[inline]
     pub fn new(generator: G) -> Self {
         GeneratorClerk {
             g: generator,
@@ -132,6 +145,7 @@ impl<Index: Default, G: DataGenerator<Index>> GeneratorClerk<Index, G> {
     }
 
     /// Access the inner generator
+    #[inline]
     pub fn generator(&self) -> &G {
         &self.g
     }
@@ -158,6 +172,7 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
         }
     }
 
+    #[inline]
     fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index> {
         self.g.len(data, lbound)
     }
@@ -198,7 +213,13 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
         changes
     }
 
+    #[inline]
     fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {
         &token.item
+    }
+
+    #[inline]
+    fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
+        self.g.mock_item(data)
     }
 }

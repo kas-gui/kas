@@ -92,6 +92,7 @@ mod ListItem {
 #[autoimpl(Debug ignore self.item where C::Token: trait)]
 struct WidgetData<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> {
     token: Option<C::Token>,
+    is_mock: bool,
     item: ListItem<C::Key, C::Item, V>,
 }
 
@@ -137,12 +138,11 @@ mod ListView {
         clerk: C,
         driver: V,
         widgets: Vec<WidgetData<C, V>>,
-        alloc_len: u32,
         data_len: u32,
         token_update: Update,
         rect_update: bool,
         len_is_known: bool,
-        /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
+        /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
         /// First data item mapped to a widget
         first_data: u32,
@@ -164,6 +164,16 @@ mod ListView {
         press_target: Option<(usize, C::Key)>,
     }
 
+    impl Default for Self
+    where
+        C: Default,
+        V: Default,
+        D: Default,
+    {
+        fn default() -> Self {
+            Self::new(C::default(), V::default())
+        }
+    }
     impl Self
     where
         D: Default,
@@ -217,7 +227,6 @@ mod ListView {
                 clerk,
                 driver,
                 widgets: Default::default(),
-                alloc_len: 0,
                 data_len: 0,
                 token_update: Update::None,
                 rect_update: false,
@@ -470,7 +479,7 @@ mod ListView {
             let offset = self.scroll_offset().extract(self.direction);
             let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
 
-            let alloc_len = self.alloc_len.cast();
+            let alloc_len = self.widgets.len();
             let lbound = first_data + 2 * alloc_len;
             let data_len = self.clerk.len(data, lbound);
             self.len_is_known = data_len.is_known();
@@ -525,6 +534,7 @@ mod ListView {
 
                 let force = self.token_update != Update::None;
                 let changes = self.clerk.update_token(data, i, force, &mut w.token);
+                w.is_mock = false;
                 let Some(token) = w.token.as_ref() else {
                     continue;
                 };
@@ -583,8 +593,8 @@ mod ListView {
                 DataChanges::Any => start..end,
             };
 
-            let lbound = self.first_data + 2 * self.alloc_len;
-            let data_len = self.clerk.len(data, lbound.cast());
+            let lbound = usize::conv(self.first_data) + 2 * self.widgets.len();
+            let data_len = self.clerk.len(data, lbound);
             self.len_is_known = data_len.is_known();
             let data_len = data_len.len().cast();
             if data_len != self.data_len {
@@ -597,7 +607,7 @@ mod ListView {
                     return;
                 }
 
-                if self.cur_len != data_len.min(self.alloc_len.cast()) {
+                if self.cur_len != data_len.min(self.widgets.len().cast()) {
                     return self.post_scroll(cx, data);
                 }
             }
@@ -677,7 +687,7 @@ mod ListView {
 
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
-                if w.token.is_some() {
+                if w.token.is_some() || w.is_mock {
                     let child_rules = w.item.size_rules(sizer.re(), axis);
                     rules = rules.max(child_rules);
                 }
@@ -721,13 +731,12 @@ mod ListView {
             self.skip = skip;
             self.update_content_size(cx);
 
-            if skip == 0 {
+            let req_widgets = if skip == 0 {
                 self.skip = 1; // avoid divide by 0
-                self.alloc_len = 0;
-                return;
-            }
-            let req_widgets = usize::conv((size + skip - 1) / skip + 1);
-            self.alloc_len = req_widgets.cast();
+                0
+            } else {
+                usize::conv((size + skip - 1) / skip + 1)
+            };
 
             let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
@@ -738,7 +747,11 @@ mod ListView {
                 let key = C::Key::default();
                 for _ in avail_widgets..req_widgets {
                     let item = ListItem::new(self.driver.make(&key));
-                    self.widgets.push(WidgetData { token: None, item });
+                    self.widgets.push(WidgetData {
+                        token: None,
+                        is_mock: false,
+                        item,
+                    });
                 }
             }
 
@@ -846,45 +859,45 @@ mod ListView {
             cx.register_nav_fallback(self.id());
         }
 
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {
             if self.widgets.is_empty() {
-                // Initial configure: ensure some widgets are loaded to allow
-                // better sizing of self.
+                // Ensure alloc_len > 0 for initial sizing
                 self.skip = 1; // hack: avoid div by 0
-
                 let len = self.ideal_visible.cast();
                 let key = C::Key::default();
                 self.widgets.resize_with(len, || WidgetData {
                     token: None,
+                    is_mock: false,
                     item: ListItem::new(self.driver.make(&key)),
                 });
-                self.alloc_len = len.cast();
             } else {
                 // Force reconfiguration:
                 for w in &mut self.widgets {
                     w.token = None;
                 }
             }
-
-            let alloc_len = self.alloc_len.cast();
-            let first_data: usize = self.first_data.cast();
-            let lbound = first_data + 2 * alloc_len;
-            let data_len = self.clerk.len(data, lbound);
-            self.len_is_known = data_len.is_known();
-            let data_len = data_len.len();
-            self.data_len = data_len.cast();
-            let cur_len = data_len.min(alloc_len);
-            debug_assert!(cur_len <= self.widgets.len());
-            self.cur_len = cur_len.cast();
-
             self.token_update = Update::Configure;
-            self.map_view_widgets(cx, data, first_data..(first_data + cur_len));
+            // Self::update() will be called next
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
-            if changes != DataChanges::None {
+            if self.token_update != Update::None {
+                self.post_scroll(cx, data);
+            } else if changes != DataChanges::None {
                 self.handle_clerk_update(cx, data, changes);
+            }
+
+            let id = self.id();
+            if self.cur_len == 0
+                && let Some(w) = self.widgets.get_mut(0)
+                && w.token.is_none()
+                && !w.is_mock
+                && let Some(item) = self.clerk.mock_item(data)
+            {
+                // Construct a mock widget for initial sizing
+                cx.configure(w.item.as_node(&item), id);
+                w.is_mock = true;
             }
         }
 

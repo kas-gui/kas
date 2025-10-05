@@ -339,4 +339,16 @@ pub trait DataClerk<Index> {
     ///
     /// This method should be fast since it may be called repeatedly.
     fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item;
+
+    /// Get a mock data item for sizing purposes
+    ///
+    /// This method is called if no data items are available when initially
+    /// sizing the view. If an item is returned, then a mock view widget is
+    /// created using this data in order to determine size requirements.
+    ///
+    /// The default implementation returns `None`.
+    fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
+        let _ = data;
+        None
+    }
 }
