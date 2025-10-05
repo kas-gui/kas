@@ -5,23 +5,15 @@
 
 //! # Views
 //!
-//! Views allow virtual scrolling and query views over a data set, supporting
-//! both sync and async access.
-//!
+//! Views allow virtual scrolling over (subsets of) a data set.
 //! Each visible data `Item` is assigned a **view widget**, with dynamic
 //! re-assignment as the view changes.
 //!
-//! ## Data sets and clerks
+//! ## Data clerks
 //!
 //! The full data set might be available in local memory, on disk, or on a
-//! remote server.
-//!
-//! A [`DataClerk`] manages all interactions between the view and the data as
-//! well as providing a local cache of (at least) the currently visible data.
-//!
-//! ### Data generators
-//!
-//! A higher-level interface is provided for data generators: [`DataGenerator`].
+//! remote server, and may be viewed as a raw list of items or through a filter
+//! or query. A [`clerk`] is required to manage this access.
 //!
 //! ## View controller
 //!
