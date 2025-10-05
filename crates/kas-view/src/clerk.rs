@@ -370,6 +370,21 @@ pub trait TokenClerk<Index>: AsyncClerk<Index> {
     /// the prepared `range` in order to prepare a to prepare a token for each
     /// item (see [`Self::item`]).
     ///
+    /// In the case that `type Token = Key` it is recommended to use the free
+    /// function [`update_token`]:
+    /// ```rust,ignore
+    /// fn update_token(
+    ///     &self,
+    ///     data: &Self::Data,
+    ///     index: Index,
+    ///     update_item: bool,
+    ///     token: &mut Option<Self::Token>,
+    /// ) -> TokenChanges {
+    ///     let key = /* ... */;
+    ///     kas::view::clerk::update_token(key, update_item, token)
+    /// }
+    /// ```
+    ///
     /// The input `token` (if any) may or may not correspond to the given
     /// `index`. This method should prepare it as follows:
     ///
@@ -438,16 +453,7 @@ impl<Index, C: KeyedClerk<Index>> TokenClerk<Index> for C {
         token: &mut Option<Self::Token>,
     ) -> TokenChanges {
         let key = self.key(data, index);
-        if *token == key {
-            if update_item {
-                TokenChanges::SameKey
-            } else {
-                TokenChanges::None
-            }
-        } else {
-            *token = key;
-            TokenChanges::Any
-        }
+        update_token(key, update_item, token)
     }
 
     fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {
@@ -455,3 +461,23 @@ impl<Index, C: KeyedClerk<Index>> TokenClerk<Index> for C {
     }
 }
 */
+
+/// Implementation of [`TokenClerk::update_token`] for non-caching tokens
+///
+/// This may be used where `type Token = Key`.
+pub fn update_token<Key: PartialEq>(
+    key: Option<Key>,
+    update_item: bool,
+    token: &mut Option<Key>,
+) -> TokenChanges {
+    if *token == key {
+        if update_item {
+            TokenChanges::SameKey
+        } else {
+            TokenChanges::None
+        }
+    } else {
+        *token = key;
+        TokenChanges::Any
+    }
+}
