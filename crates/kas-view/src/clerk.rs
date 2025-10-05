@@ -15,8 +15,11 @@
 //!
 //! ## Data generators
 //!
-//! This simplest interface available is [`DataGenerator`]. This is appropriate
-//! for data items which are generated (or cloned) on demand.
+//! This simplest interface available is [`IndexedGenerator`]. This is
+//! appropriate for data items which are generated (or cloned) on demand.
+//!
+//! [`KeyedGenerator`] is slightly more complex, allowing usage of a custom key
+//! type.
 //!
 //! ## Async data access
 //!

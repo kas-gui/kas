@@ -1,7 +1,7 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::clerk::{Clerk, DataGenerator, DataLen, GeneratorChanges};
+use kas::view::clerk::{Clerk, DataLen, GeneratorChanges, IndexedGenerator};
 use kas::view::{GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
 
@@ -29,9 +29,7 @@ impl Clerk<GridIndex> for TableCache {
     }
 }
 
-impl DataGenerator<GridIndex> for TableCache {
-    type Key = GridIndex;
-
+impl IndexedGenerator<GridIndex> for TableCache {
     fn update(&mut self, dim: &Self::Data) -> GeneratorChanges<GridIndex> {
         if self.dim == *dim {
             GeneratorChanges::None
@@ -41,12 +39,8 @@ impl DataGenerator<GridIndex> for TableCache {
         }
     }
 
-    fn key(&self, _: &Self::Data, index: GridIndex) -> Option<GridIndex> {
-        Some(index)
-    }
-
-    fn generate(&self, _: &Self::Data, index: &GridIndex) -> u64 {
-        product(*index)
+    fn generate(&self, _: &Self::Data, index: GridIndex) -> u64 {
+        product(index)
     }
 }
 

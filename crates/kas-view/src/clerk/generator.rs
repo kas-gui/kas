@@ -12,7 +12,7 @@ use kas::event::ConfigCx;
 use std::fmt::Debug;
 use std::ops::Range;
 
-/// Indicates whether an update to a [`DataGenerator`] has changed
+/// Indicates whether an update to a generator changes any available data
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use]
 pub enum GeneratorChanges<Index> {
@@ -21,8 +21,8 @@ pub enum GeneratorChanges<Index> {
     /// Indicates that [`Clerk::len`] may have changed but generated
     /// values have not changed.
     LenOnly,
-    /// Indicates that items in the given range may require an update
-    /// [`DataGenerator::generate`] will be called for each index in the
+    /// Indicates that items in the given range may require an update.
+    /// The `generate` method will be called for each index in the
     /// intersection of the given range with the visible data range.
     Range(Range<Index>),
     /// `Any` indicates that changes to the data set may have occurred.
@@ -30,9 +30,28 @@ pub enum GeneratorChanges<Index> {
 }
 
 /// Interface for generators over indexed data
-///
-/// This provides a substantially simpler interface than [`DataClerk`].
-pub trait DataGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialEq> {
+pub trait IndexedGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialEq> {
+    /// Update the generator
+    ///
+    /// This is called by [`kas::Events::update`]. It should update `self` as
+    /// required reflecting possible data-changes and indicate through the
+    /// returned [`GeneratorChanges`] value the updates required to tokens and
+    /// views.
+    ///
+    /// Note: this method is called automatically when input data changes. When
+    /// data owned or referenced by the `IndexedGenerator` implementation is
+    /// changed it may be necessary to explicitly update the view controller,
+    /// e.g. using [`ConfigCx::update`] or [`Action::UPDATE`].
+    ///
+    /// This method may be called frequently and without changes to `data`.
+    fn update(&mut self, data: &Self::Data) -> GeneratorChanges<Index>;
+
+    /// Generate an item
+    fn generate(&self, data: &Self::Data, index: Index) -> Self::Item;
+}
+
+/// Interface for generators over keyed data
+pub trait KeyedGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialEq> {
     /// Key type
     ///
     /// All data items should have a stable key so that data items may be
@@ -50,9 +69,9 @@ pub trait DataGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialEq> 
     /// views.
     ///
     /// Note: this method is called automatically when input data changes. When
-    /// data owned or referenced by the `DataClerk` implementation is changed it
-    /// may be necessary to explicitly update the view controller, e.g. using
-    /// [`ConfigCx::update`] or [`Action::UPDATE`].
+    /// data owned or referenced by the `KeyedGenerator` implementation is
+    /// changed it may be necessary to explicitly update the view controller,
+    /// e.g. using [`ConfigCx::update`] or [`Action::UPDATE`].
     ///
     /// This method may be called frequently and without changes to `data`.
     fn update(&mut self, data: &Self::Data) -> GeneratorChanges<Index>;
@@ -75,7 +94,23 @@ pub trait DataGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialEq> 
     fn generate(&self, data: &Self::Data, key: &Self::Key) -> Self::Item;
 }
 
-impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for G {
+impl<Index: DataKey, G: IndexedGenerator<Index>> KeyedGenerator<Index> for G {
+    type Key = Index;
+
+    fn update(&mut self, data: &Self::Data) -> GeneratorChanges<Index> {
+        self.update(data)
+    }
+
+    fn key(&self, _: &Self::Data, index: Index) -> Option<Self::Key> {
+        Some(index)
+    }
+
+    fn generate(&self, data: &Self::Data, key: &Self::Key) -> Self::Item {
+        self.generate(data, key.clone())
+    }
+}
+
+impl<Index, G: KeyedGenerator<Index>> DataClerk<Index> for G {
     type Key = G::Key;
     type Token = Token<Self::Key, Self::Item>;
 
