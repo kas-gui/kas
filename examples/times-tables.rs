@@ -3,7 +3,7 @@
 use kas::prelude::*;
 use kas::view::{DataGenerator, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
-use kas_view::{DataLen, GeneratorChanges, GeneratorClerk};
+use kas_view::{DataLen, GeneratorChanges};
 
 /// A cache of the visible part of our table
 #[derive(Debug, Default)]
@@ -51,7 +51,7 @@ impl DataGenerator<GridIndex> for TableCache {
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let clerk = GeneratorClerk::new(TableCache::default());
+    let clerk = TableCache::default();
 
     let table = GridView::new(clerk, driver::View)
         .with_num_visible(12, 12)

@@ -21,8 +21,7 @@
 //!
 //! ### Data generators
 //!
-//! A higher-level interface is provided for data generators: [`DataGenerator`]
-//! using clerk [`GeneratorClerk`].
+//! A higher-level interface is provided for data generators: [`DataGenerator`].
 //!
 //! ## View controller
 //!

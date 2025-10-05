@@ -13,7 +13,7 @@
 use kas::prelude::*;
 use kas::view::{Driver, ListView};
 use kas::widgets::{column, *};
-use kas_view::{DataGenerator, DataLen, GeneratorChanges, GeneratorClerk};
+use kas_view::{DataGenerator, DataLen, GeneratorChanges};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -207,7 +207,7 @@ fn main() -> kas::runner::Result<()> {
 
     let data = MyData::new(false, 5);
 
-    let clerk = GeneratorClerk::new(Generator::default());
+    let clerk = Generator::default();
     let list = ListView::new(clerk, ListEntryDriver).on_update(|cx, list, data: &MyData| {
         list.set_direction(cx, data.dir);
     });

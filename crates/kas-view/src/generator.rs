@@ -10,7 +10,6 @@ use kas::Id;
 use kas::event::ConfigCx;
 #[allow(unused)] use kas::{Action, Events, Widget};
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::ops::Range;
 
 /// Indicates whether an update to a [`DataGenerator`] has changed
@@ -30,7 +29,7 @@ pub enum GeneratorChanges<Index> {
     Any,
 }
 
-/// A generator for use with [`GeneratorClerk`]
+/// Interface for generators over indexed data
 ///
 /// This provides a substantially simpler interface than [`DataClerk`].
 pub trait DataGenerator<Index> {
@@ -128,30 +127,7 @@ pub trait DataGenerator<Index> {
     }
 }
 
-/// An implementation of [`DataClerk`] for data generators
-pub struct GeneratorClerk<Index, G: DataGenerator<Index>> {
-    g: G,
-    _index: PhantomData<Index>,
-}
-
-impl<Index: Default, G: DataGenerator<Index>> GeneratorClerk<Index, G> {
-    /// Construct a `GeneratorClerk`
-    #[inline]
-    pub fn new(generator: G) -> Self {
-        GeneratorClerk {
-            g: generator,
-            _index: PhantomData,
-        }
-    }
-
-    /// Access the inner generator
-    #[inline]
-    pub fn generator(&self) -> &G {
-        &self.g
-    }
-}
-
-impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorClerk<Index, G> {
+impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for G {
     type Data = G::Data;
     type Key = G::Key;
     type Item = G::Item;
@@ -164,7 +140,7 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
         _: Range<Index>,
         data: &Self::Data,
     ) -> DataChanges<Index> {
-        match self.g.update(data) {
+        match self.update(data) {
             GeneratorChanges::None => DataChanges::None,
             GeneratorChanges::LenOnly => DataChanges::NoPreparedItems,
             GeneratorChanges::Range(range) => DataChanges::Range(range),
@@ -174,7 +150,7 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
 
     #[inline]
     fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index> {
-        self.g.len(data, lbound)
+        self.len(data, lbound)
     }
 
     fn update_token(
@@ -184,7 +160,7 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
         update_item: bool,
         token: &mut Option<Self::Token>,
     ) -> TokenChanges {
-        let Some(key) = self.g.key(data, index) else {
+        let Some(key) = self.key(data, index) else {
             *token = None;
             return TokenChanges::None;
         };
@@ -196,7 +172,7 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
             return TokenChanges::None;
         }
 
-        let item = self.g.generate(data, &key);
+        let item = self.generate(data, &key);
         let mut changes = TokenChanges::Any;
 
         if let Some(token) = token.as_mut()
@@ -220,6 +196,6 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for GeneratorCler
 
     #[inline]
     fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
-        self.g.mock_item(data)
+        self.mock_item(data)
     }
 }

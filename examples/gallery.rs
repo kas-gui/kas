@@ -354,8 +354,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
 fn filter_list() -> Page<AppData> {
     use kas::view::{
-        DataGenerator, DataLen, GeneratorChanges, GeneratorClerk, ListView, SelectionMode,
-        SelectionMsg, driver,
+        DataGenerator, DataLen, GeneratorChanges, ListView, SelectionMode, SelectionMsg, driver,
     };
 
     const MONTHS: &[&str] = &[
@@ -571,15 +570,15 @@ fn filter_list() -> Page<AppData> {
         }
     }
 
-    type Clerk = GeneratorClerk<usize, MonthsGenerator>;
-    let clerk = GeneratorClerk::new(MonthsGenerator {
+    type Clerk = MonthsGenerator;
+    let clerk = MonthsGenerator {
         months: Vec::new(),
         end: usize::MAX,
         years: years.clone(),
         filtered_years: FilteredRange::new(years),
         end_month,
         filter: MonthYearFilter::default(),
-    });
+    };
 
     let list_view = impl_anon! {
         #[widget]
@@ -606,7 +605,7 @@ fn filter_list() -> Page<AppData> {
                 if let Some(FilterUpdate) = cx.try_pop() {
                     cx.update(self.as_node(data));
                 } else if let Some(SelectionMsg::Select(key)) = cx.try_pop() {
-                    println!("Selected: {}", &self.list.inner().clerk().generator().text(key))
+                    println!("Selected: {}", &self.list.inner().clerk().text(key))
                 }
             }
         }
