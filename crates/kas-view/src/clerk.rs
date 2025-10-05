@@ -14,6 +14,30 @@ use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::ops::Range;
 
+mod generator;
+pub use generator::*;
+
+/// A pair which may be borrowed over the first item
+#[derive(Debug, Default)]
+pub struct Token<K, I> {
+    pub key: K,
+    pub item: I,
+}
+
+impl<K, I> Token<K, I> {
+    /// Construct
+    #[inline]
+    pub fn new(key: K, item: I) -> Self {
+        Token { key, item }
+    }
+}
+
+impl<K, I> Borrow<K> for Token<K, I> {
+    fn borrow(&self) -> &K {
+        &self.key
+    }
+}
+
 /// Bounds on the key type
 ///
 /// This type should be small, easy to copy, and without internal mutability.

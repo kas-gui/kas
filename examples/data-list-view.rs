@@ -11,9 +11,9 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
+use kas::view::clerk::{DataGenerator, DataLen, GeneratorChanges};
 use kas::view::{Driver, ListView};
 use kas::widgets::{column, *};
-use kas_view::{DataGenerator, DataLen, GeneratorChanges};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]

@@ -353,9 +353,8 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Page<AppData> {
-    use kas::view::{
-        DataGenerator, DataLen, GeneratorChanges, ListView, SelectionMode, SelectionMsg, driver,
-    };
+    use kas::view::clerk::{DataGenerator, DataLen, GeneratorChanges};
+    use kas::view::{ListView, SelectionMode, SelectionMsg, driver};
 
     const MONTHS: &[&str] = &[
         "January",

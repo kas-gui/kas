@@ -5,7 +5,8 @@
 
 //! List view controller
 
-use super::*;
+use crate::clerk::{DataChanges, DataClerk, DataKey};
+use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;

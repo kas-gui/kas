@@ -1,9 +1,9 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::{DataGenerator, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
+use kas::view::clerk::{DataGenerator, DataLen, GeneratorChanges};
+use kas::view::{GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
-use kas_view::{DataLen, GeneratorChanges};
 
 /// A cache of the visible part of our table
 #[derive(Debug, Default)]

@@ -5,7 +5,7 @@
 
 //! Data generation (high-level) traits
 
-use crate::{DataChanges, DataClerk, DataKey, DataLen, Token, TokenChanges};
+use super::{DataChanges, DataClerk, DataKey, DataLen, Token, TokenChanges};
 use kas::Id;
 use kas::event::ConfigCx;
 #[allow(unused)] use kas::{Action, Events, Widget};
