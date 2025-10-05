@@ -11,7 +11,7 @@
 //! specified by the [view controller](crate#view-controller). For
 //! [`ListView`](crate::ListView), `Index = usize`.
 //!
-//! A clerk must implement one of the following traits.
+//! A clerk must implement [`Clerk`] and one of the following traits.
 //!
 //! ## Data generators
 //!
@@ -200,16 +200,14 @@ impl<Index: Copy> DataLen<Index> {
     }
 }
 
-/// Data access manager
-///
-/// In simpler cases it is sufficient to implement only required methods.
-pub trait DataClerk<Index> {
+/// Common functionality of all clerks
+pub trait Clerk<Index> {
     /// Input data type (of parent widget)
     ///
     /// Data of this type is passed through the parent widget; see
     /// [`Widget::Data`] and the [`Events`] trait. This input data might be used
     /// to access a data set stored in another widget or to pass a query or
-    /// filter into the `DataClerk`.
+    /// filter into the `Clerk`.
     ///
     /// Note that it is not currently possible to pass in references to multiple
     /// data items (such as an external data set and a filter) via `Data`. This
@@ -217,11 +215,53 @@ pub trait DataClerk<Index> {
     /// also in the [`Widget`] trait; alas, GATs are not (yet)
     /// compatible with dyn traits and Kas requires use of `dyn Widget`. Instead
     /// one can share the data set (e.g. `Rc<RefCell<DataSet>>`) or store within
-    /// the `DataClerk` using the `clerk` / `clerk_mut` methods to access; in
+    /// the `Clerk` using the `clerk` / `clerk_mut` methods to access; in
     /// both cases it may be necessary to update the view controller explicitly
     /// (e.g. `cx.update(list.as_node(&input))`) after the data set changes.
     type Data;
 
+    /// Item type
+    ///
+    /// `&Item` is passed to child view widgets as input data.
+    type Item;
+
+    /// Get an upper bound on length, if any
+    ///
+    /// Scroll bars and the `view_range` are
+    /// limited by the result of this method.
+    ///
+    /// Where the data set size is a known fixed `len` (or unfixed but with
+    /// maximum `len <= lbound`), this method should return
+    /// <code>[DataLen::Known][](len)</code>.
+    ///
+    /// Where the data set size is unknown (or unfixed and greater than
+    /// `lbound`), this method should return
+    /// <code>[DataLen::LBound][](lbound)</code>.
+    ///
+    /// `lbound` is set to allow scrolling a little beyond the current view
+    /// position (i.e. a little larger than the last prepared `range.end`).
+    fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index>;
+
+    /// Get a mock data item for sizing purposes
+    ///
+    /// This method is called if no data items are available when initially
+    /// sizing the view. If an item is returned, then a mock view widget is
+    /// created using this data in order to determine size requirements.
+    ///
+    /// The default implementation returns `None`.
+    fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
+        let _ = data;
+        None
+    }
+}
+
+/// Data access manager
+///
+/// A `DataClerk` manages access to a data set, using an `Index` type specified by
+/// the [view controller](crate#view-controller).
+///
+/// In simpler cases it is sufficient to implement only required methods.
+pub trait DataClerk<Index>: Clerk<Index> {
     /// Key type
     ///
     /// All data items should have a stable key so that data items may be
@@ -231,18 +271,13 @@ pub trait DataClerk<Index> {
     /// Where the query is fixed, this can just be the `Index` type.
     type Key: DataKey;
 
-    /// Item type
-    ///
-    /// `&Item` is passed to child view widgets as input data.
-    type Item;
-
     /// Token type
     ///
     /// Each view widget is stored with a corresponding token set by
     /// [`Self::update_token`].
     ///
     /// Often this will either be [`Self::Key`] or
-    /// <code>[Token]&lt;[Self::Key], [Self::Item]&gt;</code>.
+    /// <code>[Token]&lt;[Self::Key], [Self::Item](Clerk::Item)&gt;</code>.
     type Token: Borrow<Self::Key>;
 
     /// Update the clerk
@@ -268,23 +303,6 @@ pub trait DataClerk<Index> {
         view_range: Range<Index>,
         data: &Self::Data,
     ) -> DataChanges<Index>;
-
-    /// Get the number of indexable items
-    ///
-    /// Scroll bars and the `view_range` are
-    /// limited by the result of this method.
-    ///
-    /// Where the data set size is a known fixed `len` (or unfixed but with
-    /// maximum `len <= lbound`), this method should return
-    /// <code>[DataLen::Known][](len)</code>.
-    ///
-    /// Where the data set size is unknown (or unfixed and greater than
-    /// `lbound`), this method should return
-    /// <code>[DataLen::LBound][](lbound)</code>.
-    ///
-    /// `lbound` is set to allow scrolling a little beyond the current view
-    /// position (i.e. a little larger than the last prepared `range.end`).
-    fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index>;
 
     /// Prepare a range
     ///
@@ -378,16 +396,4 @@ pub trait DataClerk<Index> {
     ///
     /// This method should be fast since it may be called repeatedly.
     fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item;
-
-    /// Get a mock data item for sizing purposes
-    ///
-    /// This method is called if no data items are available when initially
-    /// sizing the view. If an item is returned, then a mock view widget is
-    /// created using this data in order to determine size requirements.
-    ///
-    /// The default implementation returns `None`.
-    fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
-        let _ = data;
-        None
-    }
 }

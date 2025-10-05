@@ -1,7 +1,7 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::clerk::{DataGenerator, DataLen, GeneratorChanges};
+use kas::view::clerk::{Clerk, DataGenerator, DataLen, GeneratorChanges};
 use kas::view::{GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
 
@@ -17,14 +17,20 @@ fn product(index: GridIndex) -> u64 {
     x * y
 }
 
-impl DataGenerator<GridIndex> for TableCache {
+impl Clerk<GridIndex> for TableCache {
     /// Our table is square; it's size is input.
     type Data = u32;
 
-    type Key = GridIndex;
-
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
+
+    fn len(&self, _: &Self::Data, _: GridIndex) -> DataLen<GridIndex> {
+        DataLen::Known(GridIndex::splat(self.dim))
+    }
+}
+
+impl DataGenerator<GridIndex> for TableCache {
+    type Key = GridIndex;
 
     fn update(&mut self, dim: &Self::Data) -> GeneratorChanges<GridIndex> {
         if self.dim == *dim {
@@ -33,10 +39,6 @@ impl DataGenerator<GridIndex> for TableCache {
             self.dim = *dim;
             GeneratorChanges::LenOnly
         }
-    }
-
-    fn len(&self, _: &Self::Data, _: GridIndex) -> DataLen<GridIndex> {
-        DataLen::Known(GridIndex::splat(self.dim))
     }
 
     fn key(&self, _: &Self::Data, index: GridIndex) -> Option<GridIndex> {

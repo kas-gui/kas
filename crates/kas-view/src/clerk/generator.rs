@@ -5,7 +5,7 @@
 
 //! Data generation (high-level) traits
 
-use super::{DataChanges, DataClerk, DataKey, DataLen, Token, TokenChanges};
+use super::{Clerk, DataChanges, DataClerk, DataKey, Token, TokenChanges};
 use kas::Id;
 use kas::event::ConfigCx;
 #[allow(unused)] use kas::{Action, Events, Widget};
@@ -18,7 +18,7 @@ use std::ops::Range;
 pub enum GeneratorChanges<Index> {
     /// `None` indicates that no changes to the data has occurred.
     None,
-    /// Indicates that [`DataGenerator::len`] may have changed but generated
+    /// Indicates that [`Clerk::len`] may have changed but generated
     /// values have not changed.
     LenOnly,
     /// Indicates that items in the given range may require an update
@@ -32,25 +32,7 @@ pub enum GeneratorChanges<Index> {
 /// Interface for generators over indexed data
 ///
 /// This provides a substantially simpler interface than [`DataClerk`].
-pub trait DataGenerator<Index> {
-    /// Input data type (of parent widget)
-    ///
-    /// Data of this type is passed through the parent widget; see
-    /// [`Widget::Data`] and the [`Events`] trait. This input data might be used
-    /// to access a data set stored in another widget or to pass a query or
-    /// filter into the `DataClerk`.
-    ///
-    /// Note that it is not currently possible to pass in references to multiple
-    /// data items (such as an external data set and a filter) via `Data`. This
-    /// would require use of Generic Associated Types (GATs), not only here but
-    /// also in the [`Widget`](kas::Widget) trait; alas, GATs are not (yet)
-    /// compatible with dyn traits and Kas requires use of `dyn Widget`. Instead
-    /// one can share the data set (e.g. `Rc<RefCell<DataSet>>`) or store within
-    /// the `DataClerk` using the `clerk` / `clerk_mut` methods to access; in
-    /// both cases it may be necessary to update the view controller explicitly
-    /// (e.g. `cx.update(list.as_node(&input))`) after the data set changes.
-    type Data;
-
+pub trait DataGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialEq> {
     /// Key type
     ///
     /// All data items should have a stable key so that data items may be
@@ -59,11 +41,6 @@ pub trait DataGenerator<Index> {
     ///
     /// Where the query is fixed, this can just be the `Index` type.
     type Key: DataKey;
-
-    /// Item type
-    ///
-    /// This is the generated type.
-    type Item: Clone + Default + PartialEq;
 
     /// Update the generator
     ///
@@ -80,28 +57,11 @@ pub trait DataGenerator<Index> {
     /// This method may be called frequently and without changes to `data`.
     fn update(&mut self, data: &Self::Data) -> GeneratorChanges<Index>;
 
-    /// Get the number of indexable items
-    ///
-    /// Scroll bars and the `index` values passed to [`Self::generate`] are
-    /// limited by the result of this method.
-    ///
-    /// Where the data set size is a known fixed `len` (or unfixed but with
-    /// maximum `len <= lbound`), this method should return
-    /// <code>[DataLen::Known][](len)</code>.
-    ///
-    /// Where the data set size is unknown (or unfixed and greater than
-    /// `lbound`), this method should return
-    /// <code>[DataLen::LBound][](lbound)</code>.
-    ///
-    /// `lbound` is set to allow scrolling a little beyond the current view
-    /// position (i.e. a little larger than the last prepared `range.end`).
-    fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index>;
-
     /// Get a key for a given `index`, if available
     ///
     /// This method should be fast since it may be called repeatedly.
     /// This method is only called for `index` less than the result of
-    /// [`Self::len`].
+    /// [`Clerk::len`].
     ///
     /// This may return `None` even when `index` is within the query's `range`
     /// since data may be sparse; in this case the view widget at this `index`
@@ -111,26 +71,12 @@ pub trait DataGenerator<Index> {
     /// Generate an item
     ///
     /// The `key` will be the result of [`Self::key`] for an `index` less than
-    /// [`Self::len`].
+    /// [`Clerk::len`].
     fn generate(&self, data: &Self::Data, key: &Self::Key) -> Self::Item;
-
-    /// Get a mock data item for sizing purposes
-    ///
-    /// This method is called if no data items are available when initially
-    /// sizing the view. If an item is returned, then a mock view widget is
-    /// created using this data in order to determine size requirements.
-    ///
-    /// The default implementation returns `None`.
-    fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
-        let _ = data;
-        None
-    }
 }
 
 impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for G {
-    type Data = G::Data;
     type Key = G::Key;
-    type Item = G::Item;
     type Token = Token<Self::Key, Self::Item>;
 
     fn update(
@@ -146,11 +92,6 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for G {
             GeneratorChanges::Range(range) => DataChanges::Range(range),
             GeneratorChanges::Any => DataChanges::Any,
         }
-    }
-
-    #[inline]
-    fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index> {
-        self.len(data, lbound)
     }
 
     fn update_token(
@@ -192,10 +133,5 @@ impl<Index: DataKey, G: DataGenerator<Index>> DataClerk<Index> for G {
     #[inline]
     fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {
         &token.item
-    }
-
-    #[inline]
-    fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
-        self.mock_item(data)
     }
 }

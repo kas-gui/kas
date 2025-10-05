@@ -11,7 +11,7 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
-use kas::view::clerk::{DataGenerator, DataLen, GeneratorChanges};
+use kas::view::clerk::{Clerk, DataGenerator, DataLen, GeneratorChanges};
 use kas::view::{Driver, ListView};
 use kas::widgets::{column, *};
 use std::collections::HashMap;
@@ -161,16 +161,9 @@ impl Driver<usize, MyItem> for ListEntryDriver {
 
 #[derive(Default)]
 struct Generator;
-impl DataGenerator<usize> for Generator {
+impl Clerk<usize> for Generator {
     type Data = MyData;
-    type Key = usize;
     type Item = MyItem;
-
-    fn update(&mut self, data: &Self::Data) -> GeneratorChanges<usize> {
-        // We assume that `MyData::handle` has only been called once since this
-        // method was last called.
-        data.last_change.clone()
-    }
 
     fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {
         if data.row_limit {
@@ -178,6 +171,15 @@ impl DataGenerator<usize> for Generator {
         } else {
             DataLen::LBound((data.active.max(data.last_key) + 1).max(lbound))
         }
+    }
+}
+impl DataGenerator<usize> for Generator {
+    type Key = usize;
+
+    fn update(&mut self, data: &Self::Data) -> GeneratorChanges<usize> {
+        // We assume that `MyData::handle` has only been called once since this
+        // method was last called.
+        data.last_change.clone()
     }
 
     fn key(&self, _: &Self::Data, index: usize) -> Option<Self::Key> {
