@@ -41,10 +41,10 @@
 use kas::Id;
 use std::borrow::Borrow;
 
-mod data_clerk;
+mod clerk;
 mod generator;
 
-pub use data_clerk::*;
+pub use clerk::*;
 pub use generator::*;
 
 pub mod filter;
