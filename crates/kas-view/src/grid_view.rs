@@ -5,7 +5,7 @@
 
 //! Grid view controller
 
-use crate::clerk::{DataChanges, DataClerk, DataKey};
+use crate::clerk::{DataChanges, DataKey, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
@@ -90,13 +90,13 @@ mod GridCell {
 }
 
 #[autoimpl(Debug ignore self.item where C::Token: trait)]
-struct WidgetData<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
+struct WidgetData<C: TokenClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
     token: Option<C::Token>,
     is_mock: bool,
     item: GridCell<C::Key, C::Item, V>,
 }
 
-impl<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
+impl<C: TokenClerk<GridIndex>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
     fn key(&self) -> Option<&C::Key> {
         self.token.as_ref().map(Borrow::borrow)
     }
@@ -149,7 +149,7 @@ mod GridView {
     /// View controller for 2D indexable data (grid)
     ///
     /// This widget generates a view over a list of data items via a
-    /// [`DataClerk`]. "View widgets" are constructed via a [`Driver`]
+    /// [`TokenClerk`]. "View widgets" are constructed via a [`Driver`]
     /// to represent visible data items. These view widgets are reassigned as
     /// required when the grid is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
@@ -169,7 +169,7 @@ mod GridView {
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[widget]
-    pub struct GridView<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
+    pub struct GridView<C: TokenClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,

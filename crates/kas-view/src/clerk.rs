@@ -11,20 +11,29 @@
 //! specified by the [view controller](crate#view-controller). For
 //! [`ListView`](crate::ListView), `Index = usize`.
 //!
-//! A clerk must implement [`Clerk`] and one of the following traits.
+//! All clerks must implement [`Clerk`]:
+//!
+//! -   [`Clerk`] covers the base functionality required by all clerks
 //!
 //! ## Data generators
 //!
-//! This simplest interface available is [`IndexedGenerator`]. This is
-//! appropriate for data items which are generated (or cloned) on demand.
+//! Generator clerks construct owned items. One of the following traits must be
+//! implemented:
 //!
-//! [`KeyedGenerator`] is slightly more complex, allowing usage of a custom key
-//! type.
+//! -   [`IndexedGenerator`] provides a very simple interface: `update` and
+//!     `generate`.
+//! -   [`KeyedGenerator`] is slightly more complex, supporting a custom key
+//!     type (thus allowing data items to be tracked through changing indices).
 //!
 //! ## Async data access
 //!
-//! The lowest level interface is [`DataClerk`]. This is designed to facilitate
-//! async access to data using a local cache.
+//! Async clerks allow borrowed access to locally cached items. Such clerks must
+//! implement both [`AsyncClerk`] and [`TokenClerk`]:
+//!
+//! -   [`AsyncClerk`] supports async data access with a local cache and batched
+//!     item retrieval.
+//! -   [`TokenClerk`] supports caching data within a token stored adjacent to
+//!     the view widget and item retrieval using this token.
 
 #[allow(unused)] use crate::SelectionMsg;
 use kas::Id;
@@ -135,26 +144,25 @@ impl_2D!(u32);
 #[cfg(target_pointer_width = "64")]
 impl_2D!(u64);
 
-/// Indicates whether an update to a [`DataClerk`] changes any keys or values
+/// Indicates whether an update to a clerk changes any available data
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use]
 pub enum DataChanges<Index> {
     /// Indicates that no changes to the data set occurred.
     None,
-    /// Indicates that changes to the data set may have occurred, but that
-    /// [`DataClerk::update_token`] and [`DataClerk::item`] results are
-    /// unchanged for the `view_range`.
+    /// Indicates that changes to the data set may have occurred, but that key,
+    /// token and item values are unchanged for the `view_range`.
     NoPreparedItems,
     /// Indicates that tokens for the given range may require an update
     /// and/or that items for the given range have changed.
-    /// [`DataClerk::update_token`] will be called for each index in the
+    /// [`TokenClerk::update_token`] will be called for each index in the
     /// intersection of the given range with the `view_range`.
     Range(Range<Index>),
     /// `Any` indicates that changes to the data set may have occurred.
     Any,
 }
 
-/// Return value of [`DataClerk::update_token`]
+/// Return value of [`TokenClerk::update_token`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[must_use]
 pub enum TokenChanges {
@@ -278,7 +286,7 @@ pub trait AsyncClerk<Index>: Clerk<Index> {
     /// Data items within `view_range` may be visible.
     ///
     /// Note: this method is called automatically when input data changes. When
-    /// data owned or referenced by the `DataClerk` implementation is changed it
+    /// data owned or referenced by the `TokenClerk` implementation is changed it
     /// may be necessary to explicitly update the view controller, e.g. using
     /// [`ConfigCx::update`] or [`Action::UPDATE`].
     ///
@@ -295,11 +303,10 @@ pub trait AsyncClerk<Index>: Clerk<Index> {
 
     /// Prepare a range
     ///
-    /// This method is called prior to [`DataClerk::update_token`] over the
-    /// indices
-    /// in `range`. If data is to be loaded from a remote source or computed in
-    /// a worker thread, it should be done so from here using `async` worker(s)
-    /// (see [`Self::handle_messages`]).
+    /// This method is called prior to [`TokenClerk::update_token`] over the
+    /// indices in `range`. If data is to be loaded
+    /// from a remote source or computed in a worker thread, it should be done
+    /// so from here using `async` worker(s) (see [`Self::handle_messages`]).
     ///
     /// Data items within `view_range` may be visible.
     ///
@@ -346,13 +353,8 @@ pub trait AsyncClerk<Index>: Clerk<Index> {
     }
 }
 
-/// Data access manager
-///
-/// A `DataClerk` manages access to a data set, using an `Index` type specified by
-/// the [view controller](crate#view-controller).
-///
-/// In simpler cases it is sufficient to implement only required methods.
-pub trait DataClerk<Index>: AsyncClerk<Index> {
+/// Data access manager for keyed data with cache tokens
+pub trait TokenClerk<Index>: AsyncClerk<Index> {
     /// Token type
     ///
     /// Each view widget is stored with a corresponding token set by

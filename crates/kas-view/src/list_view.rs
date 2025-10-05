@@ -5,7 +5,7 @@
 
 //! List view controller
 
-use crate::clerk::{DataChanges, DataClerk, DataKey};
+use crate::clerk::{DataChanges, DataKey, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
@@ -91,13 +91,13 @@ mod ListItem {
 }
 
 #[autoimpl(Debug ignore self.item where C::Token: trait)]
-struct WidgetData<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> {
+struct WidgetData<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> {
     token: Option<C::Token>,
     is_mock: bool,
     item: ListItem<C::Key, C::Item, V>,
 }
 
-impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
+impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
     fn key(&self) -> Option<&C::Key> {
         self.token.as_ref().map(Borrow::borrow)
     }
@@ -108,7 +108,7 @@ mod ListView {
     /// View controller for 1D indexable data (list)
     ///
     /// This widget generates a view over a list of data items via a
-    /// [`DataClerk`]. "View widgets" are constructed via a [`Driver`]
+    /// [`TokenClerk`]. "View widgets" are constructed via a [`Driver`]
     /// to represent visible data items. These view widgets are reassigned as
     /// required when the list is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
@@ -128,7 +128,7 @@ mod ListView {
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[widget]
-    pub struct ListView<C: DataClerk<usize>, V, D = Direction>
+    pub struct ListView<C: TokenClerk<usize>, V, D = Direction>
     where
         V: Driver<C::Key, C::Item>,
         D: Directional,
@@ -184,31 +184,31 @@ mod ListView {
             Self::new_dir(clerk, driver, D::default())
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Left> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Left> {
         /// Construct a new instance
         pub fn left(clerk: C, driver: V) -> Self {
             Self::new(clerk, driver)
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Right> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Right> {
         /// Construct a new instance
         pub fn right(clerk: C, driver: V) -> Self {
             Self::new(clerk, driver)
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Up> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Up> {
         /// Construct a new instance
         pub fn up(clerk: C, driver: V) -> Self {
             Self::new(clerk, driver)
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Down> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Down> {
         /// Construct a new instance
         pub fn down(clerk: C, driver: V) -> Self {
             Self::new(clerk, driver)
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, Direction> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
             if direction != self.direction {
