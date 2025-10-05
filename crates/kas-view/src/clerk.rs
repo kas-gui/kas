@@ -406,3 +406,52 @@ pub trait TokenClerk<Index>: AsyncClerk<Index> {
     /// This method should be fast since it may be called repeatedly.
     fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item;
 }
+
+// TODO(Rust): the following could be added if Rust supported mutually exclusive traits
+/*
+/// Data access manager for keyed data
+pub trait KeyedClerk<Index>: AsyncClerk<Index> {
+    /// Get a key for a given `index`, if available
+    ///
+    /// This method should be fast since it may be called repeatedly.
+    /// This method is only called for `index` less than the result of
+    /// [`Clerk::len`].
+    ///
+    /// This method should return `Some(key)` only when [`Self::item`] can yield
+    /// an item for this `key`.
+    fn key(&self, data: &Self::Data, index: Index) -> Option<Self::Key>;
+
+    /// Get the data item for the given `key`
+    ///
+    /// This method should be fast since it may be called repeatedly.
+    fn item<'r>(&'r self, data: &'r Self::Data, key: &'r Self::Key) -> &'r Self::Item;
+}
+
+impl<Index, C: KeyedClerk<Index>> TokenClerk<Index> for C {
+    type Token = C::Key;
+
+    fn update_token(
+        &self,
+        data: &Self::Data,
+        index: Index,
+        update_item: bool,
+        token: &mut Option<Self::Token>,
+    ) -> TokenChanges {
+        let key = self.key(data, index);
+        if *token == key {
+            if update_item {
+                TokenChanges::SameKey
+            } else {
+                TokenChanges::None
+            }
+        } else {
+            *token = key;
+            TokenChanges::Any
+        }
+    }
+
+    fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {
+        self.item(data, token)
+    }
+}
+*/
