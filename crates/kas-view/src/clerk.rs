@@ -258,13 +258,8 @@ pub trait Clerk<Index> {
     }
 }
 
-/// Data access manager
-///
-/// A `DataClerk` manages access to a data set, using an `Index` type specified by
-/// the [view controller](crate#view-controller).
-///
-/// In simpler cases it is sufficient to implement only required methods.
-pub trait DataClerk<Index>: Clerk<Index> {
+/// Functionality common to async clerks
+pub trait AsyncClerk<Index>: Clerk<Index> {
     /// Key type
     ///
     /// All data items should have a stable key so that data items may be
@@ -273,15 +268,6 @@ pub trait DataClerk<Index>: Clerk<Index> {
     ///
     /// Where the query is fixed, this can just be the `Index` type.
     type Key: DataKey;
-
-    /// Token type
-    ///
-    /// Each view widget is stored with a corresponding token set by
-    /// [`Self::update_token`].
-    ///
-    /// Often this will either be [`Self::Key`] or
-    /// <code>[Token]&lt;[Self::Key], [Self::Item](Clerk::Item)&gt;</code>.
-    type Token: Borrow<Self::Key>;
 
     /// Update the clerk
     ///
@@ -309,7 +295,8 @@ pub trait DataClerk<Index>: Clerk<Index> {
 
     /// Prepare a range
     ///
-    /// This method is called prior to [`Self::update_token`] over the indices
+    /// This method is called prior to [`DataClerk::update_token`] over the
+    /// indices
     /// in `range`. If data is to be loaded from a remote source or computed in
     /// a worker thread, it should be done so from here using `async` worker(s)
     /// (see [`Self::handle_messages`]).
@@ -357,10 +344,27 @@ pub trait DataClerk<Index>: Clerk<Index> {
         let _ = (cx, id, view_range, data, opt_key);
         DataChanges::None
     }
+}
+
+/// Data access manager
+///
+/// A `DataClerk` manages access to a data set, using an `Index` type specified by
+/// the [view controller](crate#view-controller).
+///
+/// In simpler cases it is sufficient to implement only required methods.
+pub trait DataClerk<Index>: AsyncClerk<Index> {
+    /// Token type
+    ///
+    /// Each view widget is stored with a corresponding token set by
+    /// [`Self::update_token`].
+    ///
+    /// Often this will either be [`Self::Key`](AsyncClerk::Key) or
+    /// <code>[Token]&lt;[Self::Key](AsyncClerk::Key), [Self::Item](Clerk::Item)&gt;</code>.
+    type Token: Borrow<Self::Key>;
 
     /// Update a token for the given `index`
     ///
-    /// This method is called after [`Self::prepare_range`] for each `index` in
+    /// This method is called after [`AsyncClerk::prepare_range`] for each `index` in
     /// the prepared `range` in order to prepare a to prepare a token for each
     /// item (see [`Self::item`]).
     ///
@@ -378,7 +382,7 @@ pub trait DataClerk<Index>: Clerk<Index> {
     ///
     /// This method should be fast since it may be called repeatedly. Slow and
     /// blocking operations should be run asynchronously from
-    /// [`Self::prepare_range`] using an internal cache.
+    /// [`AsyncClerk::prepare_range`] using an internal cache.
     fn update_token(
         &self,
         data: &Self::Data,

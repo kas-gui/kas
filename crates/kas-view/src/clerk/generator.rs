@@ -5,7 +5,7 @@
 
 //! Data generation (high-level) traits
 
-use super::{Clerk, DataChanges, DataClerk, DataKey, Token, TokenChanges};
+use super::{AsyncClerk, Clerk, DataChanges, DataClerk, DataKey, Token, TokenChanges};
 use kas::Id;
 use kas::event::ConfigCx;
 #[allow(unused)] use kas::{Action, Events, Widget};
@@ -110,9 +110,8 @@ impl<Index: DataKey, G: IndexedGenerator<Index>> KeyedGenerator<Index> for G {
     }
 }
 
-impl<Index, G: KeyedGenerator<Index>> DataClerk<Index> for G {
+impl<Index, G: KeyedGenerator<Index>> AsyncClerk<Index> for G {
     type Key = G::Key;
-    type Token = Token<Self::Key, Self::Item>;
 
     fn update(
         &mut self,
@@ -128,6 +127,10 @@ impl<Index, G: KeyedGenerator<Index>> DataClerk<Index> for G {
             GeneratorChanges::Any => DataChanges::Any,
         }
     }
+}
+
+impl<Index, G: KeyedGenerator<Index>> DataClerk<Index> for G {
+    type Token = Token<Self::Key, Self::Item>;
 
     fn update_token(
         &self,
