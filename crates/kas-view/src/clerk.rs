@@ -187,27 +187,27 @@ impl TokenChanges {
 
 /// Result of [`Self::len`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DataLen<Index> {
+pub enum Len<Index> {
     /// Length is known and specified exactly
     Known(Index),
     /// A lower bound on length is specified
     LBound(Index),
 }
 
-impl<Index: Copy> DataLen<Index> {
+impl<Index: Copy> Len<Index> {
     /// Returns the length payload (known or lower bound)
     #[inline]
     pub fn len(&self) -> Index {
         match self {
-            DataLen::Known(len) => *len,
-            DataLen::LBound(len) => *len,
+            Len::Known(len) => *len,
+            Len::LBound(len) => *len,
         }
     }
 
     /// Returns true if a known length given
     #[inline]
     pub fn is_known(&self) -> bool {
-        matches!(self, DataLen::Known(_))
+        matches!(self, Len::Known(_))
     }
 }
 
@@ -243,15 +243,15 @@ pub trait Clerk<Index> {
     ///
     /// Where the data set size is a known fixed `len` (or unfixed but with
     /// maximum `len <= lbound`), this method should return
-    /// <code>[DataLen::Known][](len)</code>.
+    /// <code>[Len::Known][](len)</code>.
     ///
     /// Where the data set size is unknown (or unfixed and greater than
     /// `lbound`), this method should return
-    /// <code>[DataLen::LBound][](lbound)</code>.
+    /// <code>[Len::LBound][](lbound)</code>.
     ///
     /// `lbound` is set to allow scrolling a little beyond the current view
     /// position (i.e. a little larger than the last prepared `range.end`).
-    fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index>;
+    fn len(&self, data: &Self::Data, lbound: Index) -> Len<Index>;
 
     /// Get a mock data item for sizing purposes
     ///

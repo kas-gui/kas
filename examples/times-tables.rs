@@ -1,7 +1,7 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::clerk::{Clerk, DataLen, GeneratorChanges, IndexedGenerator};
+use kas::view::clerk::{Clerk, GeneratorChanges, IndexedGenerator, Len};
 use kas::view::{GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
 
@@ -24,8 +24,8 @@ impl Clerk<GridIndex> for TableCache {
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
 
-    fn len(&self, _: &Self::Data, _: GridIndex) -> DataLen<GridIndex> {
-        DataLen::Known(GridIndex::splat(self.dim))
+    fn len(&self, _: &Self::Data, _: GridIndex) -> Len<GridIndex> {
+        Len::Known(GridIndex::splat(self.dim))
     }
 }
 

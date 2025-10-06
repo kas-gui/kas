@@ -11,7 +11,7 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
-use kas::view::clerk::{Clerk, DataLen, GeneratorChanges, IndexedGenerator};
+use kas::view::clerk::{Clerk, GeneratorChanges, IndexedGenerator, Len};
 use kas::view::{Driver, ListView};
 use kas::widgets::{column, *};
 use std::collections::HashMap;
@@ -165,11 +165,11 @@ impl Clerk<usize> for Generator {
     type Data = MyData;
     type Item = MyItem;
 
-    fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {
+    fn len(&self, data: &Self::Data, lbound: usize) -> Len<usize> {
         if data.row_limit {
-            DataLen::Known(data.len)
+            Len::Known(data.len)
         } else {
-            DataLen::LBound((data.active.max(data.last_key) + 1).max(lbound))
+            Len::LBound((data.active.max(data.last_key) + 1).max(lbound))
         }
     }
 }

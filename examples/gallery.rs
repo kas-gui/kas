@@ -353,7 +353,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Page<AppData> {
-    use kas::view::clerk::{Clerk, DataLen, GeneratorChanges, KeyedGenerator};
+    use kas::view::clerk::{Clerk, GeneratorChanges, KeyedGenerator, Len};
     use kas::view::{ListView, SelectionMode, SelectionMsg, driver};
 
     const MONTHS: &[&str] = &[
@@ -518,8 +518,8 @@ fn filter_list() -> Page<AppData> {
         type Data = MonthYearFilter;
         type Item = String;
 
-        fn len(&self, _: &Self::Data, _: usize) -> DataLen<usize> {
-            DataLen::Known(self.end)
+        fn len(&self, _: &Self::Data, _: usize) -> Len<usize> {
+            Len::Known(self.end)
         }
     }
 
