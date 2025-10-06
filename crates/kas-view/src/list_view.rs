@@ -5,7 +5,7 @@
 
 //! List view controller
 
-use crate::clerk::{DataChanges, DataKey, TokenClerk};
+use crate::clerk::{Changes, DataKey, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
@@ -584,14 +584,14 @@ mod ListView {
             &mut self,
             cx: &mut ConfigCx,
             data: &C::Data,
-            changes: DataChanges<usize>,
+            changes: Changes<usize>,
         ) {
             let start: usize = self.first_data.cast();
             let end = start + usize::conv(self.cur_len);
             let range = match changes {
-                DataChanges::None | DataChanges::NoPreparedItems => 0..0,
-                DataChanges::Range(range) => start.max(range.start)..end.min(range.end),
-                DataChanges::Any => start..end,
+                Changes::None | Changes::NoPreparedItems => 0..0,
+                Changes::Range(range) => start.max(range.start)..end.min(range.end),
+                Changes::Any => start..end,
             };
 
             let lbound = usize::conv(self.first_data) + 2 * self.widgets.len();
@@ -885,7 +885,7 @@ mod ListView {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if self.token_update != Update::None {
                 self.post_scroll(cx, data);
-            } else if changes != DataChanges::None {
+            } else if changes != Changes::None {
                 self.handle_clerk_update(cx, data, changes);
             }
 
@@ -1052,7 +1052,7 @@ mod ListView {
             let changes =
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
-            if changes != DataChanges::None {
+            if changes != Changes::None {
                 self.handle_clerk_update(&mut cx.config_cx(), data, changes);
             }
         }

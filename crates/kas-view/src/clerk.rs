@@ -147,7 +147,7 @@ impl_2D!(u64);
 /// Indicates whether an update to a clerk changes any available data
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use]
-pub enum DataChanges<Index> {
+pub enum Changes<Index> {
     /// Indicates that no changes to the data set occurred.
     None,
     /// Indicates that changes to the data set may have occurred, but that key,
@@ -281,7 +281,7 @@ pub trait AsyncClerk<Index>: Clerk<Index> {
     ///
     /// This is called by [`kas::Events::update`]. It should update `self` as
     /// required reflecting possible data-changes and indicate through the
-    /// returned [`DataChanges`] value the updates required to tokens and views.
+    /// returned [`Changes`] value the updates required to tokens and views.
     ///
     /// Data items within `view_range` may be visible.
     ///
@@ -299,7 +299,7 @@ pub trait AsyncClerk<Index>: Clerk<Index> {
         id: Id,
         view_range: Range<Index>,
         data: &Self::Data,
-    ) -> DataChanges<Index>;
+    ) -> Changes<Index>;
 
     /// Prepare a range
     ///
@@ -347,9 +347,9 @@ pub trait AsyncClerk<Index>: Clerk<Index> {
         view_range: Range<Index>,
         data: &Self::Data,
         opt_key: Option<Self::Key>,
-    ) -> DataChanges<Index> {
+    ) -> Changes<Index> {
         let _ = (cx, id, view_range, data, opt_key);
-        DataChanges::None
+        Changes::None
     }
 }
 

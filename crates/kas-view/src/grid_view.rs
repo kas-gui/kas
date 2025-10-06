@@ -5,7 +5,7 @@
 
 //! Grid view controller
 
-use crate::clerk::{DataChanges, DataKey, TokenClerk};
+use crate::clerk::{Changes, DataKey, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
@@ -556,13 +556,13 @@ mod GridView {
             &mut self,
             cx: &mut ConfigCx,
             data: &C::Data,
-            changes: DataChanges<GridIndex>,
+            changes: Changes<GridIndex>,
         ) {
             let start = self.first_data;
             let end = self.first_data + self.cur_len;
             let range = match changes {
-                DataChanges::None | DataChanges::NoPreparedItems => start..start,
-                DataChanges::Range(range) => {
+                Changes::None | Changes::NoPreparedItems => start..start,
+                Changes::Range(range) => {
                     let start = GridIndex {
                         col: start.col.max(range.start.col),
                         row: start.row.max(range.start.row),
@@ -573,7 +573,7 @@ mod GridView {
                     };
                     start..end
                 }
-                DataChanges::Any => start..end,
+                Changes::Any => start..end,
             };
 
             let lbound = GridIndex {
@@ -881,7 +881,7 @@ mod GridView {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if self.token_update != Update::None {
                 self.post_scroll(cx, data);
-            } else if changes != DataChanges::None {
+            } else if changes != Changes::None {
                 self.handle_clerk_update(cx, data, changes);
             }
 
@@ -1055,7 +1055,7 @@ mod GridView {
             let changes =
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
-            if changes != DataChanges::None {
+            if changes != Changes::None {
                 self.handle_clerk_update(&mut cx.config_cx(), data, changes);
             }
         }

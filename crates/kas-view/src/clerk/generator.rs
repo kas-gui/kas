@@ -5,7 +5,7 @@
 
 //! Data generation (high-level) traits
 
-use super::{AsyncClerk, Clerk, DataChanges, DataKey, Token, TokenChanges, TokenClerk};
+use super::{AsyncClerk, Changes, Clerk, DataKey, Token, TokenChanges, TokenClerk};
 use kas::Id;
 use kas::event::ConfigCx;
 #[allow(unused)] use kas::{Action, Events, Widget};
@@ -119,12 +119,12 @@ impl<Index, G: KeyedGenerator<Index>> AsyncClerk<Index> for G {
         _: Id,
         _: Range<Index>,
         data: &Self::Data,
-    ) -> DataChanges<Index> {
+    ) -> Changes<Index> {
         match self.update(data) {
-            GeneratorChanges::None => DataChanges::None,
-            GeneratorChanges::LenOnly => DataChanges::NoPreparedItems,
-            GeneratorChanges::Range(range) => DataChanges::Range(range),
-            GeneratorChanges::Any => DataChanges::Any,
+            GeneratorChanges::None => Changes::None,
+            GeneratorChanges::LenOnly => Changes::NoPreparedItems,
+            GeneratorChanges::Range(range) => Changes::Range(range),
+            GeneratorChanges::Any => Changes::Any,
         }
     }
 }
