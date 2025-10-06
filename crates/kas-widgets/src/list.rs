@@ -578,6 +578,28 @@ mod List {
             w
         }
 
+        /// Removes all children at positions ≥ `len`
+        ///
+        /// Does nothing if `self.len() < len`.
+        ///
+        /// Triggers [`Action::RESIZE`].
+        pub fn truncate(&mut self, cx: &mut EventState, len: usize) {
+            if len < self.len() {
+                cx.resize(&self);
+                loop {
+                    let w = self.widgets.pop().unwrap();
+                    if w.id_ref().is_valid() {
+                        if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                            self.id_map.remove(&key);
+                        }
+                    }
+                    if len == self.widgets.len() {
+                        return;
+                    }
+                }
+            }
+        }
+
         /// Replace the child at `index`
         ///
         /// Panics if `index` is out of bounds.
