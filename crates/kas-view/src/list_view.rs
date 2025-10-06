@@ -601,13 +601,6 @@ mod ListView {
             if data_len != self.data_len {
                 self.data_len = data_len;
 
-                if self.update_content_size(cx) {
-                    // We may be able to request additional screen space.
-                    // We may need to map new view widgets.
-                    cx.resize(&self);
-                    return;
-                }
-
                 if self.cur_len != data_len.min(self.widgets.len().cast()) {
                     return self.post_scroll(cx, data);
                 }

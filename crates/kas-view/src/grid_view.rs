@@ -587,13 +587,6 @@ mod GridView {
                 self.data_len = data_len;
                 self.token_update = Update::Token;
 
-                if self.update_content_size(cx) {
-                    // We may be able to request additional screen space.
-                    // We may need to map new view widgets.
-                    cx.resize(&self);
-                    return;
-                }
-
                 if self.cur_len.col != data_len.col.min(self.alloc_len.col)
                     || self.cur_len.row != data_len.row.min(self.alloc_len.row)
                 {
