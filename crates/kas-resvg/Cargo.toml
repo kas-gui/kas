@@ -25,6 +25,9 @@ docs_rs = ["kas/wayland"]
 # Support SVG images
 svg = ["dep:resvg", "dep:usvg"]
 
+# Support Canvas widget
+canvas = []
+
 [dependencies]
 tiny-skia = { version = "0.11.0" }
 resvg = { version = "0.45.0", optional = true }

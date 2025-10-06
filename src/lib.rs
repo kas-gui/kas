@@ -14,7 +14,7 @@
 //! - `kas_macros` is an extended version of [`impl-tools`](https://crates.io/crates/impl-tools),
 //!   re-export at the top-level
 //! - [`kas_widgets`](https://crates.io/crates/kas-widgets) is re-export as [`widgets`](mod@widgets)
-//! - [`kas_resvg`](https://crates.io/crates/kas-resvg) is re-export as [`resvg`] (`resvg` or `tiny-skia` feature)
+//! - [`kas_resvg`](https://crates.io/crates/kas-resvg) is re-export as [`resvg`] (`svg` or `canvas` feature)
 //! - [`kas_view`](https://crates.io/crates/kas-view) is re-export as [`view`] (`view` feature)
 //!
 //! Also refer to:
@@ -53,11 +53,7 @@ pub extern crate kas_view as view;
 ///
 /// This crate provides widgets using
 /// libraries by [Yevhenii Reizner "RazrFalcon"](https://github.com/RazrFalcon/).
-///
-/// This module is gated behind the `resvg` feature. Alternatively, the
-/// `tiny-skia` feature may be used to enable only the `Canvas` widget
-/// plus support (i.e. everything but `Svg`), saving approx 200 KiB.
-#[cfg(any(feature = "resvg", feature = "tiny-skia"))]
+#[cfg(any(feature = "svg", feature = "canvas"))]
 pub mod resvg {
     pub use kas_resvg::*;
 }

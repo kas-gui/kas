@@ -34,7 +34,7 @@ minimal = ["wayland", "vulkan", "dx12", "metal"]
 # Minimal + strongly recommended features
 default = ["minimal", "clipboard", "shaping"]
 # All standard test target features
-stable = ["default", "view", "image-default-formats", "resvg", "markdown", "spawn", "accesskit", "x11", "toml", "yaml", "json", "ron", "macros_log"]
+stable = ["default", "view", "image-default-formats", "canvas", "svg", "markdown", "spawn", "accesskit", "x11", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics", "kas-core/nightly"]
 # Additional, less recommendation-worthy features
@@ -108,10 +108,10 @@ jpeg = ["kas-widgets/jpeg"]
 png = ["kas-widgets/png"]
 webp = ["kas-widgets/webp"]
 
-# Enable resvg module (Canvas + Svg widgets)
-resvg = ["dep:kas-resvg", "kas-resvg?/svg", "kas-dylib?/resvg"]
-# Enable resvg module (Canvas only)
-tiny-skia = ["dep:kas-resvg"]
+# Enable Svg widget
+svg = ["dep:kas-resvg", "kas-resvg/svg", "kas-dylib?/resvg"]
+# Enable Canvas widget
+canvas = ["dep:kas-resvg", "kas-resvg/canvas"]
 
 # Automatically detect usage of dark theme
 #
@@ -150,7 +150,7 @@ optional = true
 default-features = false
 
 [dev-dependencies]
-kas = { path = ".", features = ["view", "markdown", "resvg"] }
+kas = { path = ".", features = ["view", "markdown", "svg", "canvas"] }
 chrono = "0.4"
 env_logger = "0.11"
 log = "0.4"
