@@ -481,16 +481,20 @@ mod ListView {
             let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
 
             let alloc_len = self.widgets.len();
-            let lbound = first_data + 2 * alloc_len;
-            let data_len = self.clerk.len(data, lbound);
-            self.len_is_known = data_len.is_known();
-            let data_len = data_len.len();
-            if data_len != usize::conv(self.data_len) {
-                self.data_len = data_len.cast();
-                self.update_content_size(cx);
+            let data_len;
+            if !self.len_is_known {
+                let lbound = first_data + 2 * alloc_len;
+                let result = self.clerk.len(data, lbound);
+                self.len_is_known = result.is_known();
+                data_len = result.len();
+                if data_len != usize::conv(self.data_len) {
+                    self.data_len = data_len.cast();
+                    self.update_content_size(cx);
+                }
+            } else {
+                data_len = self.data_len.cast();
             }
-            let cur_len: usize = data_len.min(alloc_len);
-
+            let cur_len = data_len.min(alloc_len);
             let first_data = first_data.min(data_len - cur_len);
 
             let old_start = self.first_data.cast();
@@ -588,30 +592,29 @@ mod ListView {
         ) {
             let start: usize = self.first_data.cast();
             let end = start + usize::conv(self.cur_len);
+
+            let lbound = usize::conv(start) + 2 * self.widgets.len();
+            let data_len = self.clerk.len(data, lbound);
+            self.len_is_known = data_len.is_known();
+            let data_len = data_len.len().cast();
+
+            if data_len != self.data_len {
+                let old_len = self.data_len;
+                self.data_len = data_len;
+
+                let cur_len = data_len.min(self.widgets.len().cast());
+                if self.cur_len != cur_len || end >= usize::conv(data_len.min(old_len)) {
+                    self.cur_len = cur_len;
+                    self.token_update = self.token_update.max(Update::Token);
+                    return self.post_scroll(cx, data);
+                }
+            }
+
             let range = match changes {
                 Changes::None | Changes::NoPreparedItems => 0..0,
                 Changes::Range(range) => start.max(range.start)..end.min(range.end),
                 Changes::Any => start..end,
             };
-
-            let lbound = usize::conv(self.first_data) + 2 * self.widgets.len();
-            let data_len = self.clerk.len(data, lbound);
-            self.len_is_known = data_len.is_known();
-            let data_len = data_len.len().cast();
-            if data_len != self.data_len {
-                self.data_len = data_len;
-
-                if self.update_content_size(cx) {
-                    // We may be able to request additional screen space.
-                    // We may need to map new view widgets.
-                    cx.resize(&self);
-                    return;
-                }
-
-                if self.cur_len != data_len.min(self.widgets.len().cast()) {
-                    return self.post_scroll(cx, data);
-                }
-            }
 
             if !range.is_empty() {
                 self.token_update = self.token_update.max(Update::Token);
@@ -858,9 +861,7 @@ mod ListView {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.register_nav_fallback(self.id());
-        }
 
-        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {
             if self.widgets.is_empty() {
                 // Ensure alloc_len > 0 for initial sizing
                 self.skip = 1; // hack: avoid div by 0

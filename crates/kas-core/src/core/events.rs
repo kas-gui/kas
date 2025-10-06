@@ -38,9 +38,14 @@ use crate::{Id, geom::Coord};
 /// and involves calling the following methods in order:
 ///
 /// 1.  [`Events::configure`]
-/// 2.  [`Events::configure_recurse`]
+/// 2.  [`Events::update`]
+/// 3.  [`Events::configure_recurse`]
 ///
-/// Configuration may be repeated at any time but must be followed by an update.
+/// Note that both `configure` and `update` may be called before child widgets
+/// have been configured. This is important to ensure that parent widgets are
+/// always updated before their children.
+///
+/// Configuration may be repeated at any time.
 ///
 /// ### Update
 ///
