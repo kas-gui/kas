@@ -856,9 +856,7 @@ mod GridView {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.register_nav_fallback(self.id());
-        }
 
-        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {
             if self.widgets.is_empty() {
                 // Ensure alloc_len > 0 for initial sizing
                 self.child_size = Size::splat(1); // hack: avoid div by 0
