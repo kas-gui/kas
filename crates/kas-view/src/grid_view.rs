@@ -5,7 +5,7 @@
 
 //! Grid view controller
 
-use crate::clerk::{Changes, DataKey, TokenClerk};
+use crate::clerk::{Changes, Key, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
@@ -129,7 +129,7 @@ impl std::ops::Add for GridIndex {
     }
 }
 
-impl DataKey for GridIndex {
+impl Key for GridIndex {
     fn make_id(&self, parent: &Id) -> Id {
         parent
             .make_child(self.col.cast())

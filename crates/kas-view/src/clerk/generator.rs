@@ -5,7 +5,7 @@
 
 //! Data generation (high-level) traits
 
-use super::{AsyncClerk, Changes, Clerk, DataKey, Token, TokenChanges, TokenClerk};
+use super::{AsyncClerk, Changes, Clerk, Key, Token, TokenChanges, TokenClerk};
 use kas::Id;
 use kas::event::ConfigCx;
 #[allow(unused)] use kas::{Action, Events, Widget};
@@ -59,7 +59,7 @@ pub trait KeyedGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialEq>
     /// correctly track items when the data query or filter changes.
     ///
     /// Where the query is fixed, this can just be the `Index` type.
-    type Key: DataKey;
+    type Key: Key;
 
     /// Update the generator
     ///
@@ -94,7 +94,7 @@ pub trait KeyedGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialEq>
     fn generate(&self, data: &Self::Data, key: &Self::Key) -> Self::Item;
 }
 
-impl<Index: DataKey, G: IndexedGenerator<Index>> KeyedGenerator<Index> for G {
+impl<Index: Key, G: IndexedGenerator<Index>> KeyedGenerator<Index> for G {
     type Key = Index;
 
     fn update(&mut self, data: &Self::Data) -> GeneratorChanges<Index> {

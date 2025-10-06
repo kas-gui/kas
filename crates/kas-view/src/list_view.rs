@@ -5,7 +5,7 @@
 
 //! List view controller
 
-use crate::clerk::{Changes, DataKey, TokenClerk};
+use crate::clerk::{Changes, Key, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};

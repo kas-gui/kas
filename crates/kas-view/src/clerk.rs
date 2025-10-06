@@ -71,7 +71,7 @@ impl<K, I> Borrow<K> for Token<K, I> {
 /// Bounds on the key type
 ///
 /// This type should be small, easy to copy, and without internal mutability.
-pub trait DataKey: Clone + Debug + Default + PartialEq + Eq + 'static {
+pub trait Key: Clone + Debug + Default + PartialEq + Eq + 'static {
     /// Make an [`Id`] for a key
     ///
     /// The result must be distinct from `parent` and a descendant of `parent`
@@ -88,7 +88,7 @@ pub trait DataKey: Clone + Debug + Default + PartialEq + Eq + 'static {
     fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self>;
 }
 
-impl DataKey for () {
+impl Key for () {
     fn make_id(&self, parent: &Id) -> Id {
         // We need a distinct child, so use index 0
         parent.make_child(0)
@@ -104,10 +104,10 @@ impl DataKey for () {
 }
 
 // NOTE: we cannot use this blanket impl without specialisation / negative impls
-// impl<Key: Cast<usize> + Clone + Debug + PartialEq + Eq + 'static> DataKey for Key
+// impl<Key: Cast<usize> + Clone + Debug + PartialEq + Eq + 'static> Key for Key
 macro_rules! impl_1D {
     ($t:ty) => {
-        impl DataKey for $t {
+        impl Key for $t {
             fn make_id(&self, parent: &Id) -> Id {
                 parent.make_child((*self).cast())
             }
@@ -125,7 +125,7 @@ impl_1D!(u64);
 
 macro_rules! impl_2D {
     ($t:ty) => {
-        impl DataKey for ($t, $t) {
+        impl Key for ($t, $t) {
             fn make_id(&self, parent: &Id) -> Id {
                 parent.make_child(self.0.cast()).make_child(self.1.cast())
             }
@@ -275,7 +275,7 @@ pub trait AsyncClerk<Index>: Clerk<Index> {
     /// correctly track items when the data query or filter changes.
     ///
     /// Where the query is fixed, this can just be the `Index` type.
-    type Key: DataKey;
+    type Key: Key;
 
     /// Update the clerk
     ///
