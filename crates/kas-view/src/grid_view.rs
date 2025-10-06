@@ -119,6 +119,16 @@ impl GridIndex {
     }
 }
 
+impl GridIndex {
+    /// Yield the component-wise minimum
+    pub fn min(self, rhs: Self) -> Self {
+        GridIndex {
+            col: self.col.min(rhs.col),
+            row: self.row.min(rhs.row),
+        }
+    }
+}
+
 impl std::ops::Add for GridIndex {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -422,25 +432,24 @@ mod GridView {
                 row: first_row + 2 * self.alloc_len.row,
             };
 
-            let data_len = self.clerk.len(data, lbound);
-            self.len_is_known = data_len.is_known();
-            let data_len = data_len.len();
-            if data_len != self.data_len {
-                self.data_len = data_len;
-                self.update_content_size(cx);
-                self.token_update = Update::Token;
+            let data_len;
+            if !self.len_is_known {
+                let result = self.clerk.len(data, lbound);
+                self.len_is_known = result.is_known();
+                data_len = result.len();
+                if data_len != self.data_len {
+                    self.data_len = data_len;
+                    self.update_content_size(cx);
+                    self.token_update = Update::Token;
+                }
+            } else {
+                data_len = self.data_len;
             }
-
-            let col_len = data_len.col.min(self.alloc_len.col);
-            let row_len = data_len.row.min(self.alloc_len.row);
+            let cur_len = data_len.min(self.alloc_len);
 
             let first_data = GridIndex {
-                col: first_col.min(data_len.col - col_len),
-                row: first_row.min(data_len.row - row_len),
-            };
-            let cur_len = GridIndex {
-                col: col_len.cast(),
-                row: row_len.cast(),
+                col: first_col.min(data_len.col - cur_len.col),
+                row: first_row.min(data_len.row - cur_len.row),
             };
             let (mut start, mut end) = (first_data, first_data + cur_len);
             let (old_start, old_end) = (self.first_data, self.first_data + self.cur_len);
@@ -560,6 +569,30 @@ mod GridView {
         ) {
             let start = self.first_data;
             let end = self.first_data + self.cur_len;
+
+            let lbound = GridIndex {
+                col: start.col + 2 * self.alloc_len.col,
+                row: start.row + 2 * self.alloc_len.row,
+            };
+            let data_len = self.clerk.len(data, lbound);
+            self.len_is_known = data_len.is_known();
+            let data_len = data_len.len();
+            if data_len != self.data_len {
+                let old_len = self.data_len;
+                self.data_len = data_len;
+
+                let cur_len = data_len.min(self.alloc_len);
+                if self.cur_len.col != cur_len.col
+                    || self.cur_len.row != cur_len.row
+                    || end.col >= data_len.col.min(old_len.col)
+                    || end.row >= data_len.row.min(old_len.row)
+                {
+                    self.cur_len = cur_len;
+                    self.token_update = self.token_update.max(Update::Token);
+                    return self.post_scroll(cx, data);
+                }
+            }
+
             let range = match changes {
                 Changes::None | Changes::NoPreparedItems => start..start,
                 Changes::Range(range) => {
@@ -567,33 +600,11 @@ mod GridView {
                         col: start.col.max(range.start.col),
                         row: start.row.max(range.start.row),
                     };
-                    let end = GridIndex {
-                        col: end.col.min(range.end.col),
-                        row: end.row.min(range.end.row),
-                    };
+                    let end = end.min(range.end);
                     start..end
                 }
                 Changes::Any => start..end,
             };
-
-            let lbound = GridIndex {
-                col: self.first_data.col + 2 * self.alloc_len.col,
-                row: self.first_data.row + 2 * self.alloc_len.row,
-            };
-            let data_len = self.clerk.len(data, lbound);
-            self.len_is_known = data_len.is_known();
-            let data_len = data_len.len();
-            if data_len != self.data_len {
-                self.data_len = data_len;
-                self.token_update = Update::Token;
-
-                if self.cur_len.col != data_len.col.min(self.alloc_len.col)
-                    || self.cur_len.row != data_len.row.min(self.alloc_len.row)
-                {
-                    // We need to prepare a new range
-                    return self.post_scroll(cx, data);
-                }
-            }
 
             if range.start.col < range.end.col && range.start.row < range.end.row {
                 self.token_update = self.token_update.max(Update::Token);
