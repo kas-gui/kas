@@ -5,7 +5,8 @@
 
 //! List view controller
 
-use super::*;
+use crate::clerk::{Changes, Key, TokenClerk};
+use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
@@ -90,13 +91,13 @@ mod ListItem {
 }
 
 #[autoimpl(Debug ignore self.item where C::Token: trait)]
-struct WidgetData<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> {
+struct WidgetData<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> {
     token: Option<C::Token>,
     is_mock: bool,
     item: ListItem<C::Key, C::Item, V>,
 }
 
-impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
+impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
     fn key(&self) -> Option<&C::Key> {
         self.token.as_ref().map(Borrow::borrow)
     }
@@ -107,7 +108,7 @@ mod ListView {
     /// View controller for 1D indexable data (list)
     ///
     /// This widget generates a view over a list of data items via a
-    /// [`DataClerk`]. "View widgets" are constructed via a [`Driver`]
+    /// [`TokenClerk`]. "View widgets" are constructed via a [`Driver`]
     /// to represent visible data items. These view widgets are reassigned as
     /// required when the list is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
@@ -127,7 +128,7 @@ mod ListView {
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[widget]
-    pub struct ListView<C: DataClerk<usize>, V, D = Direction>
+    pub struct ListView<C: TokenClerk<usize>, V, D = Direction>
     where
         V: Driver<C::Key, C::Item>,
         D: Directional,
@@ -183,31 +184,31 @@ mod ListView {
             Self::new_dir(clerk, driver, D::default())
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Left> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Left> {
         /// Construct a new instance
         pub fn left(clerk: C, driver: V) -> Self {
             Self::new(clerk, driver)
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Right> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Right> {
         /// Construct a new instance
         pub fn right(clerk: C, driver: V) -> Self {
             Self::new(clerk, driver)
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Up> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Up> {
         /// Construct a new instance
         pub fn up(clerk: C, driver: V) -> Self {
             Self::new(clerk, driver)
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Down> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Down> {
         /// Construct a new instance
         pub fn down(clerk: C, driver: V) -> Self {
             Self::new(clerk, driver)
         }
     }
-    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, Direction> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
             if direction != self.direction {
@@ -583,14 +584,14 @@ mod ListView {
             &mut self,
             cx: &mut ConfigCx,
             data: &C::Data,
-            changes: DataChanges<usize>,
+            changes: Changes<usize>,
         ) {
             let start: usize = self.first_data.cast();
             let end = start + usize::conv(self.cur_len);
             let range = match changes {
-                DataChanges::None | DataChanges::NoPreparedItems => 0..0,
-                DataChanges::Range(range) => start.max(range.start)..end.min(range.end),
-                DataChanges::Any => start..end,
+                Changes::None | Changes::NoPreparedItems => 0..0,
+                Changes::Range(range) => start.max(range.start)..end.min(range.end),
+                Changes::Any => start..end,
             };
 
             let lbound = usize::conv(self.first_data) + 2 * self.widgets.len();
@@ -884,7 +885,7 @@ mod ListView {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if self.token_update != Update::None {
                 self.post_scroll(cx, data);
-            } else if changes != DataChanges::None {
+            } else if changes != Changes::None {
                 self.handle_clerk_update(cx, data, changes);
             }
 
@@ -1051,7 +1052,7 @@ mod ListView {
             let changes =
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
-            if changes != DataChanges::None {
+            if changes != Changes::None {
                 self.handle_clerk_update(&mut cx.config_cx(), data, changes);
             }
         }

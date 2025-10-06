@@ -16,6 +16,7 @@
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::View`.
 
+#[allow(unused)] use crate::clerk::AsyncClerk;
 use kas::TextOrSource;
 use kas::prelude::*;
 use kas_widgets::{CheckBox, Text};
@@ -32,7 +33,7 @@ use std::default::Default;
 /// handles events like any other widget. In order to associate a returned
 /// message with a `Key`, either embed that key while constructing
 /// the widget with [`Driver::make`] or handle the message in
-/// [`crate::DataClerk::handle_messages`].
+/// [`AsyncClerk::handle_messages`].
 ///
 /// # Example implementations
 ///

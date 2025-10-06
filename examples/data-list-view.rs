@@ -11,9 +11,9 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
+use kas::view::clerk::{Clerk, GeneratorChanges, IndexedGenerator, Len};
 use kas::view::{Driver, ListView};
 use kas::widgets::{column, *};
-use kas_view::{DataGenerator, DataLen, GeneratorChanges, GeneratorClerk};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -161,31 +161,27 @@ impl Driver<usize, MyItem> for ListEntryDriver {
 
 #[derive(Default)]
 struct Generator;
-impl DataGenerator<usize> for Generator {
+impl Clerk<usize> for Generator {
     type Data = MyData;
-    type Key = usize;
     type Item = MyItem;
 
+    fn len(&self, data: &Self::Data, lbound: usize) -> Len<usize> {
+        if data.row_limit {
+            Len::Known(data.len)
+        } else {
+            Len::LBound((data.active.max(data.last_key) + 1).max(lbound))
+        }
+    }
+}
+impl IndexedGenerator<usize> for Generator {
     fn update(&mut self, data: &Self::Data) -> GeneratorChanges<usize> {
         // We assume that `MyData::handle` has only been called once since this
         // method was last called.
         data.last_change.clone()
     }
 
-    fn len(&self, data: &Self::Data, lbound: usize) -> DataLen<usize> {
-        if data.row_limit {
-            DataLen::Known(data.len)
-        } else {
-            DataLen::LBound((data.active.max(data.last_key) + 1).max(lbound))
-        }
-    }
-
-    fn key(&self, _: &Self::Data, index: usize) -> Option<Self::Key> {
-        Some(index)
-    }
-
-    fn generate(&self, data: &Self::Data, key: &usize) -> Self::Item {
-        (data.active, data.get_string(*key))
+    fn generate(&self, data: &Self::Data, index: usize) -> Self::Item {
+        (data.active, data.get_string(index))
     }
 }
 
@@ -207,7 +203,7 @@ fn main() -> kas::runner::Result<()> {
 
     let data = MyData::new(false, 5);
 
-    let clerk = GeneratorClerk::new(Generator::default());
+    let clerk = Generator::default();
     let list = ListView::new(clerk, ListEntryDriver).on_update(|cx, list, data: &MyData| {
         list.set_direction(cx, data.dir);
     });

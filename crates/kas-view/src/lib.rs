@@ -5,24 +5,15 @@
 
 //! # Views
 //!
-//! Views allow virtual scrolling and query views over a data set, supporting
-//! both sync and async access.
-//!
+//! Views allow virtual scrolling over (subsets of) a data set.
 //! Each visible data `Item` is assigned a **view widget**, with dynamic
 //! re-assignment as the view changes.
 //!
-//! ## Data sets and clerks
+//! ## Data clerks
 //!
 //! The full data set might be available in local memory, on disk, or on a
-//! remote server.
-//!
-//! A [`DataClerk`] manages all interactions between the view and the data as
-//! well as providing a local cache of (at least) the currently visible data.
-//!
-//! ### Data generators
-//!
-//! A higher-level interface is provided for data generators: [`DataGenerator`]
-//! using clerk [`GeneratorClerk`].
+//! remote server, and may be viewed as a raw list of items or through a filter
+//! or query. A [`clerk`] is required to manage this access.
 //!
 //! ## View controller
 //!
@@ -39,15 +30,7 @@
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
-use kas::Id;
-use std::borrow::Borrow;
-
-mod data_clerk;
-mod generator;
-
-pub use data_clerk::*;
-pub use generator::*;
-
+pub mod clerk;
 pub mod filter;
 
 pub mod driver;
@@ -58,27 +41,6 @@ pub use list_view::ListView;
 
 mod grid_view;
 pub use grid_view::{GridIndex, GridView};
-
-/// A pair which may be borrowed over the first item
-#[derive(Debug, Default)]
-pub struct Token<K, I> {
-    pub key: K,
-    pub item: I,
-}
-
-impl<K, I> Token<K, I> {
-    /// Construct
-    #[inline]
-    pub fn new(key: K, item: I) -> Self {
-        Token { key, item }
-    }
-}
-
-impl<K, I> Borrow<K> for Token<K, I> {
-    fn borrow(&self) -> &K {
-        &self.key
-    }
-}
 
 /// Used to notify selection and deselection of [`ListView`] and [`GridView`] children
 #[derive(Clone, Debug)]

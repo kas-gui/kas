@@ -5,8 +5,9 @@
 
 //! Filters over data
 
-mod filter_list;
-pub use filter_list::*;
+use kas::event::EventCx;
+use kas_widgets::{EditField, EditGuard};
+use std::fmt::Debug;
 
 /// Ability to set filter
 pub trait FilterValue: Default + 'static {
@@ -83,5 +84,33 @@ impl Filter<str> for ContainsCaseInsensitive {
 impl Filter<String> for ContainsCaseInsensitive {
     fn matches(&self, item: &String) -> bool {
         Filter::<str>::matches(self, item.as_str())
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct SetFilter<T: Debug>(pub T);
+
+/// An [`EditGuard`] which sends a [`SetFilter`] message on every change
+///
+/// This may be used for search-as-you-type.
+pub struct KeystrokeGuard;
+impl EditGuard for KeystrokeGuard {
+    type Data = ();
+
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
+        cx.push(SetFilter(edit.as_str().to_string()));
+    }
+}
+
+/// An [`EditGuard`] which sends a [`SetFilter`] message on activate and focus loss
+///
+/// This may be used for search-as-you-type.
+pub struct AflGuard;
+impl EditGuard for AflGuard {
+    type Data = ();
+
+    #[inline]
+    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
+        cx.push(SetFilter(edit.as_str().to_string()));
     }
 }

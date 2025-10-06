@@ -1,9 +1,9 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::{DataGenerator, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
+use kas::view::clerk::{Clerk, GeneratorChanges, IndexedGenerator, Len};
+use kas::view::{GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
-use kas_view::{DataLen, GeneratorChanges, GeneratorClerk};
 
 /// A cache of the visible part of our table
 #[derive(Debug, Default)]
@@ -17,15 +17,19 @@ fn product(index: GridIndex) -> u64 {
     x * y
 }
 
-impl DataGenerator<GridIndex> for TableCache {
+impl Clerk<GridIndex> for TableCache {
     /// Our table is square; it's size is input.
     type Data = u32;
-
-    type Key = GridIndex;
 
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
 
+    fn len(&self, _: &Self::Data, _: GridIndex) -> Len<GridIndex> {
+        Len::Known(GridIndex::splat(self.dim))
+    }
+}
+
+impl IndexedGenerator<GridIndex> for TableCache {
     fn update(&mut self, dim: &Self::Data) -> GeneratorChanges<GridIndex> {
         if self.dim == *dim {
             GeneratorChanges::None
@@ -35,23 +39,15 @@ impl DataGenerator<GridIndex> for TableCache {
         }
     }
 
-    fn len(&self, _: &Self::Data, _: GridIndex) -> DataLen<GridIndex> {
-        DataLen::Known(GridIndex::splat(self.dim))
-    }
-
-    fn key(&self, _: &Self::Data, index: GridIndex) -> Option<GridIndex> {
-        Some(index)
-    }
-
-    fn generate(&self, _: &Self::Data, index: &GridIndex) -> u64 {
-        product(*index)
+    fn generate(&self, _: &Self::Data, index: GridIndex) -> u64 {
+        product(index)
     }
 }
 
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let clerk = GeneratorClerk::new(TableCache::default());
+    let clerk = TableCache::default();
 
     let table = GridView::new(clerk, driver::View)
         .with_num_visible(12, 12)

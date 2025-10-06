@@ -353,10 +353,8 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Page<AppData> {
-    use kas::view::{
-        DataGenerator, DataLen, GeneratorChanges, GeneratorClerk, ListView, SelectionMode,
-        SelectionMsg, driver,
-    };
+    use kas::view::clerk::{Clerk, GeneratorChanges, KeyedGenerator, Len};
+    use kas::view::{ListView, SelectionMode, SelectionMsg, driver};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -499,7 +497,7 @@ fn filter_list() -> Page<AppData> {
         }
     }
 
-    struct MonthsGenerator {
+    struct Generator {
         months: Vec<u8>,
         end: usize,
         years: Range<u32>,
@@ -508,7 +506,7 @@ fn filter_list() -> Page<AppData> {
         filter: MonthYearFilter,
     }
 
-    impl MonthsGenerator {
+    impl Generator {
         fn text(&self, key: usize) -> String {
             let year = key / 12;
             let month = key % 12;
@@ -516,10 +514,17 @@ fn filter_list() -> Page<AppData> {
         }
     }
 
-    impl DataGenerator<usize> for MonthsGenerator {
+    impl Clerk<usize> for Generator {
         type Data = MonthYearFilter;
-        type Key = usize;
         type Item = String;
+
+        fn len(&self, _: &Self::Data, _: usize) -> Len<usize> {
+            Len::Known(self.end)
+        }
+    }
+
+    impl KeyedGenerator<usize> for Generator {
+        type Key = usize;
 
         fn update(&mut self, filter: &Self::Data) -> GeneratorChanges<usize> {
             if self.filter == *filter && self.end != usize::MAX {
@@ -549,10 +554,6 @@ fn filter_list() -> Page<AppData> {
             GeneratorChanges::Any
         }
 
-        fn len(&self, _: &Self::Data, _: usize) -> DataLen<usize> {
-            DataLen::Known(self.end)
-        }
-
         fn key(&self, _: &Self::Data, index: usize) -> Option<usize> {
             if index >= self.end {
                 return None;
@@ -571,15 +572,14 @@ fn filter_list() -> Page<AppData> {
         }
     }
 
-    type Clerk = GeneratorClerk<usize, MonthsGenerator>;
-    let clerk = GeneratorClerk::new(MonthsGenerator {
+    let clerk = Generator {
         months: Vec::new(),
         end: usize::MAX,
         years: years.clone(),
         filtered_years: FilteredRange::new(years),
         end_month,
         filter: MonthYearFilter::default(),
-    });
+    };
 
     let list_view = impl_anon! {
         #[widget]
@@ -588,7 +588,7 @@ fn filter_list() -> Page<AppData> {
             core: widget_core!(),
             #[widget(&())] filter: EditBox<MonthYearFilterGuard> =
                 EditBox::default().with_multi_line(false),
-            #[widget(&self.filter.guard().0)] list: ScrollBars<ListView<Clerk, driver::View, Down>>
+            #[widget(&self.filter.guard().0)] list: ScrollBars<ListView<Generator, driver::View, Down>>
                 =
                 ScrollBars::new(ListView::new(clerk, driver::View).with_num_visible(24)),
         }
@@ -606,7 +606,7 @@ fn filter_list() -> Page<AppData> {
                 if let Some(FilterUpdate) = cx.try_pop() {
                     cx.update(self.as_node(data));
                 } else if let Some(SelectionMsg::Select(key)) = cx.try_pop() {
-                    println!("Selected: {}", &self.list.inner().clerk().generator().text(key))
+                    println!("Selected: {}", &self.list.inner().clerk().text(key))
                 }
             }
         }

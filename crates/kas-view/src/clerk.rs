@@ -3,7 +3,37 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Traits for shared data objects
+//! Data clerks
+//!
+//! # Interfaces
+//!
+//! A clerk manages a view or query over a data set using an `Index` type
+//! specified by the [view controller](crate#view-controller). For
+//! [`ListView`](crate::ListView), `Index = usize`.
+//!
+//! All clerks must implement [`Clerk`]:
+//!
+//! -   [`Clerk`] covers the base functionality required by all clerks
+//!
+//! ## Data generators
+//!
+//! Generator clerks construct owned items. One of the following traits must be
+//! implemented:
+//!
+//! -   [`IndexedGenerator`] provides a very simple interface: `update` and
+//!     `generate`.
+//! -   [`KeyedGenerator`] is slightly more complex, supporting a custom key
+//!     type (thus allowing data items to be tracked through changing indices).
+//!
+//! ## Async data access
+//!
+//! Async clerks allow borrowed access to locally cached items. Such clerks must
+//! implement both [`AsyncClerk`] and [`TokenClerk`]:
+//!
+//! -   [`AsyncClerk`] supports async data access with a local cache and batched
+//!     item retrieval.
+//! -   [`TokenClerk`] supports caching data within a token stored adjacent to
+//!     the view widget and item retrieval using this token.
 
 #[allow(unused)] use crate::SelectionMsg;
 use kas::Id;
@@ -14,10 +44,34 @@ use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::ops::Range;
 
+mod generator;
+pub use generator::*;
+
+/// A pair which may be borrowed over the first item
+#[derive(Debug, Default)]
+pub struct Token<K, I> {
+    pub key: K,
+    pub item: I,
+}
+
+impl<K, I> Token<K, I> {
+    /// Construct
+    #[inline]
+    pub fn new(key: K, item: I) -> Self {
+        Token { key, item }
+    }
+}
+
+impl<K, I> Borrow<K> for Token<K, I> {
+    fn borrow(&self) -> &K {
+        &self.key
+    }
+}
+
 /// Bounds on the key type
 ///
 /// This type should be small, easy to copy, and without internal mutability.
-pub trait DataKey: Clone + Debug + Default + PartialEq + Eq + 'static {
+pub trait Key: Clone + Debug + Default + PartialEq + Eq + 'static {
     /// Make an [`Id`] for a key
     ///
     /// The result must be distinct from `parent` and a descendant of `parent`
@@ -34,7 +88,7 @@ pub trait DataKey: Clone + Debug + Default + PartialEq + Eq + 'static {
     fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self>;
 }
 
-impl DataKey for () {
+impl Key for () {
     fn make_id(&self, parent: &Id) -> Id {
         // We need a distinct child, so use index 0
         parent.make_child(0)
@@ -50,10 +104,10 @@ impl DataKey for () {
 }
 
 // NOTE: we cannot use this blanket impl without specialisation / negative impls
-// impl<Key: Cast<usize> + Clone + Debug + PartialEq + Eq + 'static> DataKey for Key
+// impl<Key: Cast<usize> + Clone + Debug + PartialEq + Eq + 'static> Key for Key
 macro_rules! impl_1D {
     ($t:ty) => {
-        impl DataKey for $t {
+        impl Key for $t {
             fn make_id(&self, parent: &Id) -> Id {
                 parent.make_child((*self).cast())
             }
@@ -71,7 +125,7 @@ impl_1D!(u64);
 
 macro_rules! impl_2D {
     ($t:ty) => {
-        impl DataKey for ($t, $t) {
+        impl Key for ($t, $t) {
             fn make_id(&self, parent: &Id) -> Id {
                 parent.make_child(self.0.cast()).make_child(self.1.cast())
             }
@@ -90,26 +144,25 @@ impl_2D!(u32);
 #[cfg(target_pointer_width = "64")]
 impl_2D!(u64);
 
-/// Indicates whether an update to a [`DataClerk`] changes any keys or values
+/// Indicates whether an update to a clerk changes any available data
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use]
-pub enum DataChanges<Index> {
+pub enum Changes<Index> {
     /// Indicates that no changes to the data set occurred.
     None,
-    /// Indicates that changes to the data set may have occurred, but that
-    /// [`DataClerk::update_token`] and [`DataClerk::item`] results are
-    /// unchanged for the `view_range`.
+    /// Indicates that changes to the data set may have occurred, but that key,
+    /// token and item values are unchanged for the `view_range`.
     NoPreparedItems,
     /// Indicates that tokens for the given range may require an update
     /// and/or that items for the given range have changed.
-    /// [`DataClerk::update_token`] will be called for each index in the
+    /// [`TokenClerk::update_token`] will be called for each index in the
     /// intersection of the given range with the `view_range`.
     Range(Range<Index>),
     /// `Any` indicates that changes to the data set may have occurred.
     Any,
 }
 
-/// Return value of [`DataClerk::update_token`]
+/// Return value of [`TokenClerk::update_token`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[must_use]
 pub enum TokenChanges {
@@ -134,55 +187,87 @@ impl TokenChanges {
 
 /// Result of [`Self::len`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DataLen<Index> {
+pub enum Len<Index> {
     /// Length is known and specified exactly
     Known(Index),
     /// A lower bound on length is specified
     LBound(Index),
 }
 
-impl<Index: Copy> DataLen<Index> {
+impl<Index: Copy> Len<Index> {
     /// Returns the length payload (known or lower bound)
     #[inline]
     pub fn len(&self) -> Index {
         match self {
-            DataLen::Known(len) => *len,
-            DataLen::LBound(len) => *len,
+            Len::Known(len) => *len,
+            Len::LBound(len) => *len,
         }
     }
 
     /// Returns true if a known length given
     #[inline]
     pub fn is_known(&self) -> bool {
-        matches!(self, DataLen::Known(_))
+        matches!(self, Len::Known(_))
     }
 }
 
-/// Data access manager
-///
-/// A `DataClerk` manages access to a data set, using an `Index` type specified by
-/// the [view controller](crate#view-controller).
-///
-/// In simpler cases it is sufficient to implement only required methods.
-pub trait DataClerk<Index> {
+/// Common functionality of all clerks
+pub trait Clerk<Index> {
     /// Input data type (of parent widget)
     ///
     /// Data of this type is passed through the parent widget; see
     /// [`Widget::Data`] and the [`Events`] trait. This input data might be used
     /// to access a data set stored in another widget or to pass a query or
-    /// filter into the `DataClerk`.
+    /// filter into the `Clerk`.
     ///
     /// Note that it is not currently possible to pass in references to multiple
     /// data items (such as an external data set and a filter) via `Data`. This
     /// would require use of Generic Associated Types (GATs), not only here but
-    /// also in the [`Widget`](kas::Widget) trait; alas, GATs are not (yet)
+    /// also in the [`Widget`] trait; alas, GATs are not (yet)
     /// compatible with dyn traits and Kas requires use of `dyn Widget`. Instead
     /// one can share the data set (e.g. `Rc<RefCell<DataSet>>`) or store within
-    /// the `DataClerk` using the `clerk` / `clerk_mut` methods to access; in
+    /// the `Clerk` using the `clerk` / `clerk_mut` methods to access; in
     /// both cases it may be necessary to update the view controller explicitly
     /// (e.g. `cx.update(list.as_node(&input))`) after the data set changes.
     type Data;
 
+    /// Item type
+    ///
+    /// `&Item` is passed to child view widgets as input data.
+    type Item;
+
+    /// Get an upper bound on length, if any
+    ///
+    /// Scroll bars and the `view_range` are
+    /// limited by the result of this method.
+    ///
+    /// Where the data set size is a known fixed `len` (or unfixed but with
+    /// maximum `len <= lbound`), this method should return
+    /// <code>[Len::Known][](len)</code>.
+    ///
+    /// Where the data set size is unknown (or unfixed and greater than
+    /// `lbound`), this method should return
+    /// <code>[Len::LBound][](lbound)</code>.
+    ///
+    /// `lbound` is set to allow scrolling a little beyond the current view
+    /// position (i.e. a little larger than the last prepared `range.end`).
+    fn len(&self, data: &Self::Data, lbound: Index) -> Len<Index>;
+
+    /// Get a mock data item for sizing purposes
+    ///
+    /// This method is called if no data items are available when initially
+    /// sizing the view. If an item is returned, then a mock view widget is
+    /// created using this data in order to determine size requirements.
+    ///
+    /// The default implementation returns `None`.
+    fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
+        let _ = data;
+        None
+    }
+}
+
+/// Functionality common to async clerks
+pub trait AsyncClerk<Index>: Clerk<Index> {
     /// Key type
     ///
     /// All data items should have a stable key so that data items may be
@@ -190,32 +275,18 @@ pub trait DataClerk<Index> {
     /// correctly track items when the data query or filter changes.
     ///
     /// Where the query is fixed, this can just be the `Index` type.
-    type Key: DataKey;
-
-    /// Item type
-    ///
-    /// `&Item` is passed to child view widgets as input data.
-    type Item;
-
-    /// Token type
-    ///
-    /// Each view widget is stored with a corresponding token set by
-    /// [`Self::update_token`].
-    ///
-    /// Often this will either be [`Self::Key`] or
-    /// <code>[Token](crate::Token)&lt;[Self::Key], [Self::Item]&gt;</code>.
-    type Token: Borrow<Self::Key>;
+    type Key: Key;
 
     /// Update the clerk
     ///
     /// This is called by [`kas::Events::update`]. It should update `self` as
     /// required reflecting possible data-changes and indicate through the
-    /// returned [`DataChanges`] value the updates required to tokens and views.
+    /// returned [`Changes`] value the updates required to tokens and views.
     ///
     /// Data items within `view_range` may be visible.
     ///
     /// Note: this method is called automatically when input data changes. When
-    /// data owned or referenced by the `DataClerk` implementation is changed it
+    /// data owned or referenced by the `TokenClerk` implementation is changed it
     /// may be necessary to explicitly update the view controller, e.g. using
     /// [`ConfigCx::update`] or [`Action::UPDATE`].
     ///
@@ -228,31 +299,14 @@ pub trait DataClerk<Index> {
         id: Id,
         view_range: Range<Index>,
         data: &Self::Data,
-    ) -> DataChanges<Index>;
-
-    /// Get the number of indexable items
-    ///
-    /// Scroll bars and the `view_range` are
-    /// limited by the result of this method.
-    ///
-    /// Where the data set size is a known fixed `len` (or unfixed but with
-    /// maximum `len <= lbound`), this method should return
-    /// <code>[DataLen::Known][](len)</code>.
-    ///
-    /// Where the data set size is unknown (or unfixed and greater than
-    /// `lbound`), this method should return
-    /// <code>[DataLen::LBound][](lbound)</code>.
-    ///
-    /// `lbound` is set to allow scrolling a little beyond the current view
-    /// position (i.e. a little larger than the last prepared `range.end`).
-    fn len(&self, data: &Self::Data, lbound: Index) -> DataLen<Index>;
+    ) -> Changes<Index>;
 
     /// Prepare a range
     ///
-    /// This method is called prior to [`Self::update_token`] over the indices
-    /// in `range`. If data is to be loaded from a remote source or computed in
-    /// a worker thread, it should be done so from here using `async` worker(s)
-    /// (see [`Self::handle_messages`]).
+    /// This method is called prior to [`TokenClerk::update_token`] over the
+    /// indices in `range`. If data is to be loaded
+    /// from a remote source or computed in a worker thread, it should be done
+    /// so from here using `async` worker(s) (see [`Self::handle_messages`]).
     ///
     /// Data items within `view_range` may be visible.
     ///
@@ -293,16 +347,43 @@ pub trait DataClerk<Index> {
         view_range: Range<Index>,
         data: &Self::Data,
         opt_key: Option<Self::Key>,
-    ) -> DataChanges<Index> {
+    ) -> Changes<Index> {
         let _ = (cx, id, view_range, data, opt_key);
-        DataChanges::None
+        Changes::None
     }
+}
+
+/// Data access manager for keyed data with cache tokens
+pub trait TokenClerk<Index>: AsyncClerk<Index> {
+    /// Token type
+    ///
+    /// Each view widget is stored with a corresponding token set by
+    /// [`Self::update_token`].
+    ///
+    /// Often this will either be [`Self::Key`](AsyncClerk::Key) or
+    /// <code>[Token]&lt;[Self::Key](AsyncClerk::Key), [Self::Item](Clerk::Item)&gt;</code>.
+    type Token: Borrow<Self::Key>;
 
     /// Update a token for the given `index`
     ///
-    /// This method is called after [`Self::prepare_range`] for each `index` in
+    /// This method is called after [`AsyncClerk::prepare_range`] for each `index` in
     /// the prepared `range` in order to prepare a to prepare a token for each
     /// item (see [`Self::item`]).
+    ///
+    /// In the case that `type Token = Key` it is recommended to use the free
+    /// function [`update_token`]:
+    /// ```rust,ignore
+    /// fn update_token(
+    ///     &self,
+    ///     data: &Self::Data,
+    ///     index: Index,
+    ///     update_item: bool,
+    ///     token: &mut Option<Self::Token>,
+    /// ) -> TokenChanges {
+    ///     let key = /* ... */;
+    ///     kas::view::clerk::update_token(key, update_item, token)
+    /// }
+    /// ```
     ///
     /// The input `token` (if any) may or may not correspond to the given
     /// `index`. This method should prepare it as follows:
@@ -318,7 +399,7 @@ pub trait DataClerk<Index> {
     ///
     /// This method should be fast since it may be called repeatedly. Slow and
     /// blocking operations should be run asynchronously from
-    /// [`Self::prepare_range`] using an internal cache.
+    /// [`AsyncClerk::prepare_range`] using an internal cache.
     fn update_token(
         &self,
         data: &Self::Data,
@@ -330,7 +411,7 @@ pub trait DataClerk<Index> {
     /// Get the data item for the given `token`
     ///
     /// Data cannot be generated by this method but it can be generated by
-    /// [`Self::update_token`] and cached within a [`Token`](crate::Token).
+    /// [`Self::update_token`] and cached within a [`Token`]
     /// (see [`Self::Token`]).
     ///
     /// A token is expected to be able to resolve an item. Since [`Self::Token`]
@@ -339,16 +420,64 @@ pub trait DataClerk<Index> {
     ///
     /// This method should be fast since it may be called repeatedly.
     fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item;
+}
 
-    /// Get a mock data item for sizing purposes
+// TODO(Rust): the following could be added if Rust supported mutually exclusive traits
+/*
+/// Data access manager for keyed data
+pub trait KeyedClerk<Index>: AsyncClerk<Index> {
+    /// Get a key for a given `index`, if available
     ///
-    /// This method is called if no data items are available when initially
-    /// sizing the view. If an item is returned, then a mock view widget is
-    /// created using this data in order to determine size requirements.
+    /// This method should be fast since it may be called repeatedly.
+    /// This method is only called for `index` less than the result of
+    /// [`Clerk::len`].
     ///
-    /// The default implementation returns `None`.
-    fn mock_item(&self, data: &Self::Data) -> Option<Self::Item> {
-        let _ = data;
-        None
+    /// This method should return `Some(key)` only when [`Self::item`] can yield
+    /// an item for this `key`.
+    fn key(&self, data: &Self::Data, index: Index) -> Option<Self::Key>;
+
+    /// Get the data item for the given `key`
+    ///
+    /// This method should be fast since it may be called repeatedly.
+    fn item<'r>(&'r self, data: &'r Self::Data, key: &'r Self::Key) -> &'r Self::Item;
+}
+
+impl<Index, C: KeyedClerk<Index>> TokenClerk<Index> for C {
+    type Token = C::Key;
+
+    fn update_token(
+        &self,
+        data: &Self::Data,
+        index: Index,
+        update_item: bool,
+        token: &mut Option<Self::Token>,
+    ) -> TokenChanges {
+        let key = self.key(data, index);
+        update_token(key, update_item, token)
+    }
+
+    fn item<'r>(&'r self, data: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {
+        self.item(data, token)
+    }
+}
+*/
+
+/// Implementation of [`TokenClerk::update_token`] for non-caching tokens
+///
+/// This may be used where `type Token = Key`.
+pub fn update_token<Key: PartialEq>(
+    key: Option<Key>,
+    update_item: bool,
+    token: &mut Option<Key>,
+) -> TokenChanges {
+    if *token == key {
+        if update_item {
+            TokenChanges::SameKey
+        } else {
+            TokenChanges::None
+        }
+    } else {
+        *token = key;
+        TokenChanges::Any
     }
 }

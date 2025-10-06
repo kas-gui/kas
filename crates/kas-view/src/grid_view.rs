@@ -5,7 +5,8 @@
 
 //! Grid view controller
 
-use super::*;
+use crate::clerk::{Changes, Key, TokenClerk};
+use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
 use kas::layout::{GridCellInfo, solve_size_rules};
@@ -89,13 +90,13 @@ mod GridCell {
 }
 
 #[autoimpl(Debug ignore self.item where C::Token: trait)]
-struct WidgetData<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
+struct WidgetData<C: TokenClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
     token: Option<C::Token>,
     is_mock: bool,
     item: GridCell<C::Key, C::Item, V>,
 }
 
-impl<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
+impl<C: TokenClerk<GridIndex>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
     fn key(&self) -> Option<&C::Key> {
         self.token.as_ref().map(Borrow::borrow)
     }
@@ -128,7 +129,7 @@ impl std::ops::Add for GridIndex {
     }
 }
 
-impl crate::DataKey for GridIndex {
+impl Key for GridIndex {
     fn make_id(&self, parent: &Id) -> Id {
         parent
             .make_child(self.col.cast())
@@ -148,7 +149,7 @@ mod GridView {
     /// View controller for 2D indexable data (grid)
     ///
     /// This widget generates a view over a list of data items via a
-    /// [`DataClerk`]. "View widgets" are constructed via a [`Driver`]
+    /// [`TokenClerk`]. "View widgets" are constructed via a [`Driver`]
     /// to represent visible data items. These view widgets are reassigned as
     /// required when the grid is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
@@ -168,7 +169,7 @@ mod GridView {
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[widget]
-    pub struct GridView<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
+    pub struct GridView<C: TokenClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
@@ -555,13 +556,13 @@ mod GridView {
             &mut self,
             cx: &mut ConfigCx,
             data: &C::Data,
-            changes: DataChanges<GridIndex>,
+            changes: Changes<GridIndex>,
         ) {
             let start = self.first_data;
             let end = self.first_data + self.cur_len;
             let range = match changes {
-                DataChanges::None | DataChanges::NoPreparedItems => start..start,
-                DataChanges::Range(range) => {
+                Changes::None | Changes::NoPreparedItems => start..start,
+                Changes::Range(range) => {
                     let start = GridIndex {
                         col: start.col.max(range.start.col),
                         row: start.row.max(range.start.row),
@@ -572,7 +573,7 @@ mod GridView {
                     };
                     start..end
                 }
-                DataChanges::Any => start..end,
+                Changes::Any => start..end,
             };
 
             let lbound = GridIndex {
@@ -880,7 +881,7 @@ mod GridView {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if self.token_update != Update::None {
                 self.post_scroll(cx, data);
-            } else if changes != DataChanges::None {
+            } else if changes != Changes::None {
                 self.handle_clerk_update(cx, data, changes);
             }
 
@@ -1054,7 +1055,7 @@ mod GridView {
             let changes =
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
-            if changes != DataChanges::None {
+            if changes != Changes::None {
                 self.handle_clerk_update(&mut cx.config_cx(), data, changes);
             }
         }
