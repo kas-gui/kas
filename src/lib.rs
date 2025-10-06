@@ -53,7 +53,7 @@ pub extern crate kas_view as view;
 ///
 /// This crate provides widgets using
 /// libraries by [Yevhenii Reizner "RazrFalcon"](https://github.com/RazrFalcon/).
-#[cfg(any(feature = "svg", feature = "canvas"))]
+#[cfg(any(feature = "image", feature = "svg", feature = "canvas"))]
 pub mod image {
     pub use kas_image::*;
 }

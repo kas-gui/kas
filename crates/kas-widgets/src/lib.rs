@@ -42,7 +42,6 @@
 //! ## Displays
 //!
 //! -   [`Filler`]: an empty widget, sometimes used to fill space
-//! -   [`Image`]: a pixmap image
 //! -   [`Label`], [`AccessLabel`]: are static text labels
 //! -   [`Text`]: a dynamic (input-data derived) text label
 //! -   [`Mark`]: a small mark
@@ -76,7 +75,6 @@ mod float;
 mod frame;
 mod grid;
 mod grip;
-mod image;
 mod list;
 pub mod menu;
 mod progress;
@@ -94,8 +92,6 @@ mod text;
 
 #[doc(inline)] pub use kas::widgets::*;
 
-pub use crate::image::Image;
-#[cfg(feature = "image")] pub use crate::image::ImageError;
 pub use access_label::AccessLabel;
 pub use button::Button;
 pub use check_box::{CheckBox, CheckButton};

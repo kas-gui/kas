@@ -98,15 +98,15 @@ ron = ["serde", "kas-core/ron"]
 # Enable support for TOML (de)serialisation
 toml = ["serde", "kas-core/toml"]
 
-# Support image loading and decoding (does not imply any formats)
-image = ["dep:kas-image", "kas-core/image", "kas-widgets/image"]
+# Support raster image loading and decoding (does not imply any formats)
+image = ["dep:kas-image", "kas-image/image"]
 # Enable all default formats of the image crate
-image-default-formats = ["kas-widgets/image-default-formats"]
+image-default-formats = ["image", "kas-image/image-default-formats"]
 # Selected image formats
-avif = ["kas-widgets/avif"]
-jpeg = ["kas-widgets/jpeg"]
-png = ["kas-widgets/png"]
-webp = ["kas-widgets/webp"]
+avif = ["image", "kas-image/avif"]
+jpeg = ["image", "kas-image/jpeg"]
+png = ["image", "kas-image/png"]
+webp = ["image", "kas-image/webp"]
 
 # Enable Svg widget
 svg = ["dep:kas-image", "kas-image/svg", "kas-dylib?/image"]

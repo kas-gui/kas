@@ -28,13 +28,9 @@ impl From<kas::draw::AllocError> for ImageError {
     }
 }
 
-/// Image `Result` type
-#[cfg(feature = "image")]
-pub type Result<T> = std::result::Result<T, ImageError>;
-
 #[impl_self]
 mod Image {
-    /// An image with margins
+    /// A raster iamge
     ///
     /// May be default constructed (result is empty).
     #[derive(Clone, Debug, Default)]
@@ -65,7 +61,7 @@ mod Image {
         pub fn new_path<P: AsRef<std::path::Path>>(
             path: P,
             draw: &mut dyn DrawShared,
-        ) -> Result<Self> {
+        ) -> Result<Self, ImageError> {
             let mut sprite = Self::default();
             sprite._load_path(path, draw)?;
             Ok(sprite)
@@ -99,7 +95,7 @@ mod Image {
             cx: &mut EventState,
             path: P,
             draw: &mut dyn DrawShared,
-        ) -> Result<()> {
+        ) -> Result<(), ImageError> {
             self._load_path(path, draw).map(|_| {
                 cx.resize(self);
             })
@@ -110,7 +106,7 @@ mod Image {
             &mut self,
             path: P,
             draw: &mut dyn DrawShared,
-        ) -> Result<()> {
+        ) -> Result<(), ImageError> {
             let image = image::ImageReader::open(path)?
                 .with_guessed_format()?
                 .decode()?;
