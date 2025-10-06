@@ -19,7 +19,7 @@ features = ["docs_rs"]
 crate-type = ["dylib"]
 
 [features]
-resvg = ["dep:kas-resvg"]
+image = ["dep:kas-image"]
 
 # Non-local features required for doc builds.
 # Note: docs.rs does not support direct usage of transitive features.
@@ -28,5 +28,5 @@ docs_rs = ["kas-core/wayland"]
 [dependencies]
 kas-core = { version = "0.16.0", path = "../kas-core" }
 kas-widgets = { version = "0.16.0", path = "../kas-widgets" }
-kas-resvg = { version = "0.16.0", path = "../kas-resvg", optional = true }
+kas-image = { version = "0.16.0", path = "../kas-image", optional = true }
 kas-wgpu = { version = "0.16.0", path = "../kas-wgpu", default-features = false }

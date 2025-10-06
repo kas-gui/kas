@@ -73,7 +73,7 @@ Crates and features
 -   [kas-core](https://docs.rs/kas-core): the core library
 -   [kas-widgets](https://docs.rs/kas-widgets): the main widget library
 -   [kas-view](https://docs.rs/kas-view): view widgets supporting virtual scrolling
--   [kas-resvg](https://docs.rs/kas-resvg): extra widgets over [resvg](https://crates.io/crates/resvg)
+-   [kas-image](https://docs.rs/kas-image): scalable and raster image widgets and utilities
 -   [kas-dylib](https://crates.io/crates/kas-dylib): helper crate to support dynamic linking
 -   kas-macros: proc-macro crate
 

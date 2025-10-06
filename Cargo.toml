@@ -99,7 +99,7 @@ ron = ["serde", "kas-core/ron"]
 toml = ["serde", "kas-core/toml"]
 
 # Support image loading and decoding (does not imply any formats)
-image = ["kas-core/image", "kas-widgets/image"]
+image = ["dep:kas-image", "kas-core/image", "kas-widgets/image"]
 # Enable all default formats of the image crate
 image-default-formats = ["kas-widgets/image-default-formats"]
 # Selected image formats
@@ -109,9 +109,9 @@ png = ["kas-widgets/png"]
 webp = ["kas-widgets/webp"]
 
 # Enable Svg widget
-svg = ["dep:kas-resvg", "kas-resvg/svg", "kas-dylib?/resvg"]
+svg = ["dep:kas-image", "kas-image/svg", "kas-dylib?/image"]
 # Enable Canvas widget
-canvas = ["dep:kas-resvg", "kas-resvg/canvas"]
+canvas = ["dep:kas-image", "kas-image/canvas"]
 
 # Automatically detect usage of dark theme
 #
@@ -141,7 +141,7 @@ kas-core = { version = "0.16.1", path = "crates/kas-core" }
 kas-dylib = { version = "0.16.0", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.16.1", path = "crates/kas-widgets" }
 kas-view = { version = "0.16.0", path = "crates/kas-view", optional = true }
-kas-resvg = { version = "0.16.0", path = "crates/kas-resvg", optional = true }
+kas-image = { version = "0.16.0", path = "crates/kas-image", optional = true }
 
 [dependencies.kas-wgpu]
 version = "0.16.0"
@@ -160,7 +160,7 @@ members = [
     "crates/kas-core",
     "crates/kas-dylib",
     "crates/kas-macros",
-    "crates/kas-resvg",
+    "crates/kas-image",
     "crates/kas-wgpu",
     "crates/kas-widgets",
     "crates/kas-view",

@@ -14,7 +14,7 @@
 //! - `kas_macros` is an extended version of [`impl-tools`](https://crates.io/crates/impl-tools),
 //!   re-export at the top-level
 //! - [`kas_widgets`](https://crates.io/crates/kas-widgets) is re-export as [`widgets`](mod@widgets)
-//! - [`kas_resvg`](https://crates.io/crates/kas-resvg) is re-export as [`resvg`] (`svg` or `canvas` feature)
+//! - [`kas_image`](https://crates.io/crates/kas-image) is re-export as [`image`] (`svg` or `canvas` feature)
 //! - [`kas_view`](https://crates.io/crates/kas-view) is re-export as [`view`] (`view` feature)
 //!
 //! Also refer to:
@@ -54,8 +54,8 @@ pub extern crate kas_view as view;
 /// This crate provides widgets using
 /// libraries by [Yevhenii Reizner "RazrFalcon"](https://github.com/RazrFalcon/).
 #[cfg(any(feature = "svg", feature = "canvas"))]
-pub mod resvg {
-    pub use kas_resvg::*;
+pub mod image {
+    pub use kas_image::*;
 }
 
 pub mod runner;
