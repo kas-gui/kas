@@ -5,8 +5,9 @@
 
 //! SVG widget
 
+use super::Scaling;
 use kas::draw::{ImageFormat, ImageHandle};
-use kas::layout::{LogicalSize, PixmapScaling};
+use kas::layout::LogicalSize;
 use kas::prelude::*;
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -141,7 +142,7 @@ mod Svg {
     pub struct Svg {
         core: widget_core!(),
         inner: State,
-        scaling: PixmapScaling,
+        scaling: Scaling,
         image: Option<ImageHandle>,
     }
 
@@ -166,7 +167,7 @@ mod Svg {
         /// Load from `data`
         ///
         /// Replaces existing data and request a resize. The sizing policy is
-        /// set to [`PixmapScaling::size`] using dimensions from the SVG.
+        /// set to [`Scaling::size`] using dimensions from the SVG.
         pub fn load(
             &mut self,
             cx: &mut EventState,
@@ -220,21 +221,21 @@ mod Svg {
 
         /// Adjust scaling
         ///
-        /// [`PixmapScaling::size`] is set from the SVG on loading (it may also be set here).
-        /// Other scaling parameters take their default values from [`PixmapScaling`].
+        /// [`Scaling::size`] is set from the SVG on loading (it may also be set here).
+        /// Other scaling parameters take their default values from [`Scaling`].
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut PixmapScaling)) -> Self {
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut Scaling)) -> Self {
             f(&mut self.scaling);
             self
         }
 
         /// Adjust scaling
         ///
-        /// [`PixmapScaling::size`] is set from the SVG on loading (it may also be set here).
-        /// Other scaling parameters take their default values from [`PixmapScaling`].
+        /// [`Scaling::size`] is set from the SVG on loading (it may also be set here).
+        /// Other scaling parameters take their default values from [`Scaling`].
         #[inline]
-        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut PixmapScaling)) {
+        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut Scaling)) {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
             cx.resize(self);

@@ -5,8 +5,8 @@
 
 //! 2D pixmap widget
 
+use super::Scaling;
 use kas::draw::{DrawShared, ImageHandle};
-use kas::layout::PixmapScaling;
 use kas::prelude::*;
 
 /// Image loading errors
@@ -37,7 +37,7 @@ mod Image {
     #[widget]
     pub struct Image {
         core: widget_core!(),
-        scaling: PixmapScaling,
+        scaling: Scaling,
         handle: Option<ImageHandle>,
     }
 
@@ -140,21 +140,21 @@ mod Image {
 
         /// Adjust scaling
         ///
-        /// By default, this is [`PixmapScaling::default`] except with
+        /// By default, this is [`Scaling::default`] except with
         /// `fix_aspect: true`.
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut PixmapScaling)) -> Self {
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut Scaling)) -> Self {
             f(&mut self.scaling);
             self
         }
 
         /// Adjust scaling
         ///
-        /// By default, this is [`PixmapScaling::default`] except with
+        /// By default, this is [`Scaling::default`] except with
         /// `fix_aspect: true`.
         #[inline]
-        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut PixmapScaling)) {
+        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut Scaling)) {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
             cx.resize(self);

@@ -5,8 +5,9 @@
 
 //! Canvas widget
 
+use super::Scaling;
 use kas::draw::{ImageFormat, ImageHandle};
-use kas::layout::{LogicalSize, PixmapScaling};
+use kas::layout::LogicalSize;
 use kas::prelude::*;
 use std::cell::RefCell;
 use std::future::Future;
@@ -103,7 +104,7 @@ mod Canvas {
     #[widget]
     pub struct Canvas<P: CanvasProgram> {
         core: widget_core!(),
-        scaling: PixmapScaling,
+        scaling: Scaling,
         inner: RefCell<State<P>>,
         image: Option<ImageHandle>,
     }
@@ -116,7 +117,7 @@ mod Canvas {
         pub fn new(program: P) -> Self {
             Canvas {
                 core: Default::default(),
-                scaling: PixmapScaling {
+                scaling: Scaling {
                     size: LogicalSize(128.0, 128.0),
                     stretch: Stretch::High,
                     ..Default::default()
@@ -139,10 +140,10 @@ mod Canvas {
         /// Adjust scaling
         ///
         /// Default size is 128 × 128; default stretch is [`Stretch::High`].
-        /// Other fields use [`PixmapScaling`]'s default values.
+        /// Other fields use [`Scaling`]'s default values.
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut PixmapScaling)) -> Self {
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut Scaling)) -> Self {
             f(&mut self.scaling);
             self
         }
@@ -150,9 +151,9 @@ mod Canvas {
         /// Adjust scaling
         ///
         /// Default size is 128 × 128; default stretch is [`Stretch::High`].
-        /// Other fields use [`PixmapScaling`]'s default values.
+        /// Other fields use [`Scaling`]'s default values.
         #[inline]
-        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut PixmapScaling)) {
+        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut Scaling)) {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
             cx.resize(self);
