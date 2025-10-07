@@ -17,7 +17,7 @@ use chrono::prelude::*;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::color::{Rgba, Rgba8Srgb};
+use kas::draw::color::Rgba;
 use kas::event::TimerHandle;
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
@@ -68,13 +68,13 @@ mod Clock {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            let accent: Rgba = Rgba8Srgb::parse("d7916f").into();
+            let colors = draw.colors();
             let col_back = Rgba::ga(0.0, 0.5);
-            let col_face = accent.multiply(0.4);
+            let col_face = colors.accent_soft.desaturate(0.6);
             let col_time = Rgba::grey(1.0);
             let col_date = Rgba::grey(0.8);
-            let col_hands = accent.multiply(0.7);
-            let col_secs = accent;
+            let col_hands = colors.accent_soft;
+            let col_secs = colors.accent;
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
@@ -116,8 +116,8 @@ mod Clock {
             let a_hour = f32::conv(secs % 43200) * (PI / (21600.0));
 
             line_seg(a_hour, 0.0, half * 0.55, half * 0.03, col_hands);
-            line_seg(a_min, 0.0, half * 0.8, half * 0.015, col_hands);
-            line_seg(a_sec, 0.0, half * 0.9, half * 0.005, col_secs);
+            line_seg(a_min, 0.0, half * 0.8, half * 0.02, col_hands);
+            line_seg(a_sec, 0.0, half * 0.9, half * 0.01, col_secs);
         }
     }
 
