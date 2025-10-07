@@ -16,15 +16,14 @@
 pub extern crate tiny_skia;
 
 #[cfg(feature = "canvas")] mod canvas;
+#[cfg(feature = "image")] mod image;
+#[cfg(feature = "svg")] mod svg;
+
 #[cfg(feature = "canvas")]
 pub use canvas::{Canvas, CanvasProgram};
-
-#[cfg(feature = "svg")] mod svg;
-#[cfg(feature = "svg")] pub use svg::Svg;
-
-#[cfg(feature = "image")] mod image;
 #[cfg(feature = "image")]
 pub use image::{Image, ImageError};
+#[cfg(feature = "svg")] pub use svg::Svg;
 
 /// Load a window icon from a path
 #[cfg(feature = "image")]
