@@ -7,6 +7,8 @@
 
 #![allow(clippy::self_named_constructors)]
 
+use std::ops::Add;
+
 use crate::cast::{Conv, ConvFloat};
 use thiserror::Error;
 
@@ -59,18 +61,28 @@ impl Rgba {
         Self::rgba(s, s, s, a)
     }
 
+    /// Convert to [`Rgb`]
+    pub const fn as_rgb(self) -> Rgb {
+        let Rgba { r, g, b, .. } = self;
+        Rgb { r, g, b }
+    }
+
     /// Get the sum of the three colour components
     pub fn sum(self) -> f32 {
         self.r + self.g + self.b
     }
 
-    /// Average three colour components (desaturate)
+    /// Average three colour components (fully desaturate)
     #[must_use = "method does not modify self but returns a new value"]
     pub fn average(self) -> Self {
         Self::ga(self.sum() * (1.0 / 3.0), self.a)
     }
 
     /// Multiply and clamp three colour components
+    ///
+    /// Values outside the range `0..=1` could in theory be used but may result
+    /// in components exceeding their valid range; be sure to call
+    /// [`Self::clamp_to_01`] on the result in this case.
     #[must_use = "method does not modify self but returns a new value"]
     pub fn multiply(self, x: f32) -> Self {
         debug_assert!(x >= 0.0);
@@ -82,16 +94,56 @@ impl Rgba {
         }
     }
 
-    /// Clamp each colour component to at least `min`
+    /// Partially desaturate
+    ///
+    /// `x` should be in the range `0..=1` where 0 implies no desaturation and
+    /// 1 implies full desaturation.
+    ///
+    /// Values outside the range `0..=1` could in theory be used but may result
+    /// in components exceeding their valid range; be sure to call
+    /// [`Self::clamp_to_01`] on the result in this case.
     #[must_use = "method does not modify self but returns a new value"]
-    pub fn max(self, min: f32) -> Self {
-        debug_assert!(min <= 1.0);
+    pub fn desaturate(self, x: f32) -> Self {
+        self.as_rgb().desaturate(x).with_alpha(self.a)
+    }
+
+    /// Clamp each colour component to no more than `v`
+    #[must_use = "method does not modify self but returns a new value"]
+    pub fn min(self, v: f32) -> Self {
+        debug_assert!(v >= 0.0);
         Self {
-            r: self.r.max(min),
-            g: self.g.max(min),
-            b: self.b.max(min),
+            r: self.r.min(v),
+            g: self.g.min(v),
+            b: self.b.min(v),
             a: self.a,
         }
+    }
+
+    /// Clamp each colour component to at least `v`
+    #[must_use = "method does not modify self but returns a new value"]
+    pub fn max(self, v: f32) -> Self {
+        debug_assert!(v <= 1.0);
+        Self {
+            r: self.r.max(v),
+            g: self.g.max(v),
+            b: self.b.max(v),
+            a: self.a,
+        }
+    }
+
+    /// Clamp each colour component to `u..=v`
+    #[must_use = "method does not modify self but returns a new value"]
+    pub fn clamp(self, u: f32, v: f32) -> Self {
+        debug_assert!(u <= v);
+        self.min(v).max(u)
+    }
+
+    /// Clamp each component to `0..=1`
+    #[must_use = "method does not modify self but returns a new value"]
+    pub fn clamp_to_01(self) -> Self {
+        self.as_rgb()
+            .clamp(0.0, 1.0)
+            .with_alpha(self.a.clamp(0.0, 1.0))
     }
 }
 
@@ -141,6 +193,12 @@ impl Rgb {
         Self::rgb(s, s, s)
     }
 
+    /// Add an alpha component
+    pub const fn with_alpha(self, alpha: f32) -> Rgba {
+        let Rgb { r, g, b } = self;
+        Rgba { r, g, b, a: alpha }
+    }
+
     /// Get the sum of the three colour components
     pub fn sum(self) -> f32 {
         self.r + self.g + self.b
@@ -153,6 +211,10 @@ impl Rgb {
     }
 
     /// Multiply and clamp three colour components
+    ///
+    /// Values outside the range `0..=1` could in theory be used but may result
+    /// in components exceeding their valid range; be sure to call
+    /// [`Self::clamp_to_01`] on the result in this case.
     #[must_use = "method does not modify self but returns a new value"]
     pub fn multiply(self, x: f32) -> Self {
         debug_assert!(x >= 0.0);
@@ -163,15 +225,52 @@ impl Rgb {
         }
     }
 
-    /// Clamp each colour component to at least `min`
+    /// Partially desaturate
+    ///
+    /// `x` should be in the range `0..=1` where 0 implies no desaturation and
+    /// 1 implies full desaturation.
+    ///
+    /// Values outside the range `0..=1` could in theory be used but may result
+    /// in components exceeding their valid range; be sure to call
+    /// [`Self::clamp_to_01`] on the result in this case.
     #[must_use = "method does not modify self but returns a new value"]
-    pub fn max(self, min: f32) -> Self {
-        debug_assert!(min <= 1.0);
+    pub fn desaturate(self, x: f32) -> Self {
+        self.multiply(1.0 - x) + self.average().multiply(x)
+    }
+
+    /// Clamp each colour component to no more than `v`
+    #[must_use = "method does not modify self but returns a new value"]
+    pub fn min(self, v: f32) -> Self {
+        debug_assert!(v >= 0.0);
         Self {
-            r: self.r.max(min),
-            g: self.g.max(min),
-            b: self.b.max(min),
+            r: self.r.min(v),
+            g: self.g.min(v),
+            b: self.b.min(v),
         }
+    }
+
+    /// Clamp each colour component to at least `v`
+    #[must_use = "method does not modify self but returns a new value"]
+    pub fn max(self, v: f32) -> Self {
+        debug_assert!(v <= 1.0);
+        Self {
+            r: self.r.max(v),
+            g: self.g.max(v),
+            b: self.b.max(v),
+        }
+    }
+
+    /// Clamp each colour component to `u..=v`
+    #[must_use = "method does not modify self but returns a new value"]
+    pub fn clamp(self, u: f32, v: f32) -> Self {
+        debug_assert!(u <= v);
+        self.min(v).max(u)
+    }
+
+    /// Clamp each colour component to `0..=1`
+    #[must_use = "method does not modify self but returns a new value"]
+    pub fn clamp_to_01(self) -> Self {
+        self.clamp(0.0, 1.0)
     }
 }
 
@@ -190,6 +289,17 @@ impl From<[f32; 3]> for Rgb {
 impl From<Rgb> for Rgba {
     fn from(c: Rgb) -> Self {
         Self::rgb(c.r, c.g, c.b)
+    }
+}
+
+impl Add for Rgb {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        Rgb {
+            r: self.r + rhs.r,
+            g: self.g + rhs.g,
+            b: self.b + rhs.b,
+        }
     }
 }
 
