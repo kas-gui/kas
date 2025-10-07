@@ -14,8 +14,8 @@ use chrono::Datelike;
 use kas::collection;
 use kas::config::{ConfigMsg, ThemeConfigMsg};
 use kas::dir::{Down, Right};
+use kas::image::Svg;
 use kas::prelude::*;
-use kas::resvg::Svg;
 use kas::theme::MarginStyle;
 use kas::widgets::{column, *};
 use kas::window::Popup;
@@ -629,8 +629,7 @@ fn filter_list() -> Page<AppData> {
 
 fn canvas() -> Page<AppData> {
     use kas::geom::Vec2;
-    use kas_resvg::tiny_skia::*;
-    use kas_resvg::{Canvas, CanvasProgram};
+    use kas::image::{Canvas, CanvasProgram, tiny_skia::*};
     use std::time::Instant;
 
     #[derive(Debug)]

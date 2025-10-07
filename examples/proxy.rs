@@ -78,8 +78,7 @@ mod ColourSquare {
 
         fn draw(&self, mut draw: DrawCx) {
             if let Some(color) = self.color {
-                let draw = draw.draw_device();
-                draw.rect((self.rect()).cast(), color);
+                draw.draw().rect((self.rect()).cast(), color);
             } else {
                 draw.text(self.rect(), &self.loading_text);
             }

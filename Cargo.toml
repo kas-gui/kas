@@ -34,7 +34,7 @@ minimal = ["wayland", "vulkan", "dx12", "metal"]
 # Minimal + strongly recommended features
 default = ["minimal", "clipboard", "shaping"]
 # All standard test target features
-stable = ["default", "view", "image-default-formats", "resvg", "markdown", "spawn", "accesskit", "x11", "toml", "yaml", "json", "ron", "macros_log"]
+stable = ["default", "view", "image-default-formats", "canvas", "svg", "markdown", "spawn", "accesskit", "x11", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics", "kas-core/nightly"]
 # Additional, less recommendation-worthy features
@@ -98,20 +98,20 @@ ron = ["serde", "kas-core/ron"]
 # Enable support for TOML (de)serialisation
 toml = ["serde", "kas-core/toml"]
 
-# Support image loading and decoding (does not imply any formats)
-image = ["kas-core/image", "kas-widgets/image"]
+# Support raster image loading and decoding (does not imply any formats)
+image = ["dep:kas-image", "kas-image/image"]
 # Enable all default formats of the image crate
-image-default-formats = ["kas-widgets/image-default-formats"]
+image-default-formats = ["image", "kas-image/image-default-formats"]
 # Selected image formats
-avif = ["kas-widgets/avif"]
-jpeg = ["kas-widgets/jpeg"]
-png = ["kas-widgets/png"]
-webp = ["kas-widgets/webp"]
+avif = ["image", "kas-image/avif"]
+jpeg = ["image", "kas-image/jpeg"]
+png = ["image", "kas-image/png"]
+webp = ["image", "kas-image/webp"]
 
-# Enable resvg module (Canvas + Svg widgets)
-resvg = ["dep:kas-resvg", "kas-resvg?/svg", "kas-dylib?/resvg"]
-# Enable resvg module (Canvas only)
-tiny-skia = ["dep:kas-resvg"]
+# Enable Svg widget
+svg = ["dep:kas-image", "kas-image/svg", "kas-dylib?/image"]
+# Enable Canvas widget
+canvas = ["dep:kas-image", "kas-image/canvas"]
 
 # Automatically detect usage of dark theme
 #
@@ -141,7 +141,7 @@ kas-core = { version = "0.16.1", path = "crates/kas-core" }
 kas-dylib = { version = "0.16.0", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.16.1", path = "crates/kas-widgets" }
 kas-view = { version = "0.16.0", path = "crates/kas-view", optional = true }
-kas-resvg = { version = "0.16.0", path = "crates/kas-resvg", optional = true }
+kas-image = { version = "0.16.0", path = "crates/kas-image", optional = true }
 
 [dependencies.kas-wgpu]
 version = "0.16.0"
@@ -150,7 +150,7 @@ optional = true
 default-features = false
 
 [dev-dependencies]
-kas = { path = ".", features = ["view", "markdown", "resvg"] }
+kas = { path = ".", features = ["view", "markdown", "svg", "canvas"] }
 chrono = "0.4"
 env_logger = "0.11"
 log = "0.4"
@@ -160,7 +160,7 @@ members = [
     "crates/kas-core",
     "crates/kas-dylib",
     "crates/kas-macros",
-    "crates/kas-resvg",
+    "crates/kas-image",
     "crates/kas-wgpu",
     "crates/kas-widgets",
     "crates/kas-view",

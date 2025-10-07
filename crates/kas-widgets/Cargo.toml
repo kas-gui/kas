@@ -17,23 +17,11 @@ exclude = ["/screenshots"]
 features = ["kas/wayland"]
 rustdoc-args = ["--cfg", "docsrs"]
 
-[features]
-# Support images (this does not imply support for any formats)
-image = ["dep:image"]
-# Enable all default formats of the image crate
-image-default-formats = ["image/default-formats"]
-# Selected image formats
-avif = ["image/avif"]
-jpeg = ["image/jpeg"]
-png = ["image/png"]
-webp = ["image/webp"]
-
 [dependencies]
 log = "0.4"
 smallvec = "1.6.1"
 unicode-segmentation = "1.7"
 thiserror = "2.0.3"
-image = { version = "0.25.1", default-features = false, optional = true }
 kas-macros = { version = "0.16.0", path = "../kas-macros" }
 linear-map = "1.2.0"
 

@@ -5,12 +5,10 @@
 
 //! Types used by size rules
 
-use super::{AlignPair, AxisInfo, SizeRules};
+use super::SizeRules;
 use crate::cast::*;
 use crate::dir::Directional;
-use crate::geom::{Rect, Size, Vec2};
-use crate::theme::MarginStyle;
-use kas_macros::impl_scope;
+use crate::geom::{Size, Vec2};
 
 // for doc use
 #[allow(unused)] use crate::theme::SizeCx;
@@ -209,81 +207,6 @@ pub enum Stretch {
     High,
     /// Greedily consume as much space as possible
     Maximize,
-}
-
-impl_scope! {
-    /// Control over scaling
-    #[impl_default]
-    #[derive(Clone, Debug, PartialEq)]
-    pub struct PixmapScaling {
-        /// Margins
-        pub margins: MarginStyle,
-        /// Display size
-        ///
-        /// This may be set by the providing type or by the user.
-        pub size: LogicalSize,
-        /// Minimum size relative to [`Self::size`]
-        ///
-        /// Default: `1.0`
-        pub min_factor: f32 = 1.0,
-        /// Ideal size relative to [`Self::size`]
-        ///
-        /// Default: `1.0`
-        pub ideal_factor: f32 = 1.0,
-        /// If true, aspect ratio is fixed relative to [`Self::size`]
-        ///
-        /// Default: `true`
-        pub fix_aspect: bool = true,
-        /// Widget stretchiness
-        ///
-        /// If is `None`, max size is limited to ideal size.
-        pub stretch: Stretch,
-        /// The assigned [`Rect`]
-        pub rect: Rect,
-    }
-}
-
-impl PixmapScaling {
-    /// Generates [`SizeRules`] based on size
-    pub fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let margins = sizer.margins(self.margins).extract(axis);
-        let scale_factor = sizer.scale_factor();
-        let min = self
-            .size
-            .to_physical(scale_factor * self.min_factor)
-            .extract(axis);
-        let ideal = self
-            .size
-            .to_physical(scale_factor * self.ideal_factor)
-            .extract(axis);
-        SizeRules::new(min, ideal, margins, self.stretch)
-    }
-
-    /// Constrains and aligns within `rect`
-    ///
-    /// The resulting size is then aligned using the `align` hints, defaulting to centered.
-    pub fn set_rect(&mut self, rect: Rect, align: AlignPair, scale_factor: f32) {
-        let mut size = rect.size;
-
-        if self.stretch == Stretch::None {
-            let ideal = self.size.to_physical(scale_factor * self.ideal_factor);
-            size = size.min(ideal);
-        }
-
-        if self.fix_aspect {
-            let logical_size = Vec2::from(self.size);
-            let Vec2(rw, rh) = Vec2::conv(size) / logical_size;
-
-            // Use smaller ratio, if any is finite
-            if rw < rh {
-                size.1 = i32::conv_nearest(rw * logical_size.1);
-            } else if rh < rw {
-                size.0 = i32::conv_nearest(rh * logical_size.0);
-            }
-        }
-
-        self.rect = align.aligned_rect(size, rect);
-    }
 }
 
 /// Frame size rules

@@ -1,10 +1,12 @@
-KAS resvg
-======
+KAS Image
+=========
 
-This crate provides `Svg` and `Canvas` widgets for [KAS] using the [tiny-skia] and
-[resvg] libraries by [Yevhenii Reizner "RazrFalcon"](https://github.com/RazrFalcon/).
+This crate provides widgets and utilities for both scalable and raster images.
 
-[KAS]: https://crates.io/crates/kas
+The principal dependencies are:
+
+-   The [tiny-skia] and [resvg] libraries by [Yevhenii Reizner "RazrFalcon"](https://github.com/RazrFalcon/).
+
 [tiny-skia]: https://crates.io/crates/tiny-skia
 [resvg]: https://crates.io/crates/resvg
 

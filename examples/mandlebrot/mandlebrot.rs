@@ -347,7 +347,7 @@ mod Mandlebrot {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            let draw = draw.draw_device();
+            let draw = draw.draw();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let alpha = self.transform.alpha().get_vec2();
             let delta = self.transform.delta();

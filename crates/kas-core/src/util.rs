@@ -6,7 +6,6 @@
 //! Utilities
 
 use crate::geom::Coord;
-#[cfg(feature = "image")] use crate::window::Icon;
 use crate::{ChildIndices, Id, Tile, TileExt};
 use std::{error::Error, fmt, path::Path};
 
@@ -185,19 +184,6 @@ pub fn nav_next(reverse: bool, from: Option<usize>, indices: ChildIndices) -> Op
             true => Some(last),
         }
     }
-}
-
-/// Load a window icon from a path
-#[cfg(feature = "image")]
-pub fn load_icon_from_path<P: AsRef<std::path::Path>>(path: P) -> Result<Icon, Box<dyn Error>> {
-    // TODO(opt): image loading could be de-duplicated with
-    // DrawShared::image_from_path, but this may not be worthwhile.
-    let im = image::ImageReader::open(path)?
-        .with_guessed_format()?
-        .decode()?
-        .into_rgba8();
-    let (w, h) = im.dimensions();
-    Ok(Icon::from_rgba(im.into_vec(), w, h)?)
 }
 
 /// Log a warning regarding an error message

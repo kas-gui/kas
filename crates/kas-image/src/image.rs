@@ -5,8 +5,8 @@
 
 //! 2D pixmap widget
 
+use super::Scaling;
 use kas::draw::{DrawShared, ImageHandle};
-use kas::layout::PixmapScaling;
 use kas::prelude::*;
 
 /// Image loading errors
@@ -28,20 +28,16 @@ impl From<kas::draw::AllocError> for ImageError {
     }
 }
 
-/// Image `Result` type
-#[cfg(feature = "image")]
-pub type Result<T> = std::result::Result<T, ImageError>;
-
 #[impl_self]
 mod Image {
-    /// An image with margins
+    /// A raster iamge
     ///
     /// May be default constructed (result is empty).
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct Image {
         core: widget_core!(),
-        scaling: PixmapScaling,
+        scaling: Scaling,
         handle: Option<ImageHandle>,
     }
 
@@ -65,7 +61,7 @@ mod Image {
         pub fn new_path<P: AsRef<std::path::Path>>(
             path: P,
             draw: &mut dyn DrawShared,
-        ) -> Result<Self> {
+        ) -> Result<Self, ImageError> {
             let mut sprite = Self::default();
             sprite._load_path(path, draw)?;
             Ok(sprite)
@@ -99,7 +95,7 @@ mod Image {
             cx: &mut EventState,
             path: P,
             draw: &mut dyn DrawShared,
-        ) -> Result<()> {
+        ) -> Result<(), ImageError> {
             self._load_path(path, draw).map(|_| {
                 cx.resize(self);
             })
@@ -110,7 +106,7 @@ mod Image {
             &mut self,
             path: P,
             draw: &mut dyn DrawShared,
-        ) -> Result<()> {
+        ) -> Result<(), ImageError> {
             let image = image::ImageReader::open(path)?
                 .with_guessed_format()?
                 .decode()?;
@@ -144,21 +140,21 @@ mod Image {
 
         /// Adjust scaling
         ///
-        /// By default, this is [`PixmapScaling::default`] except with
+        /// By default, this is [`Scaling::default`] except with
         /// `fix_aspect: true`.
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut PixmapScaling)) -> Self {
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut Scaling)) -> Self {
             f(&mut self.scaling);
             self
         }
 
         /// Adjust scaling
         ///
-        /// By default, this is [`PixmapScaling::default`] except with
+        /// By default, this is [`Scaling::default`] except with
         /// `fix_aspect: true`.
         #[inline]
-        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut PixmapScaling)) {
+        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut Scaling)) {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
             cx.resize(self);

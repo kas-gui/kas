@@ -10,11 +10,12 @@ use winit::keyboard::Key;
 use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::color::{ParseError, Rgb};
-use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
+use crate::draw::{Draw, DrawIface, DrawRounded, DrawShared, DrawSharedImpl, ImageId, PassType};
 #[allow(unused)] use crate::event::{Command, Event};
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::text::{Effect, TextDisplay, format::FormattableText};
+use crate::theme::ColorsLinear;
 use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
 use std::ops::Range;
@@ -68,7 +69,7 @@ impl std::str::FromStr for Background {
 /// Draw interface
 ///
 /// This interface is provided to widgets in [`crate::Layout::draw`].
-/// Lower-level interfaces may be accessed through [`Self::draw_device`].
+/// Lower-level interfaces may be accessed through [`Self::draw`].
 ///
 /// `DrawCx` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
 /// via [`Self::re`].
@@ -132,6 +133,11 @@ impl<'a> DrawCx<'a> {
         f(&mut cx)
     }
 
+    /// Access theme colors
+    pub fn colors(&self) -> &ColorsLinear {
+        self.h.colors()
+    }
+
     /// Access a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         self.h.components().1.shared()
@@ -142,15 +148,20 @@ impl<'a> DrawCx<'a> {
     /// Note: this drawing API is modular, with limited functionality in the
     /// base trait [`Draw`]. To access further functionality, it is necessary
     /// to downcast with [`crate::draw::DrawIface::downcast_from`].
-    pub fn draw_device(&mut self) -> &mut dyn Draw {
+    pub fn draw(&mut self) -> &mut dyn Draw {
         self.h.components().1
+    }
+
+    /// Access the draw device as a [`DrawRounded`] implementation
+    pub fn draw_rounded(&mut self) -> Option<&mut dyn DrawRounded> {
+        self.h.draw_rounded()
     }
 
     /// Access the low-level draw device (implementation type)
     ///
     /// The implementing type must be specified. See [`DrawIface::downcast_from`].
     pub fn draw_iface<DS: DrawSharedImpl>(&mut self) -> Option<DrawIface<'_, DS>> {
-        DrawIface::downcast_from(self.draw_device())
+        DrawIface::downcast_from(self.draw())
     }
 
     /// Draw to a new pass
@@ -461,6 +472,14 @@ impl<'a> DrawCx<'a> {
 pub trait ThemeDraw {
     /// Access components: [`ThemeSize`], [`Draw`], [`EventState`]
     fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState);
+
+    /// Access theme colors
+    fn colors(&self) -> &ColorsLinear;
+
+    /// Access draw device over [`DrawRounded`] (if available)
+    ///
+    /// TODO(Rust): remove once Rust supports downcast to trait objects
+    fn draw_rounded(&mut self) -> Option<&mut dyn DrawRounded>;
 
     /// Construct a new pass
     fn new_pass<'a>(
