@@ -421,7 +421,23 @@ mod GridView {
         // Call after scrolling to re-map widgets (if required)
         //
         // This auto-detects whether remapping is required, unless `self.token_update` is set.
+        #[inline]
         fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
+            self.handle_update(cx, data, Changes::None);
+        }
+
+        // Handle a data clerk update or change in view position
+        fn handle_update(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            changes: Changes<GridIndex>,
+        ) {
+            // TODO(opt): let Changes::Range only update a sub-set of items
+            if matches!(changes, Changes::Range(_) | Changes::Any) {
+                self.token_update = self.token_update.max(Update::Token);
+            }
+
             let offset = self.scroll_offset();
             let skip = (self.child_size + self.child_inter_margin).max(Size(1, 1));
             let first_col = u32::conv(u64::conv(offset.0) / u64::conv(skip.0));
@@ -433,7 +449,7 @@ mod GridView {
             };
 
             let data_len;
-            if !self.len_is_known {
+            if !self.len_is_known || changes != Changes::None {
                 let result = self.clerk.len(data, lbound);
                 self.len_is_known = result.is_known();
                 data_len = result.len();
@@ -558,58 +574,6 @@ mod GridView {
                 end.col - start.col,
                 end.row - start.row,
             );
-        }
-
-        // Handle a data clerk update
-        fn handle_clerk_update(
-            &mut self,
-            cx: &mut ConfigCx,
-            data: &C::Data,
-            changes: Changes<GridIndex>,
-        ) {
-            let start = self.first_data;
-            let end = self.first_data + self.cur_len;
-
-            let lbound = GridIndex {
-                col: start.col + 2 * self.alloc_len.col,
-                row: start.row + 2 * self.alloc_len.row,
-            };
-            let data_len = self.clerk.len(data, lbound);
-            self.len_is_known = data_len.is_known();
-            let data_len = data_len.len();
-            if data_len != self.data_len {
-                let old_len = self.data_len;
-                self.data_len = data_len;
-
-                let cur_len = data_len.min(self.alloc_len);
-                if self.cur_len.col != cur_len.col
-                    || self.cur_len.row != cur_len.row
-                    || end.col >= data_len.col.min(old_len.col)
-                    || end.row >= data_len.row.min(old_len.row)
-                {
-                    self.cur_len = cur_len;
-                    self.token_update = self.token_update.max(Update::Token);
-                    return self.post_scroll(cx, data);
-                }
-            }
-
-            let range = match changes {
-                Changes::None | Changes::NoPreparedItems => start..start,
-                Changes::Range(range) => {
-                    let start = GridIndex {
-                        col: start.col.max(range.start.col),
-                        row: start.row.max(range.start.row),
-                    };
-                    let end = end.min(range.end);
-                    start..end
-                }
-                Changes::Any => start..end,
-            };
-
-            if range.start.col < range.end.col && range.start.row < range.end.row {
-                self.token_update = self.token_update.max(Update::Token);
-                return self.map_view_widgets(cx, data, start..end);
-            }
         }
 
         /// Returns true if anything changed
@@ -883,10 +847,8 @@ mod GridView {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
-            if self.token_update != Update::None {
-                self.post_scroll(cx, data);
-            } else if changes != Changes::None {
-                self.handle_clerk_update(cx, data, changes);
+            if self.token_update != Update::None || changes != Changes::None {
+                self.handle_update(cx, data, changes);
             }
 
             let id = self.id();
@@ -1060,7 +1022,7 @@ mod GridView {
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
             if changes != Changes::None {
-                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
+                self.handle_update(&mut cx.config_cx(), data, changes);
             }
         }
 
