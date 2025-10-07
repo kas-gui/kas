@@ -7,7 +7,7 @@
 //!
 //! Demonstrates low-level drawing and timer handling.
 //!
-//! Note that two forms of animation are possible: calling `draw.draw_device().animate();`
+//! Note that two forms of animation are possible: calling `draw.draw().animate();`
 //! in `fn Clock::draw`, or using `Event::Timer`. We use the latter since
 //! it lets us draw at 1 FPS with exactly the right frame time.
 
@@ -18,15 +18,10 @@ use std::f32::consts::PI;
 use std::time::Duration;
 
 use kas::draw::color::{Rgba, Rgba8Srgb};
-use kas::draw::{Draw, DrawRounded};
 use kas::event::TimerHandle;
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
-use kas::runner;
 use kas::text::Text;
-
-type Runner = kas::runner::Runner<(), kas::theme::SimpleTheme>;
-type DrawShared = <Runner as runner::RunnerInherent>::DrawShared;
 
 const TIMER: TimerHandle = TimerHandle::new(0, true);
 
@@ -83,7 +78,7 @@ mod Clock {
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
-            let mut draw = draw.draw_iface::<DrawShared>().unwrap();
+            let draw = draw.draw_rounded().unwrap();
 
             let rect = self.rect();
             let quad = Quad::conv(rect);
@@ -177,7 +172,7 @@ fn main() -> kas::runner::Result<()> {
         .with_decorations(kas::window::Decorations::None)
         .with_transparent(true);
 
-    Runner::with_theme(Default::default())
+    kas::runner::Runner::with_theme(kas::theme::SimpleTheme::default())
         .build(())?
         .with(window)
         .run()

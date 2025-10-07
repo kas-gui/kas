@@ -10,7 +10,7 @@
 //! -   High-level "themed widget components" are available through
 //!     [`DrawCx`]. This is the primary drawing interface for widgets.
 //! -   Basic drawing components (shapes) are available through [`DrawIface`]
-//!     in this module. This can be accessed via [`DrawCx::draw_device`].
+//!     in this module. This can be accessed via [`DrawCx::draw`].
 //! -   The graphics backend may support custom pipelines, for example
 //!     [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html)
 //!     (used by the [Mandlebrot example](https://github.com/kas-gui/kas/tree/master/examples/mandlebrot)).

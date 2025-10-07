@@ -213,6 +213,10 @@ where
         (self.w, &mut self.draw, self.ev)
     }
 
+    fn draw_rounded(&mut self) -> Option<&mut dyn DrawRounded> {
+        Some(&mut self.draw)
+    }
+
     fn new_pass<'b>(
         &mut self,
         inner_rect: Rect,

@@ -19,7 +19,7 @@ use std::time::Instant;
 /// functionality over this object.
 ///
 /// This type is used to present a unified mid-level draw interface, as
-/// available from [`crate::theme::DrawCx::draw_device`].
+/// available from [`crate::theme::DrawCx::draw`].
 /// A concrete `DrawIface` object may be obtained via downcast, e.g.:
 /// ```ignore
 /// # use kas::draw::{DrawIface, DrawRoundedImpl, DrawSharedImpl, DrawCx, DrawRounded, color::Rgba};
@@ -32,7 +32,7 @@ use std::time::Instant;
 ///     fn draw(&self, mut draw: DrawCx) {
 ///         // This type assumes usage of kas_wgpu without a custom draw pipe:
 ///         type DrawIface = DrawIface<kas_wgpu::draw::DrawPipe<()>>;
-///         if let Some(mut draw) = DrawIface::downcast_from(draw.draw_device()) {
+///         if let Some(mut draw) = DrawIface::downcast_from(draw.draw()) {
 ///             draw.circle(self.rect.into(), 0.9, Rgba::BLACK);
 ///         }
 ///     }
