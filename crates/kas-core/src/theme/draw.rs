@@ -15,6 +15,7 @@ use crate::draw::{Draw, DrawIface, DrawRounded, DrawShared, DrawSharedImpl, Imag
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::text::{Effect, TextDisplay, format::FormattableText};
+use crate::theme::ColorsLinear;
 use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
 use std::ops::Range;
@@ -130,6 +131,11 @@ impl<'a> DrawCx<'a> {
         let (sh, _, ev) = self.h.components();
         let mut cx = ConfigCx::new(sh, ev);
         f(&mut cx)
+    }
+
+    /// Access theme colors
+    pub fn colors(&self) -> &ColorsLinear {
+        self.h.colors()
     }
 
     /// Access a [`DrawShared`]
@@ -466,6 +472,9 @@ impl<'a> DrawCx<'a> {
 pub trait ThemeDraw {
     /// Access components: [`ThemeSize`], [`Draw`], [`EventState`]
     fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState);
+
+    /// Access theme colors
+    fn colors(&self) -> &ColorsLinear;
 
     /// Access draw device over [`DrawRounded`] (if available)
     ///

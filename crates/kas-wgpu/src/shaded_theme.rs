@@ -182,6 +182,10 @@ where
         (self.w, &mut self.draw, self.ev)
     }
 
+    fn colors(&self) -> &ColorsLinear {
+        &self.cols
+    }
+
     fn draw_rounded(&mut self) -> Option<&mut dyn DrawRounded> {
         Some(&mut self.draw)
     }
