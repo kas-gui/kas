@@ -150,15 +150,22 @@ impl_2D!(u64);
 pub enum Changes<Index> {
     /// Indicates that no changes to the data set occurred.
     None,
-    /// Indicates that changes to the data set may have occurred, but that key,
-    /// token and item values are unchanged for the `view_range`.
+    /// Indicates that the data length may have changed and/or items outside the
+    /// current `view_range` may have changed.
+    ///
+    /// I.e. this variant is applicable when within the subset of `view_range`
+    /// and the new data range (`0..len)`, no index-key pairs have changed (no
+    /// re-ordering) and no item or token values have changed.
     NoPreparedItems,
-    /// Indicates that tokens for the given range may require an update
-    /// and/or that items for the given range have changed.
+    /// Indicates that the data length may have changed and that keys and/or
+    /// values within the given range may have changed.
+    ///
     /// [`TokenClerk::update_token`] will be called for each index in the
     /// intersection of the given range with the `view_range`.
     Range(Range<Index>),
     /// `Any` indicates that changes to the data set may have occurred.
+    ///
+    /// This is equivalent to `Changes::Range(full_data_range)`.
     Any,
 }
 

@@ -476,13 +476,24 @@ mod ListView {
         }
 
         // Call after scrolling to re-map widgets (if required)
+        #[inline]
         fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
+            self.handle_update(cx, data, Changes::None);
+        }
+
+        // Handle a data clerk update or change in view position
+        fn handle_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: Changes<usize>) {
+            // TODO(opt): let Changes::Range only update a sub-set of items
+            if matches!(changes, Changes::Range(_) | Changes::Any) {
+                self.token_update = self.token_update.max(Update::Token);
+            }
+
             let offset = self.scroll_offset().extract(self.direction);
             let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
 
             let alloc_len = self.widgets.len();
             let data_len;
-            if !self.len_is_known {
+            if !self.len_is_known || changes != Changes::None {
                 let lbound = first_data + 2 * alloc_len;
                 let result = self.clerk.len(data, lbound);
                 self.len_is_known = result.is_known();
@@ -581,45 +592,6 @@ mod ListView {
                 "map_view_widgets: {} view widgets in: {dur}μs",
                 range.len(),
             );
-        }
-
-        // Handle a data clerk update
-        fn handle_clerk_update(
-            &mut self,
-            cx: &mut ConfigCx,
-            data: &C::Data,
-            changes: Changes<usize>,
-        ) {
-            let start: usize = self.first_data.cast();
-            let end = start + usize::conv(self.cur_len);
-
-            let lbound = usize::conv(start) + 2 * self.widgets.len();
-            let data_len = self.clerk.len(data, lbound);
-            self.len_is_known = data_len.is_known();
-            let data_len = data_len.len().cast();
-
-            if data_len != self.data_len {
-                let old_len = self.data_len;
-                self.data_len = data_len;
-
-                let cur_len = data_len.min(self.widgets.len().cast());
-                if self.cur_len != cur_len || end >= usize::conv(data_len.min(old_len)) {
-                    self.cur_len = cur_len;
-                    self.token_update = self.token_update.max(Update::Token);
-                    return self.post_scroll(cx, data);
-                }
-            }
-
-            let range = match changes {
-                Changes::None | Changes::NoPreparedItems => 0..0,
-                Changes::Range(range) => start.max(range.start)..end.min(range.end),
-                Changes::Any => start..end,
-            };
-
-            if !range.is_empty() {
-                self.token_update = self.token_update.max(Update::Token);
-                self.map_view_widgets(cx, data, range);
-            }
         }
 
         /// Returns true if anything changed
@@ -882,12 +854,12 @@ mod ListView {
             // Self::update() will be called next
         }
 
+        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
+
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
-            if self.token_update != Update::None {
-                self.post_scroll(cx, data);
-            } else if changes != Changes::None {
-                self.handle_clerk_update(cx, data, changes);
+            if self.token_update != Update::None || changes != Changes::None {
+                self.handle_update(cx, data, changes);
             }
 
             let id = self.id();
@@ -1054,7 +1026,7 @@ mod ListView {
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
             if changes != Changes::None {
-                self.handle_clerk_update(&mut cx.config_cx(), data, changes);
+                self.handle_update(&mut cx.config_cx(), data, changes);
             }
         }
 
