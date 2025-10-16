@@ -597,7 +597,7 @@ impl SizeRules {
 
     /// Ensure at least one of `rules` has stretch priority at least as high as self
     ///
-    /// The stretch policies are increased according to the heighest `scores`.
+    /// The stretch policies are increased according to the highest `scores`.
     /// Required: `rules.len() == scores.len()`.
     pub(crate) fn distribute_stretch_over_by(self, rules: &mut [Self], scores: &[u32]) {
         assert_eq!(rules.len(), scores.len());
@@ -615,8 +615,8 @@ impl SizeRules {
 
     /// Adjust a sequence of `rules` to ensure that the total is at least `self`
     ///
-    /// This is used by grids to ensure that cell spans are sufficiently large.
-    pub fn distribute_span_over(self, rules: &mut [Self]) {
+    /// This is a cheap hack used by grids to ensure that cell spans are sufficiently large.
+    pub(crate) fn distribute_span_over(self, rules: &mut [Self]) {
         let len = rules.len();
         assert!(len > 0);
         let len1 = len - 1;
