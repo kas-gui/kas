@@ -9,6 +9,7 @@ use super::Scaling;
 use kas::draw::{ImageFormat, ImageHandle};
 use kas::layout::LogicalSize;
 use kas::prelude::*;
+use kas::theme::MarginStyle;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -133,9 +134,18 @@ impl State {
 
 #[impl_self]
 mod Svg {
-    /// An SVG image loaded from a path
+    /// An SVG image widget
     ///
     /// May be default constructed (result is empty).
+    ///
+    /// The size of the widget is inferred from the SVG source in logical pixels
+    /// then scaled by the display's scale factor. If a different size should be
+    /// used it must be set after loading the SVG data.
+    ///
+    /// By default, the drawn SVG will not be allowed to scale above its
+    /// specified size; if the widget is forced to stretch, content will be
+    /// positioned within this space according to alignment rules (centered by
+    /// default).
     #[autoimpl(Debug ignore self.inner)]
     #[derive(Clone, Default)]
     #[widget]
@@ -151,6 +161,8 @@ mod Svg {
         ///
         /// Returns an error if the SVG fails to parse. If using this method
         /// with [`include_bytes`] it is probably safe to unwrap.
+        ///
+        /// The (logical) size of the widget is set to that from the SVG source.
         pub fn new(data: &'static [u8]) -> Result<Self, impl std::error::Error> {
             let mut svg = Svg::default();
             let source = Source::Static(data, None);
@@ -166,8 +178,8 @@ mod Svg {
 
         /// Load from `data`
         ///
-        /// Replaces existing data and request a resize. The sizing policy is
-        /// set to [`Scaling::size`] using dimensions from the SVG.
+        /// Replaces existing data and request a resize. The size is inferred
+        /// from the SVG using units of logical pixels.
         pub fn load(
             &mut self,
             cx: &mut EventState,
@@ -208,37 +220,47 @@ mod Svg {
             Ok(self.load_source(source)?)
         }
 
-        /// Assign size
-        ///
-        /// By default, size is derived from the loaded SVG. See also
-        /// [`Self::with_scaling`] and [`Self::set_scaling`] for more options.
-        #[inline]
+        /// Set size in logical pixels
+        pub fn set_logical_size(&mut self, size: impl Into<LogicalSize>) {
+            self.scaling.size = size.into();
+        }
+
+        /// Set size in logical pixels (inline)
         #[must_use]
-        pub fn with_size(mut self, size: LogicalSize) -> Self {
-            self.scaling.size = size;
+        pub fn with_logical_size(mut self, size: impl Into<LogicalSize>) -> Self {
+            self.scaling.size = size.into();
             self
         }
 
-        /// Adjust scaling
+        /// Set the margin style (inline)
         ///
-        /// [`Scaling::size`] is set from the SVG on loading (it may also be set here).
-        /// Other scaling parameters take their default values from [`Scaling`].
-        #[inline]
+        /// By default, this is [`MarginStyle::Large`].
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut Scaling)) -> Self {
-            f(&mut self.scaling);
+        #[inline]
+        pub fn with_margin_style(mut self, style: MarginStyle) -> Self {
+            self.scaling.margins = style;
             self
         }
 
-        /// Adjust scaling
+        /// Control whether the aspect ratio is fixed (inline)
         ///
-        /// [`Scaling::size`] is set from the SVG on loading (it may also be set here).
-        /// Other scaling parameters take their default values from [`Scaling`].
+        /// By default this is fixed.
+        #[must_use]
         #[inline]
-        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut Scaling)) {
-            f(&mut self.scaling);
-            // NOTE: if only `aspect` is changed, REDRAW is enough
-            cx.resize(self);
+        pub fn with_fixed_aspect_ratio(mut self, fixed: bool) -> Self {
+            self.scaling.fix_aspect = fixed;
+            self
+        }
+
+        /// Set the stretch factor (inline)
+        ///
+        /// By default this is [`Stretch::None`]. Particular to this widget,
+        /// [`Stretch::None`] will avoid stretching of content, aligning instead.
+        #[must_use]
+        #[inline]
+        pub fn with_stretch(mut self, stretch: Stretch) -> Self {
+            self.scaling.stretch = stretch;
+            self
         }
     }
 

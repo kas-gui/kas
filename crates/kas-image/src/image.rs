@@ -7,7 +7,9 @@
 
 use super::Scaling;
 use kas::draw::{DrawShared, ImageHandle};
+use kas::layout::LogicalSize;
 use kas::prelude::*;
+use kas::theme::MarginStyle;
 
 /// Image loading errors
 #[cfg(feature = "image")]
@@ -138,26 +140,47 @@ mod Image {
             }
         }
 
-        /// Adjust scaling
-        ///
-        /// By default, this is [`Scaling::default`] except with
-        /// `fix_aspect: true`.
-        #[inline]
+        /// Set size in logical pixels
+        pub fn set_logical_size(&mut self, size: impl Into<LogicalSize>) {
+            self.scaling.size = size.into();
+        }
+
+        /// Set size in logical pixels (inline)
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut Scaling)) -> Self {
-            f(&mut self.scaling);
+        pub fn with_logical_size(mut self, size: impl Into<LogicalSize>) -> Self {
+            self.scaling.size = size.into();
             self
         }
 
-        /// Adjust scaling
+        /// Set the margin style (inline)
         ///
-        /// By default, this is [`Scaling::default`] except with
-        /// `fix_aspect: true`.
+        /// By default, this is [`MarginStyle::Large`].
+        #[must_use]
         #[inline]
-        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut Scaling)) {
-            f(&mut self.scaling);
-            // NOTE: if only `aspect` is changed, REDRAW is enough
-            cx.resize(self);
+        pub fn with_margin_style(mut self, style: MarginStyle) -> Self {
+            self.scaling.margins = style;
+            self
+        }
+
+        /// Control whether the aspect ratio is fixed (inline)
+        ///
+        /// By default this is fixed.
+        #[must_use]
+        #[inline]
+        pub fn with_fixed_aspect_ratio(mut self, fixed: bool) -> Self {
+            self.scaling.fix_aspect = fixed;
+            self
+        }
+
+        /// Set the stretch factor (inline)
+        ///
+        /// By default this is [`Stretch::None`]. Particular to this widget,
+        /// [`Stretch::None`] will avoid stretching of content, aligning instead.
+        #[must_use]
+        #[inline]
+        pub fn with_stretch(mut self, stretch: Stretch) -> Self {
+            self.scaling.stretch = stretch;
+            self
         }
     }
 
