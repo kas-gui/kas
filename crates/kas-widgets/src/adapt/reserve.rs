@@ -37,8 +37,7 @@ mod Reserve {
         /// use kas::prelude::*;
         ///
         /// let label = Reserve::new(Filler::new(), |sizer: SizeCx<'_>, axis| {
-        ///     let size = i32::conv_ceil(sizer.scale_factor() * 100.0);
-        ///     SizeRules::fixed(size, (0, 0))
+        ///     sizer.logical(100.0, 100.0).build(axis)
         /// });
         ///```
         /// The resulting `SizeRules` will be the max of those for the inner widget

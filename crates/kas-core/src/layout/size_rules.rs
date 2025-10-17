@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use std::iter::Sum;
 
 use super::{Margins, Stretch};
-use crate::cast::{Cast, CastFloat, Conv};
+use crate::cast::{Cast, Conv};
 use crate::dir::Directional;
 use crate::geom::Size;
 
@@ -124,18 +124,6 @@ impl SizeRules {
     #[inline]
     pub fn fixed_splat(size: i32, margin: u16) -> Self {
         Self::fixed(size, (margin, margin))
-    }
-
-    /// A fixed size, scaled from virtual pixels
-    ///
-    /// This is a shortcut to [`SizeRules::fixed`] using virtual-pixel sizes
-    /// and a scale factor. It also assumes both margins are equal.
-    #[inline]
-    pub fn fixed_scaled(size: f32, margins: f32, scale_factor: f32) -> Self {
-        debug_assert!(size >= 0.0 && margins >= 0.0);
-        let size = (scale_factor * size).cast_nearest();
-        let m = (scale_factor * margins).cast_nearest();
-        SizeRules::fixed(size, (m, m))
     }
 
     /// Construct rules from given data

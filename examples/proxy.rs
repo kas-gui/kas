@@ -66,8 +66,8 @@ mod ColourSquare {
         }
     }
     impl Layout for ColourSquare {
-        fn size_rules(&mut self, sizer: SizeCx, _axis: AxisInfo) -> SizeRules {
-            SizeRules::fixed_scaled(100.0, 10.0, sizer.scale_factor())
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            sizer.logical(100.0, 100.0).build(axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {

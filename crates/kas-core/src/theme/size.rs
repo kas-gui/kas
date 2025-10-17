@@ -9,7 +9,7 @@ use super::{Feature, FrameStyle, MarginStyle, SizableText, Text, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
 use crate::geom::Rect;
-use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
+use crate::layout::{AlignPair, AxisInfo, FrameRules, LogicalBuilder, Margins, SizeRules};
 use crate::text::format::FormattableText;
 use std::ops::Deref;
 
@@ -72,6 +72,11 @@ impl<'a> SizeCx<'a> {
     /// resized via [`crate::Layout::size_rules`].
     pub fn scale_factor(&self) -> f32 {
         self.0.scale_factor()
+    }
+
+    /// Build [`SizeRules`] from the input size in logical pixels
+    pub fn logical(&self, width: f32, height: f32) -> LogicalBuilder {
+        LogicalBuilder::new((width, height), self.scale_factor())
     }
 
     /// The Em size of the standard font in pixels
