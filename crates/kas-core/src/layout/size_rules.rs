@@ -337,8 +337,10 @@ impl SizeRules {
     /// The method attempts to ensure that:
     ///
     /// -   All widths are at least their minimum size requirement
-    /// -   The sum of widths plus margins between items equals `target`, if
-    ///     all minimum sizes are met
+    /// -   If all rules use `Stretch::None`, then widths are not increased over
+    ///     their ideal size.
+    /// -   The sum of widths plus margins between items equals `target`
+    ///     (except as required to meet the above criteria).
     /// -   All widths are at least their ideal size requirement, if this can be
     ///     met without decreasing any widths
     /// -   Excess space is divided evenly among members with the highest
@@ -460,6 +462,9 @@ impl SizeRules {
                     // If highest stretch is None, do not expand beyond ideal.
                     sum = 0;
                     let highest_stretch = total.stretch;
+                    if highest_stretch == Stretch::None {
+                        return;
+                    }
                     let mut targets = Targets::new();
                     let mut over = 0;
                     for i in 0..N {
