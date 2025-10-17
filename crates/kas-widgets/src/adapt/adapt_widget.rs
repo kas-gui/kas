@@ -156,7 +156,7 @@ pub trait AdaptWidget: Widget + Sized {
         let size = Vec2(w.cast(), h.cast());
         Reserve::new(self, move |sizer: SizeCx, axis: AxisInfo| {
             let size = size.extract(axis) * sizer.scale_factor();
-            SizeRules::fixed(size.cast_ceil(), (0, 0))
+            SizeRules::fixed(size.cast_ceil())
         })
     }
 
@@ -170,7 +170,7 @@ pub trait AdaptWidget: Widget + Sized {
         let size = Vec2(w, h);
         Reserve::new(self, move |sizer: SizeCx, axis: AxisInfo| {
             let size = size.extract(axis) * sizer.dpem();
-            SizeRules::fixed(size.cast_ceil(), (0, 0))
+            SizeRules::fixed(size.cast_ceil())
         })
     }
 

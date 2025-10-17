@@ -259,12 +259,7 @@ impl LogicalBuilder {
     pub fn build(self, axis: impl Directional) -> SizeRules {
         let min = self.size.extract(axis) * self.scale_factor;
         let ideal = min * self.ideal_factor;
-        SizeRules::new(
-            min.cast_ceil(),
-            ideal.cast_ceil(),
-            self.margins,
-            self.stretch,
-        )
+        SizeRules::new(min.cast_ceil(), ideal.cast_ceil(), self.stretch).with_margins(self.margins)
     }
 }
 
@@ -334,9 +329,9 @@ impl FrameRules {
             let rules = SizeRules::new(
                 content.min_size() + size,
                 content.ideal_size() + size,
-                self.outer,
                 content.stretch(),
-            );
+            )
+            .with_margins(self.outer);
             (rules, offset, size)
         } else {
             let mut rules = content;

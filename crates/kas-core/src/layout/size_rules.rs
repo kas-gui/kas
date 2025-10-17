@@ -106,22 +106,19 @@ impl SizeRules {
         }
     }
 
-    /// A fixed size with given `(pre, post)` margins
+    /// Construct for a fixed size
+    ///
+    /// Margins are zero-sized by default; use [`Self::with_margin`] or
+    /// [`Self::with_margins`] to set.
     #[inline]
-    pub fn fixed(size: i32, margins: (u16, u16)) -> Self {
+    pub fn fixed(size: i32) -> Self {
         debug_assert!(size >= 0);
         SizeRules {
             a: size,
             b: size,
-            m: margins,
+            m: (0, 0),
             stretch: Stretch::None,
         }
-    }
-
-    /// A fixed size with given (symmetric) `margin`
-    #[inline]
-    pub fn fixed_splat(size: i32, margin: u16) -> Self {
-        Self::fixed(size, (margin, margin))
     }
 
     /// Construct with custom rules
@@ -130,21 +127,43 @@ impl SizeRules {
     /// `ideal` size, plus a given `stretch` priority.
     ///
     /// Expected: `ideal >= min` (if not, ideal is clamped to min).
+    ///
+    /// Margins are zero-sized by default; use [`Self::with_margin`] or
+    /// [`Self::with_margins`] to set.
     #[inline]
-    pub fn new(min: i32, ideal: i32, margins: (u16, u16), stretch: Stretch) -> Self {
+    pub fn new(min: i32, ideal: i32, stretch: Stretch) -> Self {
         debug_assert!(0 <= min && 0 <= ideal);
         SizeRules {
             a: min,
             b: ideal.max(min),
-            m: margins,
+            m: (0, 0),
             stretch,
         }
     }
 
+    /// Set both margins (symmetric)
+    ///
+    /// Both margins are set to the same value. By default these are 0.
+    #[inline]
+    pub fn with_margin(mut self, margin: u16) -> Self {
+        self.m = (margin, margin);
+        self
+    }
+
+    /// Set both margins (top/left, bottom/right)
+    ///
+    /// By default these are 0.
+    #[inline]
+    pub fn with_margins(mut self, (first, second): (u16, u16)) -> Self {
+        self.m = (first, second);
+        self
+    }
+
     /// Set stretch factor, inline
     #[inline]
-    pub fn with_stretch(self, stretch: Stretch) -> Self {
-        Self::new(self.a, self.b, self.m, stretch)
+    pub fn with_stretch(mut self, stretch: Stretch) -> Self {
+        self.stretch = stretch;
+        self
     }
 
     /// Get the minimum size

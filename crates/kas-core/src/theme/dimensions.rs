@@ -229,21 +229,21 @@ impl<D: 'static> ThemeSize for Window<D> {
 
         match feature {
             Feature::Separator => {
-                return SizeRules::fixed_splat(self.dims.frame, 0);
+                return SizeRules::fixed(self.dims.frame);
             }
             Feature::Mark(MarkStyle::Chevron(dir)) => {
                 let w = match dir.is_vertical() == axis_is_vertical {
                     true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
                     false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
                 };
-                return SizeRules::fixed_splat(w, self.dims.m_tiny);
+                return SizeRules::fixed(w).with_margin(self.dims.m_tiny);
             }
             Feature::Mark(MarkStyle::X) => {
                 let w = self.dims.mark + i32::conv_ceil(self.dims.mark_line);
-                return SizeRules::fixed_splat(w, self.dims.m_tiny);
+                return SizeRules::fixed(w).with_margin(self.dims.m_tiny);
             }
             Feature::CheckBox | Feature::RadioBox => {
-                return SizeRules::fixed_splat(self.dims.check_box, self.dims.m_small);
+                return SizeRules::fixed(self.dims.check_box).with_margin(self.dims.m_small);
             }
             Feature::ScrollBar(dir) => {
                 dir_is_vertical = dir.is_vertical();
@@ -269,7 +269,7 @@ impl<D: 'static> ThemeSize for Window<D> {
             ideal_mul = 1;
             stretch = Stretch::None;
         }
-        SizeRules::new(size.0, ideal_mul * size.0, (m, m), stretch)
+        SizeRules::new(size.0, ideal_mul * size.0, stretch).with_margin(m)
     }
 
     fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
@@ -336,15 +336,9 @@ impl<D: 'static> ThemeSize for Window<D> {
         class: TextClass,
         axis: AxisInfo,
     ) -> SizeRules {
-        let margin = match axis.is_horizontal() {
-            true => self.dims.m_text.0,
-            false => self.dims.m_text.1,
-        };
-        let margins = (margin, margin);
-
         let wrap = class.multi_line();
 
-        if axis.is_horizontal() {
+        let rules = if axis.is_horizontal() {
             if wrap {
                 let min = self.dims.min_line_length;
                 let limit = 2 * min;
@@ -353,15 +347,20 @@ impl<D: 'static> ThemeSize for Window<D> {
                 // NOTE: using different variable-width stretch policies here can
                 // cause problems (e.g. edit boxes greedily consuming too much
                 // space). This is a hard layout problem; for now don't do this.
-                SizeRules::new(bound.min(min), bound.min(limit), margins, Stretch::Filler)
+                SizeRules::new(bound.min(min), bound.min(limit), Stretch::Filler)
             } else {
                 let bound: i32 = text.measure_width(f32::INFINITY).cast_ceil();
-                SizeRules::new(bound, bound, margins, Stretch::Filler)
+                SizeRules::new(bound, bound, Stretch::Filler)
             }
         } else {
             let wrap_width = axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY);
             let bound: i32 = text.measure_height(wrap_width).cast_ceil();
-            SizeRules::new(bound, bound, margins, Stretch::Filler)
-        }
+            SizeRules::new(bound, bound, Stretch::Filler)
+        };
+
+        rules.with_margin(match axis.is_horizontal() {
+            true => self.dims.m_text.0,
+            false => self.dims.m_text.1,
+        })
     }
 }
