@@ -8,10 +8,8 @@
 use smallvec::SmallVec;
 use std::iter::Sum;
 
-use super::{Margins, Stretch};
+use super::Stretch;
 use crate::cast::{Cast, Conv};
-use crate::dir::Directional;
-use crate::geom::Size;
 
 // for doc use
 #[allow(unused)] use super::FrameRules;
@@ -124,20 +122,6 @@ impl SizeRules {
     #[inline]
     pub fn fixed_splat(size: i32, margin: u16) -> Self {
         Self::fixed(size, (margin, margin))
-    }
-
-    /// Construct rules from given data
-    #[inline]
-    pub fn extract<D: Directional>(dir: D, size: Size, margins: Margins, stretch: Stretch) -> Self {
-        let size = size.extract(dir);
-        let m = margins.extract(dir);
-        SizeRules::new(size, size, m, stretch)
-    }
-
-    /// Construct fixed-size rules from given data
-    #[inline]
-    pub fn extract_fixed<D: Directional>(dir: D, size: Size, margin: Margins) -> Self {
-        SizeRules::extract(dir, size, margin, Stretch::None)
     }
 
     /// Construct with custom rules
