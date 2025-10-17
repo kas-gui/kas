@@ -6,14 +6,14 @@
 //! 2D pixmap widget
 
 use super::Scaling;
-use kas::draw::{DrawShared, ImageHandle};
+use kas::draw::ImageHandle;
 use kas::layout::LogicalSize;
 use kas::prelude::*;
 use kas::theme::MarginStyle;
 
 #[impl_self]
 mod RawImage {
-    /// A raster image
+    /// A raster image widget, loaded from a handle
     ///
     /// Size is inferred from the loaded image. By default, scaling is limited
     /// to integer multiples of the source image size.
@@ -29,42 +29,36 @@ mod RawImage {
     }
 
     impl Self {
-        /// Construct from a pre-allocated image
-        ///
-        /// The image may be allocated through the [`DrawShared`] interface.
+        /// Construct an empty (unallocated) image
         #[inline]
-        pub fn new(handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<Self> {
-            draw.image_size(&handle).map(|size| {
-                let mut sprite = Self::default();
-                sprite.image_size = size;
-                sprite.handle = Some(handle);
-                sprite
-            })
+        pub fn new() -> Self {
+            Self::default()
         }
 
         /// Assign a pre-allocated image
         ///
         /// Returns `true` on success. On error, `self` is unchanged.
-        pub fn set(
-            &mut self,
-            cx: &mut EventState,
-            handle: ImageHandle,
-            draw: &mut dyn DrawShared,
-        ) -> bool {
+        pub fn set(&mut self, cx: &mut EventCx, handle: ImageHandle) -> bool {
+            let draw = cx.draw_shared();
+            if let Some(old_handle) = self.handle.take() {
+                draw.image_free(old_handle);
+            }
+
             if let Some(size) = draw.image_size(&handle) {
                 self.image_size = size;
                 self.handle = Some(handle);
                 cx.resize(self);
                 true
             } else {
+                self.image_size = Size::ZERO;
                 false
             }
         }
 
         /// Remove image (set empty)
-        pub fn clear(&mut self, cx: &mut EventState, draw: &mut dyn DrawShared) {
+        pub fn clear(&mut self, cx: &mut EventCx) {
             if let Some(handle) = self.handle.take() {
-                draw.image_free(handle);
+                cx.draw_shared().image_free(handle);
                 cx.resize(self);
             }
         }
