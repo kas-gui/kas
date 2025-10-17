@@ -72,20 +72,6 @@ impl Conv<(u32, u32)> for LogicalSize {
     }
 }
 
-impl Conv<Size> for LogicalSize {
-    #[inline]
-    fn try_conv(size: Size) -> Result<Self> {
-        Ok(LogicalSize(size.0.try_cast()?, size.1.try_cast()?))
-    }
-}
-
-impl From<Vec2> for LogicalSize {
-    #[inline]
-    fn from(Vec2(w, h): Vec2) -> Self {
-        LogicalSize(w, h)
-    }
-}
-
 impl From<LogicalSize> for Vec2 {
     #[inline]
     fn from(LogicalSize(w, h): LogicalSize) -> Self {

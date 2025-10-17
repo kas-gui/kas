@@ -32,7 +32,10 @@ impl From<kas::draw::AllocError> for ImageError {
 
 #[impl_self]
 mod Image {
-    /// A raster iamge
+    /// A raster image
+    ///
+    /// Size is inferred from the loaded image. By default, scaling is limited
+    /// to integer multiples of the source image size.
     ///
     /// May be default constructed (result is empty).
     #[derive(Clone, Debug, Default)]
@@ -40,6 +43,7 @@ mod Image {
     pub struct Image {
         core: widget_core!(),
         scaling: Scaling,
+        image_size: Size,
         handle: Option<ImageHandle>,
     }
 
@@ -51,7 +55,7 @@ mod Image {
         pub fn new(handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<Self> {
             draw.image_size(&handle).map(|size| {
                 let mut sprite = Self::default();
-                sprite.scaling.size = size.cast();
+                sprite.image_size = size;
                 sprite.handle = Some(handle);
                 sprite
             })
@@ -79,7 +83,7 @@ mod Image {
             draw: &mut dyn DrawShared,
         ) -> bool {
             if let Some(size) = draw.image_size(&handle) {
-                self.scaling.size = size.cast();
+                self.image_size = size;
                 self.handle = Some(handle);
                 cx.resize(self);
                 true
@@ -126,7 +130,7 @@ mod Image {
                 draw.image_free(old_handle);
             }
 
-            self.scaling.size = size.cast();
+            self.image_size = size.cast();
             self.handle = Some(handle);
 
             Ok(())
@@ -141,11 +145,15 @@ mod Image {
         }
 
         /// Set size in logical pixels
+        ///
+        /// This enables fractional scaling of the image with a fixed aspect ratio.
         pub fn set_logical_size(&mut self, size: impl Into<LogicalSize>) {
             self.scaling.size = size.into();
         }
 
         /// Set size in logical pixels (inline)
+        ///
+        /// This enables fractional scaling of the image with a fixed aspect ratio.
         #[must_use]
         pub fn with_logical_size(mut self, size: impl Into<LogicalSize>) -> Self {
             self.scaling.size = size.into();
@@ -164,7 +172,9 @@ mod Image {
 
         /// Control whether the aspect ratio is fixed (inline)
         ///
-        /// By default this is fixed.
+        /// This is only applicable when using fractional scaling (see
+        /// [`Self::set_logical_size`]) since integer scaling always uses a
+        /// fixed aspect ratio. By default this is enabled.
         #[must_use]
         #[inline]
         pub fn with_fixed_aspect_ratio(mut self, fixed: bool) -> Self {
@@ -186,13 +196,28 @@ mod Image {
 
     impl Layout for Image {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.scaling.size_rules(sizer, axis)
+            if self.scaling.size == LogicalSize::default() {
+                let scale: i32 = (sizer.scale_factor() * 0.9).cast_nearest();
+                debug_assert!(scale >= 1);
+                SizeRules::fixed(self.image_size.extract(axis) * scale)
+                    .with_margins(sizer.margins(self.scaling.margins).extract(axis))
+            } else {
+                self.scaling.size_rules(sizer, axis)
+            }
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
-            let scale_factor = cx.size_cx().scale_factor();
-            let rect = self.scaling.align(rect, align, scale_factor);
+            let rect = if self.scaling.size == LogicalSize::default() {
+                let scale = (rect.size.0 / self.image_size.0)
+                    .min(rect.size.1 / self.image_size.1)
+                    .max(1);
+                let size = self.image_size * scale;
+                align.aligned_rect(size, rect)
+            } else {
+                let scale_factor = cx.size_cx().scale_factor();
+                self.scaling.align(rect, align, scale_factor)
+            };
             widget_set_rect!(rect);
         }
 
