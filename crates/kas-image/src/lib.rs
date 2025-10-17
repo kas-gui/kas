@@ -67,8 +67,6 @@ impl_scope! {
         ///
         /// By default, this is `None`.
         pub stretch: Stretch,
-        /// The assigned [`Rect`]
-        pub rect: Rect,
     }
 }
 
@@ -81,10 +79,11 @@ impl Scaling {
             .with_margins(sizer.margins(self.margins).extract(axis))
     }
 
-    /// Constrains and aligns within `rect`
+    /// Constrains and aligns within the given `rect`
     ///
-    /// The resulting size is then aligned using the `align` hints, defaulting to centered.
-    pub fn set_rect(&mut self, rect: Rect, align: AlignPair, scale_factor: f32) {
+    /// This aligns content when using [`Stretch::None`] and when fixed-aspect
+    /// scaling constrains size.
+    pub fn align(&mut self, rect: Rect, align: AlignPair, scale_factor: f32) -> Rect {
         let mut size = rect.size;
 
         if self.stretch == Stretch::None {
@@ -104,6 +103,6 @@ impl Scaling {
             }
         }
 
-        self.rect = align.aligned_rect(size, rect);
+        align.aligned_rect(size, rect)
     }
 }
