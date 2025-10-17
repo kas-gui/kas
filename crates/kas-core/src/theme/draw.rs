@@ -392,6 +392,8 @@ impl<'a> DrawCx<'a> {
     }
 
     /// Draw UI element: mark
+    ///
+    /// If `rect` is larger than required, the mark will be centered.
     pub fn mark(&mut self, rect: Rect, style: MarkStyle) {
         self.h.mark(&self.id, rect, style);
     }

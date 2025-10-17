@@ -22,8 +22,6 @@
 //! The [`RulesSolver`] and [`RulesSetter`] traits define interfaces for
 //! layout engines:
 //!
-//! -   [`SingleSolver`] and [`SingleSetter`] are trivial implementations for
-//!     single-child parents
 //! -   [`RowSolver`] and [`RowSetter`] set out a row or column of children.
 //!     These are parametrised over `S: RowStorage` allowing both efficient
 //!     operation on a small fixed number of children with [`FixedRowStorage`]
@@ -40,7 +38,6 @@
 mod align;
 mod grid_solver;
 mod row_solver;
-mod single_solver;
 mod size_rules;
 mod size_types;
 mod sizer;
@@ -51,7 +48,6 @@ use crate::dir::{Direction, Directional, Directions};
 pub use align::{Align, AlignHints, AlignPair};
 pub use grid_solver::{DefaultWithLen, GridCellInfo, GridDimensions, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
-pub use single_solver::{SingleSetter, SingleSolver};
 pub use size_rules::SizeRules;
 pub use size_types::*;
 pub use sizer::{RulesSetter, RulesSolver, SolveCache, solve_size_rules};

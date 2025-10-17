@@ -9,6 +9,7 @@ use super::Scaling;
 use kas::draw::{ImageFormat, ImageHandle};
 use kas::layout::LogicalSize;
 use kas::prelude::*;
+use kas::theme::MarginStyle;
 use std::cell::RefCell;
 use std::future::Future;
 use tiny_skia::{Color, Pixmap};
@@ -96,9 +97,9 @@ mod Canvas {
     /// controlled through an implementation of [`CanvasProgram`].
     /// Note that the `tiny-skia` API is re-exported as [`crate::tiny_skia`].
     ///
-    /// By default, a `Canvas` has a minimum size of 128x128 pixels and a high
-    /// stretch factor (i.e. will greedily occupy extra space). To adjust this
-    /// call one of the sizing/scaling methods.
+    /// By default, a `Canvas` has a minimum size of 128x128 logical pixels and
+    /// a high stretch factor (i.e. will greedily occupy extra space). To adjust
+    /// this call one of the sizing/scaling methods.
     #[autoimpl(Debug ignore self.inner)]
     #[derive(Clone)]
     #[widget]
@@ -112,7 +113,7 @@ mod Canvas {
     impl Self {
         /// Construct
         ///
-        /// Use [`Self::with_size`] or [`Self::with_scaling`] to set the initial size.
+        /// Use [`Self::with_logical_size`] to set the initial size.
         #[inline]
         pub fn new(program: P) -> Self {
             Canvas {
@@ -127,44 +128,46 @@ mod Canvas {
             }
         }
 
-        /// Assign size
-        ///
-        /// Default size is 128 × 128.
-        #[inline]
+        /// Set size in logical pixels (inline)
         #[must_use]
-        pub fn with_size(mut self, size: LogicalSize) -> Self {
-            self.scaling.size = size;
+        pub fn with_logical_size(mut self, size: impl Into<LogicalSize>) -> Self {
+            self.scaling.size = size.into();
             self
         }
 
-        /// Adjust scaling
+        /// Set the margin style (inline)
         ///
-        /// Default size is 128 × 128; default stretch is [`Stretch::High`].
-        /// Other fields use [`Scaling`]'s default values.
-        #[inline]
+        /// By default, this is [`MarginStyle::Large`].
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut Scaling)) -> Self {
-            f(&mut self.scaling);
+        #[inline]
+        pub fn with_margin_style(mut self, style: MarginStyle) -> Self {
+            self.scaling.margins = style;
             self
         }
 
-        /// Adjust scaling
+        /// Control whether the aspect ratio is fixed (inline)
         ///
-        /// Default size is 128 × 128; default stretch is [`Stretch::High`].
-        /// Other fields use [`Scaling`]'s default values.
+        /// By default this is fixed.
+        #[must_use]
         #[inline]
-        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut Scaling)) {
-            f(&mut self.scaling);
-            // NOTE: if only `aspect` is changed, REDRAW is enough
-            cx.resize(self);
+        pub fn with_fixed_aspect_ratio(mut self, fixed: bool) -> Self {
+            self.scaling.fix_aspect = fixed;
+            self
+        }
+
+        /// Set the stretch factor (inline)
+        ///
+        /// By default this is [`Stretch::None`]. Particular to this widget,
+        /// [`Stretch::None`] will avoid stretching of content, aligning instead.
+        #[must_use]
+        #[inline]
+        pub fn with_stretch(mut self, stretch: Stretch) -> Self {
+            self.scaling.stretch = stretch;
+            self
         }
     }
 
     impl Layout for Self {
-        fn rect(&self) -> Rect {
-            self.scaling.rect
-        }
-
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.scaling.size_rules(sizer, axis)
         }
@@ -172,7 +175,8 @@ mod Canvas {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
             let scale_factor = cx.size_cx().scale_factor();
-            self.scaling.set_rect(rect, align, scale_factor);
+            let rect = self.scaling.align(rect, align, scale_factor);
+            widget_set_rect!(rect);
 
             let size = self.rect().size.cast();
             if let Some(fut) = self.inner.get_mut().resize(size) {

@@ -33,10 +33,10 @@ fn widgets() -> Page<AppData> {
     // from a data slice; DrawShared allows allocation from data slice).
     let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"))
         .unwrap()
-        .with_scaling(|scaling| scaling.margins = MarginStyle::Tiny);
+        .with_margin_style(MarginStyle::Tiny);
     let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"))
         .unwrap()
-        .with_scaling(|scaling| scaling.margins = MarginStyle::Tiny);
+        .with_margin_style(MarginStyle::Tiny);
     const SVG_WARNING: &[u8] = include_bytes!("../res/error-warning-line.svg");
     let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
         Ok(svg) => svg,
@@ -220,11 +220,8 @@ fn widgets() -> Page<AppData> {
         row![
             "SVG",
             img_rustacean
-                .with_scaling(|s| {
-                    s.min_factor = 0.1;
-                    s.ideal_factor = 0.2;
-                    s.stretch = Stretch::High;
-                })
+                .with_logical_size((300.0, 200.0))
+                .with_stretch(Stretch::High)
                 .map_any()
         ],
         row!["Child window", popup_edit_box],

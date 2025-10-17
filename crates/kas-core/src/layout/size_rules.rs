@@ -8,10 +8,8 @@
 use smallvec::SmallVec;
 use std::iter::Sum;
 
-use super::{Margins, Stretch};
-use crate::cast::{Cast, CastFloat, Conv};
-use crate::dir::Directional;
-use crate::geom::Size;
+use super::Stretch;
+use crate::cast::{Cast, Conv};
 
 // for doc use
 #[allow(unused)] use super::FrameRules;
@@ -108,48 +106,19 @@ impl SizeRules {
         }
     }
 
-    /// A fixed size with given `(pre, post)` margins
+    /// Construct for a fixed size
+    ///
+    /// Margins are zero-sized by default; use [`Self::with_margin`] or
+    /// [`Self::with_margins`] to set.
     #[inline]
-    pub fn fixed(size: i32, margins: (u16, u16)) -> Self {
+    pub fn fixed(size: i32) -> Self {
         debug_assert!(size >= 0);
         SizeRules {
             a: size,
             b: size,
-            m: margins,
+            m: (0, 0),
             stretch: Stretch::None,
         }
-    }
-
-    /// A fixed size with given (symmetric) `margin`
-    #[inline]
-    pub fn fixed_splat(size: i32, margin: u16) -> Self {
-        Self::fixed(size, (margin, margin))
-    }
-
-    /// A fixed size, scaled from virtual pixels
-    ///
-    /// This is a shortcut to [`SizeRules::fixed`] using virtual-pixel sizes
-    /// and a scale factor. It also assumes both margins are equal.
-    #[inline]
-    pub fn fixed_scaled(size: f32, margins: f32, scale_factor: f32) -> Self {
-        debug_assert!(size >= 0.0 && margins >= 0.0);
-        let size = (scale_factor * size).cast_nearest();
-        let m = (scale_factor * margins).cast_nearest();
-        SizeRules::fixed(size, (m, m))
-    }
-
-    /// Construct rules from given data
-    #[inline]
-    pub fn extract<D: Directional>(dir: D, size: Size, margins: Margins, stretch: Stretch) -> Self {
-        let size = size.extract(dir);
-        let m = margins.extract(dir);
-        SizeRules::new(size, size, m, stretch)
-    }
-
-    /// Construct fixed-size rules from given data
-    #[inline]
-    pub fn extract_fixed<D: Directional>(dir: D, size: Size, margin: Margins) -> Self {
-        SizeRules::extract(dir, size, margin, Stretch::None)
     }
 
     /// Construct with custom rules
@@ -158,21 +127,43 @@ impl SizeRules {
     /// `ideal` size, plus a given `stretch` priority.
     ///
     /// Expected: `ideal >= min` (if not, ideal is clamped to min).
+    ///
+    /// Margins are zero-sized by default; use [`Self::with_margin`] or
+    /// [`Self::with_margins`] to set.
     #[inline]
-    pub fn new(min: i32, ideal: i32, margins: (u16, u16), stretch: Stretch) -> Self {
+    pub fn new(min: i32, ideal: i32, stretch: Stretch) -> Self {
         debug_assert!(0 <= min && 0 <= ideal);
         SizeRules {
             a: min,
             b: ideal.max(min),
-            m: margins,
+            m: (0, 0),
             stretch,
         }
     }
 
+    /// Set both margins (symmetric)
+    ///
+    /// Both margins are set to the same value. By default these are 0.
+    #[inline]
+    pub fn with_margin(mut self, margin: u16) -> Self {
+        self.m = (margin, margin);
+        self
+    }
+
+    /// Set both margins (top/left, bottom/right)
+    ///
+    /// By default these are 0.
+    #[inline]
+    pub fn with_margins(mut self, (first, second): (u16, u16)) -> Self {
+        self.m = (first, second);
+        self
+    }
+
     /// Set stretch factor, inline
     #[inline]
-    pub fn with_stretch(self, stretch: Stretch) -> Self {
-        Self::new(self.a, self.b, self.m, stretch)
+    pub fn with_stretch(mut self, stretch: Stretch) -> Self {
+        self.stretch = stretch;
+        self
     }
 
     /// Get the minimum size
@@ -337,8 +328,10 @@ impl SizeRules {
     /// The method attempts to ensure that:
     ///
     /// -   All widths are at least their minimum size requirement
-    /// -   The sum of widths plus margins between items equals `target`, if
-    ///     all minimum sizes are met
+    /// -   If all rules use `Stretch::None`, then widths are not increased over
+    ///     their ideal size.
+    /// -   The sum of widths plus margins between items equals `target`
+    ///     (except as required to meet the above criteria).
     /// -   All widths are at least their ideal size requirement, if this can be
     ///     met without decreasing any widths
     /// -   Excess space is divided evenly among members with the highest
@@ -460,6 +453,9 @@ impl SizeRules {
                     // If highest stretch is None, do not expand beyond ideal.
                     sum = 0;
                     let highest_stretch = total.stretch;
+                    if highest_stretch == Stretch::None {
+                        return;
+                    }
                     let mut targets = Targets::new();
                     let mut over = 0;
                     for i in 0..N {
@@ -597,7 +593,7 @@ impl SizeRules {
 
     /// Ensure at least one of `rules` has stretch priority at least as high as self
     ///
-    /// The stretch policies are increased according to the heighest `scores`.
+    /// The stretch policies are increased according to the highest `scores`.
     /// Required: `rules.len() == scores.len()`.
     pub(crate) fn distribute_stretch_over_by(self, rules: &mut [Self], scores: &[u32]) {
         assert_eq!(rules.len(), scores.len());
@@ -615,8 +611,8 @@ impl SizeRules {
 
     /// Adjust a sequence of `rules` to ensure that the total is at least `self`
     ///
-    /// This is used by grids to ensure that cell spans are sufficiently large.
-    pub fn distribute_span_over(self, rules: &mut [Self]) {
+    /// This is a cheap hack used by grids to ensure that cell spans are sufficiently large.
+    pub(crate) fn distribute_span_over(self, rules: &mut [Self]) {
         let len = rules.len();
         assert!(len > 0);
         let len1 = len - 1;

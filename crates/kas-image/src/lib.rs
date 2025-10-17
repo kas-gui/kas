@@ -50,21 +50,13 @@ impl_scope! {
     /// Control over image scaling
     #[impl_default]
     #[derive(Clone, Debug, PartialEq)]
-    pub struct Scaling {
-        /// Margins
-        pub margins: MarginStyle,
-        /// Display size
+    struct Scaling {
+        /// Display size (logical pixels)
         ///
         /// This may be set by the providing type or by the user.
         pub size: LogicalSize,
-        /// Minimum size relative to [`Self::size`]
-        ///
-        /// Default: `1.0`
-        pub min_factor: f32 = 1.0,
-        /// Ideal size relative to [`Self::size`]
-        ///
-        /// Default: `1.0`
-        pub ideal_factor: f32 = 1.0,
+        /// Margins
+        pub margins: MarginStyle,
         /// If true, aspect ratio is fixed relative to [`Self::size`]
         ///
         /// Default: `true`
@@ -72,36 +64,30 @@ impl_scope! {
         /// Widget stretchiness
         ///
         /// If is `None`, max size is limited to ideal size.
+        ///
+        /// By default, this is `None`.
         pub stretch: Stretch,
-        /// The assigned [`Rect`]
-        pub rect: Rect,
     }
 }
 
 impl Scaling {
     /// Generates [`SizeRules`] based on size
     pub fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let margins = sizer.margins(self.margins).extract(axis);
         let scale_factor = sizer.scale_factor();
-        let min = self
-            .size
-            .to_physical(scale_factor * self.min_factor)
-            .extract(axis);
-        let ideal = self
-            .size
-            .to_physical(scale_factor * self.ideal_factor)
-            .extract(axis);
-        SizeRules::new(min, ideal, margins, self.stretch)
+        let ideal = self.size.to_physical(scale_factor).extract(axis);
+        SizeRules::new(ideal, ideal, self.stretch)
+            .with_margins(sizer.margins(self.margins).extract(axis))
     }
 
-    /// Constrains and aligns within `rect`
+    /// Constrains and aligns within the given `rect`
     ///
-    /// The resulting size is then aligned using the `align` hints, defaulting to centered.
-    pub fn set_rect(&mut self, rect: Rect, align: AlignPair, scale_factor: f32) {
+    /// This aligns content when using [`Stretch::None`] and when fixed-aspect
+    /// scaling constrains size.
+    pub fn align(&mut self, rect: Rect, align: AlignPair, scale_factor: f32) -> Rect {
         let mut size = rect.size;
 
         if self.stretch == Stretch::None {
-            let ideal = self.size.to_physical(scale_factor * self.ideal_factor);
+            let ideal = self.size.to_physical(scale_factor);
             size = size.min(ideal);
         }
 
@@ -117,6 +103,6 @@ impl Scaling {
             }
         }
 
-        self.rect = align.aligned_rect(size, rect);
+        align.aligned_rect(size, rect)
     }
 }

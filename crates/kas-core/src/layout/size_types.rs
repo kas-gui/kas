@@ -31,23 +31,10 @@ impl LogicalSize {
         Size(w, h)
     }
 
-    /// Convert to [`SizeRules`], fixed size
-    pub fn to_rules(self, dir: impl Directional, scale_factor: f32) -> SizeRules {
-        SizeRules::fixed(self.extract_scaled(dir, scale_factor), (0, 0))
-    }
-
-    /// Convert to [`SizeRules`]
-    ///
-    /// Ideal size is `component * ideal_factor * scale_factor`.
-    pub fn to_rules_with_factor(
-        self,
-        dir: impl Directional,
-        scale_factor: f32,
-        ideal_factor: f32,
-    ) -> SizeRules {
-        let min = self.extract_scaled(dir, scale_factor);
-        let ideal = self.extract_scaled(dir, scale_factor * ideal_factor);
-        SizeRules::new(min, ideal, (0, 0), Stretch::None)
+    /// Build [`SizeRules`] for a given `scale_factor`
+    #[inline]
+    pub fn build_rules(self, scale_factor: f32) -> LogicalBuilder {
+        LogicalBuilder::new(self, scale_factor)
     }
 
     /// Take horizontal/vertical axis component
@@ -209,6 +196,73 @@ pub enum Stretch {
     Maximize,
 }
 
+/// [`SizeRules`] builder
+pub struct LogicalBuilder {
+    size: LogicalSize,
+    scale_factor: f32,
+    ideal_factor: f32,
+    margins: (u16, u16),
+    stretch: Stretch,
+}
+
+impl LogicalBuilder {
+    /// Construct from mandatory arguments: `size` and `scale_factor`
+    pub fn new(size: impl Into<LogicalSize>, scale_factor: f32) -> Self {
+        Self {
+            size: size.into(),
+            scale_factor,
+            ideal_factor: 1.0,
+            margins: (0, 0),
+            stretch: Stretch::None,
+        }
+    }
+
+    /// Set the ideal size `factor`
+    ///
+    /// The minimum size is set directly from the input size. The ideal size is
+    /// set from the minimum multiplied by the ideal `factor`.
+    /// By default this is `1.0`.
+    #[inline]
+    pub fn with_ideal_factor(mut self, factor: f32) -> Self {
+        self.ideal_factor = factor;
+        self
+    }
+
+    /// Set both margins (symmetric)
+    ///
+    /// Both margins are set to the same value. By default these are 0.
+    #[inline]
+    pub fn with_margin(mut self, margin: u16) -> Self {
+        self.margins = (margin, margin);
+        self
+    }
+
+    /// Set both margins (top/left, bottom/right)
+    ///
+    /// By default these are 0.
+    #[inline]
+    pub fn with_margins(mut self, first: u16, second: u16) -> Self {
+        self.margins = (first, second);
+        self
+    }
+
+    /// Set the stretch priority
+    ///
+    /// By default this is [`Stretch::None`].
+    #[inline]
+    pub fn with_stretch(mut self, stretch: Stretch) -> Self {
+        self.stretch = stretch;
+        self
+    }
+
+    /// Build [`SizeRules`]
+    pub fn build(self, axis: impl Directional) -> SizeRules {
+        let min = self.size.extract(axis) * self.scale_factor;
+        let ideal = min * self.ideal_factor;
+        SizeRules::new(min.cast_ceil(), ideal.cast_ceil(), self.stretch).with_margins(self.margins)
+    }
+}
+
 /// Frame size rules
 ///
 /// This is a special variant of [`SizeRules`] for frames. It is assumed that
@@ -275,9 +329,9 @@ impl FrameRules {
             let rules = SizeRules::new(
                 content.min_size() + size,
                 content.ideal_size() + size,
-                self.outer,
                 content.stretch(),
-            );
+            )
+            .with_margins(self.outer);
             (rules, offset, size)
         } else {
             let mut rules = content;

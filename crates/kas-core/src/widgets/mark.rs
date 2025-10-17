@@ -105,7 +105,9 @@ mod MarkButton {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer.feature(self.style.into(), axis)
+            sizer
+                .feature(self.style.into(), axis)
+                .with_stretch(Stretch::Low)
         }
 
         fn draw(&self, mut draw: DrawCx) {

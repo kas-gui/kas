@@ -103,13 +103,12 @@ mod EditField {
             let rules = self.text.size_rules(sizer.re(), axis);
             ideal = ideal.max(rules.ideal_size());
 
-            let margins = sizer.text_margins().extract(axis);
             let stretch = if axis.is_horizontal() || self.multi_line() {
                 Stretch::High
             } else {
                 Stretch::None
             };
-            SizeRules::new(min, ideal, margins, stretch)
+            SizeRules::new(min, ideal, stretch).with_margins(sizer.text_margins().extract(axis))
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, mut hints: AlignHints) {
