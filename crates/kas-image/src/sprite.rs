@@ -128,8 +128,10 @@ mod Sprite {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
             let rect = if self.scaling.size == LogicalSize::default() {
-                let scale = (rect.size.0 / self.image_size.0)
-                    .min(rect.size.1 / self.image_size.1)
+                // Avoid divide-by-zero
+                let image_size = self.image_size.max(Size::splat(1));
+                let scale = (rect.size.0 / image_size.0)
+                    .min(rect.size.1 / image_size.1)
                     .max(1);
                 let size = self.image_size * scale;
                 align.aligned_rect(size, rect)
