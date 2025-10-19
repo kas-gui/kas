@@ -45,9 +45,11 @@ mod Sprite {
             }
 
             if let Some(size) = draw.image_size(&handle) {
+                if self.scaling.size == LogicalSize::default() && self.image_size != size {
+                    cx.resize(&self);
+                }
                 self.image_size = size;
                 self.handle = Some(handle);
-                cx.resize(self);
                 true
             } else {
                 self.image_size = Size::ZERO;
@@ -59,7 +61,9 @@ mod Sprite {
         pub fn clear(&mut self, cx: &mut EventCx) {
             if let Some(handle) = self.handle.take() {
                 cx.draw_shared().image_free(handle);
-                cx.resize(self);
+                if self.scaling.size == LogicalSize::default() {
+                    cx.resize(self);
+                }
             }
         }
 
