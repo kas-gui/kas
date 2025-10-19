@@ -12,7 +12,7 @@ use kas::prelude::*;
 use kas::theme::MarginStyle;
 
 #[impl_self]
-mod RawImage {
+mod Sprite {
     /// A raster image widget, loaded from a handle
     ///
     /// Size is inferred from the loaded image. By default, scaling is limited
@@ -21,7 +21,7 @@ mod RawImage {
     /// May be default constructed (result is empty).
     #[derive(Clone, Debug, Default)]
     #[widget]
-    pub struct RawImage {
+    pub struct Sprite {
         core: widget_core!(),
         scaling: Scaling,
         image_size: Size,

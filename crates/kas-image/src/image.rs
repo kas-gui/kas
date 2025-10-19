@@ -5,7 +5,7 @@
 
 //! 2D pixmap widget
 
-use super::RawImage;
+use super::Sprite;
 use image::{ImageError, ImageReader, RgbaImage};
 use kas::layout::LogicalSize;
 use kas::prelude::*;
@@ -43,7 +43,7 @@ mod Image {
     pub struct Image {
         core: widget_core!(),
         #[widget]
-        raw: RawImage,
+        raw: Sprite,
         path: PathBuf,
         state: State,
     }
@@ -56,7 +56,7 @@ mod Image {
         pub fn new(path: impl Into<PathBuf>) -> Self {
             Image {
                 core: Default::default(),
-                raw: RawImage::default(),
+                raw: Sprite::default(),
                 path: path.into(),
                 state: State::Empty,
             }
