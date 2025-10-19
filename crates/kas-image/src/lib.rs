@@ -20,8 +20,7 @@ mod raw_image;
 
 #[cfg(feature = "canvas")]
 pub use canvas::{Canvas, CanvasProgram};
-#[cfg(feature = "image")]
-pub use image::{Image, ImageError};
+#[cfg(feature = "image")] pub use image::Image;
 pub use raw_image::RawImage;
 #[cfg(feature = "svg")] pub use svg::Svg;
 
