@@ -13,7 +13,7 @@ use kas::theme::MarginStyle;
 use kas::util::warn_about_error;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug)]
+#[autoimpl(Debug ignore self.1)]
 struct SetImage(PathBuf, Option<RgbaImage>);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
