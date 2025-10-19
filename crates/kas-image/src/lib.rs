@@ -15,12 +15,14 @@ pub extern crate tiny_skia;
 
 #[cfg(feature = "canvas")] mod canvas;
 #[cfg(feature = "image")] mod image;
+mod raw_image;
 #[cfg(feature = "svg")] mod svg;
 
 #[cfg(feature = "canvas")]
 pub use canvas::{Canvas, CanvasProgram};
 #[cfg(feature = "image")]
 pub use image::{Image, ImageError};
+pub use raw_image::RawImage;
 #[cfg(feature = "svg")] pub use svg::Svg;
 
 use kas::cast::{Conv, ConvFloat};
