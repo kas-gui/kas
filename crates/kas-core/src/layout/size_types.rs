@@ -72,20 +72,6 @@ impl Conv<(u32, u32)> for LogicalSize {
     }
 }
 
-impl Conv<Size> for LogicalSize {
-    #[inline]
-    fn try_conv(size: Size) -> Result<Self> {
-        Ok(LogicalSize(size.0.try_cast()?, size.1.try_cast()?))
-    }
-}
-
-impl From<Vec2> for LogicalSize {
-    #[inline]
-    fn from(Vec2(w, h): Vec2) -> Self {
-        LogicalSize(w, h)
-    }
-}
-
 impl From<LogicalSize> for Vec2 {
     #[inline]
     fn from(LogicalSize(w, h): LogicalSize) -> Self {
@@ -201,7 +187,7 @@ pub struct LogicalBuilder {
     size: LogicalSize,
     scale_factor: f32,
     ideal_factor: f32,
-    margins: (u16, u16),
+    margin: f32,
     stretch: Stretch,
 }
 
@@ -212,7 +198,7 @@ impl LogicalBuilder {
             size: size.into(),
             scale_factor,
             ideal_factor: 1.0,
-            margins: (0, 0),
+            margin: 0.0,
             stretch: Stretch::None,
         }
     }
@@ -228,21 +214,12 @@ impl LogicalBuilder {
         self
     }
 
-    /// Set both margins (symmetric)
+    /// Set all margins (symmetric)
     ///
-    /// Both margins are set to the same value. By default these are 0.
+    /// All margins are set to the same value. By default these are 0.0.
     #[inline]
-    pub fn with_margin(mut self, margin: u16) -> Self {
-        self.margins = (margin, margin);
-        self
-    }
-
-    /// Set both margins (top/left, bottom/right)
-    ///
-    /// By default these are 0.
-    #[inline]
-    pub fn with_margins(mut self, first: u16, second: u16) -> Self {
-        self.margins = (first, second);
+    pub fn with_margin(mut self, margin: f32) -> Self {
+        self.margin = margin;
         self
     }
 
@@ -259,7 +236,9 @@ impl LogicalBuilder {
     pub fn build(self, axis: impl Directional) -> SizeRules {
         let min = self.size.extract(axis) * self.scale_factor;
         let ideal = min * self.ideal_factor;
-        SizeRules::new(min.cast_ceil(), ideal.cast_ceil(), self.stretch).with_margins(self.margins)
+        let margin = self.margin * self.scale_factor;
+        SizeRules::new(min.cast_ceil(), ideal.cast_ceil(), self.stretch)
+            .with_margin(margin.cast_nearest())
     }
 }
 

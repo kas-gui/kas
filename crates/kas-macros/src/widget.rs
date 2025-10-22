@@ -144,6 +144,14 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             return Err(syn::Error::new(item.token_span(), "expected struct"));
         }
     };
+    if let Some(ref layout) = layout {
+        let fields: Vec<_> = fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| member(i, field.ident.clone()))
+            .collect();
+        layout.validate(&fields);
+    }
 
     let mut core_data: Option<Member> = None;
     let mut children = Vec::with_capacity(fields.len());

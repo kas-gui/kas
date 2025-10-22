@@ -42,6 +42,11 @@ pub struct StorageFields {
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
+    /// Initial validation: the layout does not refer to non-existant fields
+    pub fn validate(&self, fields: &[Member]) {
+        self.0.validate(fields);
+    }
+
     /// Attempt to parse a layout tree from Scope item attribute
     ///
     /// Removes the attribute if found. Fails on a syntax error.
@@ -567,6 +572,34 @@ impl Pack {
 }
 
 impl Layout {
+    /// Validate that nothing refers to an invalid field
+    fn validate(&self, fields: &[Member]) {
+        match self {
+            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Frame(_, layout, _, _) => {
+                layout.validate(fields);
+            }
+            Layout::Single(expr) => {
+                // Note that try_probe_recurse fails on non-widget fields though these might still
+                // be valid layout targets; if not then the requirement for an explicit fn probe
+                // may be confusing without this error.
+                if !fields.iter().any(|ident| *ident == expr.member) {
+                    emit_error!(expr, "not a field of self")
+                }
+            }
+            Layout::Widget(_, _) | Layout::Label(_, _) => (),
+            Layout::List(_, _, list) | Layout::Float(list) => {
+                for item in list {
+                    item.layout.validate(fields);
+                }
+            }
+            Layout::Grid(_, _, list) => {
+                for item in list {
+                    item.layout.validate(fields);
+                }
+            }
+        }
+    }
+
     fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>) {
         match self {
             Layout::Align(layout, _) => {
@@ -840,6 +873,8 @@ impl Layout {
             }
             Layout::Single(expr) => {
                 if !children.iter().any(|child| matches!(&child.ident, ChildIdent::Field(ident) if &expr.member == ident)) {
+                    // Note that `expr` may refer to a non-widget field implementing Layout. This
+                    // is valid, though we cannot generate `fn probe` in this case.
                     return None;
                 }
 
@@ -851,6 +886,7 @@ impl Layout {
             }
             Layout::Widget(stor, _) | Layout::Label(stor, _) => {
                 if !children.iter().any(|child| matches!(&child.ident, ChildIdent::CoreField(Member::Named(ident)) if stor == ident)) {
+                    // This should never happen since append_fields adds these as children.
                     return None;
                 }
 

@@ -131,13 +131,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             .ideal(true)
             .max(min_size)
             .as_physical()
-            .to_logical(scale_factor);
-        if ideal.width > max_size.width {
-            ideal.width = max_size.width;
-        }
-        if ideal.height > max_size.height {
-            ideal.height = max_size.height;
-        }
+            .to_logical::<f64>(scale_factor);
+        ideal.width = ideal.width.min(max_size.width);
+        ideal.height = ideal.height.min(max_size.height);
 
         let props = self.widget.properties();
         let mut attrs = WindowAttributes::default();
@@ -150,16 +146,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         attrs.window_icon = props.icon();
         let (restrict_min, restrict_max) = props.restrictions();
         if restrict_min {
-            let min = solve_cache
+            let mut min = solve_cache
                 .min(true)
                 .as_physical()
                 .to_logical::<f64>(scale_factor);
+            min.width = min.width.min(max_size.width);
+            min.height = min.height.min(max_size.height);
             attrs.min_inner_size = Some(min.into());
         }
         if restrict_max {
             attrs.max_inner_size = Some(ideal.into());
-        } else {
-            attrs.max_inner_size = Some(max_size.into());
         }
         #[cfg(windows_platform)]
         if let Some(handle) = modal_parent.and_then(|p| p.window_handle().ok()) {
@@ -558,18 +554,25 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if first {
             solve_cache.print_widget_heirarchy(self.widget.as_tile());
         }
+        debug_assert!(solve_cache.min(false) <= solve_cache.ideal(false));
         self.widget.resize_popups(&mut cx, data);
 
         // Size restrictions may have changed due to content or size (line wrapping)
         let (restrict_min, restrict_max) = self.widget.properties().restrictions();
-        if restrict_min {
-            let min = window.solve_cache.min(true).as_physical();
-            window.set_min_inner_size(Some(min));
-        };
-        if restrict_max {
-            let ideal = window.solve_cache.ideal(true).as_physical();
-            window.set_max_inner_size(Some(ideal));
-        };
+        window.set_min_inner_size(restrict_min.then(|| {
+            window
+                .solve_cache
+                .min(true)
+                .as_physical()
+                .to_logical::<f64>(window.scale_factor())
+        }));
+        window.set_max_inner_size(restrict_max.then(|| {
+            window
+                .solve_cache
+                .ideal(true)
+                .as_physical()
+                .to_logical::<f64>(window.scale_factor())
+        }));
 
         window.set_visible(true);
         window.request_redraw();

@@ -5,150 +5,94 @@
 
 //! 2D pixmap widget
 
-use super::Scaling;
-use kas::draw::{DrawShared, ImageHandle};
+use super::Sprite;
+use image::{ImageError, ImageReader, RgbaImage};
 use kas::layout::LogicalSize;
 use kas::prelude::*;
 use kas::theme::MarginStyle;
+use kas::util::warn_about_error;
+use std::path::{Path, PathBuf};
 
-/// Image loading errors
-#[cfg(feature = "image")]
-#[derive(thiserror::Error, Debug)]
-pub enum ImageError {
-    #[error("IO error")]
-    IOError(#[from] std::io::Error),
-    #[error(transparent)]
-    Image(#[from] image::ImageError),
-    #[error("failed to allocate texture space for image")]
-    Allocation,
-}
+#[autoimpl(Debug ignore self.1)]
+struct SetImage(PathBuf, Option<RgbaImage>);
 
-#[cfg(feature = "image")]
-impl From<kas::draw::AllocError> for ImageError {
-    fn from(_: kas::draw::AllocError) -> ImageError {
-        ImageError::Allocation
-    }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum State {
+    #[default]
+    Empty,
+    Loading,
+    Loaded,
 }
 
 #[impl_self]
 mod Image {
-    /// A raster iamge
+    /// A raster image widget, loaded from a path
+    ///
+    /// If your image source is not a path, use [`Sprite`] instead. Note also
+    /// that since image-loading can be CPU- and IO-intensive, if images get
+    /// reloaded frequently, you might benefit from using [`Sprite`] over a
+    /// custom image loader with a cache.
+    ///
+    /// Size is inferred from the loaded image. By default, scaling is limited
+    /// to integer multiples of the source image size.
     ///
     /// May be default constructed (result is empty).
     #[derive(Clone, Debug, Default)]
     #[widget]
+    #[layout(self.raw)]
     pub struct Image {
         core: widget_core!(),
-        scaling: Scaling,
-        handle: Option<ImageHandle>,
+        #[widget]
+        raw: Sprite,
+        path: PathBuf,
+        state: State,
     }
 
     impl Self {
-        /// Construct from a pre-allocated image
+        /// Construct with a given `path`
         ///
-        /// The image may be allocated through the [`DrawShared`] interface.
+        /// The image will be loaded when the widget is configured.
         #[inline]
-        pub fn new(handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<Self> {
-            draw.image_size(&handle).map(|size| {
-                let mut sprite = Self::default();
-                sprite.scaling.size = size.cast();
-                sprite.handle = Some(handle);
-                sprite
-            })
-        }
-
-        /// Construct from a path
-        #[cfg(feature = "image")]
-        #[inline]
-        pub fn new_path<P: AsRef<std::path::Path>>(
-            path: P,
-            draw: &mut dyn DrawShared,
-        ) -> Result<Self, ImageError> {
-            let mut sprite = Self::default();
-            sprite._load_path(path, draw)?;
-            Ok(sprite)
-        }
-
-        /// Assign a pre-allocated image
-        ///
-        /// Returns `true` on success. On error, `self` is unchanged.
-        pub fn set(
-            &mut self,
-            cx: &mut EventState,
-            handle: ImageHandle,
-            draw: &mut dyn DrawShared,
-        ) -> bool {
-            if let Some(size) = draw.image_size(&handle) {
-                self.scaling.size = size.cast();
-                self.handle = Some(handle);
-                cx.resize(self);
-                true
-            } else {
-                false
+        pub fn new(path: impl Into<PathBuf>) -> Self {
+            Image {
+                core: Default::default(),
+                raw: Sprite::default(),
+                path: path.into(),
+                state: State::Empty,
             }
-        }
-
-        /// Load from a path
-        ///
-        /// On error, `self` is unchanged.
-        #[cfg(feature = "image")]
-        pub fn load_path<P: AsRef<std::path::Path>>(
-            &mut self,
-            cx: &mut EventState,
-            path: P,
-            draw: &mut dyn DrawShared,
-        ) -> Result<(), ImageError> {
-            self._load_path(path, draw).map(|_| {
-                cx.resize(self);
-            })
-        }
-
-        #[cfg(feature = "image")]
-        fn _load_path<P: AsRef<std::path::Path>>(
-            &mut self,
-            path: P,
-            draw: &mut dyn DrawShared,
-        ) -> Result<(), ImageError> {
-            let image = image::ImageReader::open(path)?
-                .with_guessed_format()?
-                .decode()?;
-
-            // TODO(opt): we convert to RGBA8 since this is the only format common
-            // to both the image and wgpu crates. It may not be optimal however.
-            // It also assumes that the image colour space is sRGB.
-            let image = image.into_rgba8();
-            let size = image.dimensions();
-
-            let handle = draw.image_alloc(size)?;
-            draw.image_upload(&handle, &image, kas::draw::ImageFormat::Rgba8);
-
-            if let Some(old_handle) = self.handle.take() {
-                draw.image_free(old_handle);
-            }
-
-            self.scaling.size = size.cast();
-            self.handle = Some(handle);
-
-            Ok(())
         }
 
         /// Remove image (set empty)
-        pub fn clear(&mut self, cx: &mut EventState, draw: &mut dyn DrawShared) {
-            if let Some(handle) = self.handle.take() {
-                draw.image_free(handle);
-                cx.resize(self);
+        pub fn clear(&mut self, cx: &mut ConfigCx) {
+            self.path.clear();
+            self.state = State::Loading;
+            cx.send(self.id(), SetImage(PathBuf::new(), None));
+        }
+
+        /// Set path and load image
+        pub fn set(&mut self, cx: &mut ConfigCx, path: &Path) {
+            if self.path == path {
+                return;
             }
+
+            self.path = path.to_path_buf();
+            self.state = State::Empty;
+            self.configure(cx);
         }
 
         /// Set size in logical pixels
+        ///
+        /// This enables fractional scaling of the image with a fixed aspect ratio.
         pub fn set_logical_size(&mut self, size: impl Into<LogicalSize>) {
-            self.scaling.size = size.into();
+            self.raw.set_logical_size(size);
         }
 
         /// Set size in logical pixels (inline)
+        ///
+        /// This enables fractional scaling of the image with a fixed aspect ratio.
         #[must_use]
         pub fn with_logical_size(mut self, size: impl Into<LogicalSize>) -> Self {
-            self.scaling.size = size.into();
+            self.raw.set_logical_size(size);
             self
         }
 
@@ -158,17 +102,19 @@ mod Image {
         #[must_use]
         #[inline]
         pub fn with_margin_style(mut self, style: MarginStyle) -> Self {
-            self.scaling.margins = style;
+            self.raw = self.raw.with_margin_style(style);
             self
         }
 
         /// Control whether the aspect ratio is fixed (inline)
         ///
-        /// By default this is fixed.
+        /// This is only applicable when using fractional scaling (see
+        /// [`Self::set_logical_size`]) since integer scaling always uses a
+        /// fixed aspect ratio. By default this is enabled.
         #[must_use]
         #[inline]
         pub fn with_fixed_aspect_ratio(mut self, fixed: bool) -> Self {
-            self.scaling.fix_aspect = fixed;
+            self.raw = self.raw.with_fixed_aspect_ratio(fixed);
             self
         }
 
@@ -179,33 +125,65 @@ mod Image {
         #[must_use]
         #[inline]
         pub fn with_stretch(mut self, stretch: Stretch) -> Self {
-            self.scaling.stretch = stretch;
+            self.raw = self.raw.with_stretch(stretch);
             self
-        }
-    }
-
-    impl Layout for Image {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.scaling.size_rules(sizer, axis)
-        }
-
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            let align = hints.complete_default();
-            let scale_factor = cx.size_cx().scale_factor();
-            let rect = self.scaling.align(rect, align, scale_factor);
-            widget_set_rect!(rect);
-        }
-
-        fn draw(&self, mut draw: DrawCx) {
-            if let Some(id) = self.handle.as_ref().map(|h| h.id()) {
-                draw.image(self.rect(), id);
-            }
         }
     }
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Image
+        }
+    }
+
+    impl Events for Self {
+        type Data = ();
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            if self.state == State::Empty && !self.path.as_os_str().is_empty() {
+                self.state = State::Loading;
+                let path = self.path.clone();
+                cx.send_spawn(self.id(), async {
+                    let result = ImageReader::open(&path)
+                        .and_then(|reader| reader.with_guessed_format())
+                        .map_err(|err| ImageError::IoError(err))
+                        .and_then(|reader| reader.decode())
+                        .map(|image| image.into_rgba8())
+                        .inspect_err(|err| warn_about_error("Failed to read image", err))
+                        .ok();
+
+                    SetImage(path, result)
+                });
+            }
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(SetImage(path, result)) = cx.try_pop() {
+                if path != self.path {
+                    return;
+                }
+
+                self.state = State::Loaded;
+                if let Some(image) = result {
+                    // TODO(opt): we converted to RGBA8 since this is the only format common
+                    // to both the image and wgpu crates. It may not be optimal however.
+                    // It also assumes that the image colour space is sRGB.
+                    let size = image.dimensions();
+
+                    let draw = cx.draw_shared();
+                    match draw.image_alloc(size) {
+                        Ok(handle) => {
+                            draw.image_upload(&handle, &image, kas::draw::ImageFormat::Rgba8);
+                            self.raw.set(cx, handle);
+                        }
+                        Err(err) => {
+                            warn_about_error("Failed to allocate image", &err);
+                        }
+                    }
+                } else {
+                    self.raw.clear(cx);
+                }
+            }
         }
     }
 }

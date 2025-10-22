@@ -245,11 +245,15 @@ impl<I: bytemuck::Pod> Pipeline<I> {
 
     pub fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
         let index = usize::conv(atlas);
-        self.atlases[index].alloc.deallocate(alloc);
+        let mut is_empty = false;
+        if let Some(data) = self.atlases.get_mut(index) {
+            data.alloc.deallocate(alloc);
+            is_empty = data.alloc.is_empty();
+        }
 
         // Removing empty atlases is optional. We mostly do it because some are
         // special size allocations that may never be reused.
-        if self.atlases[index].alloc.is_empty() {
+        if is_empty {
             self.atlases.remove(index);
         }
     }
@@ -290,8 +294,10 @@ impl<I: bytemuck::Pod> Pipeline<I> {
             rpass.set_bind_group(0, bg_common, &[]);
             rpass.set_vertex_buffer(0, buffer.slice(pass.data_range.clone()));
             for (a, atlas) in pass.atlases.iter().enumerate() {
-                if !atlas.range.is_empty() {
-                    rpass.set_bind_group(1, &self.atlases[a].bg, &[]);
+                if !atlas.range.is_empty()
+                    && let Some(data) = self.atlases.get(a)
+                {
+                    rpass.set_bind_group(1, &data.bg, &[]);
                     rpass.draw(0..4, atlas.range.clone());
                 }
             }
