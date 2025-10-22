@@ -15,7 +15,6 @@ exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
 features = ["kas/wayland"]
-rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 kas-widgets = { version = "0.16.0", path = "../kas-widgets" }

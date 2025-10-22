@@ -11,7 +11,6 @@
 //! -   [`impl_self`], [`impl_scope!`], [`impl_anon!`], [`autoimpl`] and [`impl_default`] are
 //!     re-implementations of [`impl-tools`](https://crates.io/crates/impl-tools) macros
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(feature = "spec", feature(specialization))]
 
