@@ -57,8 +57,6 @@
 //! -   [`AccessLabel`]: a label which parses access keys
 //! -   [`GripPart`]: a handle (e.g. for a slider, splitter or scroll_bar)
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-
 pub mod adapt;
 #[doc(no_inline)]
 pub use adapt::{Adapt, AdaptWidget, AdaptWidgetAny};

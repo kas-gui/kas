@@ -28,8 +28,6 @@
 //! Simple types (strings and numbers) may use a pre-defined [`driver`],
 //! otherwise a custom implementation of [`Driver`] is required.
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-
 pub mod clerk;
 pub mod filter;
 

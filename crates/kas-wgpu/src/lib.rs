@@ -18,8 +18,6 @@
 //!
 //! [WGPU]: https://github.com/gfx-rs/wgpu
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-
 pub mod draw;
 mod draw_shaded;
 pub mod options;
