@@ -94,7 +94,9 @@ mod ScrollRegion {
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
             let dir = axis.as_direction();
-            axis.map_other(|x| x - self.frame_size.extract(dir));
+            axis.map_other(|x| {
+                (x - self.frame_size.extract(dir)).max(self.min_child_size.extract(dir))
+            });
 
             let mut rules = self.inner.size_rules(cx, axis);
             self.min_child_size.set_component(axis, rules.min_size());
