@@ -762,7 +762,7 @@ mod GridView {
 
         #[inline]
         fn child_indices(&self) -> ChildIndices {
-            (0..self.cur_end()).into()
+            ChildIndices::range(0..self.cur_end())
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets

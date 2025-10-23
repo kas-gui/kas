@@ -776,7 +776,7 @@ mod ListView {
 
         #[inline]
         fn child_indices(&self) -> ChildIndices {
-            (0..self.cur_len.cast()).into()
+            ChildIndices::range(0..self.cur_len.cast())
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets

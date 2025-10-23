@@ -244,7 +244,7 @@ mod Splitter {
 
         #[inline]
         fn child_indices(&self) -> ChildIndices {
-            (0..self.widgets.len() + self.grips.len()).into()
+            ChildIndices::range(0..self.widgets.len() + self.grips.len())
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             if (index & 1) != 0 {

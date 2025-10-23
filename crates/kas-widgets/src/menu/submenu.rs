@@ -361,7 +361,7 @@ mod MenuView {
 
         #[inline]
         fn child_indices(&self) -> ChildIndices {
-            (0..self.list.len()).into()
+            ChildIndices::range(0..self.list.len())
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.list.get(index).map(|w| w.as_tile())

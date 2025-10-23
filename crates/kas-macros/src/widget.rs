@@ -383,7 +383,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             fn_child_indices = Some(quote! {
                 #[inline]
                 fn child_indices(&self) -> ::kas::ChildIndices {
-                    (0..#count).into()
+                    ::kas::ChildIndices::range(0..#count)
                 }
             });
             fn_get_child = Some(quote! {
@@ -412,7 +412,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             fn_child_indices = Some(quote! {
                 #[inline]
                 fn child_indices(&self) -> ::kas::ChildIndices {
-                    (0..self.#ident.len()).into()
+                    ::kas::ChildIndices::range(0..self.#ident.len())
                 }
             });
             fn_get_child = Some(quote! {

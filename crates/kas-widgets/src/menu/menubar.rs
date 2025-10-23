@@ -115,7 +115,7 @@ mod MenuBar {
 
         #[inline]
         fn child_indices(&self) -> ChildIndices {
-            (0..self.widgets.len()).into()
+            ChildIndices::range(0..self.widgets.len())
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets.get(index).map(|w| w.as_tile())

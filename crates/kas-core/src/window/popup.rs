@@ -65,7 +65,7 @@ mod Popup {
     impl Tile for Self {
         fn child_indices(&self) -> ChildIndices {
             // Child is not visible. We handle configuration and updates directly.
-            (0..0).into()
+            ChildIndices::none()
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
