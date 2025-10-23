@@ -94,10 +94,9 @@ impl AxisInfo {
         if self.has_fixed { Some(self.other_axis) } else { None }
     }
 
-    /// Subtract `x` from size of other axis (if applicable)
-    #[inline]
-    pub fn sub_other(&mut self, x: i32) {
-        self.other_axis -= x;
+    /// Adjust other axis value
+    pub fn map_other(&mut self, f: impl Fn(i32) -> i32) {
+        self.other_axis = f(self.other_axis);
     }
 }
 

@@ -251,7 +251,7 @@ mod MenuView {
                 .surround(child_rules);
 
             let child_rules = |cx: &mut SizeCx, w: &mut dyn Tile, mut axis: AxisInfo| {
-                axis.sub_other(frame_size_flipped);
+                axis.map_other(|x| x - frame_size_flipped);
                 let rules = w.size_rules(cx, axis);
                 frame_rules.surround(rules).0
             };

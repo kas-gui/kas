@@ -51,7 +51,8 @@ mod EditBox {
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
-            axis.sub_other(self.frame_size.extract(axis.flipped()));
+            let size = self.frame_size.extract(axis.flipped());
+            axis.map_other(|x| x - size);
 
             let mut rules = self.inner.size_rules(cx, axis);
             let bar_rules = self.vert_bar.size_rules(cx, axis);
