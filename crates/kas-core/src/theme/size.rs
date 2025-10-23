@@ -160,6 +160,15 @@ impl<'a> SizeCx<'a> {
         self.w.frame(style, axis.is_vertical())
     }
 
+    /// Align a feature's rect
+    ///
+    /// In case the input `rect` is larger than desired on either axis, it is
+    /// reduced in size and offset within the original `rect` as is preferred.
+    #[inline]
+    pub fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
+        self.w.align_feature(feature, rect, align)
+    }
+
     /// Get [`SizeRules`] for a text element
     ///
     /// The [`TextClass`] is used to select a font and controls whether line

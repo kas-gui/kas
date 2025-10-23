@@ -125,7 +125,7 @@ mod Float {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             for i in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_mut_tile(i) {

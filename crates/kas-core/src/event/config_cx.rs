@@ -6,10 +6,8 @@
 //! Configuration context
 
 use crate::event::EventState;
-use crate::geom::Rect;
-use crate::layout::AlignPair;
 use crate::text::format::FormattableText;
-use crate::theme::{Feature, SizeCx, Text, ThemeSize};
+use crate::theme::{SizeCx, Text, ThemeSize};
 use crate::{Id, Node};
 use std::any::TypeId;
 use std::fmt::Debug;
@@ -72,15 +70,6 @@ impl<'a> ConfigCx<'a> {
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
         widget._update(self);
-    }
-
-    /// Align a feature's rect
-    ///
-    /// In case the input `rect` is larger than desired on either axis, it is
-    /// reduced in size and offset within the original `rect` as is preferred.
-    #[inline]
-    pub fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
-        self.sh.align_feature(feature, rect, align)
     }
 
     /// Configure a text object

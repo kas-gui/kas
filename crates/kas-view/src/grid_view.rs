@@ -559,7 +559,8 @@ mod GridView {
                     }
 
                     if rect_update {
-                        w.item.set_rect(cx, solver.rect(cell), self.align_hints);
+                        w.item
+                            .set_rect(&mut cx.size_cx(), solver.rect(cell), self.align_hints);
                     }
                 }
             }
@@ -577,7 +578,7 @@ mod GridView {
         }
 
         /// Returns true if anything changed
-        fn update_content_size(&mut self, cx: &mut ConfigCx) -> bool {
+        fn update_content_size(&mut self, cx: &mut EventState) -> bool {
             let view_size = self.rect().size - self.frame_size;
             let content_size = self.content_size();
             let action = self.scroll.set_sizes(view_size, content_size);
@@ -671,7 +672,7 @@ mod GridView {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.align_hints = hints;
 

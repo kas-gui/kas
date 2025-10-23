@@ -483,7 +483,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #[inline]
                 fn set_rect(
                     &mut self,
-                    cx: &mut ::kas::event::ConfigCx,
+                    cx: &mut ::kas::theme::SizeCx,
                     rect: ::kas::geom::Rect,
                     hints: ::kas::layout::AlignHints,
                 ) {
@@ -522,7 +522,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         fn_set_rect = quote! {
             fn set_rect(
                 &mut self,
-                cx: &mut ::kas::event::ConfigCx,
+                cx: &mut ::kas::theme::SizeCx,
                 rect: ::kas::geom::Rect,
                 hints: ::kas::layout::AlignHints,
             ) {
@@ -566,7 +566,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         fn_set_rect = quote! {
             fn set_rect(
                 &mut self,
-                _: &mut ::kas::event::ConfigCx,
+                _: &mut ::kas::theme::SizeCx,
                 rect: ::kas::geom::Rect,
                 _: ::kas::layout::AlignHints,
             ) {

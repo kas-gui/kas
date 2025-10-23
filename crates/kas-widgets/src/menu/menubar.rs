@@ -90,7 +90,7 @@ mod MenuBar {
             solver.finish(&mut self.layout_store)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
             widget_set_rect!(rect);
             let dim = (self.direction, self.widgets.len() + 1);
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout_store);

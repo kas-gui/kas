@@ -294,7 +294,7 @@ mod MenuView {
             solver.finish(store)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
             widget_set_rect!(rect);
             let store = &mut self.store;
             let hints = AlignHints::NONE;
@@ -303,11 +303,9 @@ mod MenuView {
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
             let (_, frame_x, frame_w) = cx
-                .size_cx()
                 .frame(FrameStyle::MenuEntry, Direction::Right)
                 .surround(child_rules);
             let (_, frame_y, frame_h) = cx
-                .size_cx()
                 .frame(FrameStyle::MenuEntry, Direction::Down)
                 .surround(child_rules);
             let frame_offset = Offset(frame_x, frame_y);

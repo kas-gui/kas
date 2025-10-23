@@ -7,7 +7,6 @@
 
 use super::{AxisInfo, Margins, SizeRules};
 use crate::cast::Conv;
-use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::layout::AlignHints;
 use crate::theme::SizeCx;
@@ -188,7 +187,7 @@ impl SolveCache {
     pub fn apply_rect(
         &mut self,
         mut widget: Node<'_>,
-        cx: &mut ConfigCx,
+        cx: &mut SizeCx,
         mut rect: Rect,
         inner_margin: bool,
     ) {
@@ -203,14 +202,14 @@ impl SolveCache {
         // internal layout solving.
         if self.refresh_rules || width != self.last_width {
             if self.refresh_rules {
-                let w = widget.size_rules(&mut cx.size_cx(), AxisInfo::new(false, None));
+                let w = widget.size_rules(cx, AxisInfo::new(false, None));
                 self.min.0 = w.min_size();
                 self.ideal.0 = w.ideal_size();
                 self.margins.horiz = w.margins();
                 width = rect.size.0 - self.margins.sum_horiz();
             }
 
-            let h = widget.size_rules(&mut cx.size_cx(), AxisInfo::new(true, Some(width)));
+            let h = widget.size_rules(cx, AxisInfo::new(true, Some(width)));
             self.min.1 = h.min_size();
             self.ideal.1 = h.ideal_size();
             self.margins.vert = h.margins();

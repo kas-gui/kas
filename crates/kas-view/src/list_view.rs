@@ -579,7 +579,8 @@ mod ListView {
                 }
 
                 if rect_update {
-                    w.item.set_rect(cx, solver.rect(i), self.align_hints);
+                    w.item
+                        .set_rect(&mut cx.size_cx(), solver.rect(i), self.align_hints);
                 }
             }
 
@@ -595,7 +596,7 @@ mod ListView {
         }
 
         /// Returns true if anything changed
-        fn update_content_size(&mut self, cx: &mut ConfigCx) -> bool {
+        fn update_content_size(&mut self, cx: &mut EventState) -> bool {
             let data_len: i32 = self.data_len.cast();
             let view_size = self.rect().size - self.frame_size;
             let mut content_size = view_size;
@@ -685,7 +686,7 @@ mod ListView {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.align_hints = hints;
 

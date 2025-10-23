@@ -241,7 +241,7 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         #[inline]
         fn set_rect(
             &mut self,
-            cx: &mut ::kas::event::ConfigCx,
+            cx: &mut ::kas::theme::SizeCx,
             rect: ::kas::geom::Rect,
             hints: ::kas::layout::AlignHints,
         ) {

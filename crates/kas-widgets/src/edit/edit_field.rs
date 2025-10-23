@@ -111,7 +111,7 @@ mod EditField {
             SizeRules::new(min, ideal, stretch).with_margins(cx.text_margins().extract(axis))
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, mut hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, mut hints: AlignHints) {
             hints.vert = Some(if self.multi_line() {
                 Align::Default
             } else {

@@ -86,7 +86,7 @@ mod GripPart {
             SizeRules::EMPTY
         }
 
-        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, _: AlignHints) {
             self.rect = rect;
         }
 

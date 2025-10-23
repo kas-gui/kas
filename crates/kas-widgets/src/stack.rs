@@ -121,7 +121,7 @@ mod Stack {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.align_hints = hints;
             if let Some(entry) = self.widgets.get_mut(self.active) {
@@ -363,7 +363,7 @@ impl<A> Stack<A> {
             }
 
             debug_assert_eq!(entry.1, State::Sized);
-            entry.0.set_rect(cx, rect, self.align_hints);
+            entry.0.set_rect(&mut cx.size_cx(), rect, self.align_hints);
             cx.region_moved();
         } else {
             if old_index < self.widgets.len() {

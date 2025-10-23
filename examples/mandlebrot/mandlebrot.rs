@@ -338,7 +338,7 @@ mod Mandlebrot {
                 .build(axis)
         }
 
-        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, _: AlignHints) {
             widget_set_rect!(rect);
             let size = DVec2::conv(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);

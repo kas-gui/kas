@@ -340,7 +340,7 @@ mod ScrollText {
             rules.with_stretch(Stretch::Low)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, mut rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.label.set_rect(cx, rect, hints);
 
@@ -348,7 +348,7 @@ mod ScrollText {
                 .scroll
                 .set_sizes(self.rect().size, self.label.typeset_size());
 
-            let w = cx.size_cx().scroll_bar_width().min(rect.size.0);
+            let w = cx.scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
             self.vert_bar.set_rect(cx, rect, AlignHints::NONE);

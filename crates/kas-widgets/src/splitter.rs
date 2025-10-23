@@ -182,7 +182,7 @@ mod Splitter {
             solver.finish(&mut self.data)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.align_hints = hints;
             self.size_solved = true;
@@ -348,7 +348,7 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
             assert!(n < self.widgets.len());
             if let Some(w) = self.widgets.get_mut_tile(n) {
                 let rect = setter.child_rect(&mut self.data, n << 1);
-                w.set_rect(cx, rect, self.align_hints);
+                w.set_rect(&mut cx.size_cx(), rect, self.align_hints);
             }
 
             if n >= self.grips.len() {
@@ -359,7 +359,7 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
             let track = self.grips[n].track();
             self.grips[n].set_track(track);
             let rect = setter.child_rect(&mut self.data, index);
-            self.grips[n].set_rect(cx, rect, AlignHints::NONE);
+            self.grips[n].set_rect(&mut cx.size_cx(), rect, AlignHints::NONE);
 
             n += 1;
         }

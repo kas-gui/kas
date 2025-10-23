@@ -25,7 +25,7 @@ trait NodeT {
     fn child_node(&mut self, index: usize) -> Option<Node<'_>>;
 
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules;
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
+    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints);
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
 
@@ -68,7 +68,7 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
         self.0.size_rules(cx, axis)
     }
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
         self.0.set_rect(cx, rect, hints);
     }
 
@@ -267,7 +267,7 @@ impl<'a> Node<'a> {
     }
 
     /// Set size and position
-    pub(crate) fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+    pub(crate) fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
         self.0.set_rect(cx, rect, hints);
     }
 

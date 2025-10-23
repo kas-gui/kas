@@ -36,7 +36,7 @@ mod CheckBox {
             cx.feature(Feature::CheckBox, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let rect = cx.align_feature(Feature::CheckBox, rect, hints.complete_center());
             widget_set_rect!(rect);
         }
@@ -207,7 +207,7 @@ mod CheckButton {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
             let dir = self.direction();
             shrink_to_text(&mut self.rect(), dir, &self.label);

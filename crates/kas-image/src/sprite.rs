@@ -129,7 +129,7 @@ mod Sprite {
             }
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
             let rect = if self.scaling.size == LogicalSize::default() {
                 // Avoid divide-by-zero
@@ -140,7 +140,7 @@ mod Sprite {
                 let size = self.image_size * scale;
                 align.aligned_rect(size, rect)
             } else {
-                let scale_factor = cx.size_cx().scale_factor();
+                let scale_factor = cx.scale_factor();
                 self.scaling.align(rect, align, scale_factor)
             };
             widget_set_rect!(rect);

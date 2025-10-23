@@ -492,8 +492,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        let size = window.theme_window.size();
-        let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+        let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
         self.widget.add_popup(&mut cx, data, id, popup);
     }
 
@@ -506,8 +505,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state.action(self.widget.id(), Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
-            let size = window.theme_window.size();
-            let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+            let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
             widget.remove_popup(&mut cx, id);
         }
     }
@@ -549,7 +547,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut window.solve_cache;
-        let mut cx = ConfigCx::new(window.theme_window.size(), &mut self.ev_state);
+        let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
         solve_cache.apply_rect(self.widget.as_node(data), &mut cx, rect, true);
         if first {
             solve_cache.print_widget_heirarchy(self.widget.as_tile());

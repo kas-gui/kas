@@ -57,7 +57,7 @@ pub(crate) trait WindowWidget: WindowErased + Widget {
     /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
     fn add_popup(
         &mut self,
-        cx: &mut ConfigCx,
+        cx: &mut SizeCx,
         data: &Self::Data,
         id: WindowId,
         popup: PopupDescriptor,
@@ -66,13 +66,13 @@ pub(crate) trait WindowWidget: WindowErased + Widget {
     /// Trigger closure of a pop-up
     ///
     /// If the given `id` refers to a pop-up, it should be closed.
-    fn remove_popup(&mut self, cx: &mut ConfigCx, id: WindowId);
+    fn remove_popup(&mut self, cx: &mut SizeCx, id: WindowId);
 
     /// Resize popups
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Self::Data);
+    fn resize_popups(&mut self, cx: &mut SizeCx, data: &Self::Data);
 }
 
 /// Window properties
@@ -212,7 +212,7 @@ mod Window {
             }
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             // Calculate position and size for nw, ne, and inner portions:
             let s_nw: Size = self.dec_offset.cast();
@@ -382,7 +382,7 @@ mod Window {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &Data, _: Scroll) {
             // Something was scrolled; update pop-up translations
-            self.resize_popups(&mut cx.config_cx(), data);
+            self.resize_popups(&mut cx.size_cx(), data);
         }
     }
 
@@ -622,7 +622,7 @@ impl<Data: AppData> Window<Data> {
 }
 
 impl<Data: AppData> WindowWidget for Window<Data> {
-    fn add_popup(&mut self, cx: &mut ConfigCx, data: &Data, id: WindowId, popup: PopupDescriptor) {
+    fn add_popup(&mut self, cx: &mut SizeCx, data: &Data, id: WindowId, popup: PopupDescriptor) {
         let index = 'index: {
             for i in 0..self.popups.len() {
                 if self.popups[i].0 == id {
@@ -642,7 +642,7 @@ impl<Data: AppData> WindowWidget for Window<Data> {
         cx.action(self.id(), Action::REGION_MOVED);
     }
 
-    fn remove_popup(&mut self, cx: &mut ConfigCx, id: WindowId) {
+    fn remove_popup(&mut self, cx: &mut SizeCx, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
@@ -652,7 +652,7 @@ impl<Data: AppData> WindowWidget for Window<Data> {
         }
     }
 
-    fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
+    fn resize_popups(&mut self, cx: &mut SizeCx, data: &Data) {
         for i in 0..self.popups.len() {
             self.resize_popup(cx, data, i);
         }
@@ -660,7 +660,7 @@ impl<Data: AppData> WindowWidget for Window<Data> {
 }
 
 impl<Data: AppData> Window<Data> {
-    fn resize_popup(&mut self, cx: &mut ConfigCx, data: &Data, index: usize) {
+    fn resize_popup(&mut self, cx: &mut SizeCx, data: &Data, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.rect();
@@ -707,7 +707,7 @@ impl<Data: AppData> Window<Data> {
         self.popups[index].2 = t;
         let r = r + t; // work in translated coordinate space
         let result = Widget::as_node(self, data).find_node(&popup.id, |mut node| {
-            let mut cache = layout::SolveCache::find_constraints(node.re(), &mut cx.size_cx());
+            let mut cache = layout::SolveCache::find_constraints(node.re(), cx);
             let ideal = cache.ideal(false);
             let m = cache.margins();
 

@@ -69,7 +69,7 @@ mod EditBox {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, outer_rect: Rect, hints: AlignHints) {
             widget_set_rect!(outer_rect);
             let mut rect = outer_rect;
 
@@ -83,7 +83,7 @@ mod EditBox {
 
             let mut bar_rect = Rect::ZERO;
             if self.multi_line() {
-                let bar_width = cx.size_cx().scroll_bar_width();
+                let bar_width = cx.scroll_bar_width();
                 let x1 = rect.pos.0 + rect.size.0;
                 let x0 = x1 - bar_width;
                 bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));

@@ -6,7 +6,6 @@
 //! Adapter widgets (wrappers)
 
 #[allow(unused)] use crate::Action;
-use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::SizeCx;
@@ -72,7 +71,7 @@ mod Align {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             self.inner.set_rect(cx, rect, self.hints.combine(hints));
         }
     }
@@ -118,7 +117,7 @@ mod Pack {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let align = self.hints.combine(hints).complete_default();
             let rect = align.aligned_rect(self.size, rect);
             self.inner.set_rect(cx, rect, hints);

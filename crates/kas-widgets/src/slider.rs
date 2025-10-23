@@ -278,7 +278,7 @@ mod Slider {
             cx.feature(Feature::Slider(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let align = match self.direction.is_vertical() {
                 false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
@@ -289,8 +289,7 @@ mod Slider {
 
             // Set the grip size (we could instead call set_size but the widget
             // model requires we call set_rect anyway):
-            rect.size
-                .set_component(self.direction, cx.size_cx().grip_len());
+            rect.size.set_component(self.direction, cx.grip_len());
             self.grip.set_rect(cx, rect, AlignHints::NONE);
             // Correct the position:
             self.grip.set_offset(cx, self.offset());
