@@ -7,8 +7,6 @@
 
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use std::collections::hash_map::{Entry, HashMap};
-use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 
 #[impl_self]
@@ -49,19 +47,6 @@ mod Page {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-enum State {
-    #[default]
-    None,
-    Configured,
-    Sized,
-}
-impl State {
-    fn is_configured(self) -> bool {
-        self != State::None
-    }
-}
-
 #[impl_self]
 mod Stack {
     /// A stack of widgets
@@ -81,11 +66,11 @@ mod Stack {
     pub struct Stack<A> {
         core: widget_core!(),
         align_hints: AlignHints,
-        widgets: Vec<(Page<A>, State)>,
+        // Page and key used in Id::make_child (if not usize::MAX)
+        widgets: Vec<(Page<A>, usize)>,
         active: usize,
         size_limit: usize,
         next: usize,
-        id_map: HashMap<usize, usize>, // map key of Id to index
     }
 
     impl Default for Self {
@@ -97,7 +82,6 @@ mod Stack {
                 active: 0,
                 size_limit: usize::MAX,
                 next: 0,
-                id_map: HashMap::new(),
             }
         }
     }
@@ -105,17 +89,9 @@ mod Stack {
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
-            for (index, entry) in self.widgets.iter_mut().enumerate() {
-                if index < self.size_limit || index == self.active {
-                    if entry.1.is_configured() {
-                        rules = rules.max(entry.0.size_rules(cx, axis));
-                        entry.1 = State::Sized;
-                    } else {
-                        entry.1 = State::None;
-                    }
-                } else {
-                    // Ensure entry will be resized before becoming active
-                    entry.1 = entry.1.min(State::Configured);
+            for entry in self.widgets.iter_mut() {
+                if entry.1 != usize::MAX {
+                    rules = rules.max(entry.0.size_rules(cx, axis));
                 }
             }
             rules
@@ -125,14 +101,14 @@ mod Stack {
             widget_set_rect!(rect);
             self.align_hints = hints;
             if let Some(entry) = self.widgets.get_mut(self.active) {
-                debug_assert_eq!(entry.1, State::Sized);
+                debug_assert!(entry.1 != usize::MAX);
                 entry.0.set_rect(cx, rect, hints);
             }
         }
 
         fn draw(&self, mut draw: DrawCx) {
             if let Some(entry) = self.widgets.get(self.active) {
-                debug_assert_eq!(entry.1, State::Sized);
+                debug_assert!(entry.1 != usize::MAX);
                 entry.0.draw(draw.re());
             }
         }
@@ -154,20 +130,20 @@ mod Stack {
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets
                 .get(index)
-                .filter(|w| w.1 >= State::Configured)
-                .map(|(w, _)| w.as_tile())
+                .filter(|w| w.1 != usize::MAX)
+                .map(|w| w.0.as_tile())
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
-            // Filter only returns Some(index) on configured children
-            id.next_key_after(self.id_ref())
-                .and_then(|k| self.id_map.get(&k).cloned())
-                .filter(|index| {
-                    self.widgets
-                        .get(*index)
-                        .map(|(_, state)| *state >= State::Configured)
-                        .unwrap_or(false)
-                })
+            let Some(key) = id.next_key_after(self.id_ref()) else {
+                return None;
+            };
+            for (i, w) in self.widgets.iter().enumerate() {
+                if w.1 == key {
+                    return Some(i);
+                }
+            }
+            None
         }
 
         fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
@@ -177,7 +153,7 @@ mod Stack {
                 _ => return None,
             };
             if let Some(entry) = self.widgets.get(active) {
-                debug_assert_eq!(entry.1, State::Sized);
+                debug_assert!(entry.1 != usize::MAX);
                 return Some(active);
             }
             None
@@ -186,34 +162,34 @@ mod Stack {
 
     impl Events for Self {
         fn make_child_id(&mut self, index: usize) -> Id {
-            if let Some((child, state)) = self.widgets.get(index) {
-                // Use the widget's existing identifier, if valid
-                if state.is_configured()
-                    && child.id_ref().is_valid()
-                    && self.id_ref().is_ancestor_of(child.id_ref())
-                {
-                    if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
-                        if let Entry::Vacant(entry) = self.id_map.entry(key) {
-                            entry.insert(index);
-                            return child.id();
-                        }
-                    }
-                }
+            let Some((child, key)) = self.widgets.get(index) else {
+                return Id::default();
+            };
+            let id = child.id_ref();
+            if id.is_valid()
+                && let Some(k) = id.next_key_after(self.id_ref())
+                && (*key == k || self.widgets.iter().all(|entry| k != entry.1))
+            {
+                let id = id.clone();
+                self.widgets[index].1 = k;
+                return id;
             }
 
             loop {
                 let key = self.next;
                 self.next += 1;
-                if let Entry::Vacant(entry) = self.id_map.entry(key) {
-                    entry.insert(index);
-                    return self.id_ref().make_child(key);
+                if self.widgets.iter().any(|entry| entry.1 == key) {
+                    continue;
                 }
+
+                self.widgets[index].1 = key;
+                return self.id_ref().make_child(key);
             }
         }
 
         fn probe(&self, coord: Coord) -> Id {
             if let Some(entry) = self.widgets.get(self.active) {
-                debug_assert_eq!(entry.1, State::Sized);
+                debug_assert!(entry.1 != usize::MAX);
                 if let Some(id) = entry.0.try_probe(coord) {
                     return id;
                 }
@@ -222,8 +198,9 @@ mod Stack {
         }
 
         fn configure(&mut self, _: &mut ConfigCx) {
-            // All children will be re-configured which will rebuild id_map
-            self.id_map.clear();
+            for entry in self.widgets.iter_mut() {
+                entry.1 = usize::MAX;
+            }
         }
 
         fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
@@ -232,12 +209,6 @@ mod Stack {
                     let id = self.make_child_id(index);
                     let entry = &mut self.widgets[index];
                     cx.configure(entry.0.as_node(data), id);
-                    if entry.1 == State::None {
-                        entry.1 = State::Configured;
-                    }
-                } else {
-                    // Ensure widget will be reconfigured before becoming active
-                    self.widgets[index].1 = State::None;
                 }
             }
         }
@@ -255,8 +226,8 @@ mod Stack {
         fn child_node<'n>(&'n mut self, data: &'n A, index: usize) -> Option<Node<'n>> {
             self.widgets
                 .get_mut(index)
-                .filter(|w| w.1 >= State::Configured)
-                .map(|(w, _)| w.as_node(data))
+                .filter(|w| w.1 != usize::MAX)
+                .map(|w| w.0.as_node(data))
         }
     }
 
@@ -323,7 +294,7 @@ impl<A> Stack<A> {
                 .get(self.active)
                 .map(|e| e.1)
                 .unwrap_or_default(),
-            State::None
+            usize::MAX
         );
         self.active = active;
         self
@@ -342,27 +313,23 @@ impl<A> Stack<A> {
         self.active = index;
 
         let rect = self.rect();
-        let id = self.make_child_id(index);
-        if let Some(entry) = self.widgets.get_mut(index) {
+        if index < self.widgets.len() {
+            let id = (self.widgets[index].1 == usize::MAX).then_some(self.make_child_id(index));
+            let entry = &mut self.widgets[index];
             let node = entry.0.as_node(data);
-
-            if entry.1 == State::None {
+            if let Some(id) = id {
                 cx.configure(node, id);
-                entry.1 = State::Configured;
+                debug_assert!(entry.1 != usize::MAX);
             } else {
                 cx.update(node);
             }
 
-            if entry.1 == State::Configured {
-                let Size(w, _h) = rect.size;
-                // HACK: we should pass the known height here, but it causes
-                // even distribution of excess space. Maybe SizeRules::solve_seq
-                // should not always distribute excess space?
-                solve_size_rules(&mut entry.0, &mut cx.size_cx(), Some(w), None);
-                entry.1 = State::Sized;
-            }
+            let Size(w, _h) = rect.size;
+            // HACK: we should pass the known height here, but it causes
+            // even distribution of excess space. Maybe SizeRules::solve_seq
+            // should not always distribute excess space?
+            solve_size_rules(&mut entry.0, &mut cx.size_cx(), Some(w), None);
 
-            debug_assert_eq!(entry.1, State::Sized);
             entry.0.set_rect(&mut cx.size_cx(), rect, self.align_hints);
             cx.region_moved();
         } else {
@@ -415,7 +382,7 @@ impl<A> Stack<A> {
         if let Some(entry) = self.widgets.get_mut(index) {
             cx.configure(entry.0.as_node(data), id);
             solve_size_rules(&mut entry.0, &mut cx.size_cx(), Some(w), Some(h));
-            entry.1 = State::Sized;
+            debug_assert!(entry.1 != usize::MAX);
         }
     }
 
@@ -430,7 +397,7 @@ impl<A> Stack<A> {
         if index == self.active {
             self.active = usize::MAX;
         }
-        self.widgets.push((page, State::None));
+        self.widgets.push((page, usize::MAX));
 
         if index < self.size_limit {
             self.configure_and_size(cx, data, index);
@@ -443,16 +410,10 @@ impl<A> Stack<A> {
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
     pub fn pop(&mut self, cx: &mut EventState) -> Option<Page<A>> {
-        let result = self.widgets.pop().map(|(w, _)| w);
-        if let Some(w) = result.as_ref() {
+        let result = self.widgets.pop().map(|w| w.0);
+        if result.is_some() {
             if self.active > 0 && self.active == self.widgets.len() {
                 cx.region_moved();
-            }
-
-            if w.id_ref().is_valid() {
-                if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
-                    self.id_map.remove(&key);
-                }
             }
         }
         result
@@ -468,13 +429,7 @@ impl<A> Stack<A> {
             self.active = self.active.saturating_add(1);
         }
 
-        self.widgets.insert(index, (page, State::None));
-
-        for v in self.id_map.values_mut() {
-            if *v >= index {
-                *v += 1;
-            }
-        }
+        self.widgets.insert(index, (page, usize::MAX));
 
         if index < self.size_limit {
             self.configure_and_size(cx, data, index);
@@ -488,24 +443,17 @@ impl<A> Stack<A> {
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
     pub fn remove(&mut self, cx: &mut EventState, index: usize) -> Page<A> {
-        let (w, _) = self.widgets.remove(index);
-        if w.id_ref().is_valid() {
-            if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
-                self.id_map.remove(&key);
-            }
-        }
+        let w = self.widgets.remove(index);
 
         if self.active == index {
             self.active = usize::MAX;
             cx.region_moved();
         }
 
-        for v in self.id_map.values_mut() {
-            if *v > index {
-                *v -= 1;
-            }
+        for entry in self.widgets[index..].iter_mut() {
+            entry.1 -= 1;
         }
-        w
+        w.0
     }
 
     /// Replace the child at `index`
@@ -522,13 +470,7 @@ impl<A> Stack<A> {
     ) -> Page<A> {
         let entry = &mut self.widgets[index];
         std::mem::swap(&mut page, &mut entry.0);
-        entry.1 = State::None;
-
-        if page.id_ref().is_valid() {
-            if let Some(key) = page.id_ref().next_key_after(self.id_ref()) {
-                self.id_map.remove(&key);
-            }
-        }
+        entry.1 = usize::MAX;
 
         if index < self.size_limit || index == self.active {
             self.configure_and_size(cx, data, index);
@@ -558,7 +500,7 @@ impl<A> Stack<A> {
         }
         for w in iter {
             let index = self.widgets.len();
-            self.widgets.push((w, State::None));
+            self.widgets.push((w, usize::MAX));
             if index < self.size_limit {
                 self.configure_and_size(cx, data, index);
             }
@@ -584,14 +526,9 @@ impl<A> Stack<A> {
 
         if len < old_len {
             loop {
-                let (w, _) = self.widgets.pop().unwrap();
-                if w.id_ref().is_valid() {
-                    if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
-                        self.id_map.remove(&key);
-                    }
-                }
+                let _ = self.widgets.pop().unwrap();
                 if len == self.widgets.len() {
-                    return;
+                    break;
                 }
             }
         }
@@ -599,7 +536,7 @@ impl<A> Stack<A> {
         if len > old_len {
             self.widgets.reserve(len - old_len);
             for index in old_len..len {
-                self.widgets.push((f(index), State::None));
+                self.widgets.push((f(index), usize::MAX));
                 if index < self.size_limit {
                     self.configure_and_size(cx, data, index);
                 }
@@ -619,7 +556,7 @@ where
     #[inline]
     fn from(iter: I) -> Self {
         Self {
-            widgets: iter.into_iter().map(|w| (w, State::None)).collect(),
+            widgets: iter.into_iter().map(|w| (w, usize::MAX)).collect(),
             ..Default::default()
         }
     }
