@@ -36,12 +36,13 @@ use crate::{Id, geom::Coord};
 ///
 /// It is required that widgets are configured before other methods are called.
 /// This is invoked by calling [`ConfigCx::configure`] or [`EventCx::configure`]
-/// and involves calling the following methods in order:
+/// and involves the following operations:
 ///
-/// 1.  [`Events::configure`]
-/// 2.  [`Events::update`]
-/// 3.  [`Events::configure_recurse`]
-/// 4.  [`Events::post_configure`]
+/// 1.  Set the widget [`Id`], as returned by [`Tile::id`]
+/// 2.  Call [`Events::configure`]
+/// 3.  Call [`Events::update`]
+/// 4.  Recurse configuration to children (see [`Events::recurse_indices`])
+/// 5.  Call [`Events::post_configure`]
 ///
 /// Note that both [`configure`](Self::configure) and [`update`](Self::update)
 /// may be called before child widgets have been configured. This is important
@@ -63,11 +64,11 @@ use crate::{Id, geom::Coord};
 /// data-change-detection has false positives). Note that custom widgets with
 /// state must explicitly update affected children when their state changes.
 ///
-/// An update involves calling [`ConfigCx::update`] or [`EventCx::update`],
-/// which then ensure that the following methods are called:
+/// An update is invoked by calling [`ConfigCx::update`] or [`EventCx::update`],
+/// resulting in the following operations:
 ///
-/// 1.  [`Events::update`]
-/// 2.  [`Events::update_recurse`]
+/// 1.  Call [`Events::update`]
+/// 2.  Recurse the update to children (see [`Events::recurse_indices`])
 ///
 /// ### Sizing
 ///
@@ -170,37 +171,6 @@ pub trait Events: Widget + Sized {
         let _ = cx;
     }
 
-    /// Configure children
-    ///
-    /// # Calling
-    ///
-    /// This method is called as part of [configuration](Self#configuration).
-    ///
-    /// Invoke by calling [`ConfigCx::configure`] or [`EventCx::configure`].
-    ///
-    /// # Implementation
-    ///
-    /// An explicit implementation is required in cases where not all children
-    /// should be configured immediately (for example, a stack or paged list may
-    /// choose not to configure hidden children until just before they become
-    /// visible). To configure children explicitly, generate an [`Id`] by
-    /// calling [`Events::make_child_id`] on `self` then pass this `id` to
-    /// [`ConfigCx::configure`].
-    ///
-    /// The default implementation configures children in the range
-    /// [`Tile::child_indices`]. In cases where [`Tile::child_indices`] hides
-    /// some children, a custom implementation of this method might be needed.
-    fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-        for index in self.child_indices().into_iter() {
-            let id = self.make_child_id(index);
-            if id.is_valid()
-                && let Some(node) = self.as_node(data).get_child(index)
-            {
-                cx.configure(node, id);
-            }
-        }
-    }
-
     /// Configure self (post-child-configuration actions)
     ///
     /// # Calling
@@ -244,30 +214,6 @@ pub trait Events: Widget + Sized {
     #[inline]
     fn recurse_indices(&self) -> ChildIndices {
         self.child_indices()
-    }
-
-    /// Update children
-    ///
-    /// # Calling
-    ///
-    /// This method is called after [`Self::update`] except during
-    /// [configuration](Self#configuration). Children should be updated even if
-    /// their data is `()` or is unchanged.
-    ///
-    /// Invoke by calling [`ConfigCx::update`] or [`EventCx::update`].
-    ///
-    /// # Implementation
-    ///
-    /// The default implementation updates children in the range
-    /// [`Tile::child_indices`]. This is usually sufficient.
-    ///
-    /// Use [`ConfigCx::update`].
-    fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-        for index in self.child_indices().into_iter() {
-            if let Some(node) = self.as_node(data).get_child(index) {
-                cx.update(node);
-            }
-        }
     }
 
     /// Mouse focus handler

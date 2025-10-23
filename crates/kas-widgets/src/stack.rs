@@ -203,16 +203,6 @@ mod Stack {
             }
         }
 
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            for index in 0..self.widgets.len() {
-                if index < self.size_limit || index == self.active {
-                    let id = self.make_child_id(index);
-                    let entry = &mut self.widgets[index];
-                    cx.configure(entry.0.as_node(data), id);
-                }
-            }
-        }
-
         #[inline]
         fn recurse_indices(&self) -> ChildIndices {
             let end = self.widgets.len().min(self.size_limit.max(self.active + 1));

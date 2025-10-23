@@ -951,7 +951,15 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
 
             ::kas::Events::configure(self, cx);
             ::kas::Events::update(self, cx, data);
-            ::kas::Events::configure_recurse(self, cx, data);
+            let indices = ::kas::Events::recurse_indices(self);
+            for index in indices.into_iter() {
+                let id = self.make_child_id(index);
+                if id.is_valid()
+                    && let Some(node) = self.as_node(data).get_child(index)
+                {
+                    cx.configure(node, id);
+                }
+            }
             ::kas::Events::post_configure(self, cx);
         }
 
@@ -964,7 +972,12 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             #core_path.status.update(&#core_path._id);
 
             ::kas::Events::update(self, cx, data);
-            ::kas::Events::update_recurse(self, cx, data);
+            let indices = ::kas::Events::recurse_indices(self);
+            for index in indices.into_iter() {
+                if let Some(node) = self.as_node(data).get_child(index) {
+                    cx.update(node);
+                }
+            }
         }
 
         fn _send(

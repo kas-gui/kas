@@ -54,7 +54,7 @@ pub trait Tile: Layout {
     /// Get a reference to the widget's identifier
     ///
     /// The widget identifier is assigned when the widget is configured (see
-    /// [`Events::configure`] and [`Events::configure_recurse`]). In case the
+    /// [`Events#configuration`]). In case the
     /// [`Id`] is accessed before this, it will be [invalid](Id#invalid-state).
     /// The identifier *may* change when widgets which are descendants of some
     /// dynamic layout are reconfigured.
@@ -70,7 +70,7 @@ pub trait Tile: Layout {
     /// `Id` is [very cheap](Id#representation), this can mostly be ignored.
     ///
     /// The widget identifier is assigned when the widget is configured (see
-    /// [`Events::configure`] and [`Events::configure_recurse`]). In case the
+    /// [`Events#configuration`]). In case the
     /// [`Id`] is accessed before this, it will be [invalid](Id#invalid-state).
     /// The identifier *may* change when widgets which are descendants of some
     /// dynamic layout are reconfigured.

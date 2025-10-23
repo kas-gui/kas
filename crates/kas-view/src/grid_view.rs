@@ -844,8 +844,6 @@ mod GridView {
             // Self::update() will be called next
         }
 
-        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
-
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if self.token_update != Update::None || changes != Changes::None {
@@ -864,8 +862,6 @@ mod GridView {
                 w.is_mock = true;
             }
         }
-
-        fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
 
         #[inline]
         fn recurse_indices(&self) -> ChildIndices {

@@ -6,7 +6,7 @@
 //! Popup root
 
 use crate::dir::Direction;
-use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
+use crate::event::{Event, EventCx, IsUsed, Scroll, Unused, Used};
 #[allow(unused)] use crate::geom::Rect;
 use crate::layout::Align;
 use crate::window::WindowId;
@@ -79,22 +79,6 @@ mod Popup {
 
     impl Events for Self {
         type Data = W::Data;
-
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            if self.win_id.is_some() {
-                let id = self.make_child_id(widget_index!(self.inner));
-                if id.is_valid() {
-                    cx.configure(self.inner.as_node(data), id);
-                }
-            }
-        }
-
-        fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            if self.win_id.is_some() {
-                cx.update(self.inner.as_node(data));
-            }
-        }
-
         #[inline]
         fn recurse_indices(&self) -> ChildIndices {
             if self.win_id.is_some() {
