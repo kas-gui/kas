@@ -39,9 +39,8 @@ mod Clock {
     }
 
     impl Layout for Clock {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer
-                .logical(64.0, 64.0)
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            cx.logical(64.0, 64.0)
                 .with_ideal_factor(3.0)
                 .with_stretch(Stretch::High)
                 .build(axis)

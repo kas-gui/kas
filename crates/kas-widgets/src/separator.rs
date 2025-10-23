@@ -33,8 +33,8 @@ mod Separator {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer.feature(kas::theme::Feature::Separator, axis)
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            cx.feature(kas::theme::Feature::Separator, axis)
         }
 
         fn draw(&self, mut draw: DrawCx) {

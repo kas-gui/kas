@@ -38,10 +38,10 @@ mod SelectableText {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut rules = kas::MacroDefinedLayout::size_rules(self, sizer.re(), axis);
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = kas::MacroDefinedLayout::size_rules(self, cx, axis);
             if axis.is_vertical() {
-                rules.reduce_min_to(sizer.dpem().cast_ceil());
+                rules.reduce_min_to(cx.dpem().cast_ceil());
             }
             rules
         }
@@ -331,11 +331,11 @@ mod ScrollText {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.label.size_rules(sizer.re(), axis);
-            let _ = self.vert_bar.size_rules(sizer.re(), axis);
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.label.size_rules(cx, axis);
+            let _ = self.vert_bar.size_rules(cx, axis);
             if axis.is_vertical() {
-                rules.reduce_min_to((sizer.dpem() * 4.0).cast_ceil());
+                rules.reduce_min_to((cx.dpem() * 4.0).cast_ceil());
             }
             rules.with_stretch(Stretch::Low)
         }

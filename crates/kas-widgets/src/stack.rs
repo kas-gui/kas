@@ -103,12 +103,12 @@ mod Stack {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
             for (index, entry) in self.widgets.iter_mut().enumerate() {
                 if index < self.size_limit || index == self.active {
                     if entry.1.is_configured() {
-                        rules = rules.max(entry.0.size_rules(sizer.re(), axis));
+                        rules = rules.max(entry.0.size_rules(cx, axis));
                         entry.1 = State::Sized;
                     } else {
                         entry.1 = State::None;
@@ -358,7 +358,7 @@ impl<A> Stack<A> {
                 // HACK: we should pass the known height here, but it causes
                 // even distribution of excess space. Maybe SizeRules::solve_seq
                 // should not always distribute excess space?
-                solve_size_rules(&mut entry.0, cx.size_cx(), Some(w), None);
+                solve_size_rules(&mut entry.0, &mut cx.size_cx(), Some(w), None);
                 entry.1 = State::Sized;
             }
 
@@ -414,7 +414,7 @@ impl<A> Stack<A> {
         let id = self.make_child_id(index);
         if let Some(entry) = self.widgets.get_mut(index) {
             cx.configure(entry.0.as_node(data), id);
-            solve_size_rules(&mut entry.0, cx.size_cx(), Some(w), Some(h));
+            solve_size_rules(&mut entry.0, &mut cx.size_cx(), Some(w), Some(h));
             entry.1 = State::Sized;
         }
     }

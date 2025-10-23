@@ -264,14 +264,12 @@ mod List {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let dim = (self.direction, self.widgets.len());
             let mut solver = RowSolver::new(axis, dim, &mut self.layout);
             for n in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_mut_tile(n) {
-                    solver.for_child(&mut self.layout, n, |axis| {
-                        child.size_rules(sizer.re(), axis)
-                    });
+                    solver.for_child(&mut self.layout, n, |axis| child.size_rules(cx, axis));
                 }
             }
             solver.finish(&mut self.layout)

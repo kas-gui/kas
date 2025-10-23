@@ -50,17 +50,17 @@ mod EditBox {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.sub_other(self.frame_size.extract(axis.flipped()));
 
-            let mut rules = self.inner.size_rules(sizer.re(), axis);
-            let bar_rules = self.vert_bar.size_rules(sizer.re(), axis);
+            let mut rules = self.inner.size_rules(cx, axis);
+            let bar_rules = self.vert_bar.size_rules(cx, axis);
             if axis.is_horizontal() && self.multi_line() {
                 self.inner_margin = rules.margins_i32().1.max(bar_rules.margins_i32().0);
                 rules.append(bar_rules);
             }
 
-            let frame_rules = sizer.frame(FrameStyle::EditBox, axis);
+            let frame_rules = cx.frame(FrameStyle::EditBox, axis);
             self.frame_offset_ex_margin
                 .set_component(axis, frame_rules.size());
             let (rules, offset, size) = frame_rules.surround(rules);

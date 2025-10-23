@@ -174,12 +174,12 @@ mod Window {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut inner = self.inner.size_rules(sizer.re(), axis);
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut inner = self.inner.size_rules(cx, axis);
 
             self.bar_h = 0;
             if matches!(self.props.decorations, Decorations::Toolkit) {
-                let bar = self.title_bar.size_rules(sizer.re(), axis);
+                let bar = self.title_bar.size_rules(cx, axis);
                 if axis.is_horizontal() {
                     inner.max_with(bar);
                 } else {
@@ -189,20 +189,20 @@ mod Window {
             }
 
             // These methods don't return anything useful, but we are required to call them:
-            let _ = self.b_w.size_rules(sizer.re(), axis);
-            let _ = self.b_e.size_rules(sizer.re(), axis);
-            let _ = self.b_n.size_rules(sizer.re(), axis);
-            let _ = self.b_s.size_rules(sizer.re(), axis);
-            let _ = self.b_nw.size_rules(sizer.re(), axis);
-            let _ = self.b_ne.size_rules(sizer.re(), axis);
-            let _ = self.b_se.size_rules(sizer.re(), axis);
-            let _ = self.b_sw.size_rules(sizer.re(), axis);
+            let _ = self.b_w.size_rules(cx, axis);
+            let _ = self.b_e.size_rules(cx, axis);
+            let _ = self.b_n.size_rules(cx, axis);
+            let _ = self.b_s.size_rules(cx, axis);
+            let _ = self.b_nw.size_rules(cx, axis);
+            let _ = self.b_ne.size_rules(cx, axis);
+            let _ = self.b_se.size_rules(cx, axis);
+            let _ = self.b_sw.size_rules(cx, axis);
 
             if matches!(
                 self.props.decorations,
                 Decorations::Border | Decorations::Toolkit
             ) {
-                let frame = sizer.frame(FrameStyle::Window, axis);
+                let frame = cx.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
                 self.dec_size.set_component(axis, size);
@@ -707,7 +707,7 @@ impl<Data: AppData> Window<Data> {
         self.popups[index].2 = t;
         let r = r + t; // work in translated coordinate space
         let result = Widget::as_node(self, data).find_node(&popup.id, |mut node| {
-            let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
+            let mut cache = layout::SolveCache::find_constraints(node.re(), &mut cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();
 

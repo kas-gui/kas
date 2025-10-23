@@ -43,12 +43,12 @@ impl FrameStorage {
     /// Generate [`SizeRules`]
     pub fn size_rules(
         &mut self,
-        sizer: SizeCx,
+        cx: &mut SizeCx,
         axis: AxisInfo,
         child_rules: SizeRules,
         style: FrameStyle,
     ) -> SizeRules {
-        let frame_rules = sizer.frame(style, axis);
+        let frame_rules = cx.frame(style, axis);
         let (rules, offset, size) = frame_rules.surround(child_rules);
         self.offset.set_component(axis, offset);
         self.size.set_component(axis, size);

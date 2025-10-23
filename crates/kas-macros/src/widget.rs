@@ -474,7 +474,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #[inline]
                 fn size_rules(
                     &mut self,
-                    sizer: ::kas::theme::SizeCx,
+                    cx: &mut ::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
                     #tree_size_rules
@@ -509,13 +509,13 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         fn_size_rules = Some(quote! {
             fn size_rules(
                 &mut self,
-                sizer: ::kas::theme::SizeCx,
+                cx: &mut ::kas::theme::SizeCx,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
                 #[cfg(debug_assertions)]
                 #core_path.status.size_rules(&#core_path._id, axis);
 
-                ::kas::MacroDefinedLayout::size_rules(self, sizer, axis)
+                ::kas::MacroDefinedLayout::size_rules(self, cx, axis)
             }
         });
 

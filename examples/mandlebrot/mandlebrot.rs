@@ -331,9 +331,8 @@ mod Mandlebrot {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer
-                .logical(320.0, 240.0)
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            cx.logical(320.0, 240.0)
                 .with_ideal_factor(4.0)
                 .with_stretch(Stretch::High)
                 .build(axis)

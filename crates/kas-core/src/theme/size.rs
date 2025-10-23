@@ -34,21 +34,6 @@ impl<'a> SizeCx<'a> {
         SizeCx(h)
     }
 
-    /// Reborrow with a new lifetime
-    ///
-    /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
-    /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
-    /// Until rfcs#1403 lands, reborrows on user types require a method call.
-    ///
-    /// Calling this method is zero-cost.
-    #[inline(always)]
-    pub fn re<'b>(&'b self) -> SizeCx<'b>
-    where
-        'a: 'b,
-    {
-        SizeCx(self.0)
-    }
-
     /// Get the scale factor
     ///
     /// "Traditional" PC screens have a scale factor of 1; high-DPI screens

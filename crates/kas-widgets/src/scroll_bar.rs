@@ -310,9 +310,9 @@ mod ScrollBar {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let _ = self.grip.size_rules(sizer.re(), axis);
-            sizer.feature(Feature::ScrollBar(self.direction()), axis)
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let _ = self.grip.size_rules(cx, axis);
+            cx.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
@@ -532,10 +532,10 @@ mod ScrollBars {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.inner.size_rules(sizer.re(), axis);
-            let vert_rules = self.vert_bar.size_rules(sizer.re(), axis);
-            let horiz_rules = self.horiz_bar.size_rules(sizer.re(), axis);
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(cx, axis);
+            let vert_rules = self.vert_bar.size_rules(cx, axis);
+            let horiz_rules = self.horiz_bar.size_rules(cx, axis);
             let (use_horiz, use_vert) = match self.mode {
                 ScrollBarMode::Fixed(horiz, vert) => (horiz, vert),
                 ScrollBarMode::Auto => (true, true),

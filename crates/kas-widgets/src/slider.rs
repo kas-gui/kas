@@ -273,9 +273,9 @@ mod Slider {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let _ = self.grip.size_rules(sizer.re(), axis);
-            sizer.feature(Feature::Slider(self.direction()), axis)
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let _ = self.grip.size_rules(cx, axis);
+            cx.feature(Feature::Slider(self.direction()), axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {

@@ -151,13 +151,13 @@ mod Splitter {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
             }
             assert_eq!(self.grips.len() + 1, self.widgets.len());
 
-            let grip_rules = sizer.feature(Feature::Separator, axis);
+            let grip_rules = cx.feature(Feature::Separator, axis);
 
             let mut solver = layout::RowSolver::new(axis, self.dim(), &mut self.data);
 
@@ -166,9 +166,7 @@ mod Splitter {
                 assert!(n < self.widgets.len());
                 let widgets = &mut self.widgets;
                 if let Some(w) = widgets.get_mut_tile(n) {
-                    solver.for_child(&mut self.data, n << 1, |axis| {
-                        w.size_rules(sizer.re(), axis)
-                    });
+                    solver.for_child(&mut self.data, n << 1, |axis| w.size_rules(cx, axis));
                 }
 
                 if n >= self.grips.len() {
@@ -176,7 +174,7 @@ mod Splitter {
                 }
                 let grips = &mut self.grips;
                 solver.for_child(&mut self.data, (n << 1) + 1, |axis| {
-                    grips[n].size_rules(sizer.re(), axis);
+                    grips[n].size_rules(cx, axis);
                     grip_rules
                 });
                 n += 1;

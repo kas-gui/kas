@@ -83,7 +83,7 @@ pub trait Layout {
     ///
     /// The [`#[layout]`](macro@crate::layout) macro may be used to
     /// provide a default implementation.
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     ///
@@ -153,7 +153,7 @@ pub trait MacroDefinedLayout {
     fn rect(&self) -> Rect;
 
     /// Get size rules for the given axis
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);

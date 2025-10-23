@@ -548,7 +548,7 @@ mod GridView {
 
                         solve_size_rules(
                             &mut w.item,
-                            cx.size_cx(),
+                            &mut cx.size_cx(),
                             Some(self.child_size.0),
                             Some(self.child_size.1),
                         );
@@ -619,10 +619,10 @@ mod GridView {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = if self.sel_style.is_external() {
-                sizer.inner_margins().extract(axis)
+                cx.inner_margins().extract(axis)
             } else {
                 (0, 0)
             };
@@ -643,14 +643,14 @@ mod GridView {
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
                 if w.token.is_some() || w.is_mock {
-                    let child_rules = w.item.size_rules(sizer.re(), axis);
+                    let child_rules = w.item.size_rules(cx, axis);
                     rules = rules.max(child_rules);
                 }
             }
             self.child_size_min
                 .set_component(axis, rules.min_size().max(1));
             self.child_size_ideal
-                .set_component(axis, rules.ideal_size().max(sizer.min_element_size()));
+                .set_component(axis, rules.ideal_size().max(cx.min_element_size()));
 
             let m = rules.margins();
             self.child_inter_margin.set_component(

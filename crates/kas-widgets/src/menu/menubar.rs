@@ -66,17 +66,17 @@ mod MenuBar {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,
             // but the frame does not adjust the children's rects.
 
             let len = self.widgets.len();
             let dim = (self.direction, len + 1);
             let mut solver = RowSolver::new(axis, dim, &mut self.layout_store);
-            let frame_rules = sizer.frame(FrameStyle::MenuEntry, axis);
+            let frame_rules = cx.frame(FrameStyle::MenuEntry, axis);
             for (n, child) in self.widgets.iter_mut().enumerate() {
                 solver.for_child(&mut self.layout_store, n, |axis| {
-                    let rules = child.size_rules(sizer.re(), axis);
+                    let rules = child.size_rules(cx, axis);
                     frame_rules.surround(rules).0
                 });
             }

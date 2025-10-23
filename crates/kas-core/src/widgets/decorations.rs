@@ -42,7 +42,7 @@ mod Border {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, _: &mut SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
 

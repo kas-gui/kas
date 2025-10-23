@@ -115,11 +115,11 @@ mod Float {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
             for i in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_mut_tile(i) {
-                    rules = rules.max(child.size_rules(sizer.re(), axis));
+                    rules = rules.max(child.size_rules(cx, axis));
                 }
             }
             rules
