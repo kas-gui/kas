@@ -952,6 +952,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             ::kas::Events::configure(self, cx);
             ::kas::Events::update(self, cx, data);
             ::kas::Events::configure_recurse(self, cx, data);
+            ::kas::Events::post_configure(self, cx);
         }
 
         fn _update(

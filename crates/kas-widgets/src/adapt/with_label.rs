@@ -123,17 +123,8 @@ mod WithLabel {
             self.inner.id()
         }
 
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            let id = self.make_child_id(widget_index!(self.inner));
-            if id.is_valid() {
-                cx.configure(self.inner.as_node(data), id);
-            }
-
-            let id = self.make_child_id(widget_index!(self.label));
-            if id.is_valid() {
-                cx.configure(self.label.as_node(&()), id);
-                self.label.set_target(self.inner.id());
-            }
+        fn post_configure(&mut self, _: &mut ConfigCx) {
+            self.label.set_target(self.inner.id());
         }
     }
 }

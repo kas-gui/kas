@@ -162,17 +162,8 @@ mod MenuToggle {
             self.checkbox.id()
         }
 
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            let id = self.make_child_id(widget_index!(self.checkbox));
-            if id.is_valid() {
-                cx.configure(self.checkbox.as_node(data), id);
-            }
-
-            let id = self.make_child_id(widget_index!(self.label));
-            if id.is_valid() {
-                cx.configure(self.label.as_node(&()), id);
-                self.label.set_target(self.checkbox.id());
-            }
+        fn post_configure(&mut self, _: &mut ConfigCx) {
+            self.label.set_target(self.checkbox.id());
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {

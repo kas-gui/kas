@@ -40,10 +40,13 @@ use crate::{Id, geom::Coord};
 /// 1.  [`Events::configure`]
 /// 2.  [`Events::update`]
 /// 3.  [`Events::configure_recurse`]
+/// 4.  [`Events::post_configure`]
 ///
-/// Note that both `configure` and `update` may be called before child widgets
-/// have been configured. This is important to ensure that parent widgets are
-/// always updated before their children.
+/// Note that both [`configure`](Self::configure) and [`update`](Self::update)
+/// may be called before child widgets have been configured. This is important
+/// to ensure that parent widgets are always updated before their children. Any
+/// logic using child identifiers should be placed in
+/// [`post_configure`](Self::post_configure).
 ///
 /// Configuration may be repeated at any time.
 ///
@@ -149,6 +152,8 @@ pub trait Events: Widget + Sized {
     /// # Calling
     ///
     /// This method is called as part of [configuration](Self#configuration).
+    /// This method is called *before* children are assigned identifiers; see
+    /// also [`post_configure`](Self::post_configure).
     ///
     /// Invoke by calling [`ConfigCx::configure`] or [`EventCx::configure`].
     ///
@@ -193,6 +198,17 @@ pub trait Events: Widget + Sized {
                 cx.configure(node, id);
             }
         }
+    }
+
+    /// Configure self (post-child-configuration actions)
+    ///
+    /// # Calling
+    ///
+    /// This method is called as part of [configuration](Self#configuration).
+    ///
+    /// The default implementation does nothing.
+    fn post_configure(&mut self, cx: &mut ConfigCx) {
+        let _ = cx;
     }
 
     /// Update self using input data
