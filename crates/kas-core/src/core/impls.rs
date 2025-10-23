@@ -24,6 +24,8 @@ pub fn _configure<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) 
         }
     }
     widget.post_configure(cx);
+
+    // NOTE: we don't handle cx.resize here since we assume that sizing will happen later.
 }
 
 /// Generic implementation of [`Widget::_update`]
@@ -36,6 +38,10 @@ pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) {
         if let Some(node) = widget.as_node(data).get_child(index) {
             cx.update(node);
         }
+    }
+
+    if cx.resize && widget.status().is_sized() {
+        cx.resize = !widget.handle_resize(cx, data);
     }
 }
 
@@ -104,6 +110,11 @@ pub fn _send<W: Events>(
         widget.handle_messages(cx, data);
     }
 
+    if cx.resize {
+        debug_assert!(widget.status().is_sized());
+        cx.resize = cx.config_cx(|cx| !widget.handle_resize(cx, data));
+    }
+
     is_used
 }
 
@@ -142,6 +153,10 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
         #[cfg(debug_assertions)]
         log::debug!("_replay: {} cannot find path to {id}", widget.identify());
     }
+
+    if cx.resize && widget.status().is_sized() {
+        cx.resize = cx.config_cx(|cx| !widget.handle_resize(cx, data));
+    }
 }
 
 /// Generic implementation of [`Widget::_nav_next`]
@@ -153,11 +168,17 @@ pub fn _nav_next<W: Events>(
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
-    if !widget.navigable() {
+    let result = if !widget.navigable() {
         nav_next_non_nav(widget.as_node(data), cx, focus, advance)
     } else {
         nav_next_nav(widget.as_node(data), cx, focus, advance)
+    };
+
+    if cx.resize && widget.status().is_sized() {
+        cx.resize = !widget.handle_resize(cx, data);
     }
+
+    result
 }
 
 // Monomorphize nav_next here, not in _nav_next (which would push monomorphization up to the caller)

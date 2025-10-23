@@ -284,6 +284,26 @@ pub trait Events: Widget + Sized {
         let _ = (cx, data);
     }
 
+    /// Handler for resize requests
+    ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
+    ///
+    /// This method is called when a widget (the callee or a descendant) has
+    /// requested a resize. Some widgets (for example, a scroll region) are able
+    /// to handle resizes locally and should implement this method to do so
+    /// (thus avoiding the need for a full-window resize).
+    ///
+    /// # Implementation
+    ///
+    /// Return `true` on success, `false` when a resize is still needed.
+    #[inline]
+    fn handle_resize(&mut self, cx: &mut ConfigCx, data: &Self::Data) -> bool {
+        let _ = (cx, data);
+        false
+    }
+
     /// Handler for scrolling
     ///
     /// # Calling
