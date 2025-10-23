@@ -213,6 +213,13 @@ mod Stack {
             }
         }
 
+        #[inline]
+        fn recurse_indices(&self) -> ChildIndices {
+            let end = self.widgets.len().min(self.size_limit.max(self.active + 1));
+            let start = end.saturating_sub(self.size_limit);
+            ChildIndices::range(start..end)
+        }
+
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if let Some(kas::messages::SetIndex(index)) = cx.try_pop() {
                 self.set_active(&mut cx.config_cx(), data, index);

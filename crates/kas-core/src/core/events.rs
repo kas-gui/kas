@@ -7,6 +7,7 @@
 
 #[allow(unused)] use super::Layout;
 use super::{Tile, Widget};
+use crate::ChildIndices;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::{Id, geom::Coord};
@@ -225,6 +226,24 @@ pub trait Events: Widget + Sized {
     /// The default implementation does nothing.
     fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
         let _ = (cx, data);
+    }
+
+    /// Recursion control
+    ///
+    /// [Configuration](Self#configuration) and [update](Self#update) normally
+    /// recurse to all children listed by [`Tile::child_indices`]; this
+    /// recursion is controlled by this method.
+    ///
+    /// # Calling
+    ///
+    /// This method is called after [`Self::update`].
+    ///
+    /// # Implementation
+    ///
+    /// The default implementation returns the result of [`Tile::child_indices`].
+    #[inline]
+    fn recurse_indices(&self) -> ChildIndices {
+        self.child_indices()
     }
 
     /// Update children

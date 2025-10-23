@@ -878,6 +878,11 @@ mod ListView {
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
 
+        #[inline]
+        fn recurse_indices(&self) -> ChildIndices {
+            ChildIndices::none()
+        }
+
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
             let mut is_used = match event {
                 Event::Command(cmd, _) => {

@@ -95,6 +95,15 @@ mod Popup {
             }
         }
 
+        #[inline]
+        fn recurse_indices(&self) -> ChildIndices {
+            if self.win_id.is_some() {
+                ChildIndices::one(widget_index!(self.inner))
+            } else {
+                ChildIndices::none()
+            }
+        }
+
         fn handle_event(&mut self, _: &mut EventCx, _: &W::Data, event: Event) -> IsUsed {
             match event {
                 Event::PopupClosed(_) => {
