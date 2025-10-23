@@ -39,8 +39,11 @@ impl<'a> ConfigCx<'a> {
 
     /// Access a [`SizeCx`]
     #[inline]
-    pub fn size_cx(&self) -> SizeCx<'a> {
-        SizeCx::new(self.sh)
+    pub fn size_cx<'b>(&'b mut self) -> SizeCx<'b>
+    where
+        'a: 'b,
+    {
+        SizeCx::new(self.ev, self.sh)
     }
 
     /// Access [`EventState`]

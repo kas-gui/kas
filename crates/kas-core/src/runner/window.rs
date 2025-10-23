@@ -122,7 +122,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut node = self.widget.as_node(data);
         self.ev_state.full_configure(theme_window.size(), node.re());
 
-        let mut cx = SizeCx::new(theme_window.size());
+        let mut cx = SizeCx::new(&mut self.ev_state, theme_window.size());
         let mut solve_cache = SolveCache::find_constraints(node, &mut cx);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
@@ -183,7 +183,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             let mut node = self.widget.as_node(data);
             self.ev_state.full_configure(theme_window.size(), node.re());
 
-            let mut cx = SizeCx::new(theme_window.size());
+            let mut cx = SizeCx::new(&mut self.ev_state, theme_window.size());
             solve_cache = SolveCache::find_constraints(node, &mut cx);
 
             if let Some(monitor) = window.current_monitor() {
