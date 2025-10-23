@@ -35,6 +35,7 @@ mod ScrollRegion {
         min_child_size: Size,
         offset: Offset,
         frame_size: Size,
+        hints: AlignHints,
         scroll: ScrollComponent,
         #[widget]
         inner: W,
@@ -49,6 +50,7 @@ mod ScrollRegion {
                 min_child_size: Size::ZERO,
                 offset: Default::default(),
                 frame_size: Default::default(),
+                hints: Default::default(),
                 scroll: Default::default(),
                 inner,
             }
@@ -112,6 +114,7 @@ mod ScrollRegion {
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
+            self.hints = hints;
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos, child_size);
             self.inner.set_rect(cx, child_rect, hints);
@@ -174,6 +177,14 @@ mod ScrollRegion {
             if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
                 self.set_scroll_offset(cx, offset);
             }
+        }
+
+        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
+            let _ = self.size_rules(&mut cx.size_cx(), AxisInfo::new(false, None));
+            let width = self.rect().size.0;
+            let _ = self.size_rules(&mut cx.size_cx(), AxisInfo::new(true, Some(width)));
+            self.set_rect(&mut cx.size_cx(), self.rect(), self.hints);
+            ActionResize(false)
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
