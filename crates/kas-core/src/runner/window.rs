@@ -123,7 +123,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         self.ev_state.full_configure(theme_window.size(), node.re());
 
         let mut cx = SizeCx::new(&mut self.ev_state, theme_window.size());
-        let mut solve_cache = SolveCache::find_constraints(node, &mut cx);
+        let mut solve_cache = SolveCache::default();
+        solve_cache.find_constraints(node, &mut cx);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let min_size = Size(1, 1);
@@ -184,7 +185,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state.full_configure(theme_window.size(), node.re());
 
             let mut cx = SizeCx::new(&mut self.ev_state, theme_window.size());
-            solve_cache = SolveCache::find_constraints(node, &mut cx);
+            solve_cache.find_constraints(node, &mut cx);
 
             if let Some(monitor) = window.current_monitor() {
                 max_physical_size = monitor.size();
@@ -312,7 +313,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 }
                 false
             }
-            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+            WindowEvent::ScaleFactorChanged {
+                scale_factor,
+                mut inner_size_writer,
+            } => {
                 // This event is generated when constructing a window but already handled
                 if scale_factor as f32 == self.ev_state.config.scale_factor() {
                     return false;
@@ -324,12 +328,30 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 let config = self.ev_state.config();
                 shared.theme.update_window(&mut window.theme_window, config);
 
-                // NOTE: we could try resizing here in case the window is too
-                // small due to non-linear scaling, but it appears unnecessary.
-                window.solve_cache.invalidate_rule_cache();
-
                 // Force a reconfigure to update text objects:
                 self.reconfigure(data);
+
+                let window = self.window.as_mut().unwrap();
+                let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
+                window
+                    .solve_cache
+                    .find_constraints(self.widget.as_node(data), &mut cx);
+                let min = window.solve_cache.min(true);
+
+                let size = window.surface.size();
+                let (restrict_min, _) = self.widget.properties().restrictions();
+                let apply = if !restrict_min || size >= min {
+                    true
+                } else {
+                    let size = size.max(min);
+                    inner_size_writer
+                        .request_inner_size(size.as_physical())
+                        .is_err()
+                };
+
+                if apply {
+                    self.apply_size(data, false);
+                }
 
                 false
             }
@@ -418,7 +440,25 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
         if action.contains(Action::RESIZE) {
             if let Some(ref mut window) = self.window {
-                window.solve_cache.invalidate_rule_cache();
+                let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
+                window
+                    .solve_cache
+                    .find_constraints(self.widget.as_node(data), &mut cx);
+                let (restrict_min, restrict_max) = self.widget.properties().restrictions();
+                window.set_min_inner_size(restrict_min.then(|| {
+                    window
+                        .solve_cache
+                        .min(true)
+                        .as_physical()
+                        .to_logical::<f64>(window.scale_factor())
+                }));
+                window.set_max_inner_size(restrict_max.then(|| {
+                    window
+                        .solve_cache
+                        .ideal(true)
+                        .as_physical()
+                        .to_logical::<f64>(window.scale_factor())
+                }));
             }
             self.apply_size(data, false);
         } else if !(action & (Action::SET_RECT | Action::SCROLLED)).is_empty() {
@@ -559,23 +599,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
         debug_assert!(solve_cache.min(false) <= solve_cache.ideal(false));
         self.widget.resize_popups(&mut cx, data);
-
-        // Size restrictions may have changed due to content or size (line wrapping)
-        let (restrict_min, restrict_max) = self.widget.properties().restrictions();
-        window.set_min_inner_size(restrict_min.then(|| {
-            window
-                .solve_cache
-                .min(true)
-                .as_physical()
-                .to_logical::<f64>(window.scale_factor())
-        }));
-        window.set_max_inner_size(restrict_max.then(|| {
-            window
-                .solve_cache
-                .ideal(true)
-                .as_physical()
-                .to_logical::<f64>(window.scale_factor())
-        }));
 
         window.set_visible(true);
         window.request_redraw();

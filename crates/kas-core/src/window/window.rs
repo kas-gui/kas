@@ -707,7 +707,8 @@ impl<Data: AppData> Window<Data> {
         self.popups[index].2 = t;
         let r = r + t; // work in translated coordinate space
         let result = Widget::as_node(self, data).find_node(&popup.id, |mut node| {
-            let mut cache = layout::SolveCache::find_constraints(node.re(), cx);
+            let mut cache = layout::SolveCache::default();
+            cache.find_constraints(node.re(), cx);
             let ideal = cache.ideal(false);
             let m = cache.margins();
 

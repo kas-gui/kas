@@ -750,15 +750,15 @@ mod winit_impls {
     }
 
     impl Size {
-        /// Convert to a "physical" [`winit::dpi::Size`]
+        /// Convert to a [`PhysicalSize`]
         ///
         /// This implies that the [`Size`] was calculated using the correct
         /// scale factor. Before the window has been constructed (when the
         /// scale factor is supposedly unknown) this should not be used.
         #[inline]
-        pub fn as_physical(self) -> winit::dpi::Size {
+        pub fn as_physical(self) -> PhysicalSize<u32> {
             let (w, h): (u32, u32) = self.cast();
-            winit::dpi::Size::Physical(PhysicalSize::new(w, h))
+            PhysicalSize::new(w, h)
         }
     }
 }
