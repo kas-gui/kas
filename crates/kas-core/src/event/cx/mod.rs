@@ -299,14 +299,6 @@ impl EventState {
         self.action(id, Action::REDRAW);
     }
 
-    /// Notify that a widget must be resized
-    ///
-    /// This is equivalent to calling [`Self::action`] with [`Action::RESIZE`].
-    #[inline]
-    pub fn resize(&mut self, id: impl HasId) {
-        self.action(id, Action::RESIZE);
-    }
-
     /// Notify that widgets under self may have moved
     #[inline]
     pub fn region_moved(&mut self) {
@@ -440,6 +432,19 @@ impl<'a> EventCx<'a> {
     /// Get a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         self.runner.draw_shared()
+    }
+
+    /// Require that the current widget (and its descendants) be resized
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    ///
+    /// Alternatively, a whole-window resize (some time in the near future) may
+    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
+    #[inline]
+    pub fn resize(&mut self) {
+        self.resize = true;
     }
 
     /// Terminate the GUI

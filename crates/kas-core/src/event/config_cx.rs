@@ -96,6 +96,19 @@ impl<'a> ConfigCx<'a> {
         let type_id = TypeId::of::<M>();
         self.pending_send_targets.push((type_id, id));
     }
+
+    /// Require that the current widget (and its descendants) be resized
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    ///
+    /// Alternatively, a whole-window resize (some time in the near future) may
+    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
+    #[inline]
+    pub fn resize(&mut self) {
+        self.resize = true;
+    }
 }
 
 impl<'a> Deref for ConfigCx<'a> {

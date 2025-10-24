@@ -474,7 +474,7 @@ impl<A> Stack<A> {
         }
 
         if index == self.active {
-            cx.resize(self);
+            cx.resize();
         }
 
         page

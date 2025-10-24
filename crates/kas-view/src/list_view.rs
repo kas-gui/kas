@@ -324,9 +324,9 @@ mod ListView {
         ///
         /// By default, [`SelectionStyle::Highlight`] is used. Other modes may
         /// add margin between elements.
-        pub fn set_selection_style(&mut self, cx: &mut EventState, style: SelectionStyle) {
+        pub fn set_selection_style(&mut self, cx: &mut ConfigCx, style: SelectionStyle) {
             if style.is_external() != self.sel_style.is_external() {
-                cx.resize(&self);
+                cx.resize();
             };
             self.sel_style = style;
         }

@@ -477,7 +477,7 @@ mod ScrollBars {
         }
 
         /// Set scroll bar mode
-        pub fn set_scroll_bar_mode(&mut self, cx: &mut EventState, mode: ScrollBarMode) {
+        pub fn set_scroll_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
             if mode != self.mode {
                 self.mode = mode;
                 let (invis_horiz, invis_vert) = match mode {
@@ -493,7 +493,7 @@ mod ScrollBars {
                 };
                 self.horiz_bar.set_invisible(invis_horiz);
                 self.vert_bar.set_invisible(invis_vert);
-                cx.resize(self);
+                cx.resize();
             }
         }
 
@@ -708,7 +708,7 @@ mod ScrollBarRegion {
 
         /// Set scroll bar mode
         #[inline]
-        pub fn set_scroll_bar_mode(&mut self, cx: &mut EventState, mode: ScrollBarMode) {
+        pub fn set_scroll_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
             self.0.set_scroll_bar_mode(cx, mode);
         }
 

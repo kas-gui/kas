@@ -182,12 +182,12 @@ mod Svg {
         /// from the SVG using units of logical pixels.
         pub fn load(
             &mut self,
-            cx: &mut EventState,
+            cx: &mut ConfigCx,
             data: &'static [u8],
             resources_dir: Option<&Path>,
         ) -> Result<(), impl std::error::Error + use<>> {
             let source = Source::Static(data, resources_dir.map(|p| p.to_owned()));
-            self.load_source(source).map(|_| cx.resize(self))
+            self.load_source(source).map(|_| cx.resize())
         }
 
         fn load_source(&mut self, source: Source) -> Result<(), usvg::Error> {
@@ -207,10 +207,10 @@ mod Svg {
         /// This is a wrapper around [`Self::load`].
         pub fn load_path<P: AsRef<Path>>(
             &mut self,
-            cx: &mut EventState,
+            cx: &mut ConfigCx,
             path: P,
         ) -> Result<(), impl std::error::Error + use<P>> {
-            self._load_path(path.as_ref()).map(|_| cx.resize(self))
+            self._load_path(path.as_ref()).map(|_| cx.resize())
         }
 
         fn _load_path(&mut self, path: &Path) -> Result<(), LoadError> {
