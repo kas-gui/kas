@@ -8,6 +8,37 @@
 use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, NavAdvance, Scroll, Unused};
 use crate::{Events, Id, Node, Tile, Widget};
 
+/// Generic implementation of [`Widget::_configure`]
+///
+/// [`Id`] assignment and and status update are excluded.
+#[inline(always)]
+pub fn _configure<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) {
+    widget.configure(cx);
+    widget.update(cx, data);
+    for index in widget.recurse_indices().into_iter() {
+        let id = widget.make_child_id(index);
+        if id.is_valid()
+            && let Some(node) = widget.as_node(data).get_child(index)
+        {
+            cx.configure(node, id);
+        }
+    }
+    widget.post_configure(cx);
+}
+
+/// Generic implementation of [`Widget::_update`]
+///
+/// Status update is excluded.
+#[inline(always)]
+pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) {
+    widget.update(cx, data);
+    for index in widget.recurse_indices().into_iter() {
+        if let Some(node) = widget.as_node(data).get_child(index) {
+            cx.update(node);
+        }
+    }
+}
+
 /// Generic implementation of [`Widget::_send`]
 #[inline(always)]
 pub fn _send<W: Events>(

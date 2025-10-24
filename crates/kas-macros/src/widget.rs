@@ -949,18 +949,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             #[cfg(debug_assertions)]
             #core_path.status.configure(&#core_path._id);
 
-            ::kas::Events::configure(self, cx);
-            ::kas::Events::update(self, cx, data);
-            let indices = ::kas::Events::recurse_indices(self);
-            for index in indices.into_iter() {
-                let id = self.make_child_id(index);
-                if id.is_valid()
-                    && let Some(node) = self.as_node(data).get_child(index)
-                {
-                    cx.configure(node, id);
-                }
-            }
-            ::kas::Events::post_configure(self, cx);
+            ::kas::impls::_configure(self, cx, data)
         }
 
         fn _update(
@@ -971,13 +960,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             #[cfg(debug_assertions)]
             #core_path.status.update(&#core_path._id);
 
-            ::kas::Events::update(self, cx, data);
-            let indices = ::kas::Events::recurse_indices(self);
-            for index in indices.into_iter() {
-                if let Some(node) = self.as_node(data).get_child(index) {
-                    cx.update(node);
-                }
-            }
+            ::kas::impls::_update(self, cx, data)
         }
 
         fn _send(
