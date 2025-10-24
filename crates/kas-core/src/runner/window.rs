@@ -260,8 +260,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             need_redraw: true,
         });
 
-        // TODO: construct accesskit adapter
-
         self.apply_size(data, true);
 
         log::trace!(target: "kas_perf::wgpu::window", "resume: {}µs", time.elapsed().as_micros());
