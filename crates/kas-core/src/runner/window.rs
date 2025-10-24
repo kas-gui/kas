@@ -536,6 +536,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         cx.update(self.widget.as_node(data));
         if cx.resize {
             self.ev_state.action |= Action::RESIZE;
+        } else if cx.redraw {
+            window.request_redraw();
         }
 
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());

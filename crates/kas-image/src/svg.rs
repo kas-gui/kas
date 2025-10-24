@@ -317,7 +317,7 @@ mod Svg {
                     ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
                 }
 
-                cx.redraw(&self);
+                cx.redraw();
                 self.inner = match std::mem::take(&mut self.inner) {
                     State::None => State::None,
                     State::Initial(source) | State::Rendering(source) | State::Ready(source, _) => {

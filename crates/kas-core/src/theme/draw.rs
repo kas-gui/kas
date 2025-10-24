@@ -135,6 +135,7 @@ impl<'a> DrawCx<'a> {
         if cx.resize {
             ev.action |= Action::RESIZE;
         }
+        // Ignore cx.redraw: we are already drawing
         result
     }
 

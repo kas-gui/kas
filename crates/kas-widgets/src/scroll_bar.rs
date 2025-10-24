@@ -367,7 +367,7 @@ mod ScrollBar {
                 Event::Timer(TIMER_HIDE) => {
                     if !self.is_under_mouse {
                         self.force_visible = false;
-                        cx.redraw(self);
+                        cx.redraw();
                     }
                     Used
                 }
@@ -379,7 +379,7 @@ mod ScrollBar {
                 Event::MouseOver(true) => {
                     self.is_under_mouse = true;
                     self.force_visible = true;
-                    cx.redraw(self);
+                    cx.redraw();
                     Used
                 }
                 Event::MouseOver(false) => {

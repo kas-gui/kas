@@ -207,7 +207,7 @@ mod EditField {
                 }
                 Event::LostKeyFocus => {
                     self.has_key_focus = false;
-                    cx.redraw(&self);
+                    cx.redraw();
                     G::focus_lost(self, cx, data);
                     Used
                 }
@@ -216,7 +216,7 @@ mod EditField {
                     self.current = CurrentAction::None;
                     self.input_handler.stop_selecting();
                     self.selection.set_empty();
-                    cx.redraw(self);
+                    cx.redraw();
                     Used
                 }
                 Event::Command(cmd, code) => match self.control_key(cx, data, cmd, code) {
@@ -709,7 +709,7 @@ impl<G: EditGuard> EditField<G> {
     fn prepare_text(&mut self, cx: &mut EventCx) {
         if self.text.prepare() {
             self.text.ensure_no_left_overhang();
-            cx.redraw(&self);
+            cx.redraw();
         }
 
         self.set_view_offset_from_cursor(cx);
@@ -1002,7 +1002,7 @@ impl<G: EditGuard> EditField<G> {
             Action::None => EditAction::None,
             Action::Deselect => {
                 self.selection.set_empty();
-                cx.redraw(&self);
+                cx.redraw();
                 EditAction::None
             }
             Action::Activate => EditAction::Activate,
@@ -1043,7 +1043,7 @@ impl<G: EditGuard> EditField<G> {
                     self.set_primary(cx);
                 }
                 self.edit_x_coord = x_coord;
-                cx.redraw(&self);
+                cx.redraw();
                 EditAction::None
             }
         };
@@ -1070,7 +1070,7 @@ impl<G: EditGuard> EditField<G> {
                 self.selection.set_edit_index(index);
                 self.set_view_offset_from_cursor(cx);
                 self.edit_x_coord = None;
-                cx.redraw(self);
+                cx.redraw();
             }
         }
     }

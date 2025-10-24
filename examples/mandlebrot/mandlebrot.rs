@@ -428,7 +428,7 @@ mod Mandlebrot {
                 _ => return Unused,
             }
 
-            cx.redraw(self.id());
+            cx.redraw();
             cx.push(ViewUpdate(self.loc()));
             Used
         }

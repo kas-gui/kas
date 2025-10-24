@@ -66,7 +66,7 @@ mod RadioBox {
             if self.state != new_state {
                 self.state = new_state;
                 self.last_change = Some(Instant::now());
-                cx.redraw(self);
+                cx.redraw();
             }
         }
 
@@ -141,7 +141,7 @@ mod RadioBox {
             }
 
             self.last_change = Some(Instant::now());
-            cx.redraw(self);
+            cx.redraw();
         }
     }
 }

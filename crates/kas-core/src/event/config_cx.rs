@@ -26,6 +26,7 @@ pub struct ConfigCx<'a> {
     sh: &'a dyn ThemeSize,
     pub(crate) ev: &'a mut EventState,
     pub(crate) resize: bool,
+    pub(crate) redraw: bool,
 }
 
 impl<'a> ConfigCx<'a> {
@@ -37,6 +38,7 @@ impl<'a> ConfigCx<'a> {
             sh,
             ev,
             resize: false,
+            redraw: false,
         }
     }
 
@@ -95,6 +97,19 @@ impl<'a> ConfigCx<'a> {
     pub fn set_send_target_for<M: Debug + 'static>(&mut self, id: Id) {
         let type_id = TypeId::of::<M>();
         self.pending_send_targets.push((type_id, id));
+    }
+
+    /// Notify that a widget must be redrawn
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    ///
+    /// Alternatively, a redraw may
+    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
+    #[inline]
+    pub fn redraw(&mut self) {
+        self.redraw = true;
     }
 
     /// Require that the current widget (and its descendants) be resized

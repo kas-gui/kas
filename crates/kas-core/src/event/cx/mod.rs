@@ -172,6 +172,7 @@ impl EventState {
         if cx.resize {
             self.action |= Action::RESIZE;
         }
+        // Ignore cx.redraw: we can assume a redraw will happen
         self.action |= Action::REGION_MOVED;
     }
 
@@ -193,10 +194,13 @@ impl EventState {
             last_child: None,
             scroll: Scroll::None,
             resize: false,
+            redraw: false,
         };
         f(&mut cx);
         if cx.resize {
             self.action |= Action::RESIZE;
+        } else if cx.redraw {
+            self.action |= Action::REDRAW;
         }
     }
 
@@ -286,7 +290,7 @@ impl EventState {
             }
         }
         if disable {
-            self.action(&target, Action::REDRAW);
+            self.redraw(&target);
             self.disabled.push(target);
         }
     }
@@ -374,6 +378,7 @@ pub struct EventCx<'a> {
     last_child: Option<usize>,
     scroll: Scroll,
     pub(crate) resize: bool,
+    redraw: bool,
 }
 
 impl<'a> Deref for EventCx<'a> {
@@ -426,12 +431,26 @@ impl<'a> EventCx<'a> {
         let mut cx = ConfigCx::new(size, self.state);
         let result = f(&mut cx);
         self.resize |= cx.resize;
+        self.redraw |= cx.redraw;
         result
     }
 
     /// Get a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         self.runner.draw_shared()
+    }
+
+    /// Notify that a widget must be redrawn
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    ///
+    /// Alternatively, a redraw may
+    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
+    #[inline]
+    pub fn redraw(&mut self) {
+        self.redraw = true;
     }
 
     /// Require that the current widget (and its descendants) be resized

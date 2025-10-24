@@ -144,7 +144,7 @@ mod Clock {
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
                     cx.request_timer(self.id(), TIMER, Duration::from_nanos(ns as u64));
-                    cx.redraw(self);
+                    cx.redraw();
                     Used
                 }
                 _ => Unused,

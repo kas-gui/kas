@@ -262,9 +262,9 @@ impl<'a> EventCx<'a> {
         if event.state == ElementState::Pressed && !is_synthetic {
             self.start_key_event(widget, event.logical_key, event.physical_key);
         } else if event.state == ElementState::Released
-            && let Some(id) = self.key_depress.remove(&event.physical_key)
+            && self.key_depress.remove(&event.physical_key).is_some()
         {
-            self.redraw(id);
+            self.redraw();
         }
     }
 
