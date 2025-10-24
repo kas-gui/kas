@@ -914,7 +914,7 @@ mod ListView {
                         let act = self.scroll.focus_rect(cx, rect, self.rect());
                         if !act.is_empty() {
                             cx.action(&self, act);
-                            self.post_scroll(&mut cx.config_cx(), data);
+                            cx.config_cx(|cx| self.post_scroll(cx, data));
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         let w = &self.widgets[index];
@@ -958,7 +958,7 @@ mod ListView {
                     Used
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
-                    self.post_scroll(&mut cx.config_cx(), data);
+                    cx.config_cx(|cx| self.post_scroll(cx, data));
                     Used
                 }
                 _ => Unused, // fall through to scroll handler
@@ -1028,14 +1028,14 @@ mod ListView {
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
             if changes != Changes::None {
-                self.handle_update(&mut cx.config_cx(), data, changes);
+                cx.config_cx(|cx| self.handle_update(cx, data, changes));
             }
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
             self.scroll
                 .scroll(cx, self.id(), self.rect(), scroll - self.virtual_offset());
-            self.post_scroll(&mut cx.config_cx(), data);
+            cx.config_cx(|cx| self.post_scroll(cx, data));
         }
     }
 

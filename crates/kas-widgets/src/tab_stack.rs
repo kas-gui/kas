@@ -185,7 +185,7 @@ mod TabStack {
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if let Some(SetIndex(index)) = cx.try_pop() {
-                self.set_active(&mut cx.config_cx(), data, index);
+                cx.config_cx(|cx| self.set_active(cx, data, index));
                 if let Some(ref f) = self.on_change {
                     let title = self.tabs.inner[index].as_str();
                     f(cx, data, index, title);

@@ -384,10 +384,10 @@ mod List {
         ///                     } else {
         ///                         Button::label_msg("Remove", Msg::Remove)
         ///                     };
-        ///                     row.push(&mut cx.config_cx(), data, button);
+        ///                     cx.config_cx(|cx| row.push(cx, data, button));
         ///                 }
         ///                 Msg::Remove => {
-        ///                     let _ = row.pop(&mut cx.config_cx());
+        ///                     let _ = cx.config_cx(|cx| row.pop(cx));
         ///                 }
         ///             }
         ///         }

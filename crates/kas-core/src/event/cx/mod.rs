@@ -397,7 +397,7 @@ impl<'a> EventCx<'a> {
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
-        widget._configure(&mut self.config_cx(), id);
+        self.config_cx(|cx| widget._configure(cx, id));
     }
 
     /// Update a widget
@@ -406,7 +406,7 @@ impl<'a> EventCx<'a> {
     /// [update](Events#update).
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
-        widget._update(&mut self.config_cx());
+        self.config_cx(|cx| widget._update(cx));
     }
 
     /// Get a [`SizeCx`]
@@ -419,10 +419,11 @@ impl<'a> EventCx<'a> {
         SizeCx::new(self.state, self.window.theme_size())
     }
 
-    /// Get a [`ConfigCx`]
-    pub fn config_cx(&mut self) -> ConfigCx<'_> {
+    /// Access a [`ConfigCx`]
+    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
         let size = self.window.theme_size();
-        ConfigCx::new(size, self.state)
+        let mut cx = ConfigCx::new(size, self.state);
+        f(&mut cx)
     }
 
     /// Get a [`DrawShared`]
