@@ -167,7 +167,11 @@ impl EventState {
         // These are recreated during configure:
         self.nav_fallback = None;
 
-        ConfigCx::new(sizer, self).configure(node, id);
+        let mut cx = ConfigCx::new(sizer, self);
+        cx.configure(node, id);
+        if cx.resize {
+            self.action |= Action::RESIZE;
+        }
         self.action |= Action::REGION_MOVED;
     }
 
@@ -188,8 +192,12 @@ impl EventState {
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
+            resize: false,
         };
         f(&mut cx);
+        if cx.resize {
+            self.action |= Action::RESIZE;
+        }
     }
 
     /// Clear all focus and grabs on `target`
@@ -373,6 +381,7 @@ pub struct EventCx<'a> {
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
+    pub(crate) resize: bool,
 }
 
 impl<'a> Deref for EventCx<'a> {
@@ -423,7 +432,9 @@ impl<'a> EventCx<'a> {
     pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
         let size = self.window.theme_size();
         let mut cx = ConfigCx::new(size, self.state);
-        f(&mut cx)
+        let result = f(&mut cx);
+        self.resize |= cx.resize;
+        result
     }
 
     /// Get a [`DrawShared`]

@@ -25,6 +25,7 @@ use std::ops::{Deref, DerefMut};
 pub struct ConfigCx<'a> {
     sh: &'a dyn ThemeSize,
     pub(crate) ev: &'a mut EventState,
+    pub(crate) resize: bool,
 }
 
 impl<'a> ConfigCx<'a> {
@@ -32,7 +33,11 @@ impl<'a> ConfigCx<'a> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ev: &'a mut EventState) -> Self {
-        ConfigCx { sh, ev }
+        ConfigCx {
+            sh,
+            ev,
+            resize: false,
+        }
     }
 
     /// Access a [`SizeCx`]
