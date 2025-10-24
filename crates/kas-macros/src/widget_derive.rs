@@ -231,17 +231,17 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
     let fn_size_rules = quote! {
         #[inline]
         fn size_rules(&mut self,
-            sizer: ::kas::theme::SizeCx,
+            cx: &mut ::kas::theme::SizeCx,
             axis: ::kas::layout::AxisInfo,
         ) -> ::kas::layout::SizeRules {
-            self.#inner.size_rules(sizer, axis)
+            self.#inner.size_rules(cx, axis)
         }
     };
     let fn_set_rect = quote! {
         #[inline]
         fn set_rect(
             &mut self,
-            cx: &mut ::kas::event::ConfigCx,
+            cx: &mut ::kas::theme::SizeCx,
             rect: ::kas::geom::Rect,
             hints: ::kas::layout::AlignHints,
         ) {

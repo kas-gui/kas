@@ -5,7 +5,6 @@
 
 //! Layout, Tile and TileExt traits
 
-use crate::event::ConfigCx;
 use crate::geom::Rect;
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
@@ -83,7 +82,7 @@ pub trait Layout {
     ///
     /// The [`#[layout]`](macro@crate::layout) macro may be used to
     /// provide a default implementation.
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     ///
@@ -111,7 +110,7 @@ pub trait Layout {
     /// provide a default implementation.
     ///
     /// [`Stretch`]: crate::layout::Stretch
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
+    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints);
 
     /// Draw a widget and its children
     ///
@@ -153,10 +152,10 @@ pub trait MacroDefinedLayout {
     fn rect(&self) -> Rect;
 
     /// Get size rules for the given axis
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
+    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints);
 
     /// Draw a widget and its children
     fn draw(&self, draw: DrawCx);

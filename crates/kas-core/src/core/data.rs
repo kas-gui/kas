@@ -8,12 +8,11 @@
 use super::Id;
 #[allow(unused)] use crate::Widget;
 use crate::geom::Rect;
-use std::ops::Range;
+use std::ops::{Range, RangeInclusive};
 
-/// An opaque type indexible over `usize`
+/// An opaque type representing a set of `usize` indices
 ///
-/// Currently, the only supported representation is a range. Construct using
-/// [`From`] impls, e.g. `(0..self.widgets.len()).into()`.
+/// The only representation currently supported is a range.
 //
 // NOTE: this API is extensible to other representations like an enum over
 // Range or Box<[usize]> (or Vec<usize>).
@@ -21,6 +20,24 @@ use std::ops::Range;
 pub struct ChildIndices(usize, usize);
 
 impl ChildIndices {
+    /// Construct: no indices
+    #[inline]
+    pub fn none() -> Self {
+        ChildIndices(0, 0)
+    }
+
+    /// Construct: one index
+    #[inline]
+    pub fn one(index: usize) -> Self {
+        ChildIndices(index, index + 1)
+    }
+
+    /// Construct: a range
+    #[inline]
+    pub fn range(range: impl Into<Self>) -> Self {
+        range.into()
+    }
+
     // pub fn iter(&self) -> ChildIndicesRefIter<'_> { .. }
 
     /// Convert to a Range
@@ -44,6 +61,13 @@ impl From<Range<usize>> for ChildIndices {
     #[inline]
     fn from(range: Range<usize>) -> Self {
         ChildIndices(range.start, range.end)
+    }
+}
+
+impl From<RangeInclusive<usize>> for ChildIndices {
+    #[inline]
+    fn from(range: RangeInclusive<usize>) -> Self {
+        ChildIndices(*range.start(), *range.end() + 1)
     }
 }
 

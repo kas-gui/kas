@@ -50,17 +50,18 @@ mod EditBox {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
-            axis.sub_other(self.frame_size.extract(axis.flipped()));
+        fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
+            let size = self.frame_size.extract(axis.flipped());
+            axis.map_other(|x| x - size);
 
-            let mut rules = self.inner.size_rules(sizer.re(), axis);
-            let bar_rules = self.vert_bar.size_rules(sizer.re(), axis);
+            let mut rules = self.inner.size_rules(cx, axis);
+            let bar_rules = self.vert_bar.size_rules(cx, axis);
             if axis.is_horizontal() && self.multi_line() {
                 self.inner_margin = rules.margins_i32().1.max(bar_rules.margins_i32().0);
                 rules.append(bar_rules);
             }
 
-            let frame_rules = sizer.frame(FrameStyle::EditBox, axis);
+            let frame_rules = cx.frame(FrameStyle::EditBox, axis);
             self.frame_offset_ex_margin
                 .set_component(axis, frame_rules.size());
             let (rules, offset, size) = frame_rules.surround(rules);
@@ -69,7 +70,7 @@ mod EditBox {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, outer_rect: Rect, hints: AlignHints) {
             widget_set_rect!(outer_rect);
             let mut rect = outer_rect;
 
@@ -83,7 +84,7 @@ mod EditBox {
 
             let mut bar_rect = Rect::ZERO;
             if self.multi_line() {
-                let bar_width = cx.size_cx().scroll_bar_width();
+                let bar_width = cx.scroll_bar_width();
                 let x1 = rect.pos.0 + rect.size.0;
                 let x0 = x1 - bar_width;
                 bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));

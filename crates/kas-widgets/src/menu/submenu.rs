@@ -226,7 +226,7 @@ mod MenuView {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
                 col_spans: self
@@ -242,17 +242,17 @@ mod MenuView {
             let store = &mut self.store;
             let mut solver = layout::GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, store);
 
-            let frame_rules = sizer.frame(FrameStyle::MenuEntry, axis);
+            let frame_rules = cx.frame(FrameStyle::MenuEntry, axis);
 
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
-            let (_, _, frame_size_flipped) = sizer
+            let (_, _, frame_size_flipped) = cx
                 .frame(FrameStyle::MenuEntry, axis.flipped())
                 .surround(child_rules);
 
-            let child_rules = |sizer: SizeCx, w: &mut dyn Tile, mut axis: AxisInfo| {
-                axis.sub_other(frame_size_flipped);
-                let rules = w.size_rules(sizer, axis);
+            let child_rules = |cx: &mut SizeCx, w: &mut dyn Tile, mut axis: AxisInfo| {
+                axis.map_other(|x| x - frame_size_flipped);
+                let rules = w.size_rules(cx, axis);
                 frame_rules.surround(rules).0
             };
 
@@ -262,30 +262,30 @@ mod MenuView {
 
                 // Note: we are required to call child.size_rules even if sub_items are used
                 // Note: axis is not modified by the solver in this case
-                let rules = child.size_rules(sizer.re(), axis);
+                let rules = child.size_rules(cx, axis);
 
                 // Note: if we use sub-items, we are required to call size_rules
                 // on these for both axes
                 if let Some(items) = child.sub_items() {
                     if let Some(w) = items.toggle {
                         let info = layout::GridCellInfo::new(0, row);
-                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
+                        solver.for_child(store, info, |axis| child_rules(cx, w, axis));
                     }
                     if let Some(w) = items.icon {
                         let info = layout::GridCellInfo::new(1, row);
-                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
+                        solver.for_child(store, info, |axis| child_rules(cx, w, axis));
                     }
                     if let Some(w) = items.label {
                         let info = layout::GridCellInfo::new(2, row);
-                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
+                        solver.for_child(store, info, |axis| child_rules(cx, w, axis));
                     }
                     if let Some(w) = items.label2 {
                         let info = layout::GridCellInfo::new(3, row);
-                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
+                        solver.for_child(store, info, |axis| child_rules(cx, w, axis));
                     }
                     if let Some(w) = items.submenu {
                         let info = layout::GridCellInfo::new(4, row);
-                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
+                        solver.for_child(store, info, |axis| child_rules(cx, w, axis));
                     }
                 } else {
                     solver.for_child(store, info, |_| rules);
@@ -294,7 +294,7 @@ mod MenuView {
             solver.finish(store)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
             widget_set_rect!(rect);
             let store = &mut self.store;
             let hints = AlignHints::NONE;
@@ -303,11 +303,9 @@ mod MenuView {
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
             let (_, frame_x, frame_w) = cx
-                .size_cx()
                 .frame(FrameStyle::MenuEntry, Direction::Right)
                 .surround(child_rules);
             let (_, frame_y, frame_h) = cx
-                .size_cx()
                 .frame(FrameStyle::MenuEntry, Direction::Down)
                 .surround(child_rules);
             let frame_offset = Offset(frame_x, frame_y);
@@ -363,7 +361,7 @@ mod MenuView {
 
         #[inline]
         fn child_indices(&self) -> ChildIndices {
-            (0..self.list.len()).into()
+            ChildIndices::range(0..self.list.len())
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.list.get(index).map(|w| w.as_tile())

@@ -72,11 +72,11 @@ impl<T: FormattableText> Layout for Text<T> {
         self.rect
     }
 
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        sizer.text_rules(self, axis)
+    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        cx.text_rules(self, axis)
     }
 
-    fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+    fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, hints: AlignHints) {
         self.set_align(hints.complete_default().into());
         if rect.size != self.rect.size {
             if rect.size.0 != self.rect.size.0 {

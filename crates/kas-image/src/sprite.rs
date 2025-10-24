@@ -118,18 +118,18 @@ mod Sprite {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             if self.scaling.size == LogicalSize::default() {
-                let scale: i32 = (sizer.scale_factor() * 0.9).cast_nearest();
+                let scale: i32 = (cx.scale_factor() * 0.9).cast_nearest();
                 debug_assert!(scale >= 1);
                 SizeRules::fixed(self.image_size.extract(axis) * scale)
-                    .with_margins(sizer.margins(self.scaling.margins).extract(axis))
+                    .with_margins(cx.margins(self.scaling.margins).extract(axis))
             } else {
-                self.scaling.size_rules(sizer, axis)
+                self.scaling.size_rules(cx, axis)
             }
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
             let rect = if self.scaling.size == LogicalSize::default() {
                 // Avoid divide-by-zero
@@ -140,7 +140,7 @@ mod Sprite {
                 let size = self.image_size * scale;
                 align.aligned_rect(size, rect)
             } else {
-                let scale_factor = cx.size_cx().scale_factor();
+                let scale_factor = cx.scale_factor();
                 self.scaling.align(rect, align, scale_factor)
             };
             widget_set_rect!(rect);

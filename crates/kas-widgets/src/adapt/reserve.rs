@@ -23,7 +23,7 @@ mod Reserve {
     pub struct Reserve<W: Widget> {
         #[widget]
         pub inner: W,
-        reserve: Box<dyn Fn(SizeCx, AxisInfo) -> SizeRules + 'static>,
+        reserve: Box<dyn Fn(&mut SizeCx, AxisInfo) -> SizeRules + 'static>,
     }
 
     impl Self {
@@ -36,23 +36,26 @@ mod Reserve {
         /// use kas_widgets::Filler;
         /// use kas::prelude::*;
         ///
-        /// let label = Reserve::new(Filler::new(), |sizer: SizeCx<'_>, axis| {
-        ///     sizer.logical(100.0, 100.0).build(axis)
+        /// let label = Reserve::new(Filler::new(), |cx: &mut SizeCx<'_>, axis| {
+        ///     cx.logical(100.0, 100.0).build(axis)
         /// });
         ///```
         /// The resulting `SizeRules` will be the max of those for the inner widget
         /// and the result of the `reserve` closure.
         #[inline]
-        pub fn new(inner: W, reserve: impl Fn(SizeCx, AxisInfo) -> SizeRules + 'static) -> Self {
+        pub fn new(
+            inner: W,
+            reserve: impl Fn(&mut SizeCx, AxisInfo) -> SizeRules + 'static,
+        ) -> Self {
             let reserve = Box::new(reserve);
             Reserve { inner, reserve }
         }
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let inner_rules = self.inner.size_rules(sizer.re(), axis);
-            let reserve_rules = (self.reserve)(sizer.re(), axis);
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let inner_rules = self.inner.size_rules(cx, axis);
+            let reserve_rules = (self.reserve)(cx, axis);
             inner_rules.max(reserve_rules)
         }
     }
@@ -83,11 +86,11 @@ mod Margins {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut child_rules = self.inner.size_rules(sizer.re(), axis);
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut child_rules = self.inner.size_rules(cx, axis);
             if self.dirs.intersects(Directions::from(axis)) {
                 let mut rule_margins = child_rules.margins();
-                let margins = sizer.margins(self.style).extract(axis);
+                let margins = cx.margins(self.style).extract(axis);
                 if self.dirs.intersects(Directions::LEFT | Directions::UP) {
                     rule_margins.0 = margins.0;
                 }

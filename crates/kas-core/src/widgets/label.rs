@@ -10,7 +10,7 @@ use crate::event::{ConfigCx, EventState};
 use crate::geom::Rect;
 use crate::layout::AlignHints;
 use crate::text::format::FormattableText;
-use crate::theme::{Text, TextClass};
+use crate::theme::{SizeCx, Text, TextClass};
 use crate::{Events, Layout, Role, RoleCx, Tile};
 use kas_macros::impl_self;
 use std::fmt::Debug;
@@ -117,7 +117,7 @@ mod Label {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             self.text
                 .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }

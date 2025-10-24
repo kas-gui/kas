@@ -415,8 +415,8 @@ impl<'a> EventCx<'a> {
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Events::configure`].
-    pub fn size_cx(&self) -> SizeCx<'_> {
-        SizeCx::new(self.window.theme_size())
+    pub fn size_cx(&mut self) -> SizeCx<'_> {
+        SizeCx::new(self.state, self.window.theme_size())
     }
 
     /// Get a [`ConfigCx`]

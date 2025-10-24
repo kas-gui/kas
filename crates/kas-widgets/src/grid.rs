@@ -177,21 +177,19 @@ mod Grid {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {
                 if let Some((info, child)) =
                     self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n))
                 {
-                    solver.for_child(&mut self.layout, info, |axis| {
-                        child.size_rules(sizer.re(), axis)
-                    });
+                    solver.for_child(&mut self.layout, info, |axis| child.size_rules(cx, axis));
                 }
             }
             solver.finish(&mut self.layout)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {

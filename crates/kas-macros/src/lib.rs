@@ -567,7 +567,7 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 ///
 /// Example usage:
 /// ```ignore
-/// fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+/// fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, _: AlignHints) {
 ///     widget_set_rect!(rect);
 /// }
 /// ```

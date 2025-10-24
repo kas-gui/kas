@@ -151,13 +151,13 @@ mod Splitter {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
             }
             assert_eq!(self.grips.len() + 1, self.widgets.len());
 
-            let grip_rules = sizer.feature(Feature::Separator, axis);
+            let grip_rules = cx.feature(Feature::Separator, axis);
 
             let mut solver = layout::RowSolver::new(axis, self.dim(), &mut self.data);
 
@@ -166,9 +166,7 @@ mod Splitter {
                 assert!(n < self.widgets.len());
                 let widgets = &mut self.widgets;
                 if let Some(w) = widgets.get_mut_tile(n) {
-                    solver.for_child(&mut self.data, n << 1, |axis| {
-                        w.size_rules(sizer.re(), axis)
-                    });
+                    solver.for_child(&mut self.data, n << 1, |axis| w.size_rules(cx, axis));
                 }
 
                 if n >= self.grips.len() {
@@ -176,7 +174,7 @@ mod Splitter {
                 }
                 let grips = &mut self.grips;
                 solver.for_child(&mut self.data, (n << 1) + 1, |axis| {
-                    grips[n].size_rules(sizer.re(), axis);
+                    grips[n].size_rules(cx, axis);
                     grip_rules
                 });
                 n += 1;
@@ -184,7 +182,7 @@ mod Splitter {
             solver.finish(&mut self.data)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.align_hints = hints;
             self.size_solved = true;
@@ -246,7 +244,7 @@ mod Splitter {
 
         #[inline]
         fn child_indices(&self) -> ChildIndices {
-            (0..self.widgets.len() + self.grips.len()).into()
+            ChildIndices::range(0..self.widgets.len() + self.grips.len())
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             if (index & 1) != 0 {
@@ -350,7 +348,7 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
             assert!(n < self.widgets.len());
             if let Some(w) = self.widgets.get_mut_tile(n) {
                 let rect = setter.child_rect(&mut self.data, n << 1);
-                w.set_rect(cx, rect, self.align_hints);
+                w.set_rect(&mut cx.size_cx(), rect, self.align_hints);
             }
 
             if n >= self.grips.len() {
@@ -361,7 +359,7 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
             let track = self.grips[n].track();
             self.grips[n].set_track(track);
             let rect = setter.child_rect(&mut self.data, index);
-            self.grips[n].set_rect(cx, rect, AlignHints::NONE);
+            self.grips[n].set_rect(&mut cx.size_cx(), rect, AlignHints::NONE);
 
             n += 1;
         }

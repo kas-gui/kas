@@ -708,20 +708,20 @@ impl Layout {
                 }}
             }
             Layout::Single(expr) => quote! {
-                ::kas::Layout::size_rules(&mut #expr, sizer, axis)
+                ::kas::Layout::size_rules(&mut #expr, cx, axis)
             },
             Layout::Widget(stor, _) | Layout::Label(stor, _) => quote! {
-                ::kas::Layout::size_rules(&mut #core_path.#stor, sizer, axis)
+                ::kas::Layout::size_rules(&mut #core_path.#stor, cx, axis)
             },
             Layout::Frame(stor, layout, style, _) => {
                 let inner = layout.size_rules(core_path);
                 quote! {
                     let child_rules = {
-                        let sizer = sizer.re();
+                        let cx = &mut *cx;
                         let axis = #core_path.#stor.child_axis(axis);
                         #inner
                     };
-                    #core_path.#stor.size_rules(sizer, axis, child_rules, #style)
+                    #core_path.#stor.size_rules(cx, axis, child_rules, #style)
                 }
             }
             Layout::List(stor, dir, list) => {
@@ -734,7 +734,7 @@ impl Layout {
                     let inner = item.layout.size_rules(core_path);
                     toks.append_all(quote!{{
                         ::kas::layout::RulesSolver::for_child(&mut solver, &mut #core_path.#stor, #index, |axis| {
-                            let sizer = sizer.re();
+                            let cx = &mut *cx;
                             #inner
                         });
                     }});
@@ -767,7 +767,7 @@ impl Layout {
                     let cell = &item.cell;
                     toks.append_all(quote!{{
                         ::kas::layout::RulesSolver::for_child(&mut solver, &mut #core_path.#stor, #cell, |axis| {
-                            let sizer = sizer.re();
+                            let cx = &mut *cx;
                             #inner
                         });
                     }});

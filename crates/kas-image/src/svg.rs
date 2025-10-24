@@ -265,13 +265,13 @@ mod Svg {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.scaling.size_rules(sizer, axis)
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            self.scaling.size_rules(cx, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
-            let scale_factor = cx.size_cx().scale_factor();
+            let scale_factor = cx.scale_factor();
             let rect = self.scaling.align(rect, align, scale_factor);
             widget_set_rect!(rect);
 

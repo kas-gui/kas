@@ -383,7 +383,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             fn_child_indices = Some(quote! {
                 #[inline]
                 fn child_indices(&self) -> ::kas::ChildIndices {
-                    (0..#count).into()
+                    ::kas::ChildIndices::range(0..#count)
                 }
             });
             fn_get_child = Some(quote! {
@@ -412,7 +412,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             fn_child_indices = Some(quote! {
                 #[inline]
                 fn child_indices(&self) -> ::kas::ChildIndices {
-                    (0..self.#ident.len()).into()
+                    ::kas::ChildIndices::range(0..self.#ident.len())
                 }
             });
             fn_get_child = Some(quote! {
@@ -474,7 +474,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #[inline]
                 fn size_rules(
                     &mut self,
-                    sizer: ::kas::theme::SizeCx,
+                    cx: &mut ::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
                     #tree_size_rules
@@ -483,7 +483,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #[inline]
                 fn set_rect(
                     &mut self,
-                    cx: &mut ::kas::event::ConfigCx,
+                    cx: &mut ::kas::theme::SizeCx,
                     rect: ::kas::geom::Rect,
                     hints: ::kas::layout::AlignHints,
                 ) {
@@ -509,20 +509,20 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         fn_size_rules = Some(quote! {
             fn size_rules(
                 &mut self,
-                sizer: ::kas::theme::SizeCx,
+                cx: &mut ::kas::theme::SizeCx,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
                 #[cfg(debug_assertions)]
                 #core_path.status.size_rules(&#core_path._id, axis);
 
-                ::kas::MacroDefinedLayout::size_rules(self, sizer, axis)
+                ::kas::MacroDefinedLayout::size_rules(self, cx, axis)
             }
         });
 
         fn_set_rect = quote! {
             fn set_rect(
                 &mut self,
-                cx: &mut ::kas::event::ConfigCx,
+                cx: &mut ::kas::theme::SizeCx,
                 rect: ::kas::geom::Rect,
                 hints: ::kas::layout::AlignHints,
             ) {
@@ -566,7 +566,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         fn_set_rect = quote! {
             fn set_rect(
                 &mut self,
-                _: &mut ::kas::event::ConfigCx,
+                _: &mut ::kas::theme::SizeCx,
                 rect: ::kas::geom::Rect,
                 _: ::kas::layout::AlignHints,
             ) {
@@ -949,9 +949,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             #[cfg(debug_assertions)]
             #core_path.status.configure(&#core_path._id);
 
-            ::kas::Events::configure(self, cx);
-            ::kas::Events::update(self, cx, data);
-            ::kas::Events::configure_recurse(self, cx, data);
+            ::kas::impls::_configure(self, cx, data)
         }
 
         fn _update(
@@ -962,8 +960,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             #[cfg(debug_assertions)]
             #core_path.status.update(&#core_path._id);
 
-            ::kas::Events::update(self, cx, data);
-            ::kas::Events::update_recurse(self, cx, data);
+            ::kas::impls::_update(self, cx, data)
         }
 
         fn _send(

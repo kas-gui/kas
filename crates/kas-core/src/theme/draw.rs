@@ -123,7 +123,8 @@ impl<'a> DrawCx<'a> {
 
     /// Access a [`SizeCx`]
     pub fn size_cx(&mut self) -> SizeCx<'_> {
-        SizeCx::new(self.h.components().0)
+        let (w, _, es) = self.h.components();
+        SizeCx::new(es, w)
     }
 
     /// Access a [`ConfigCx`]

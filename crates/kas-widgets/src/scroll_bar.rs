@@ -310,12 +310,12 @@ mod ScrollBar {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let _ = self.grip.size_rules(sizer.re(), axis);
-            sizer.feature(Feature::ScrollBar(self.direction()), axis)
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let _ = self.grip.size_rules(cx, axis);
+            cx.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let align = match self.direction.is_vertical() {
                 false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
@@ -327,7 +327,7 @@ mod ScrollBar {
             // We call grip.set_rect only for compliance with the widget model:
             self.grip.set_rect(cx, Rect::ZERO, AlignHints::NONE);
 
-            self.min_grip_len = cx.size_cx().grip_len();
+            self.min_grip_len = cx.grip_len();
             self.update_widgets(cx);
         }
 
@@ -532,10 +532,10 @@ mod ScrollBars {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.inner.size_rules(sizer.re(), axis);
-            let vert_rules = self.vert_bar.size_rules(sizer.re(), axis);
-            let horiz_rules = self.horiz_bar.size_rules(sizer.re(), axis);
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(cx, axis);
+            let vert_rules = self.vert_bar.size_rules(cx, axis);
+            let horiz_rules = self.horiz_bar.size_rules(cx, axis);
             let (use_horiz, use_vert) = match self.mode {
                 ScrollBarMode::Fixed(horiz, vert) => (horiz, vert),
                 ScrollBarMode::Auto => (true, true),
@@ -549,12 +549,12 @@ mod ScrollBars {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let bar_width = cx.size_cx().scroll_bar_width();
+            let bar_width = cx.scroll_bar_width();
             if self.mode == ScrollBarMode::Auto {
                 let max_offset = self.inner.max_scroll_offset();
                 self.show_bars = (max_offset.0 > 0, max_offset.1 > 0);

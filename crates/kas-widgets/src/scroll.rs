@@ -92,12 +92,15 @@ mod ScrollRegion {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
-            axis.sub_other(self.frame_size.extract(axis.flipped()));
+        fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
+            let dir = axis.as_direction();
+            axis.map_other(|x| {
+                (x - self.frame_size.extract(dir)).max(self.min_child_size.extract(dir))
+            });
 
-            let mut rules = self.inner.size_rules(sizer.re(), axis);
+            let mut rules = self.inner.size_rules(cx, axis);
             self.min_child_size.set_component(axis, rules.min_size());
-            rules.reduce_min_to(sizer.min_scroll_size(axis));
+            rules.reduce_min_to(cx.min_scroll_size(axis));
 
             // We use a frame to contain the content margin within the scrollable area.
             let frame = kas::layout::FrameRules::ZERO;
@@ -107,7 +110,7 @@ mod ScrollRegion {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos, child_size);

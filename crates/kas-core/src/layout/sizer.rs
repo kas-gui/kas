@@ -7,7 +7,6 @@
 
 use super::{AxisInfo, Margins, SizeRules};
 use crate::cast::Conv;
-use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::layout::AlignHints;
 use crate::theme::SizeCx;
@@ -75,7 +74,7 @@ pub trait RulesSetter {
 /// fixed and are used e.g. for text wrapping.
 pub fn solve_size_rules<W: Tile + ?Sized>(
     widget: &mut W,
-    sizer: SizeCx,
+    cx: &mut SizeCx,
     x_size: Option<i32>,
     y_size: Option<i32>,
 ) {
@@ -85,8 +84,8 @@ pub fn solve_size_rules<W: Tile + ?Sized>(
         x_size,
         y_size
     );
-    widget.size_rules(sizer.re(), AxisInfo::new(false, y_size));
-    widget.size_rules(sizer.re(), AxisInfo::new(true, x_size));
+    widget.size_rules(cx, AxisInfo::new(false, y_size));
+    widget.size_rules(cx, AxisInfo::new(true, x_size));
 }
 
 /// Size solver
@@ -140,11 +139,11 @@ impl SolveCache {
     /// Calculate required size of widget
     ///
     /// Assumes no explicit alignment.
-    pub fn find_constraints(mut widget: Node<'_>, sizer: SizeCx) -> Self {
+    pub fn find_constraints(mut widget: Node<'_>, cx: &mut SizeCx) -> Self {
         let start = std::time::Instant::now();
 
-        let w = widget.size_rules(sizer.re(), AxisInfo::new(false, None));
-        let h = widget.size_rules(sizer.re(), AxisInfo::new(true, Some(w.ideal_size())));
+        let w = widget.size_rules(cx, AxisInfo::new(false, None));
+        let h = widget.size_rules(cx, AxisInfo::new(true, Some(w.ideal_size())));
 
         let min = Size(w.min_size(), h.min_size());
         let ideal = Size(w.ideal_size(), h.ideal_size());
@@ -188,7 +187,7 @@ impl SolveCache {
     pub fn apply_rect(
         &mut self,
         mut widget: Node<'_>,
-        cx: &mut ConfigCx,
+        cx: &mut SizeCx,
         mut rect: Rect,
         inner_margin: bool,
     ) {
@@ -203,14 +202,14 @@ impl SolveCache {
         // internal layout solving.
         if self.refresh_rules || width != self.last_width {
             if self.refresh_rules {
-                let w = widget.size_rules(cx.size_cx(), AxisInfo::new(false, None));
+                let w = widget.size_rules(cx, AxisInfo::new(false, None));
                 self.min.0 = w.min_size();
                 self.ideal.0 = w.ideal_size();
                 self.margins.horiz = w.margins();
                 width = rect.size.0 - self.margins.sum_horiz();
             }
 
-            let h = widget.size_rules(cx.size_cx(), AxisInfo::new(true, Some(width)));
+            let h = widget.size_rules(cx, AxisInfo::new(true, Some(width)));
             self.min.1 = h.min_size();
             self.ideal.1 = h.ideal_size();
             self.margins.vert = h.margins();

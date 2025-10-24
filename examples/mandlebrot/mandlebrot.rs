@@ -331,15 +331,14 @@ mod Mandlebrot {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer
-                .logical(320.0, 240.0)
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            cx.logical(320.0, 240.0)
                 .with_ideal_factor(4.0)
                 .with_stretch(Stretch::High)
                 .build(axis)
         }
 
-        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, _: AlignHints) {
             widget_set_rect!(rect);
             let size = DVec2::conv(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);

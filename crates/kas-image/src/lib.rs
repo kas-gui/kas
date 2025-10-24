@@ -71,11 +71,11 @@ impl_scope! {
 
 impl Scaling {
     /// Generates [`SizeRules`] based on size
-    pub fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let scale_factor = sizer.scale_factor();
+    pub fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        let scale_factor = cx.scale_factor();
         let ideal = self.size.to_physical(scale_factor).extract(axis);
         SizeRules::new(ideal, ideal, self.stretch)
-            .with_margins(sizer.margins(self.margins).extract(axis))
+            .with_margins(cx.margins(self.margins).extract(axis))
     }
 
     /// Constrains and aligns within the given `rect`

@@ -38,10 +38,10 @@ mod SelectableText {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut rules = kas::MacroDefinedLayout::size_rules(self, sizer.re(), axis);
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = kas::MacroDefinedLayout::size_rules(self, cx, axis);
             if axis.is_vertical() {
-                rules.reduce_min_to(sizer.dpem().cast_ceil());
+                rules.reduce_min_to(cx.dpem().cast_ceil());
             }
             rules
         }
@@ -331,16 +331,16 @@ mod ScrollText {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.label.size_rules(sizer.re(), axis);
-            let _ = self.vert_bar.size_rules(sizer.re(), axis);
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.label.size_rules(cx, axis);
+            let _ = self.vert_bar.size_rules(cx, axis);
             if axis.is_vertical() {
-                rules.reduce_min_to((sizer.dpem() * 4.0).cast_ceil());
+                rules.reduce_min_to((cx.dpem() * 4.0).cast_ceil());
             }
             rules.with_stretch(Stretch::Low)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, mut rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.label.set_rect(cx, rect, hints);
 
@@ -348,7 +348,7 @@ mod ScrollText {
                 .scroll
                 .set_sizes(self.rect().size, self.label.typeset_size());
 
-            let w = cx.size_cx().scroll_bar_width().min(rect.size.0);
+            let w = cx.scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
             self.vert_bar.set_rect(cx, rect, AlignHints::NONE);

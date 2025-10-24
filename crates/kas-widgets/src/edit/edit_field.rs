@@ -86,21 +86,21 @@ mod EditField {
             self.text.rect()
         }
 
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
-                let dpem = sizer.dpem();
+                let dpem = cx.dpem();
                 min = (self.width.0 * dpem).cast_ceil();
                 ideal = (self.width.1 * dpem).cast_ceil();
             } else {
                 // TODO: line height depends on the font; 1em is not a good
                 // approximation. This code also misses inter-line spacing.
-                let dpem = sizer.dpem();
+                let dpem = cx.dpem();
                 min = (self.lines.0 * dpem).cast_ceil();
                 ideal = (self.lines.1 * dpem).cast_ceil();
             };
 
-            let rules = self.text.size_rules(sizer.re(), axis);
+            let rules = self.text.size_rules(cx, axis);
             ideal = ideal.max(rules.ideal_size());
 
             let stretch = if axis.is_horizontal() || self.multi_line() {
@@ -108,10 +108,10 @@ mod EditField {
             } else {
                 Stretch::None
             };
-            SizeRules::new(min, ideal, stretch).with_margins(sizer.text_margins().extract(axis))
+            SizeRules::new(min, ideal, stretch).with_margins(cx.text_margins().extract(axis))
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, mut hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, mut hints: AlignHints) {
             hints.vert = Some(if self.multi_line() {
                 Align::Default
             } else {

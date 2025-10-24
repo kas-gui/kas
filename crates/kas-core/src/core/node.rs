@@ -24,8 +24,8 @@ trait NodeT {
     fn find_child_index(&self, id: &Id) -> Option<usize>;
     fn child_node(&mut self, index: usize) -> Option<Node<'_>>;
 
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
+    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules;
+    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints);
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
 
@@ -65,10 +65,10 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0.child_node(self.1, index)
     }
 
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        self.0.size_rules(sizer, axis)
+    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        self.0.size_rules(cx, axis)
     }
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
         self.0.set_rect(cx, rect, hints);
     }
 
@@ -262,12 +262,12 @@ impl<'a> Node<'a> {
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> Node<'a> {
     /// Get size rules for the given axis
-    pub(crate) fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        self.0.size_rules(sizer, axis)
+    pub(crate) fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        self.0.size_rules(cx, axis)
     }
 
     /// Set size and position
-    pub(crate) fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+    pub(crate) fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
         self.0.set_rect(cx, rect, hints);
     }
 

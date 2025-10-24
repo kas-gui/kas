@@ -66,17 +66,17 @@ mod MenuBar {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,
             // but the frame does not adjust the children's rects.
 
             let len = self.widgets.len();
             let dim = (self.direction, len + 1);
             let mut solver = RowSolver::new(axis, dim, &mut self.layout_store);
-            let frame_rules = sizer.frame(FrameStyle::MenuEntry, axis);
+            let frame_rules = cx.frame(FrameStyle::MenuEntry, axis);
             for (n, child) in self.widgets.iter_mut().enumerate() {
                 solver.for_child(&mut self.layout_store, n, |axis| {
-                    let rules = child.size_rules(sizer.re(), axis);
+                    let rules = child.size_rules(cx, axis);
                     frame_rules.surround(rules).0
                 });
             }
@@ -90,7 +90,7 @@ mod MenuBar {
             solver.finish(&mut self.layout_store)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
             widget_set_rect!(rect);
             let dim = (self.direction, self.widgets.len() + 1);
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout_store);
@@ -115,7 +115,7 @@ mod MenuBar {
 
         #[inline]
         fn child_indices(&self) -> ChildIndices {
-            (0..self.widgets.len()).into()
+            ChildIndices::range(0..self.widgets.len())
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets.get(index).map(|w| w.as_tile())

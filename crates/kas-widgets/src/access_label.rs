@@ -57,8 +57,7 @@ mod AccessLabel {
 
         /// Set the access key target
         ///
-        /// This method should be called from [`Events::configure`] or
-        /// [`Events::configure_recurse`].
+        /// This method should normally be called from [`Events::post_configure`].
         #[inline]
         pub fn set_target(&mut self, target: Id) {
             self.target = target;
@@ -130,7 +129,7 @@ mod AccessLabel {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             self.text
                 .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }

@@ -122,8 +122,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut node = self.widget.as_node(data);
         self.ev_state.full_configure(theme_window.size(), node.re());
 
-        let sizer = SizeCx::new(theme_window.size());
-        let mut solve_cache = SolveCache::find_constraints(node, sizer);
+        let mut cx = SizeCx::new(&mut self.ev_state, theme_window.size());
+        let mut solve_cache = SolveCache::find_constraints(node, &mut cx);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let min_size = Size(1, 1);
@@ -183,8 +183,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             let mut node = self.widget.as_node(data);
             self.ev_state.full_configure(theme_window.size(), node.re());
 
-            let sizer = SizeCx::new(theme_window.size());
-            solve_cache = SolveCache::find_constraints(node, sizer);
+            let mut cx = SizeCx::new(&mut self.ev_state, theme_window.size());
+            solve_cache = SolveCache::find_constraints(node, &mut cx);
 
             if let Some(monitor) = window.current_monitor() {
                 max_physical_size = monitor.size();
@@ -492,8 +492,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        let size = window.theme_window.size();
-        let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+        let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
         self.widget.add_popup(&mut cx, data, id, popup);
     }
 
@@ -506,8 +505,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state.action(self.widget.id(), Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
-            let size = window.theme_window.size();
-            let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+            let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
             widget.remove_popup(&mut cx, id);
         }
     }
@@ -549,7 +547,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut window.solve_cache;
-        let mut cx = ConfigCx::new(window.theme_window.size(), &mut self.ev_state);
+        let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
         solve_cache.apply_rect(self.widget.as_node(data), &mut cx, rect, true);
         if first {
             solve_cache.print_widget_heirarchy(self.widget.as_tile());

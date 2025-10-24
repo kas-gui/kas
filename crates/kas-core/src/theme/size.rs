@@ -8,10 +8,11 @@
 use super::{Feature, FrameStyle, MarginStyle, SizableText, Text, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
+use crate::event::EventState;
 use crate::geom::Rect;
 use crate::layout::{AlignPair, AxisInfo, FrameRules, LogicalBuilder, Margins, SizeRules};
 use crate::text::format::FormattableText;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 #[allow(unused)]
 use crate::{event::ConfigCx, layout::Stretch, theme::DrawCx};
@@ -24,29 +25,30 @@ use crate::{event::ConfigCx, layout::Stretch, theme::DrawCx};
 ///
 /// Most methods get or calculate the size of some feature. These same features
 /// may be drawn through [`DrawCx`].
-pub struct SizeCx<'a>(&'a dyn ThemeSize);
+pub struct SizeCx<'a> {
+    ev: &'a mut EventState,
+    // ThemeSize is implemented by super::dimensions::Window
+    w: &'a dyn ThemeSize,
+}
+
+impl<'a> Deref for SizeCx<'a> {
+    type Target = EventState;
+    fn deref(&self) -> &EventState {
+        self.ev
+    }
+}
+impl<'a> DerefMut for SizeCx<'a> {
+    fn deref_mut(&mut self) -> &mut EventState {
+        self.ev
+    }
+}
 
 impl<'a> SizeCx<'a> {
-    /// Construct from a [`ThemeSize`]
+    /// Construct from [`EventState`] and a [`ThemeSize`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a dyn ThemeSize) -> Self {
-        SizeCx(h)
-    }
-
-    /// Reborrow with a new lifetime
-    ///
-    /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
-    /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
-    /// Until rfcs#1403 lands, reborrows on user types require a method call.
-    ///
-    /// Calling this method is zero-cost.
-    #[inline(always)]
-    pub fn re<'b>(&'b self) -> SizeCx<'b>
-    where
-        'a: 'b,
-    {
-        SizeCx(self.0)
+    pub fn new(ev: &'a mut EventState, w: &'a dyn ThemeSize) -> Self {
+        SizeCx { ev, w }
     }
 
     /// Get the scale factor
@@ -71,7 +73,7 @@ impl<'a> SizeCx<'a> {
     /// is moved to a different monitor); in this case all widgets will be
     /// resized via [`crate::Layout::size_rules`].
     pub fn scale_factor(&self) -> f32 {
-        self.0.scale_factor()
+        self.w.scale_factor()
     }
 
     /// Build [`SizeRules`] from the input size in logical pixels
@@ -87,19 +89,19 @@ impl<'a> SizeCx<'a> {
     /// This method returns the size of 1 Em in physical pixels, derived from
     /// the font size in use by the theme and the screen's scale factor.
     pub fn dpem(&self) -> f32 {
-        self.0.dpem()
+        self.w.dpem()
     }
 
     /// The smallest reasonable size for a visible (non-frame) component
     ///
     /// This is used as a suggestion by some heuristics.
     pub fn min_element_size(&self) -> i32 {
-        self.0.min_element_size()
+        self.w.min_element_size()
     }
 
     /// The minimum size of a scrollable area
     pub fn min_scroll_size(&self, axis: impl Directional) -> i32 {
-        self.0.min_scroll_size(axis.is_vertical())
+        self.w.min_scroll_size(axis.is_vertical())
     }
 
     /// The length of the grip (draggable handle) on a scroll bar or slider
@@ -108,54 +110,63 @@ impl<'a> SizeCx<'a> {
     /// axis is assumed to be equal to the feature size as reported by
     /// [`Self::feature`].
     pub fn grip_len(&self) -> i32 {
-        self.0.grip_len()
+        self.w.grip_len()
     }
 
     /// The width of a vertical scroll bar
     ///
     /// This value is also available through [`Self::feature`].
     pub fn scroll_bar_width(&self) -> i32 {
-        self.0.scroll_bar_width()
+        self.w.scroll_bar_width()
     }
 
     /// Get margin size
     pub fn margins(&self, style: MarginStyle) -> Margins {
-        self.0.margins(style)
+        self.w.margins(style)
     }
 
     /// Get margins for [`MarginStyle::Inner`]
     pub fn inner_margins(&self) -> Margins {
-        self.0.margins(MarginStyle::Inner)
+        self.w.margins(MarginStyle::Inner)
     }
 
     /// Get margins for [`MarginStyle::Tiny`]
     pub fn tiny_margins(&self) -> Margins {
-        self.0.margins(MarginStyle::Tiny)
+        self.w.margins(MarginStyle::Tiny)
     }
 
     /// Get margins for [`MarginStyle::Small`]
     pub fn small_margins(&self) -> Margins {
-        self.0.margins(MarginStyle::Small)
+        self.w.margins(MarginStyle::Small)
     }
 
     /// Get margins for [`MarginStyle::Large`]
     pub fn large_margins(&self) -> Margins {
-        self.0.margins(MarginStyle::Large)
+        self.w.margins(MarginStyle::Large)
     }
 
     /// Get margins for [`MarginStyle::Text`]
     pub fn text_margins(&self) -> Margins {
-        self.0.margins(MarginStyle::Text)
+        self.w.margins(MarginStyle::Text)
     }
 
     /// Size rules for a feature
     pub fn feature(&self, feature: Feature, axis: impl Directional) -> SizeRules {
-        self.0.feature(feature, axis.is_vertical())
+        self.w.feature(feature, axis.is_vertical())
     }
 
     /// Size of a frame around another element
     pub fn frame(&self, style: FrameStyle, axis: impl Directional) -> FrameRules {
-        self.0.frame(style, axis.is_vertical())
+        self.w.frame(style, axis.is_vertical())
+    }
+
+    /// Align a feature's rect
+    ///
+    /// In case the input `rect` is larger than desired on either axis, it is
+    /// reduced in size and offset within the original `rect` as is preferred.
+    #[inline]
+    pub fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
+        self.w.align_feature(feature, rect, align)
     }
 
     /// Get [`SizeRules`] for a text element
@@ -178,7 +189,7 @@ impl<'a> SizeCx<'a> {
     /// [`ConfigCx::text_configure`] before text display for correct results.
     pub fn text_rules<T: FormattableText>(&self, text: &mut Text<T>, axis: AxisInfo) -> SizeRules {
         let class = text.class();
-        self.0.text_rules(text, class, axis)
+        self.w.text_rules(text, class, axis)
     }
 }
 

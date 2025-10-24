@@ -32,11 +32,11 @@ mod CheckBox {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer.feature(Feature::CheckBox, axis)
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            cx.feature(Feature::CheckBox, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let rect = cx.align_feature(Feature::CheckBox, rect, hints.complete_center());
             widget_set_rect!(rect);
         }
@@ -207,7 +207,7 @@ mod CheckButton {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
             let dir = self.direction();
             shrink_to_text(&mut self.rect(), dir, &self.label);
@@ -233,17 +233,8 @@ mod CheckButton {
             self.inner.id()
         }
 
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            let id = self.make_child_id(widget_index!(self.inner));
-            if id.is_valid() {
-                cx.configure(self.inner.as_node(data), id);
-            }
-
-            let id = self.make_child_id(widget_index!(self.label));
-            if id.is_valid() {
-                cx.configure(self.label.as_node(&()), id);
-                self.label.set_target(self.inner.id());
-            }
+        fn post_configure(&mut self, _: &mut ConfigCx) {
+            self.label.set_target(self.inner.id());
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
