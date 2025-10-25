@@ -15,7 +15,7 @@ use crate::runner::AppData;
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::widgets::adapt::MapAny;
 use crate::widgets::{Border, Label, TitleBar};
-use crate::{Action, Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
+use crate::{Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{autoimpl, impl_self, widget_set_rect};
 use smallvec::SmallVec;
 
@@ -345,7 +345,7 @@ mod Window {
                     if let Some(id) = self.popups.last().map(|desc| desc.0) {
                         cx.close_window(id);
                     } else if self.props.escapable {
-                        cx.window_action(Action::CLOSE);
+                        cx.close_own_window();
                     }
                     Used
                 }

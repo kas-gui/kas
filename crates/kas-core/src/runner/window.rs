@@ -539,7 +539,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
     pub(super) fn send_close(&mut self, id: WindowId) {
         if id == self.ev_state.window_id {
-            self.ev_state.action(self.widget.id(), Action::CLOSE);
+            self.ev_state.close_own_window();
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
             let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());

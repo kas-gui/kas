@@ -69,7 +69,7 @@ mod MessageBox {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(Command::Escape, _) | Event::Command(Command::Enter, _) => {
-                    cx.window_action(Action::CLOSE);
+                    cx.close_own_window();
                     Used
                 }
                 _ => Unused,
@@ -78,7 +78,7 @@ mod MessageBox {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(MessageBoxOk) = cx.try_pop() {
-                cx.action(self, Action::CLOSE);
+                cx.close_own_window();
             }
         }
     }
@@ -161,14 +161,14 @@ mod AlertError {
             };
 
             cx.send(self.parent.clone(), result);
-            cx.window_action(Action::CLOSE);
+            cx.close_own_window();
             Used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(result) = cx.try_pop::<ErrorResult>() {
                 cx.send(self.parent.clone(), result);
-                cx.action(self, Action::CLOSE);
+                cx.close_own_window();
             }
         }
     }
@@ -263,14 +263,14 @@ mod AlertUnsaved {
             };
 
             cx.send(self.parent.clone(), result);
-            cx.window_action(Action::CLOSE);
+            cx.close_own_window();
             Used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(result) = cx.try_pop::<UnsavedResult>() {
                 cx.send(self.parent.clone(), result);
-                cx.action(self, Action::CLOSE);
+                cx.close_own_window();
             }
         }
     }

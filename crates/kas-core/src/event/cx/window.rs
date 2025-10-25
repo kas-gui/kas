@@ -12,7 +12,7 @@ use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
-use crate::{Action, Id, Node, Tile};
+use crate::{Action, Id, Node};
 use winit::window::ResizeDirection;
 
 impl EventState {
@@ -392,7 +392,7 @@ impl<'a> EventCx<'a> {
         use winit::event::WindowEvent::*;
 
         match event {
-            CloseRequested => self.action(win.id(), Action::CLOSE),
+            CloseRequested => self.close_own_window(),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,

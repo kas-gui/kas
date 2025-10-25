@@ -127,7 +127,7 @@ mod TitleBarButtons {
                             w.set_maximized(!w.is_maximized());
                         }
                     }
-                    TitleBarButton::Close => cx.action(self, Action::CLOSE),
+                    TitleBarButton::Close => cx.close_own_window(),
                 }
             }
         }

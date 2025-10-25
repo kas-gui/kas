@@ -355,6 +355,12 @@ impl EventState {
         self.action |= action.into();
     }
 
+    /// Request that the window be closed
+    #[inline]
+    pub fn close_own_window(&mut self) {
+        self.action |= Action::CLOSE;
+    }
+
     /// Notify of an [`ActionMoved`]
     #[inline]
     pub fn action_moved(&mut self, action: ActionMoved) {
