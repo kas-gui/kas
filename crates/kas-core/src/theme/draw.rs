@@ -11,12 +11,12 @@ use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::color::{ParseError, Rgb};
 use crate::draw::{Draw, DrawIface, DrawRounded, DrawShared, DrawSharedImpl, ImageId, PassType};
-#[allow(unused)] use crate::event::{Command, Event};
-use crate::event::{ConfigCx, EventState};
+use crate::event::EventState;
+#[allow(unused)] use crate::event::{Command, ConfigCx};
 use crate::geom::{Coord, Offset, Rect};
 use crate::text::{Effect, TextDisplay, format::FormattableText};
 use crate::theme::ColorsLinear;
-use crate::{Action, Id, Tile, autoimpl};
+use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
 use std::ops::Range;
 use std::time::Instant;
@@ -68,7 +68,7 @@ impl std::str::FromStr for Background {
 
 /// Draw interface
 ///
-/// This interface is provided to widgets in [`crate::Layout::draw`].
+/// This interface is provided to widgets in [`Layout::draw`].
 /// Lower-level interfaces may be accessed through [`Self::draw`].
 ///
 /// `DrawCx` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
@@ -122,21 +122,11 @@ impl<'a> DrawCx<'a> {
     }
 
     /// Access a [`SizeCx`]
+    ///
+    /// (This also allows access to [`EventState`].)
     pub fn size_cx(&mut self) -> SizeCx<'_> {
         let (w, _, es) = self.h.components();
         SizeCx::new(es, w)
-    }
-
-    /// Access a [`ConfigCx`]
-    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
-        let (sh, _, ev) = self.h.components();
-        let mut cx = ConfigCx::new(sh, ev);
-        let result = f(&mut cx);
-        if cx.resize {
-            ev.action |= Action::RESIZE;
-        }
-        // Ignore cx.redraw: we are already drawing
-        result
     }
 
     /// Access theme colors
