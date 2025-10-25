@@ -205,7 +205,7 @@ impl ScrollComponent {
             return Action::empty();
         }
         self.max_offset = max_offset;
-        Action::SCROLLED | self.set_offset(self.offset)
+        self.set_offset(self.offset)
     }
 
     /// Set the scroll offset

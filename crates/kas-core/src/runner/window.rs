@@ -459,7 +459,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 }));
             }
             self.apply_size(data, false);
-        } else if !(action & (Action::SET_RECT | Action::SCROLLED)).is_empty() {
+        } else if action.contains(Action::SET_RECT) {
             self.apply_size(data, false);
         }
         debug_assert!(!action.contains(Action::REGION_MOVED));

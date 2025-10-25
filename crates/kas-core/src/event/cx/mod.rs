@@ -325,7 +325,6 @@ impl EventState {
                 action.remove(Action::UPDATE);
             }
 
-            // TODO(opt): handle sub-tree SCROLLED. This is probably equivalent to using `_replay` without a message but with `scroll = Scroll::Scrolled`.
             // TODO(opt): handle sub-tree SET_RECT and RESIZE.
             // NOTE: our draw system is incompatible with partial redraws, and
             // in any case redrawing is extremely fast.
