@@ -484,7 +484,7 @@ mod ScrollText {
                 let offset = Offset(self.scroll.offset().0, y);
                 let action = self.scroll.set_offset(offset);
                 self.vert_bar.set_value(cx, self.scroll.offset().1);
-                cx.action(self, action);
+                cx.action_moved(action);
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
                 self.set_scroll_offset(cx, offset);
             }
@@ -512,8 +512,8 @@ mod ScrollText {
         fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
             let offset = self.scroll.offset();
-            if !action.is_empty() {
-                cx.action(&self, action);
+            if action.0 {
+                cx.action_moved(action);
                 self.vert_bar.set_value(cx, offset.1);
             }
             offset

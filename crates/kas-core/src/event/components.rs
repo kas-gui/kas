@@ -8,7 +8,7 @@
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
-use crate::{Action, Id};
+use crate::{ActionMoved, Id};
 use kas_macros::impl_default;
 use std::time::Instant;
 
@@ -196,13 +196,11 @@ impl ScrollComponent {
     /// -   `window_size`: size of scroll region on the outside
     /// -   `content_size`: size of scroll region on the inside (usually larger)
     ///
-    /// Like [`Self::set_offset`] this generates a [`Action`] due to potential
-    /// change in offset. In practice the caller will likely be performing all
-    /// required updates regardless and the return value can be safely ignored.
-    pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> Action {
+    /// Returns an [`ActionMoved`] indicating whether the scroll offset changed.
+    pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> ActionMoved {
         let max_offset = (Offset::conv(content_size) - Offset::conv(window_size)).max(Offset::ZERO);
         if max_offset == self.max_offset {
-            return Action::empty();
+            return ActionMoved(false);
         }
         self.max_offset = max_offset;
         self.set_offset(self.offset)
@@ -211,19 +209,17 @@ impl ScrollComponent {
     /// Set the scroll offset
     ///
     /// The offset is clamped to the available scroll range.
-    /// Returns [`Action::empty()`] if the offset is identical to the old offset,
-    /// or [`Action::REGION_MOVED`] if the offset changes.
     ///
     /// Also cancels any kinetic scrolling, but only if `offset` is not equal
     /// to the current offset.
-    pub fn set_offset(&mut self, offset: Offset) -> Action {
+    pub fn set_offset(&mut self, offset: Offset) -> ActionMoved {
         let offset = offset.clamp(Offset::ZERO, self.max_offset);
         if offset == self.offset {
-            Action::empty()
+            ActionMoved(false)
         } else {
             self.kinetic.stop();
             self.offset = offset;
-            Action::REGION_MOVED
+            ActionMoved(true)
         }
     }
 
@@ -235,9 +231,7 @@ impl ScrollComponent {
     /// -   `window_rect`: the rect of the scroll window
     ///
     /// Sets [`Scroll::Rect`] to ensure correct scrolling of parents.
-    ///
-    /// Returns [`Action::REGION_MOVED`] when the scroll offset changes.
-    pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> Action {
+    pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> ActionMoved {
         let action = self.self_focus_rect(rect, window_rect);
         cx.set_scroll(Scroll::Rect(rect - self.offset));
         action
@@ -249,7 +243,7 @@ impl ScrollComponent {
     /// [`EventCx::set_scroll`], thus will not affect ancestors.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    pub fn self_focus_rect(&mut self, rect: Rect, window_rect: Rect) -> Action {
+    pub fn self_focus_rect(&mut self, rect: Rect, window_rect: Rect) -> ActionMoved {
         self.kinetic.stop();
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
@@ -262,11 +256,11 @@ impl ScrollComponent {
         match scroll {
             Scroll::None | Scroll::Scrolled => (),
             Scroll::Offset(delta) => {
-                self.scroll_by_delta(cx, id, delta);
+                self.scroll_by_delta(cx, delta);
             }
             Scroll::Kinetic(start) => {
                 let delta = self.kinetic.start(start);
-                let delta = self.scroll_self_by_delta(cx, id.clone(), delta);
+                let delta = self.scroll_self_by_delta(cx, delta);
                 if delta == Offset::ZERO {
                     cx.set_scroll(Scroll::Scrolled);
                 } else {
@@ -278,7 +272,7 @@ impl ScrollComponent {
             }
             Scroll::Rect(rect) => {
                 let action = self.focus_rect(cx, rect, window_rect);
-                cx.action(id, action);
+                cx.action_moved(action);
             }
         }
     }
@@ -286,22 +280,22 @@ impl ScrollComponent {
     /// Scroll self, returning any excess delta
     ///
     /// Caller is expected to call [`EventCx::set_scroll`].
-    fn scroll_self_by_delta(&mut self, cx: &mut EventState, id: Id, d: Offset) -> Offset {
+    fn scroll_self_by_delta(&mut self, cx: &mut EventState, d: Offset) -> Offset {
         let mut delta = d;
         let offset = (self.offset - d).clamp(Offset::ZERO, self.max_offset);
         if offset != self.offset {
             delta = d - (self.offset - offset);
             self.offset = offset;
-            cx.action(id, Action::REGION_MOVED);
+            cx.region_moved();
         }
         delta
     }
 
-    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Vec2) {
+    fn scroll_by_delta(&mut self, cx: &mut EventCx, d: Vec2) {
         let delta = d + self.kinetic.rest;
         let offset = delta.cast_nearest();
         self.kinetic.rest = delta - Vec2::conv(offset);
-        let delta = self.scroll_self_by_delta(cx, id, offset);
+        let delta = self.scroll_self_by_delta(cx, offset);
         cx.set_scroll(if delta != Offset::ZERO {
             Scroll::Offset(delta.cast())
         } else {
@@ -350,16 +344,16 @@ impl ScrollComponent {
                             }
                             _ => return Unused,
                         };
-                        self.scroll_by_delta(cx, id, delta.as_offset(cx));
+                        self.scroll_by_delta(cx, delta.as_offset(cx));
                         return Used;
                     }
                 };
-                cx.action(id, self.set_offset(offset));
+                cx.action_moved(self.set_offset(offset));
                 cx.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
                 self.kinetic.stop();
-                self.scroll_by_delta(cx, id, delta.as_offset(cx));
+                self.scroll_by_delta(cx, delta.as_offset(cx));
             }
             Event::PressStart(press)
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
@@ -374,7 +368,7 @@ impl ScrollComponent {
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 if self.kinetic.press_move(press.source) {
-                    self.scroll_by_delta(cx, id, delta);
+                    self.scroll_by_delta(cx, delta);
                 }
             }
             Event::PressEnd { press, .. }
@@ -388,7 +382,7 @@ impl ScrollComponent {
             }
             Event::Timer(TIMER_KINETIC) => {
                 if let Some(delta) = self.kinetic.step(cx) {
-                    let delta = self.scroll_self_by_delta(cx, id.clone(), delta);
+                    let delta = self.scroll_self_by_delta(cx, delta);
                     let scroll = if delta == Offset::ZERO {
                         Scroll::Scrolled
                     } else {

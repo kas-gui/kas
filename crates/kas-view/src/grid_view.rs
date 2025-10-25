@@ -577,13 +577,11 @@ mod GridView {
             );
         }
 
-        /// Returns true if anything changed
-        fn update_content_size(&mut self, cx: &mut EventState) -> bool {
+        fn update_content_size(&mut self, cx: &mut EventState) {
             let view_size = self.rect().size - self.frame_size;
             let content_size = self.content_size();
             let action = self.scroll.set_sizes(view_size, content_size);
-            cx.action(self, action);
-            !action.is_empty()
+            cx.action_moved(action);
         }
     }
 
@@ -611,8 +609,8 @@ mod GridView {
 
         fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
-            if !action.is_empty() {
-                cx.action(&self, action);
+            if action.0 {
+                cx.action_moved(action);
                 cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
             self.scroll.offset()
@@ -907,8 +905,8 @@ mod GridView {
                         // Set nav focus and update scroll position
                         let rect = solver.rect(cell) - self.virtual_offset;
                         let action = self.scroll.focus_rect(cx, rect, self.rect());
-                        if !action.is_empty() {
-                            cx.action(&self, action);
+                        if action.0 {
+                            cx.action_moved(action);
                             cx.config_cx(|cx| self.post_scroll(cx, data));
                             solver = self.position_solver();
                         }
@@ -1121,8 +1119,8 @@ mod GridView {
 
                 let rect = solver.rect(cell) - self.virtual_offset;
                 let action = self.scroll.self_focus_rect(rect, self.rect());
-                if !action.is_empty() {
-                    cx.action(&self, action);
+                if action.0 {
+                    cx.action_moved(action);
                     self.post_scroll(cx, data);
                     solver = self.position_solver();
                 }

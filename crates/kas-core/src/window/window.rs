@@ -639,14 +639,14 @@ impl<Data: AppData> WindowWidget for Window<Data> {
 
         self.resize_popup(cx, data, index);
         cx.confirm_popup_is_sized(id);
-        cx.action(self.id(), Action::REGION_MOVED);
+        cx.region_moved();
     }
 
     fn remove_popup(&mut self, cx: &mut SizeCx, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                cx.action(self.id(), Action::REGION_MOVED);
+                cx.region_moved();
                 return;
             }
         }

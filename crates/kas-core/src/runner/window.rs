@@ -462,7 +462,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         } else if action.contains(Action::SET_RECT) {
             self.apply_size(data, false);
         }
-        debug_assert!(!action.contains(Action::REGION_MOVED));
         if !action.is_empty()
             && let Some(ref mut window) = self.window
         {
