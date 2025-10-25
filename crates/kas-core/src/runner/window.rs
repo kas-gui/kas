@@ -533,10 +533,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         self.widget.add_popup(&mut cx, data, id, popup);
     }
 
-    pub(super) fn send_action(&mut self, action: Action) {
-        self.ev_state.action(self.widget.id(), action);
-    }
-
     pub(super) fn send_close(&mut self, id: WindowId) {
         if id == self.ev_state.window_id {
             self.ev_state.close_own_window();

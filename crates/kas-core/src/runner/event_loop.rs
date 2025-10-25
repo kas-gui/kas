@@ -70,12 +70,12 @@ where
         match event {
             ProxyAction::Close(id) => {
                 if let Some(window) = self.windows.get_mut(&id) {
-                    window.send_action(Action::CLOSE);
+                    window.send_close(id);
                 }
             }
             ProxyAction::CloseAll => {
-                for window in self.windows.values_mut() {
-                    window.send_action(Action::CLOSE);
+                for (id, window) in self.windows.iter_mut() {
+                    window.send_close(*id);
                 }
             }
             ProxyAction::Message(msg) => {
