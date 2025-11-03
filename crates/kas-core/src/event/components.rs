@@ -529,8 +529,8 @@ impl TextInput {
                 TextPhase::Cursor(_, coord) => Action::CursorEnd { coord },
             },
             Event::Timer(TIMER_SELECT) => match self.phase {
-                TextPhase::PressStart(touch_id, coord) => {
-                    self.phase = TextPhase::Cursor(touch_id, coord);
+                TextPhase::PressStart(source, coord) => {
+                    self.phase = TextPhase::Cursor(source, coord);
                     Action::CursorStart {
                         coord,
                         clear: !cx.modifiers().shift_key(),

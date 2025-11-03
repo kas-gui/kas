@@ -36,13 +36,13 @@ where
     resumes: Vec<(Instant, WindowId)>,
 }
 
-impl<A: AppData, G, T> ApplicationHandler<()> for Loop<A, G, T>
+impl<A: AppData, G, T> ApplicationHandler for Loop<A, G, T>
 where
     G: GraphicsInstance,
     T: Theme<G::Shared>,
     T::Window: kas::theme::Window,
 {
-    fn new_events(&mut self, el: &ActiveEventLoop, cause: StartCause) {
+    fn new_events(&mut self, el: &dyn ActiveEventLoop, cause: StartCause) {
         el.set_control_flow(ControlFlow::Wait);
 
         match cause {
@@ -66,7 +66,7 @@ where
         }
     }
 
-    fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {
+    fn proxy_wake_up(&mut self, _: &dyn ActiveEventLoop) {
         while let Ok(event) = self.shared.proxy_rx.try_recv() {
             match event {
                 ProxyAction::Close(id) => {
@@ -95,7 +95,7 @@ where
         }
     }
 
-    fn resumed(&mut self, el: &ActiveEventLoop) {
+    fn resumed(&mut self, el: &dyn ActiveEventLoop) {
         if self.suspended {
             for window in self.windows.values_mut() {
                 match window.resume(&mut self.shared, &self.data, el, None) {
@@ -111,9 +111,11 @@ where
         }
     }
 
+    fn can_create_surfaces(&mut self, el: &dyn ActiveEventLoop) {}
+
     fn window_event(
         &mut self,
-        el: &ActiveEventLoop,
+        el: &dyn ActiveEventLoop,
         window_id: ww::WindowId,
         event: winit::event::WindowEvent,
     ) {
@@ -125,7 +127,7 @@ where
         }
     }
 
-    fn about_to_wait(&mut self, el: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, el: &dyn ActiveEventLoop) {
         self.flush_pending(el);
         self.shared.handle_messages(&mut self.data);
 
@@ -156,7 +158,7 @@ where
         };
     }
 
-    fn suspended(&mut self, _: &ActiveEventLoop) {
+    fn suspended(&mut self, _: &dyn ActiveEventLoop) {
         if !self.suspended {
             self.windows
                 .retain(|_, window| window.suspend(&mut self.shared, &self.data));
@@ -166,9 +168,9 @@ where
         }
     }
 
-    fn exiting(&mut self, el: &ActiveEventLoop) {
-        self.suspended(el);
-    }
+    fn destroy_surfaces(&mut self, el: &dyn ActiveEventLoop) {}
+
+    fn memory_warning(&mut self, _: &dyn ActiveEventLoop) {}
 }
 
 impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Loop<A, G, T>
@@ -191,7 +193,7 @@ where
         }
     }
 
-    fn flush_pending(&mut self, el: &ActiveEventLoop) {
+    fn flush_pending(&mut self, el: &dyn ActiveEventLoop) {
         let mut close_all = false;
         while let Some(pending) = self.shared.pending.pop_front() {
             match pending {
