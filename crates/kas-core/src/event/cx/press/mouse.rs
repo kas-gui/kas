@@ -15,13 +15,13 @@ use crate::window::WindowWidget;
 use crate::{Id, Node, TileExt, WindowAction};
 use cast::{CastApprox, CastFloat};
 use std::time::{Duration, Instant};
+use winit::cursor::CursorIcon;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
-use winit::window::CursorIcon;
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 
-const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
+const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Button32;
 
 #[derive(Clone, Debug)]
 struct PanDetails {

@@ -358,7 +358,7 @@ impl<'a> EventCx<'a> {
 
     pub(super) fn ime_event(&mut self, widget: Node<'_>, ime: Ime) {
         match ime {
-            winit::event::Ime::Enabled => {
+            Ime::Enabled => {
                 // We expect self.ime.is_some(), but it's possible that the request is outdated
                 if self.ime.is_some()
                     && let Some(id) = self.sel_focus.clone()
@@ -366,7 +366,7 @@ impl<'a> EventCx<'a> {
                     self.send_event(widget, id, Event::ImeFocus);
                 }
             }
-            winit::event::Ime::Disabled => {
+            Ime::Disabled => {
                 // We can only assume that this is received due to us disabling
                 // IME if self.old_ime_target is set, and is otherwise due to an
                 // external cause.
@@ -380,14 +380,20 @@ impl<'a> EventCx<'a> {
                     self.send_event(widget, id, Event::LostImeFocus);
                 }
             }
-            winit::event::Ime::Preedit(text, cursor) => {
+            Ime::Preedit(text, cursor) => {
                 if self.ime.is_some()
                     && let Some(id) = self.sel_focus.clone()
                 {
                     self.send_event(widget, id, Event::ImePreedit(&text, cursor));
                 }
             }
-            winit::event::Ime::Commit(text) => {
+            Ime::DeleteSurrounding {
+                before_bytes,
+                after_bytes,
+            } => {
+                // TODO
+            }
+            Ime::Commit(text) => {
                 if self.ime.is_some()
                     && let Some(id) = self.sel_focus.clone()
                 {

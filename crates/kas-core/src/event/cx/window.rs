@@ -14,6 +14,7 @@ use crate::theme::ThemeSize;
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
 use crate::{ActionResize, Id, Node, WindowAction};
+use winit::event::{ButtonSource, ElementState, PointerKind, PointerSource};
 use winit::window::ResizeDirection;
 
 impl EventState {
@@ -378,7 +379,7 @@ impl<'a> EventCx<'a> {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
-    pub fn winit_window(&self) -> Option<&winit::window::Window> {
+    pub fn winit_window(&self) -> Option<&dyn winit::window::Window> {
         self.window.winit_window()
     }
 
@@ -421,16 +422,43 @@ impl<'a> EventCx<'a> {
             } => self.keyboard_input(win.as_node(data), event, is_synthetic),
             ModifiersChanged(modifiers) => self.modifiers_changed(modifiers.state()),
             Ime(event) => self.ime_event(win.as_node(data), event),
-            CursorMoved { position, .. } => self.handle_cursor_moved(win, data, position.into()),
-            CursorEntered { .. } => self.handle_cursor_entered(),
-            CursorLeft { .. } => self.handle_cursor_left(win.as_node(data)),
+            PointerMoved {
+                position, source, ..
+            } => match source {
+                PointerSource::Mouse => self.handle_cursor_moved(win, data, position.into()),
+                PointerSource::Touch { finger_id, .. } => {
+                    self.handle_touch_moved(win.as_node(data), finger_id, position.into())
+                }
+                _ => (),
+            },
+            PointerEntered { kind, .. } => match kind {
+                PointerKind::Mouse => self.handle_cursor_entered(),
+                _ => (),
+            },
+            PointerLeft { kind, .. } => match kind {
+                PointerKind::Mouse => self.handle_cursor_left(win.as_node(data)),
+                _ => (),
+            },
             MouseWheel { delta, .. } => self.handle_mouse_wheel(win.as_node(data), delta),
-            MouseInput { state, button, .. } => {
-                self.handle_mouse_input(win.as_node(data), state, button)
-            }
-            // TouchpadPressure { pressure: f32, stage: i64, },
-            // AxisMotion { axis: AxisId, value: f64, },
-            Touch(touch) => self.handle_touch_event(win.as_node(data), touch),
+            PointerButton {
+                state,
+                position,
+                button,
+                ..
+            } => match button {
+                ButtonSource::Mouse(button) => {
+                    self.handle_mouse_input(win.as_node(data), state, button)
+                }
+                ButtonSource::Touch { finger_id, .. } => match state {
+                    ElementState::Pressed => {
+                        self.handle_touch_start(win.as_node(data), finger_id, position.into())
+                    }
+                    ElementState::Released => {
+                        self.handle_touch_end(win.as_node(data), finger_id, position.into())
+                    }
+                },
+                _ => (),
+            },
             _ => (),
         }
     }

@@ -12,7 +12,7 @@ use crate::geom::{Affine, DVec2, Vec2};
 use crate::{Id, Node, WindowAction};
 use cast::{Cast, CastApprox, CastFloat, Conv};
 use smallvec::SmallVec;
-use winit::event::TouchPhase;
+use winit::event::FingerId;
 
 const MAX_TOUCHES: usize = 10;
 const MAX_PANS: usize = 2;
@@ -21,7 +21,7 @@ const MAX_PAN_GRABS: usize = 2;
 
 #[derive(Clone, Debug)]
 pub(super) struct TouchGrab {
-    id: u64,
+    finger_id: FingerId,
     pub(super) start_id: Id,
     pub(super) depress: Option<Id>,
     over: Option<Id>,
@@ -142,22 +142,24 @@ impl Touch {
     }
 
     #[inline]
-    fn get_touch_index(&self, touch_id: u64) -> Option<usize> {
+    fn get_touch_index(&self, finger_id: FingerId) -> Option<usize> {
         self.touch_grab
             .iter()
             .enumerate()
-            .find_map(|(i, grab)| (grab.id == touch_id).then_some(i))
+            .find_map(|(i, grab)| (grab.finger_id == finger_id).then_some(i))
     }
 
     #[inline]
-    pub(super) fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
-        self.touch_grab.iter_mut().find(|grab| grab.id == touch_id)
+    pub(super) fn get_touch(&mut self, finger_id: FingerId) -> Option<&mut TouchGrab> {
+        self.touch_grab
+            .iter_mut()
+            .find(|grab| grab.finger_id == finger_id)
     }
 
     /// Returns `true` on success
     pub(super) fn start_grab(
         &mut self,
-        touch_id: u64,
+        finger_id: FingerId,
         id: Id,
         position: DVec2,
         mode: GrabMode,
@@ -180,7 +182,7 @@ impl Touch {
             }
         }
 
-        if let Some(grab) = self.get_touch(touch_id) {
+        if let Some(grab) = self.get_touch(finger_id) {
             if grab.start_id != id || grab.mode != mode || grab.cancel {
                 return false;
             }
@@ -197,7 +199,7 @@ impl Touch {
             }
 
             self.touch_grab.push(TouchGrab {
-                id: touch_id,
+                finger_id,
                 start_id: id.clone(),
                 depress: Some(id.clone()),
                 over: Some(id.clone()),
@@ -213,11 +215,11 @@ impl Touch {
         }
     }
 
-    pub(super) fn velocity(&self, touch_id: u64, evc: EventWindowConfig<'_>) -> Option<Vec2> {
+    pub(super) fn velocity(&self, finger_id: FingerId, evc: EventWindowConfig<'_>) -> Option<Vec2> {
         let v = self
             .touch_grab
             .iter()
-            .find(|grab| grab.id == touch_id)
+            .find(|grab| grab.finger_id == finger_id)
             .map(|grab| grab.vel_index)
             .unwrap_or(u16::MAX);
         self.velocity
@@ -233,8 +235,8 @@ impl EventState {
     fn remove_touch(&mut self, index: usize) -> TouchGrab {
         let mut grab = self.touch.touch_grab.remove(index);
         log::trace!(
-            "remove_touch: touch_id={}, start_id={}",
-            grab.id,
+            "remove_touch: {:?}, start_id={}",
+            grab.finger_id,
             grab.start_id
         );
         self.opt_redraw(grab.depress.clone());
@@ -255,7 +257,7 @@ impl<'a> EventCx<'a> {
                 let grab = self.remove_touch(i);
 
                 let press = Press {
-                    source: PressSource::touch(grab.id),
+                    source: PressSource::touch(grab.finger_id),
                     id: grab.over,
                     coord: grab.last_position.cast_nearest(),
                 };
@@ -302,109 +304,117 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    pub(in crate::event::cx) fn handle_touch_event(
+    pub(in crate::event::cx) fn handle_touch_start(
         &mut self,
         node: Node<'_>,
-        touch: winit::event::Touch,
+        finger_id: FingerId,
+        position: DVec2,
     ) {
-        let source = PressSource::touch(touch.id);
-        let position: DVec2 = touch.location.into();
         let coord = position.cast_nearest();
-        match touch.phase {
-            TouchPhase::Started => {
-                let over = node.try_probe(coord);
-                self.close_non_ancestors_of(over.as_ref());
+        let over = node.try_probe(coord);
+        self.close_non_ancestors_of(over.as_ref());
 
-                if let Some(id) = over {
-                    if self.config.event().touch_nav_focus()
-                        && let Some(id) = self.nav_next(node.as_tile(), Some(&id), NavAdvance::None)
-                    {
-                        self.set_nav_focus(id, FocusSource::Pointer);
-                    }
+        if let Some(id) = over {
+            if self.config.event().touch_nav_focus()
+                && let Some(id) = self.nav_next(node.as_tile(), Some(&id), NavAdvance::None)
+            {
+                self.set_nav_focus(id, FocusSource::Pointer);
+            }
 
-                    let press = PressStart {
-                        source,
-                        id: Some(id.clone()),
-                        position,
+            let press = PressStart {
+                source: PressSource::touch(finger_id),
+                id: Some(id.clone()),
+                position,
+            };
+            let event = Event::PressStart(press);
+            self.send_event(node, id, event);
+        }
+    }
+
+    pub(in crate::event::cx) fn handle_touch_moved(
+        &mut self,
+        node: Node<'_>,
+        finger_id: FingerId,
+        position: DVec2,
+    ) {
+        let coord = position.cast_nearest();
+        let over = node.try_probe(coord);
+
+        let mut pan_grab = None;
+        let grab_index = self
+            .touch
+            .touch_grab
+            .iter()
+            .enumerate()
+            .find_map(|(i, grab)| (grab.finger_id == finger_id).then_some(i));
+        if let Some(index) = grab_index {
+            let last_pos =
+                std::mem::replace(&mut self.touch.touch_grab[index].last_position, position);
+            let delta: Vec2 = (position - last_pos).cast_approx();
+
+            let vi = self.touch.touch_grab[index].vel_index as usize;
+            if vi < VELOCITY_LEN {
+                self.touch.velocity[vi].push_delta(delta);
+            }
+
+            let grab = &mut self.touch.touch_grab[index];
+            grab.over = over;
+
+            match grab.mode {
+                GrabMode::Click => {}
+                GrabMode::Grab => {
+                    let target = grab.start_id.clone();
+                    let press = Press {
+                        source: PressSource::touch(grab.finger_id),
+                        id: grab.over.clone(),
+                        coord,
                     };
-                    let event = Event::PressStart(press);
-                    self.send_event(node, id, event);
+                    let event = Event::PressMove { press, delta };
+                    self.send_event(node, target, event);
+                }
+                GrabMode::Pan { .. } => {
+                    pan_grab = Some(grab.pan_grab);
                 }
             }
-            TouchPhase::Moved => {
-                let over = node.try_probe(coord);
+        }
 
-                let mut pan_grab = None;
-                let grab_index = self
-                    .touch
-                    .touch_grab
-                    .iter()
-                    .enumerate()
-                    .find_map(|(i, grab)| (grab.id == touch.id).then_some(i));
-                if let Some(index) = grab_index {
-                    let last_pos = std::mem::replace(
-                        &mut self.touch.touch_grab[index].last_position,
-                        position,
-                    );
-                    let delta: Vec2 = (position - last_pos).cast_approx();
-
-                    let vi = self.touch.touch_grab[index].vel_index as usize;
-                    if vi < VELOCITY_LEN {
-                        self.touch.velocity[vi].push_delta(delta);
-                    }
-
-                    let grab = &mut self.touch.touch_grab[index];
-                    grab.over = over;
-
-                    match grab.mode {
-                        GrabMode::Click => {}
-                        GrabMode::Grab => {
-                            let target = grab.start_id.clone();
-                            let press = Press {
-                                source: PressSource::touch(grab.id),
-                                id: grab.over.clone(),
-                                coord,
-                            };
-                            let event = Event::PressMove { press, delta };
-                            self.send_event(node, target, event);
-                        }
-                        GrabMode::Pan { .. } => {
-                            pan_grab = Some(grab.pan_grab);
-                        }
-                    }
-                }
-
-                if let Some(pan_grab) = pan_grab {
-                    self.need_frame_update = true;
-                    if usize::conv(pan_grab.1) < MAX_PAN_GRABS
-                        && let Some(pan) = self.touch.pan_grab.get_mut(usize::conv(pan_grab.0))
-                    {
-                        pan.coords[usize::conv(pan_grab.1)].1 = position;
-                    }
-                }
+        if let Some(pan_grab) = pan_grab {
+            self.need_frame_update = true;
+            if usize::conv(pan_grab.1) < MAX_PAN_GRABS
+                && let Some(pan) = self.touch.pan_grab.get_mut(usize::conv(pan_grab.0))
+            {
+                pan.coords[usize::conv(pan_grab.1)].1 = position;
             }
-            ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
-                if let Some(index) = self.touch.get_touch_index(touch.id) {
-                    let mut to_send = None;
-                    if let Some(grab) = self.touch.touch_grab.get(index)
-                        && !grab.mode.is_pan()
-                    {
-                        let id = grab.over.clone();
-                        let press = Press { source, id, coord };
-                        let success = ev == TouchPhase::Ended;
+        }
+    }
 
-                        let event = Event::PressEnd { press, success };
-                        to_send = Some((grab.start_id.clone(), event));
-                    }
+    pub(in crate::event::cx) fn handle_touch_end(
+        &mut self,
+        node: Node<'_>,
+        finger_id: FingerId,
+        position: DVec2,
+    ) {
+        if let Some(index) = self.touch.get_touch_index(finger_id) {
+            let mut to_send = None;
+            if let Some(grab) = self.touch.touch_grab.get(index)
+                && !grab.mode.is_pan()
+            {
+                let source = PressSource::touch(finger_id);
+                let id = grab.over.clone();
+                let success = id.is_some();
+                let coord = position.cast_nearest();
+                let press = Press { source, id, coord };
 
-                    // We must send Event::PressEnd before removing the grab
-                    if let Some((id, event)) = to_send {
-                        self.send_event(node, id, event);
-                    }
-
-                    self.remove_touch(index);
-                }
+                let event = Event::PressEnd { press, success };
+                to_send = Some((grab.start_id.clone(), event));
             }
+
+            // We must send Event::PressEnd before removing the grab
+            if let Some((id, event)) = to_send {
+                self.send_event(node, id, event);
+            }
+
+            self.remove_touch(index);
         }
     }
 }
