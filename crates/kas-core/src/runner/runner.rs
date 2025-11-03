@@ -156,10 +156,15 @@ fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
 
     // NOTE: Proxy is Send but not Sync. Mutex<T> is Sync for T: Send.
     // We wrap with Arc which is a Sync type supporting Clone and into_raw.
-    type Data = Mutex<Proxy>;
-    let proxy = Proxy(el.create_proxy());
+    type Data = Mutex<EventLoopProxy<ProxyAction>>;
+    let proxy = el.create_proxy();
     let a: Arc<Data> = Arc::new(Mutex::new(proxy));
     let data = Arc::into_raw(a);
+
+    fn wake_async(proxy: &EventLoopProxy<ProxyAction>) {
+        // ignore error: if the loop closed the future has been dropped
+        let _ = proxy.send_event(ProxyAction::WakeAsync);
+    }
 
     const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
 
@@ -174,13 +179,13 @@ fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
     unsafe fn wake(data: *const ()) {
         unsafe {
             let a = Arc::from_raw(data as *const Data);
-            a.lock().unwrap().wake_async();
+            wake_async(&a.lock().unwrap());
         }
     }
     unsafe fn wake_by_ref(data: *const ()) {
         unsafe {
             let a = Arc::from_raw(data as *const Data);
-            a.lock().unwrap().wake_async();
+            wake_async(&a.lock().unwrap());
             let _do_not_drop = Arc::into_raw(a);
         }
     }
@@ -232,11 +237,5 @@ impl Proxy {
         self.0
             .send_event(ProxyAction::Message(kas::messages::SendErased::new(msg)))
             .map_err(|_| ClosedError)
-    }
-
-    /// Wake async methods
-    fn wake_async(&self) {
-        // ignore error: if the loop closed the future has been dropped
-        let _ = self.0.send_event(ProxyAction::WakeAsync);
     }
 }
