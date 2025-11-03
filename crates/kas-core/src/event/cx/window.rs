@@ -129,7 +129,7 @@ impl EventState {
         (resize, std::mem::take(&mut self.action))
     }
 
-    /// Window has been closed: clean up state
+    /// Application suspended. Clean up temporary state.
     pub(crate) fn suspended(&mut self, runner: &mut dyn RunnerT) {
         while !self.popups.is_empty() {
             let id = self.close_popup(self.popups.len() - 1);

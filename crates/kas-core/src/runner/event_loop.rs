@@ -95,24 +95,29 @@ where
         }
     }
 
-    fn resumed(&mut self, el: &dyn ActiveEventLoop) {
+    fn resumed(&mut self, _: &dyn ActiveEventLoop) {
         if self.suspended {
-            for window in self.windows.values_mut() {
-                match window.resume(&mut self.shared, &self.data, el, None) {
-                    Ok(winit_id) => {
-                        self.id_map.insert(winit_id, window.window_id());
-                    }
-                    Err(e) => {
-                        log::error!("Unable to create window: {e}");
-                    }
-                }
-            }
             self.data.resumed();
             self.suspended = false;
         }
     }
 
-    fn can_create_surfaces(&mut self, el: &dyn ActiveEventLoop) {}
+    fn can_create_surfaces(&mut self, el: &dyn ActiveEventLoop) {
+        if self.suspended {
+            self.resumed(el);
+        }
+
+        for window in self.windows.values_mut() {
+            match window.create_surfaces(&mut self.shared, &self.data, el, None) {
+                Ok(winit_id) => {
+                    self.id_map.insert(winit_id, window.window_id());
+                }
+                Err(e) => {
+                    log::error!("Unable to create window: {e}");
+                }
+            }
+        }
+    }
 
     fn window_event(
         &mut self,
@@ -169,7 +174,15 @@ where
         }
     }
 
-    fn destroy_surfaces(&mut self, el: &dyn ActiveEventLoop) {}
+    fn destroy_surfaces(&mut self, el: &dyn ActiveEventLoop) {
+        if !self.suspended {
+            self.suspended(el);
+        }
+
+        for window in self.windows.values_mut() {
+            window.destroy_surfaces();
+        }
+    }
 
     fn memory_warning(&mut self, _: &dyn ActiveEventLoop) {
         self.data.memory_warning();
@@ -243,7 +256,8 @@ where
                         {
                             modal_parent = window.winit_window();
                         }
-                        match window.resume(&mut self.shared, &self.data, el, modal_parent) {
+                        match window.create_surfaces(&mut self.shared, &self.data, el, modal_parent)
+                        {
                             Ok(winit_id) => {
                                 self.id_map.insert(winit_id, id);
                             }

@@ -88,14 +88,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         self.theme_and_window.as_ref().map(|d| &**d.1.window)
     }
 
-    /// Open (resume) a window
-    pub(super) fn resume(
+    /// Open the window and create render surfaces
+    pub(super) fn create_surfaces(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
         el: &dyn ActiveEventLoop,
         #[allow(unused)] modal_parent: Option<&dyn winit::window::Window>,
     ) -> Result<winit::window::WindowId, RunError> {
+        debug_assert!(self.theme_and_window.is_none());
+
         let time = Instant::now();
 
         // We use the logical size and scale factor of the largest monitor as
@@ -238,7 +240,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
         let window = Arc::new(window);
         let mut surface = shared.instance.new_surface(window.clone(), transparent)?;
-        shared.resume(&surface)?;
+        shared.create_draw_shared(&surface)?;
         surface.configure(&mut shared.draw.as_mut().unwrap().draw, size);
 
         let winit_id = window.id();
@@ -269,7 +271,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         Ok(winit_id)
     }
 
-    /// Close (suspend) the window, keeping state (widget)
+    /// Application suspended. Clean up temporary state.
     ///
     /// Returns `true` unless this `Window` should be destoyed.
     pub(super) fn suspend(&mut self, shared: &mut Shared<A, G, T>, data: &A) -> bool {
@@ -286,11 +288,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             // NOTE: assume we don't need to resize
             let _ = resize;
 
-            self.theme_and_window = None;
             !action.contains(WindowAction::CLOSE)
         } else {
             true
         }
+    }
+
+    /// Destroy render surface(s)
+    pub(super) fn destroy_surfaces(&mut self) {
+        self.theme_and_window = None;
     }
 
     /// Handle an event
