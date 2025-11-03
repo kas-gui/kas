@@ -5,7 +5,9 @@
 
 //! Shared state
 
-use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform, RunError};
+use super::{
+    AppData, Error, GraphicsInstance, MessageStack, Pending, Platform, ProxyAction, RunError,
+};
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
@@ -18,9 +20,12 @@ use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
+use std::sync::mpsc;
 use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
+#[cfg(feature = "accesskit")]
+use winit::event_loop::EventLoopProxy;
 
 /// Runner state shared by all windows and used by [`RunnerT`]
 pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
@@ -38,7 +43,8 @@ pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>
     send_targets: HashMap<TypeId, Id>,
     pub(super) waker: Waker,
     #[cfg(feature = "accesskit")]
-    pub(super) proxy: super::Proxy,
+    pub(super) proxy: EventLoopProxy<()>,
+    pub(super) proxy_rx: mpsc::Receiver<ProxyAction>,
     window_id_factory: WindowIdFactory,
 }
 
@@ -54,7 +60,8 @@ where
         config: Rc<RefCell<Config>>,
         config_writer: Option<Box<dyn FnMut(&Config)>>,
         waker: Waker,
-        #[cfg(feature = "accesskit")] proxy: super::Proxy,
+        #[cfg(feature = "accesskit")] proxy: EventLoopProxy<()>,
+        proxy_rx: mpsc::Receiver<ProxyAction>,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
@@ -82,6 +89,7 @@ where
             waker,
             #[cfg(feature = "accesskit")]
             proxy,
+            proxy_rx,
             window_id_factory,
         })
     }

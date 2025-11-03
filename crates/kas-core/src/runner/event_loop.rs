@@ -36,7 +36,7 @@ where
     resumes: Vec<(Instant, WindowId)>,
 }
 
-impl<A: AppData, G, T> ApplicationHandler<ProxyAction> for Loop<A, G, T>
+impl<A: AppData, G, T> ApplicationHandler<()> for Loop<A, G, T>
 where
     G: GraphicsInstance,
     T: Theme<G::Shared>,
@@ -66,31 +66,30 @@ where
         }
     }
 
-    fn user_event(&mut self, _: &ActiveEventLoop, event: ProxyAction) {
-        match event {
-            ProxyAction::Close(id) => {
-                if let Some(window) = self.windows.get_mut(&id) {
-                    window.send_close(id);
+    fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {
+        while let Ok(event) = self.shared.proxy_rx.try_recv() {
+            match event {
+                ProxyAction::Close(id) => {
+                    if let Some(window) = self.windows.get_mut(&id) {
+                        window.send_close(id);
+                    }
                 }
-            }
-            ProxyAction::CloseAll => {
-                for (id, window) in self.windows.iter_mut() {
-                    window.send_close(*id);
+                ProxyAction::CloseAll => {
+                    for (id, window) in self.windows.iter_mut() {
+                        window.send_close(*id);
+                    }
                 }
-            }
-            ProxyAction::Message(msg) => {
-                // Message is pushed in self.about_to_wait()
-                self.shared.messages.push_erased(msg.into_erased());
-            }
-            ProxyAction::WakeAsync => {
-                // We don't need to do anything here since about_to_wait will poll all futures.
-            }
-            #[cfg(feature = "accesskit")]
-            ProxyAction::AccessKit(window_id, event) => {
-                if let Some(id) = self.id_map.get(&window_id)
-                    && let Some(window) = self.windows.get_mut(id)
-                {
-                    window.accesskit_event(&mut self.shared, &self.data, event);
+                ProxyAction::Message(msg) => {
+                    // Message is pushed in self.about_to_wait()
+                    self.shared.messages.push_erased(msg.into_erased());
+                }
+                #[cfg(feature = "accesskit")]
+                ProxyAction::AccessKit(window_id, event) => {
+                    if let Some(id) = self.id_map.get(&window_id)
+                        && let Some(window) = self.windows.get_mut(id)
+                    {
+                        window.accesskit_event(&mut self.shared, &self.data, event);
+                    }
                 }
             }
         }
