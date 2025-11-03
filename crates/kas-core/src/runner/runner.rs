@@ -92,8 +92,6 @@ impl PreLaunchState {
             self.config,
             self.config_writer,
             create_waker(&self.el),
-            #[cfg(feature = "accesskit")]
-            self.el.create_proxy(),
             self.proxy_rx,
             self.window_id_factory,
         )?;

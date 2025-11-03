@@ -239,9 +239,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let winit_id = window.id();
 
         #[cfg(feature = "accesskit")]
-        let proxy = shared.proxy.clone();
-        #[cfg(feature = "accesskit")]
-        let accesskit = accesskit_winit::Adapter::with_event_loop_proxy(el, &window, proxy);
+        let accesskit =
+            accesskit_winit::Adapter::with_event_loop_proxy(el, &window, el.create_proxy());
 
         let window = WindowData {
             window,
