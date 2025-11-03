@@ -209,7 +209,6 @@ enum ProxyAction {
     CloseAll,
     Close(WindowId),
     Message(kas::messages::SendErased),
-    WakeAsync,
     #[cfg(feature = "accesskit")]
     AccessKit(winit::window::WindowId, accesskit_winit::WindowEvent),
 }
