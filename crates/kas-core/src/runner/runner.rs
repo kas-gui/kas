@@ -151,17 +151,16 @@ impl Platform {
 /// This waker may be used by a [`Future`](std::future::Future) to revive
 /// event handling.
 fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
-    use std::sync::{Arc, Mutex};
+    use std::sync::Arc;
     use std::task::{RawWaker, RawWakerVTable, Waker};
 
-    // NOTE: Proxy is Send but not Sync. Mutex<T> is Sync for T: Send.
     // We wrap with Arc which is a Sync type supporting Clone and into_raw.
-    type Data = Mutex<EventLoopProxy<ProxyAction>>;
+    type Data = EventLoopProxy<ProxyAction>;
     let proxy = el.create_proxy();
-    let a: Arc<Data> = Arc::new(Mutex::new(proxy));
+    let a: Arc<Data> = Arc::new(proxy);
     let data = Arc::into_raw(a);
 
-    fn wake_async(proxy: &EventLoopProxy<ProxyAction>) {
+    fn wake_async(proxy: &Data) {
         // ignore error: if the loop closed the future has been dropped
         let _ = proxy.send_event(ProxyAction::WakeAsync);
     }
@@ -179,13 +178,13 @@ fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
     unsafe fn wake(data: *const ()) {
         unsafe {
             let a = Arc::from_raw(data as *const Data);
-            wake_async(&a.lock().unwrap());
+            wake_async(&a);
         }
     }
     unsafe fn wake_by_ref(data: *const ()) {
         unsafe {
             let a = Arc::from_raw(data as *const Data);
-            wake_async(&a.lock().unwrap());
+            wake_async(&a);
             let _do_not_drop = Arc::into_raw(a);
         }
     }
