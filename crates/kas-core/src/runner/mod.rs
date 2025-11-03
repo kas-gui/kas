@@ -177,6 +177,13 @@ pub trait AppData: 'static {
     /// Unhandled messages will result in warnings in the log.
     fn handle_message(&mut self, messages: &mut impl ReadMessage);
 
+    /// Application is being resumed
+    ///
+    /// This method is called on application start on all platforms. It is also
+    /// called when an application is made active again after being
+    /// [suspended](Self::suspended).
+    fn resumed(&mut self) {}
+
     /// Application is being suspended
     ///
     /// The application should ensure any important state is saved.
@@ -187,6 +194,12 @@ pub trait AppData: 'static {
     /// imminent closure). Widget state may still exist, but is not live
     /// (widgets will not process events or messages).
     fn suspended(&mut self) {}
+
+    /// Memory warning
+    ///
+    /// Some platforms warn applications when available memory is low.
+    /// Applies to: Android, iOS.
+    fn memory_warning(&mut self) {}
 }
 
 impl AppData for () {

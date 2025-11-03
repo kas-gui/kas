@@ -107,6 +107,7 @@ where
                     }
                 }
             }
+            self.data.resumed();
             self.suspended = false;
         }
     }
@@ -170,7 +171,9 @@ where
 
     fn destroy_surfaces(&mut self, el: &dyn ActiveEventLoop) {}
 
-    fn memory_warning(&mut self, _: &dyn ActiveEventLoop) {}
+    fn memory_warning(&mut self, _: &dyn ActiveEventLoop) {
+        self.data.memory_warning();
+    }
 }
 
 impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Loop<A, G, T>
