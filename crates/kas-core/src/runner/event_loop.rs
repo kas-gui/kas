@@ -249,15 +249,9 @@ where
                         window.send_close(target);
                     }
                 }
-                Pending::Action(action) => {
-                    if action.contains(Action::CLOSE) {
-                        self.windows.clear();
-                        self.id_map.clear();
-                        el.set_control_flow(ControlFlow::Poll);
-                    } else {
-                        for (_, window) in self.windows.iter_mut() {
-                            window.handle_action(&mut self.shared, &self.data, action);
-                        }
+                Pending::Update => {
+                    for (_, window) in self.windows.iter_mut() {
+                        window.handle_action(&mut self.shared, &self.data, Action::UPDATE);
                     }
                 }
                 Pending::Exit => close_all = true,
