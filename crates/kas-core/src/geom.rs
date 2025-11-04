@@ -738,19 +738,19 @@ mod winit_impls {
     }
 
     impl Coord {
-        /// Convert to a "physical" [`winit::dpi::Position`]
+        /// Convert to [`PhysicalPosition`]
         ///
         /// This implies that the [`Coord`] was calculated using the correct
         /// scale factor. Before the window has been constructed (when the
         /// scale factor is supposedly unknown) this should not be used.
         #[inline]
-        pub fn as_physical(self) -> winit::dpi::Position {
-            winit::dpi::Position::Physical(PhysicalPosition::new(self.0, self.1))
+        pub fn as_physical(self) -> PhysicalPosition<i32> {
+            PhysicalPosition::new(self.0, self.1)
         }
     }
 
     impl Size {
-        /// Convert to a [`PhysicalSize`]
+        /// Convert to [`PhysicalSize`]
         ///
         /// This implies that the [`Size`] was calculated using the correct
         /// scale factor. Before the window has been constructed (when the

@@ -157,6 +157,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             min.width = min.width.min(max_size.width);
             min.height = min.height.min(max_size.height);
             attrs.min_surface_size = Some(min.into());
+        } else {
+            attrs.min_surface_size = Some(PhysicalSize::new(1, 1).into());
         }
         if restrict_max {
             attrs.max_surface_size = Some(ideal.into());
@@ -196,18 +198,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             {
                 max_physical_size = mode.size();
             }
-            let max_size = max_physical_size.to_logical::<f64>(scale_factor);
 
-            let mut ideal = solve_cache
-                .ideal(true)
-                .max(min_size)
-                .as_physical()
-                .to_logical(scale_factor);
-            if ideal.width > max_size.width {
-                ideal.width = max_size.width;
+            let mut ideal = solve_cache.ideal(true).max(min_size).as_physical();
+            if ideal.width > max_physical_size.width {
+                ideal.width = max_physical_size.width;
             }
-            if ideal.height > max_size.height {
-                ideal.height = max_size.height;
+            if ideal.height > max_physical_size.height {
+                ideal.height = max_physical_size.height;
             }
 
             if let Some(size) = window.request_surface_size(ideal.into()) {
@@ -604,9 +601,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         // Update window size restrictions: the new width may have changed height requirements
         let (restrict_min, restrict_max) = self.widget.properties().restrictions();
-        window.set_min_surface_size(
-            restrict_min.then(|| window.solve_cache.min(true).as_physical().into()),
-        );
+        let min_size = restrict_min
+            .then(|| window.solve_cache.min(true).as_physical())
+            .unwrap_or(PhysicalSize::new(1, 1));
+        window.set_min_surface_size(Some(min_size.into()));
         window.set_max_surface_size(
             restrict_max.then(|| window.solve_cache.ideal(true).as_physical().into()),
         );
@@ -755,8 +753,10 @@ impl<G: GraphicsInstance> WindowDataErased for WindowData<G> {
     }
 
     fn set_ime_cursor_area(&self, rect: Rect) {
-        self.window
-            .set_ime_cursor_area(rect.pos.as_physical(), rect.size.as_physical().into());
+        self.window.set_ime_cursor_area(
+            rect.pos.as_physical().into(),
+            rect.size.as_physical().into(),
+        );
     }
 
     #[inline]
