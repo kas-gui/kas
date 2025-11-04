@@ -37,6 +37,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let mut find_child_index = None;
     let mut make_child_id = None;
     let mut fn_probe_span = None;
+    let mut translation_span = None;
+    let mut handle_scroll = false;
     for (index, impl_) in scope.impls.iter_mut().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
@@ -86,6 +88,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                             get_child = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "translation" {
+                            translation_span = Some(item.span());
                         }
                     }
                 }
@@ -113,7 +117,9 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                         if item.sig.ident == "probe" {
                             fn_probe_span = Some(item.span());
                         } else if item.sig.ident == "make_child_id" {
-                            make_child_id = Some(item.sig.ident.clone());
+                            make_child_id = Some(item.span());
+                        } else if item.sig.ident == "handle_scroll" {
+                            handle_scroll = true;
                         }
                     }
                 }
@@ -122,9 +128,28 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     }
 
     if find_child_index.is_none()
-        && let Some(ref span) = make_child_id
+        && let Some(mci_span) = make_child_id
     {
-        emit_warning!(span, "fn make_child_id without fn find_child_index");
+        let (span, path) = if let Some(index) = tile_impl {
+            (scope.impls[index].span(), "")
+        } else {
+            (attr_span, "Tile::")
+        };
+        emit_warning!(
+            span, "Implementation of fn {}find_child_index is expected", path;
+            note = mci_span => "Usage of custom child identifier";
+        );
+    }
+    if !handle_scroll && let Some(tr_span) = translation_span {
+        let (span, path) = if let Some(index) = events_impl {
+            (scope.impls[index].span(), "")
+        } else {
+            (attr_span, "Events::")
+        };
+        emit_warning!(
+            span, "Implementation of fn {}handle_scroll is expected", path;
+            note = tr_span => "Scroll::Rect(_) must be translated from child coordinate space";
+        );
     }
 
     let fields = match &mut scope.item {
@@ -720,9 +745,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             if let Some(method) = fn_child_indices {
                 tile_impl.items.push(Verbatim(method));
             } else {
+                let (span, reason) = if let Some(span) = get_child_span {
+                    (span, "with explicit fn get_child implementation")
+                } else {
+                    (
+                        child_node.expect("has fn child_node").span(),
+                        "with explicit fn child_node implementation",
+                    )
+                };
                 emit_error!(
-                    tile_impl, "refusing to generate fn child_indices";
-                    note = get_child.unwrap().span() => "with explicit fn get_child implementation";
+                    tile_impl, "Implementation of fn child_indices is expected";
+                    note = span => reason;
                 );
             }
         }
@@ -760,9 +793,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
 
         if fn_child_indices.is_none() {
+            let (span, reason) = if let Some(span) = get_child_span {
+                (span, "with explicit fn get_child implementation")
+            } else {
+                (
+                    child_node.expect("has fn child_node").span(),
+                    "with explicit fn child_node implementation",
+                )
+            };
             emit_error!(
-                attr_span, "refusing to generate fn Tile::child_indices";
-                note = get_child.unwrap().span() => "with explicit fn Tile::get_child implementation";
+                attr_span, "Implementation of fn Tile::child_indices is expected";
+                note = span => reason;
             );
         }
 
@@ -849,7 +890,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             } else {
                 emit_error!(
                     widget_impl, "refusing to generate fn child_node";
-                    note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+                    note = get_child_span.expect("get_child_span") => "due to explicit impl of fn Tile::get_child";
                 );
             }
         }
@@ -869,7 +910,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         if fn_child_node.is_none() {
             emit_error!(
                 attr_span, "refusing to generate fn Widget::child_node";
-                note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+                note = get_child_span.expect("get_child_span") => "due to explicit impl of fn Tile::get_child";
             );
         }
 

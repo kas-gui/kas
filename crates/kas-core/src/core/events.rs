@@ -276,12 +276,6 @@ pub trait Events: Widget + Sized {
     /// descendant of `self` (i.e. not `self`) calls [`EventCx::set_scroll`]
     /// with a value other than [`Scroll::None`], this method is called.
     ///
-    /// Note that [`Scroll::Rect`] values are in the child's coordinate space,
-    /// and must be translated to the widget's own coordinate space by this
-    /// method (this is not done by the default implementation since any widget
-    /// with non-zero translation very likely wants to implement this method
-    /// anyway).
-    ///
     /// If the child is in an independent coordinate space, then this method
     /// should call `cx.set_scroll(Scroll::None)` to avoid any reactions to
     /// child's scroll requests.
