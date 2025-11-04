@@ -37,6 +37,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let mut find_child_index = None;
     let mut make_child_id = None;
     let mut fn_probe_span = None;
+    let mut translation_span = None;
+    let mut handle_scroll = false;
     for (index, impl_) in scope.impls.iter_mut().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
@@ -86,6 +88,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                             get_child = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "translation" {
+                            translation_span = Some(item.span());
                         }
                     }
                 }
@@ -114,6 +118,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                             fn_probe_span = Some(item.span());
                         } else if item.sig.ident == "make_child_id" {
                             make_child_id = Some(item.span());
+                        } else if item.sig.ident == "handle_scroll" {
+                            handle_scroll = true;
                         }
                     }
                 }
@@ -132,6 +138,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         emit_warning!(
             span, "Implementation of fn {}find_child_index is expected", path;
             note = mci_span => "Usage of custom child identifier";
+        );
+    }
+    if !handle_scroll && let Some(tr_span) = translation_span {
+        let (span, path) = if let Some(index) = events_impl {
+            (scope.impls[index].span(), "")
+        } else {
+            (attr_span, "Events::")
+        };
+        emit_warning!(
+            span, "Implementation of fn {}handle_scroll is expected", path;
+            note = tr_span => "Scroll::Rect(_) must be translated from child coordinate space";
         );
     }
 
