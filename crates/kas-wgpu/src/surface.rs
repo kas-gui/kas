@@ -12,6 +12,7 @@ use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use kas::geom::Size;
 use kas::runner::{Error, WindowSurface, raw_window_handle as rwh};
 use std::time::Instant;
+use wgpu::PresentMode;
 
 /// Per-window data
 pub struct Surface<'a, C: CustomPipe> {
@@ -69,12 +70,18 @@ impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
         };
         log::debug!("Surface::new: using alpha_mode={alpha_mode:?}");
 
+        let present_mode = if caps.present_modes.contains(&PresentMode::Mailbox) {
+            PresentMode::Mailbox
+        } else {
+            PresentMode::AutoVsync
+        };
+
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
             width: size.0.cast(),
             height: size.1.cast(),
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode,
             desired_maximum_frame_latency: 2,
             alpha_mode,
             view_formats: vec![],
