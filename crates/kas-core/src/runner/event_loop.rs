@@ -155,6 +155,9 @@ where
         self.resumes.sort_by_key(|item| item.0);
 
         if self.windows.is_empty() {
+            if !self.suspended {
+                self.destroy_surfaces(el);
+            }
             el.exit();
         } else if matches!(el.control_flow(), ControlFlow::Poll) {
         } else if let Some((instant, _)) = self.resumes.first() {
