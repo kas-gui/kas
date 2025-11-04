@@ -6,6 +6,7 @@
 //! Shared state
 
 use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform};
+use crate::Id;
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
@@ -13,7 +14,6 @@ use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
-use crate::{Action, Id};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -114,7 +114,7 @@ where
                 }
             }
             if self.messages.get_op_count() != start_count {
-                self.pending.push_back(Pending::Action(Action::UPDATE));
+                self.pending.push_back(Pending::Update);
             }
         }
 

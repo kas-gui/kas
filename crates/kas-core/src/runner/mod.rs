@@ -198,7 +198,7 @@ enum Pending<A: AppData> {
     RepositionPopup(WindowId, PopupDescriptor),
     AddWindow(WindowId, BoxedWindow<A>),
     CloseWindow(WindowId),
-    Action(kas::Action),
+    Update,
     Exit,
 }
 
