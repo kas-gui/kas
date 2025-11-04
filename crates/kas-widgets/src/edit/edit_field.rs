@@ -60,6 +60,16 @@ mod EditField {
     /// [`ReplaceSelectedText`] may be used to replace selected text, where
     /// [`Self::is_editable`]. This triggers the action handlers
     /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
+    ///
+    /// ### Special behaviour
+    ///
+    /// The [`Self::typeset_size`] of this widget may exceed the size of
+    /// [`Self::rect`]. It is expected that this widget is only used as part of
+    /// a parent widget which provides scrolling of content. This parent should:
+    ///
+    /// - Call [`Self::draw_with_offset`] instead of [`Self::draw`]
+    /// - Wrap methods [`Self::set_str`] and [`Self::set_string`] (if exposed)
+    ///   to update the scroll offset as necessary.
     #[autoimpl(Clone, Debug where G: trait)]
     #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
