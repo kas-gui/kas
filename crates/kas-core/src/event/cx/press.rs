@@ -64,9 +64,9 @@ impl GrabMode {
 
 /// Source of a [`Press`] event
 ///
-/// This identifies the source of a click, touch or similar event, including
-/// which mouse button is pressed and whether this is a double-click (see
-/// [`Self::repetitions`]).
+/// This identifies the source of a click, touch or pointer motion. It
+/// identifies which mouse button is pressed (if any) and whether this is a
+/// double-click (see [`Self::repetitions`]).
 ///
 /// This may be used to track a click/touch, but note that identifiers may be
 /// re-used after the event completes, thus an [`Event::PressStart`] with
@@ -80,10 +80,11 @@ impl PressSource {
     const FLAG_TOUCH: u64 = 1 << 63;
 
     /// Construct a mouse source
-    pub(crate) fn mouse(button: MouseButton, repetitions: u32) -> Self {
+    pub(crate) fn mouse(button: Option<MouseButton>, repetitions: u32) -> Self {
         let r = (repetitions as u64) << 32;
         debug_assert!(r & Self::FLAG_TOUCH == 0);
-        let b = button as u8;
+        // Note: MouseButton::try_from_u8 returns None on u8::MAX
+        let b = button.map(|b| b as u8).unwrap_or(u8::MAX);
         Self(r | b as u64)
     }
 
@@ -120,8 +121,8 @@ impl PressSource {
 
     /// Identify the mouse button used
     ///
-    /// This always returns `Some(_)` for mouse events and `None` for touch
-    /// events.
+    /// This returns `Some(button)` for mouse events with a button. It returns
+    /// `None` for touch events and mouse events without a button (e.g. motion).
     pub fn mouse_button(self) -> Option<MouseButton> {
         if self.is_mouse() {
             let b = self.0 as u8;
@@ -134,29 +135,19 @@ impl PressSource {
     /// Returns true if this represents the left mouse button or a touch event
     #[inline]
     pub fn is_primary(self) -> bool {
-        match self.mouse_button() {
-            None => true,
-            Some(MouseButton::Left) => true,
-            Some(_) => false,
-        }
+        self.is_touch() || self.mouse_button() == Some(MouseButton::Left)
     }
 
     /// Returns true if this represents the right mouse button
     #[inline]
     pub fn is_secondary(self) -> bool {
-        match self.mouse_button() {
-            Some(MouseButton::Right) => true,
-            None | Some(_) => false,
-        }
+        self.mouse_button() == Some(MouseButton::Right)
     }
 
     /// Returns true if this represents the middle mouse button
     #[inline]
     pub fn is_tertiary(self) -> bool {
-        match self.mouse_button() {
-            Some(MouseButton::Middle) => true,
-            None | Some(_) => false,
-        }
+        self.mouse_button() == Some(MouseButton::Middle)
     }
 
     /// The `repetitions` value
@@ -325,7 +316,7 @@ impl GrabBuilder {
         } else if let Some(finger_id) = source.finger_id() {
             cx.touch.start_grab(finger_id, id.clone(), position, mode)
         } else {
-            unreachable!()
+            false
         };
 
         if success {

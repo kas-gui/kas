@@ -21,8 +21,6 @@ use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 
-const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Button32;
-
 #[derive(Clone, Debug)]
 struct PanDetails {
     c0: DVec2,
@@ -69,7 +67,7 @@ pub(crate) struct Mouse {
     pub(super) over: Option<Id>, // widget under the mouse
     pub(super) icon: CursorIcon, // non-grab icon
     old_icon: CursorIcon,        // last icon set (grab or non-grab)
-    last_click_button: MouseButton,
+    last_click_button: Option<MouseButton>,
     last_click_repetitions: u32,
     last_click_timeout: Instant,
     last_pin: Option<(Id, DVec2)>,
@@ -85,7 +83,7 @@ impl Default for Mouse {
             over: None,
             icon: CursorIcon::Default,
             old_icon: CursorIcon::Default,
-            last_click_button: FAKE_MOUSE_BUTTON,
+            last_click_button: None,
             last_click_repetitions: 0,
             last_click_timeout: Instant::now(),
             last_pin: None,
@@ -287,7 +285,7 @@ impl<'a> EventCx<'a> {
             } else {
                 last_pin = None;
                 let press = Press {
-                    source: PressSource::mouse(grab.button, grab.repetitions),
+                    source: PressSource::mouse(Some(grab.button), grab.repetitions),
                     id: self.mouse.over.clone(),
                     coord: self.mouse.last_position.cast_nearest(),
                 };
@@ -349,7 +347,7 @@ impl<'a> EventCx<'a> {
             self.mouse.samples.push_delta(delta);
         }
         self.mouse.last_position = position;
-        self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
+        self.mouse.last_click_button = None;
 
         self.set_over(window.re(), id.clone());
 
@@ -359,7 +357,7 @@ impl<'a> EventCx<'a> {
                 GrabDetails::Grab => {
                     let target = grab.start_id.clone();
                     let press = Press {
-                        source: PressSource::mouse(grab.button, grab.repetitions),
+                        source: PressSource::mouse(Some(grab.button), grab.repetitions),
                         id,
                         coord,
                     };
@@ -380,7 +378,7 @@ impl<'a> EventCx<'a> {
             .map(|state| state.desc.id.clone())
         {
             let press = Press {
-                source: PressSource::mouse(FAKE_MOUSE_BUTTON, 0),
+                source: PressSource::mouse(None, 0),
                 id,
                 coord,
             };
@@ -397,7 +395,7 @@ impl<'a> EventCx<'a> {
 
     /// Handle mouse cursor leaving the app.
     pub(in crate::event::cx) fn handle_cursor_left(&mut self, window: Node<'_>) {
-        self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
+        self.mouse.last_click_button = None;
 
         if self.mouse.grab.is_none() {
             self.set_over(window, None);
@@ -410,7 +408,7 @@ impl<'a> EventCx<'a> {
         window: Node<'_>,
         delta: MouseScrollDelta,
     ) {
-        self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
+        self.mouse.last_click_button = None;
 
         let event = Event::Scroll(match delta {
             MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines(x, y),
@@ -432,8 +430,8 @@ impl<'a> EventCx<'a> {
     ) {
         if state == ElementState::Pressed {
             let now = Instant::now();
-            if button != self.mouse.last_click_button || self.mouse.last_click_timeout < now {
-                self.mouse.last_click_button = button;
+            if Some(button) != self.mouse.last_click_button || self.mouse.last_click_timeout < now {
+                self.mouse.last_click_button = Some(button);
                 self.mouse.last_click_repetitions = 0;
             }
             self.mouse.last_click_repetitions += 1;
@@ -466,7 +464,7 @@ impl<'a> EventCx<'a> {
                     self.set_nav_focus(id, FocusSource::Pointer);
                 }
 
-                let source = PressSource::mouse(button, self.mouse.last_click_repetitions);
+                let source = PressSource::mouse(Some(button), self.mouse.last_click_repetitions);
                 let press = PressStart {
                     source,
                     id: Some(id.clone()),
