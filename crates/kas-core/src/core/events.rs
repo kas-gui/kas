@@ -7,10 +7,10 @@
 
 #[allow(unused)] use super::Layout;
 use super::{Tile, Widget};
-#[allow(unused)] use crate::event::EventState;
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::{ActionResize, ChildIndices};
 use crate::{Id, geom::Coord};
+#[allow(unused)] use crate::{Scrollable, event::EventState};
 #[allow(unused)] use kas_macros as macros;
 
 /// Widget event-handling
@@ -290,9 +290,8 @@ pub trait Events: Widget + Sized {
     ///
     /// This method may only be called after the widget is sized.
     ///
-    /// When, during [event handling](crate::event), a widget which is a strict
-    /// descendant of `self` (i.e. not `self`) calls [`ConfigCx::resize`] or
-    /// [`EventCx::resize`], this method is called.
+    /// This method is called during [event handling](crate::event) whenever a
+    /// resize action is required (see [`ConfigCx::resize`], [`EventCx::resize`]).
     ///
     /// # Implementation
     ///
@@ -316,19 +315,19 @@ pub trait Events: Widget + Sized {
     ///
     /// This method may only be called after the widget is sized.
     ///
-    /// When, during [event handling](crate::event), a widget which is a strict
-    /// descendant of `self` (i.e. not `self`) calls [`EventCx::set_scroll`]
-    /// with a value other than [`Scroll::None`], this method is called.
+    /// This method is called during [event handling](crate::event) whenever the
+    /// scroll action is not [`Scroll::None`] (see [`EventCx::set_scroll`]).
     ///
     /// # Implementation
+    ///
+    /// Widgets should implement this if they support scrolling of children,
+    /// have [`translation`](Tile::translation) of children, depend on the
+    /// values of any [`Scrollable`] methods or would isolate parents from the
+    /// scrolling of a child.
     ///
     /// This method is expected to deal with scrolling only; if the content size
     /// has changed and `cx.resize()` is called by the affected child, then
     /// [`Self::handle_resize`] should be called before this method.
-    ///
-    /// If the child is in an independent coordinate space, then this method
-    /// should call `cx.set_scroll(Scroll::None)` to avoid any reactions to
-    /// child's scroll requests.
     ///
     /// [`EventCx::last_child`] may be called to find the child responsible,
     /// and should never return [`None`] (when called from this method).
