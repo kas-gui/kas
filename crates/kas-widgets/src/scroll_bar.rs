@@ -523,7 +523,7 @@ mod ScrollBars {
         fn scroll_offset(&self) -> Offset {
             self.inner.scroll_offset()
         }
-        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let offset = self.inner.set_scroll_offset(cx, offset);
             self.horiz_bar.set_value(cx, offset.0);
             self.vert_bar.set_value(cx, offset.1);

@@ -609,7 +609,7 @@ mod GridView {
             self.scroll.offset()
         }
 
-        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
             if !action.is_empty() {
                 cx.action(&self, action);
