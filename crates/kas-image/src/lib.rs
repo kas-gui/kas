@@ -34,7 +34,7 @@ use kas::theme::{MarginStyle, SizeCx};
 #[cfg(feature = "image")]
 pub fn window_icon_from_path<P: AsRef<std::path::Path>>(
     path: P,
-) -> Result<kas::window::Icon, Box<dyn std::error::Error>> {
+) -> Result<kas::window::icon::Icon, Box<dyn std::error::Error>> {
     // TODO(opt): image loading could be de-duplicated with
     // DrawShared::image_from_path, but this may not be worthwhile.
     let im = ::image::ImageReader::open(path)?
@@ -42,7 +42,8 @@ pub fn window_icon_from_path<P: AsRef<std::path::Path>>(
         .decode()?
         .into_rgba8();
     let (w, h) = im.dimensions();
-    Ok(kas::window::Icon::from_rgba(im.into_vec(), w, h)?)
+    let icon = kas::window::icon::RgbaIcon::new(im.into_vec(), w, h)?;
+    Ok(icon.into())
 }
 
 impl_scope! {

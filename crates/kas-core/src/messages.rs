@@ -14,7 +14,7 @@
 use crate::event::PhysicalKey;
 #[allow(unused)] use crate::event::{EventCx, EventState};
 use crate::geom::Offset;
-use crate::window::Icon;
+use crate::window::icon::Icon;
 use std::any::{Any, TypeId};
 use std::fmt::Debug;
 
