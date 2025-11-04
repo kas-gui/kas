@@ -498,7 +498,7 @@ mod ScrollText {
 
     impl Scrollable for Self {
         fn content_size(&self) -> Size {
-            self.label.rect().size
+            self.label.typeset_size()
         }
 
         fn max_scroll_offset(&self) -> Offset {

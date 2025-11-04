@@ -192,7 +192,7 @@ mod EditBox {
 
     impl Scrollable for Self {
         fn content_size(&self) -> Size {
-            self.inner.rect().size
+            self.inner.typeset_size()
         }
 
         fn max_scroll_offset(&self) -> Offset {
