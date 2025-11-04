@@ -113,7 +113,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                         if item.sig.ident == "probe" {
                             fn_probe_span = Some(item.span());
                         } else if item.sig.ident == "make_child_id" {
-                            make_child_id = Some(item.sig.ident.clone());
+                            make_child_id = Some(item.span());
                         }
                     }
                 }
@@ -122,9 +122,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     }
 
     if find_child_index.is_none()
-        && let Some(ref span) = make_child_id
+        && let Some(mci_span) = make_child_id
     {
-        emit_warning!(span, "fn make_child_id without fn find_child_index");
+        let (span, path) = if let Some(index) = tile_impl {
+            (scope.impls[index].span(), "")
+        } else {
+            (attr_span, "Tile::")
+        };
+        emit_warning!(
+            span, "Implementation of fn {}find_child_index is expected", path;
+            note = mci_span => "Usage of custom child identifier";
+        );
     }
 
     let fields = match &mut scope.item {
