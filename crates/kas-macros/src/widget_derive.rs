@@ -182,7 +182,7 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
     } else {
         return Err(Error::new(attr_span, "expected `#[widget]` on inner field"));
     };
-    let data_ty = data_ty.unwrap();
+    let data_ty = data_ty.expect("widget_derive: have data_ty");
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();

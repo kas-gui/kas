@@ -747,7 +747,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             } else {
                 emit_error!(
                     tile_impl, "refusing to generate fn child_indices";
-                    note = get_child.unwrap().span() => "with explicit fn get_child implementation";
+                    note = get_child.expect("have Tile::get_child").span() => "with explicit fn get_child implementation";
                 );
             }
         }
@@ -787,7 +787,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         if fn_child_indices.is_none() {
             emit_error!(
                 attr_span, "refusing to generate fn Tile::child_indices";
-                note = get_child.unwrap().span() => "with explicit fn Tile::get_child implementation";
+                note = get_child.expect("have Tile::get_child").span() => "with explicit fn Tile::get_child implementation";
             );
         }
 
@@ -874,7 +874,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             } else {
                 emit_error!(
                     widget_impl, "refusing to generate fn child_node";
-                    note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+                    note = get_child_span.expect("get_child_span") => "due to explicit impl of fn Tile::get_child";
                 );
             }
         }
@@ -894,7 +894,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         if fn_child_node.is_none() {
             emit_error!(
                 attr_span, "refusing to generate fn Widget::child_node";
-                note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+                note = get_child_span.expect("get_child_span") => "due to explicit impl of fn Tile::get_child";
             );
         }
 
