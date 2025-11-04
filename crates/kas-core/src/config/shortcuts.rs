@@ -38,7 +38,7 @@ impl Shortcuts {
     /// Load default shortcuts for the current platform
     pub fn load_platform_defaults(&mut self) {
         #[cfg(target_os = "macos")]
-        const CMD: ModifiersState = ModifiersState::SUPER;
+        const CMD: ModifiersState = ModifiersState::META;
         #[cfg(not(target_os = "macos"))]
         const CMD: ModifiersState = ModifiersState::CONTROL;
 
@@ -163,7 +163,7 @@ impl Shortcuts {
         // Ctrl + Command (MacOS)
         #[cfg(target_os = "macos")]
         {
-            let modifiers = ModifiersState::CONTROL | ModifiersState::SUPER;
+            let modifiers = ModifiersState::CONTROL | ModifiersState::META;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.insert(Key::Character("f".into()), Command::Fullscreen);
         }
@@ -290,25 +290,25 @@ mod common {
             const SHIFT: ModifiersState = ModifiersState::SHIFT;
             const CONTROL: ModifiersState = ModifiersState::CONTROL;
             const ALT: ModifiersState = ModifiersState::ALT;
-            const SUPER: ModifiersState = ModifiersState::SUPER;
+            const META: ModifiersState = ModifiersState::META;
 
             let s = match self.0 {
                 state if state == ModifiersState::empty() => "none",
-                SUPER => "super",
+                META => "meta",
                 ALT => "alt",
-                state if state == ALT | SUPER => "alt-super",
+                state if state == ALT | META => "alt-meta",
                 state if state == CONTROL => "ctrl",
-                state if state == CONTROL | SUPER => "ctrl-super",
+                state if state == CONTROL | META => "ctrl-meta",
                 state if state == CONTROL | ALT => "ctrl-alt",
-                state if state == CONTROL | ALT | SUPER => "ctrl-alt-super",
+                state if state == CONTROL | ALT | META => "ctrl-alt-meta",
                 SHIFT => "shift",
-                state if state == SHIFT | SUPER => "shift-super",
+                state if state == SHIFT | META => "shift-meta",
                 state if state == SHIFT | ALT => "alt-shift",
-                state if state == SHIFT | ALT | SUPER => "alt-shift-super",
+                state if state == SHIFT | ALT | META => "alt-shift-meta",
                 state if state == SHIFT | CONTROL => "ctrl-shift",
-                state if state == SHIFT | CONTROL | SUPER => "ctrl-shift-super",
+                state if state == SHIFT | CONTROL | META => "ctrl-shift-meta",
                 state if state == SHIFT | CONTROL | ALT => "ctrl-alt-shift",
-                _ => "ctrl-alt-shift-super",
+                _ => "ctrl-alt-shift-meta",
             };
 
             serializer.serialize_str(s)
@@ -319,7 +319,7 @@ mod common {
         type Value = ModifiersStateDeser;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("none or (sub-set of) ctrl-alt-shift-super")
+            formatter.write_str("none or (sub-set of) ctrl-alt-shift-meta")
         }
 
         fn visit_str<E: de::Error>(self, u: &str) -> Result<Self::Value, E> {
@@ -347,8 +347,8 @@ mod common {
                 v = &v[v.len().min(5)..];
                 adv_dash_if_not_empty(&mut v);
             }
-            if v.starts_with("super") {
-                state |= ModifiersState::SUPER;
+            if v.starts_with("meta") {
+                state |= ModifiersState::META;
                 v = &v[v.len().min(5)..];
             }
 
@@ -357,7 +357,7 @@ mod common {
             } else {
                 Err(E::invalid_value(
                     de::Unexpected::Str(u),
-                    &"none or (sub-set of) ctrl-alt-shift-super",
+                    &"none or (sub-set of) ctrl-alt-shift-meta",
                 ))
             }
         }
@@ -469,7 +469,7 @@ mod deser {
         type Value = OptModifiersStateDeser;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("none or (sub-set of) ctrl-alt-shift-super or other")
+            formatter.write_str("none or (sub-set of) ctrl-alt-shift-meta or other")
         }
 
         fn visit_str<E: de::Error>(self, u: &str) -> Result<Self::Value, E> {
