@@ -227,7 +227,7 @@ mod Canvas {
                     ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
                 }
 
-                cx.redraw(&self);
+                cx.redraw();
 
                 let rect_size: (u32, u32) = self.rect().size.cast();
                 let state = self.inner.get_mut();

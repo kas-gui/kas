@@ -328,7 +328,7 @@ impl GrabBuilder {
         };
 
         if success {
-            cx.action(id, Action::REDRAW);
+            cx.redraw();
             Used
         } else {
             Unused

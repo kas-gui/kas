@@ -6,9 +6,10 @@
 //! Scroll bar traits
 
 use crate::Widget;
-use crate::event::EventCx;
+use crate::event::EventState;
 use crate::geom::{Offset, Size};
-#[allow(unused)] use crate::{Events, Layout};
+#[allow(unused)]
+use crate::{Events, Layout, event::EventCx};
 
 /// Additional functionality on scrollable widgets
 ///
@@ -51,5 +52,5 @@ pub trait Scrollable: Widget {
     ///
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
-    fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset;
+    fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset;
 }

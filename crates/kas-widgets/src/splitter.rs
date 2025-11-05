@@ -75,14 +75,14 @@ mod Splitter {
 
     impl<C: Collection> Splitter<C, Direction> {
         /// Set the direction of contents
-        pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
+        pub fn set_direction(&mut self, cx: &mut ConfigCx, direction: Direction) {
             if direction == self.direction {
                 return;
             }
 
             self.direction = direction;
             // Note: most of the time Action::SET_RECT would be enough, but margins can be different
-            cx.resize(self);
+            cx.resize();
         }
     }
 
@@ -306,7 +306,7 @@ mod Splitter {
                             }
                             grip.set_offset(cx, offset);
                         }
-                        self.adjust_size(&mut cx.config_cx(), n);
+                        cx.config_cx(|cx| self.adjust_size(cx, n));
                     }
                 }
             }
@@ -429,17 +429,17 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
         self.widgets.push(widget);
 
         self.size_solved = false;
-        cx.resize(self);
+        cx.resize();
         index
     }
 
     /// Remove the last child widget (if any) and return
     ///
     /// Triggers [`Action::RESIZE`].
-    pub fn pop(&mut self, cx: &mut EventState) -> Option<W> {
+    pub fn pop(&mut self, cx: &mut ConfigCx) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
-            cx.resize(&self);
+            cx.resize();
 
             if w.id_ref().is_valid() {
                 if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -483,7 +483,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
         self.widgets.insert(index, widget);
 
         self.size_solved = false;
-        cx.resize(self);
+        cx.resize();
     }
 
     /// Removes the child widget at position `index`
@@ -491,7 +491,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
     /// Panics if `index` is out of bounds.
     ///
     /// Triggers [`Action::RESIZE`].
-    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> W {
+    pub fn remove(&mut self, cx: &mut ConfigCx, index: usize) -> W {
         if !self.grips.is_empty() {
             let index = index.min(self.grips.len());
             let w = self.grips.remove(index);
@@ -507,7 +507,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
             }
         }
 
-        cx.resize(&self);
+        cx.resize();
 
         for v in self.id_map.values_mut() {
             if *v > index {
@@ -534,7 +534,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
         }
 
         self.size_solved = false;
-        cx.resize(self);
+        cx.resize();
 
         w
     }
@@ -569,7 +569,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
         }
 
         self.size_solved = false;
-        cx.resize(self);
+        cx.resize();
     }
 
     /// Resize, using the given closure to construct new widgets
@@ -585,7 +585,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
         let old_len = self.widgets.len();
 
         if len < old_len {
-            cx.resize(&self);
+            cx.resize();
             loop {
                 let result = self.widgets.pop();
                 if let Some(w) = result.as_ref() {
@@ -627,7 +627,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
             }
 
             self.size_solved = false;
-            cx.resize(self);
+            cx.resize();
         }
     }
 }

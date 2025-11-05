@@ -25,6 +25,8 @@ use std::ops::{Deref, DerefMut};
 pub struct ConfigCx<'a> {
     sh: &'a dyn ThemeSize,
     pub(crate) ev: &'a mut EventState,
+    pub(crate) resize: bool,
+    pub(crate) redraw: bool,
 }
 
 impl<'a> ConfigCx<'a> {
@@ -32,7 +34,12 @@ impl<'a> ConfigCx<'a> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ev: &'a mut EventState) -> Self {
-        ConfigCx { sh, ev }
+        ConfigCx {
+            sh,
+            ev,
+            resize: false,
+            redraw: false,
+        }
     }
 
     /// Access a [`SizeCx`]
@@ -90,6 +97,32 @@ impl<'a> ConfigCx<'a> {
     pub fn set_send_target_for<M: Debug + 'static>(&mut self, id: Id) {
         let type_id = TypeId::of::<M>();
         self.pending_send_targets.push((type_id, id));
+    }
+
+    /// Notify that a widget must be redrawn
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    ///
+    /// Alternatively, a redraw may
+    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
+    #[inline]
+    pub fn redraw(&mut self) {
+        self.redraw = true;
+    }
+
+    /// Require that the current widget (and its descendants) be resized
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    ///
+    /// Alternatively, a whole-window resize (some time in the near future) may
+    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
+    #[inline]
+    pub fn resize(&mut self) {
+        self.resize = true;
     }
 }
 

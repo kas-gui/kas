@@ -226,7 +226,7 @@ pub trait Events: Widget + Sized {
     #[inline]
     fn handle_mouse_over(&mut self, cx: &mut EventCx, state: bool) {
         if Self::REDRAW_ON_MOUSE_OVER {
-            cx.redraw(&self);
+            cx.redraw();
         }
         if state && let Some(icon) = self.mouse_over_icon() {
             cx.set_mouse_over_icon(icon);

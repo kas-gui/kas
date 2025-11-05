@@ -41,7 +41,7 @@ impl ImplTrait for ImplScrollable {
                 #[inline]
                 fn set_scroll_offset(
                     &mut self,
-                    cx: &mut ::kas::event::EventCx,
+                    cx: &mut ::kas::event::EventState,
                     offset: ::kas::geom::Offset,
                 ) -> ::kas::geom::Offset {
                     self.#using.set_scroll_offset(cx, offset)

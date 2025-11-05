@@ -367,7 +367,7 @@ mod ScrollBar {
                 Event::Timer(TIMER_HIDE) => {
                     if !self.is_under_mouse {
                         self.force_visible = false;
-                        cx.redraw(self);
+                        cx.redraw();
                     }
                     Used
                 }
@@ -379,7 +379,7 @@ mod ScrollBar {
                 Event::MouseOver(true) => {
                     self.is_under_mouse = true;
                     self.force_visible = true;
-                    cx.redraw(self);
+                    cx.redraw();
                     Used
                 }
                 Event::MouseOver(false) => {
@@ -477,7 +477,7 @@ mod ScrollBars {
         }
 
         /// Set scroll bar mode
-        pub fn set_scroll_bar_mode(&mut self, cx: &mut EventState, mode: ScrollBarMode) {
+        pub fn set_scroll_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
             if mode != self.mode {
                 self.mode = mode;
                 let (invis_horiz, invis_vert) = match mode {
@@ -493,7 +493,7 @@ mod ScrollBars {
                 };
                 self.horiz_bar.set_invisible(invis_horiz);
                 self.vert_bar.set_invisible(invis_vert);
-                cx.resize(self);
+                cx.resize();
             }
         }
 
@@ -523,7 +523,7 @@ mod ScrollBars {
         fn scroll_offset(&self) -> Offset {
             self.inner.scroll_offset()
         }
-        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let offset = self.inner.set_scroll_offset(cx, offset);
             self.horiz_bar.set_value(cx, offset.0);
             self.vert_bar.set_value(cx, offset.1);
@@ -708,7 +708,7 @@ mod ScrollBarRegion {
 
         /// Set scroll bar mode
         #[inline]
-        pub fn set_scroll_bar_mode(&mut self, cx: &mut EventState, mode: ScrollBarMode) {
+        pub fn set_scroll_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
             self.0.set_scroll_bar_mode(cx, mode);
         }
 

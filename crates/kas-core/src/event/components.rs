@@ -286,7 +286,7 @@ impl ScrollComponent {
     /// Scroll self, returning any excess delta
     ///
     /// Caller is expected to call [`EventCx::set_scroll`].
-    fn scroll_self_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Offset) -> Offset {
+    fn scroll_self_by_delta(&mut self, cx: &mut EventState, id: Id, d: Offset) -> Offset {
         let mut delta = d;
         let offset = (self.offset - d).clamp(Offset::ZERO, self.max_offset);
         if offset != self.offset {

@@ -66,7 +66,7 @@ mod CheckBox {
             if self.state != new_state {
                 self.state = new_state;
                 self.last_change = Some(Instant::now());
-                cx.redraw(self);
+                cx.redraw();
             }
         }
 
@@ -160,7 +160,7 @@ mod CheckBox {
 
             // Do animate (even if state never changes):
             self.last_change = Some(Instant::now());
-            cx.redraw(self);
+            cx.redraw();
         }
     }
 }

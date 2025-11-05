@@ -16,7 +16,7 @@ use crate::event::{ConfigCx, EventState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::text::{Effect, TextDisplay, format::FormattableText};
 use crate::theme::ColorsLinear;
-use crate::{Id, Tile, autoimpl};
+use crate::{Action, Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
 use std::ops::Range;
 use std::time::Instant;
@@ -131,7 +131,12 @@ impl<'a> DrawCx<'a> {
     pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
         let (sh, _, ev) = self.h.components();
         let mut cx = ConfigCx::new(sh, ev);
-        f(&mut cx)
+        let result = f(&mut cx);
+        if cx.resize {
+            ev.action |= Action::RESIZE;
+        }
+        // Ignore cx.redraw: we are already drawing
+        result
     }
 
     /// Access theme colors

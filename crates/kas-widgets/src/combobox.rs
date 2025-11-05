@@ -370,7 +370,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     }
 
     /// Pops the last choice from the combobox
-    pub fn pop(&mut self, cx: &mut EventState) -> Option<()> {
+    pub fn pop(&mut self, cx: &mut ConfigCx) -> Option<()> {
         self.popup.inner.inner.pop(cx).map(|_| ())
     }
 
@@ -391,7 +391,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// Removes the choice at position `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn remove(&mut self, cx: &mut EventState, index: usize) {
+    pub fn remove(&mut self, cx: &mut ConfigCx, index: usize) {
         self.popup.inner.inner.remove(cx, index);
     }
 

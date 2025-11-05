@@ -139,14 +139,14 @@ mod TabStack {
         /// Set the position of tabs relative to content
         ///
         /// Default value: [`Direction::Up`]
-        pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
+        pub fn set_direction(&mut self, cx: &mut ConfigCx, direction: Direction) {
             if direction == self.direction {
                 return;
             }
 
             self.direction = direction;
             // Note: most of the time Action::SET_RECT would be enough, but margins can be different
-            cx.resize(self);
+            cx.resize();
         }
 
         /// Call the handler `f` on page change
@@ -185,7 +185,7 @@ mod TabStack {
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if let Some(SetIndex(index)) = cx.try_pop() {
-                self.set_active(&mut cx.config_cx(), data, index);
+                cx.config_cx(|cx| self.set_active(cx, data, index));
                 if let Some(ref f) = self.on_change {
                     let title = self.tabs.inner[index].as_str();
                     f(cx, data, index, title);
@@ -300,7 +300,7 @@ impl<A> TabStack<A> {
     ///
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
-    pub fn pop(&mut self, cx: &mut EventState) -> Option<(Tab, Page<A>)> {
+    pub fn pop(&mut self, cx: &mut ConfigCx) -> Option<(Tab, Page<A>)> {
         let tab = self.tabs.inner.pop(cx);
         let w = self.stack.pop(cx);
         debug_assert_eq!(tab.is_some(), w.is_some());
@@ -323,7 +323,7 @@ impl<A> TabStack<A> {
     ///
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
-    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> (Tab, Page<A>) {
+    pub fn remove(&mut self, cx: &mut ConfigCx, index: usize) -> (Tab, Page<A>) {
         let tab = self.tabs.inner.remove(cx, index);
         let stack = self.stack.remove(cx, index);
         (tab, stack)

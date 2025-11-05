@@ -94,7 +94,7 @@ mod ColourSquare {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &AppData) {
             self.color = data.color;
-            cx.redraw(self);
+            cx.redraw();
         }
     }
 }

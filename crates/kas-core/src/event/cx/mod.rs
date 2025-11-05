@@ -167,7 +167,12 @@ impl EventState {
         // These are recreated during configure:
         self.nav_fallback = None;
 
-        ConfigCx::new(sizer, self).configure(node, id);
+        let mut cx = ConfigCx::new(sizer, self);
+        cx.configure(node, id);
+        if cx.resize {
+            self.action |= Action::RESIZE;
+        }
+        // Ignore cx.redraw: we can assume a redraw will happen
         self.action |= Action::REGION_MOVED;
     }
 
@@ -188,8 +193,15 @@ impl EventState {
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
+            resize: false,
+            redraw: false,
         };
         f(&mut cx);
+        if cx.resize {
+            self.action |= Action::RESIZE;
+        } else if cx.redraw {
+            self.action |= Action::REDRAW;
+        }
     }
 
     /// Clear all focus and grabs on `target`
@@ -278,7 +290,7 @@ impl EventState {
             }
         }
         if disable {
-            self.action(&target, Action::REDRAW);
+            self.redraw(&target);
             self.disabled.push(target);
         }
     }
@@ -289,14 +301,6 @@ impl EventState {
     #[inline]
     pub fn redraw(&mut self, id: impl HasId) {
         self.action(id, Action::REDRAW);
-    }
-
-    /// Notify that a widget must be resized
-    ///
-    /// This is equivalent to calling [`Self::action`] with [`Action::RESIZE`].
-    #[inline]
-    pub fn resize(&mut self, id: impl HasId) {
-        self.action(id, Action::RESIZE);
     }
 
     /// Notify that widgets under self may have moved
@@ -373,6 +377,8 @@ pub struct EventCx<'a> {
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
+    pub(crate) resize: bool,
+    redraw: bool,
 }
 
 impl<'a> Deref for EventCx<'a> {
@@ -397,7 +403,7 @@ impl<'a> EventCx<'a> {
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
-        widget._configure(&mut self.config_cx(), id);
+        self.config_cx(|cx| widget._configure(cx, id));
     }
 
     /// Update a widget
@@ -406,7 +412,7 @@ impl<'a> EventCx<'a> {
     /// [update](Events#update).
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
-        widget._update(&mut self.config_cx());
+        self.config_cx(|cx| widget._update(cx));
     }
 
     /// Get a [`SizeCx`]
@@ -419,15 +425,45 @@ impl<'a> EventCx<'a> {
         SizeCx::new(self.state, self.window.theme_size())
     }
 
-    /// Get a [`ConfigCx`]
-    pub fn config_cx(&mut self) -> ConfigCx<'_> {
+    /// Access a [`ConfigCx`]
+    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
         let size = self.window.theme_size();
-        ConfigCx::new(size, self.state)
+        let mut cx = ConfigCx::new(size, self.state);
+        let result = f(&mut cx);
+        self.resize |= cx.resize;
+        self.redraw |= cx.redraw;
+        result
     }
 
     /// Get a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         self.runner.draw_shared()
+    }
+
+    /// Notify that a widget must be redrawn
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    ///
+    /// Alternatively, a redraw may
+    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
+    #[inline]
+    pub fn redraw(&mut self) {
+        self.redraw = true;
+    }
+
+    /// Require that the current widget (and its descendants) be resized
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    ///
+    /// Alternatively, a whole-window resize (some time in the near future) may
+    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
+    #[inline]
+    pub fn resize(&mut self) {
+        self.resize = true;
     }
 
     /// Terminate the GUI

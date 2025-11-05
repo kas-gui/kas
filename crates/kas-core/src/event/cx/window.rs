@@ -402,7 +402,7 @@ impl<'a> EventCx<'a> {
                 self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
-                    self.redraw(win.id());
+                    self.redraw();
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|state| state.id) {

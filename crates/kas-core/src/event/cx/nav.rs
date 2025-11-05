@@ -7,7 +7,7 @@
 
 use super::{EventCx, EventState};
 use crate::event::{Event, FocusSource};
-use crate::{Action, Id, Node};
+use crate::{Id, Node};
 #[allow(unused)] use crate::{Tile, event::Command};
 
 /// Action of Widget::_nav_next
@@ -181,7 +181,7 @@ impl<'a> EventCx<'a> {
     ) -> Option<Id> {
         log::trace!(target: "kas_core::event", "nav_next: focus={focus:?}, advance={advance:?}");
 
-        widget._nav_next(&mut self.config_cx(), focus, advance)
+        self.config_cx(|cx| widget._nav_next(cx, focus, advance))
     }
 
     pub(super) fn handle_pending_nav_focus(&mut self, widget: Node<'_>) {
@@ -212,14 +212,14 @@ impl<'a> EventCx<'a> {
         self.clear_key_focus();
 
         if let Some(old) = self.nav_focus.take() {
-            self.action(&old, Action::REDRAW);
+            self.redraw();
             self.send_event(widget.re(), old, Event::LostNavFocus);
         }
 
         self.nav_focus = target.clone();
         log::debug!(target: "kas_core::event", "nav_focus = {target:?}");
         if let Some(id) = target {
-            self.action(&id, Action::REDRAW);
+            self.redraw();
             self.send_event(widget, id, Event::NavFocus(source));
         }
     }

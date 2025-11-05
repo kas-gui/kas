@@ -128,7 +128,7 @@ mod SelectableText {
                 if index != self.selection.edit_index() {
                     self.selection.set_edit_index(index);
                     self.set_view_offset_from_cursor(cx, index);
-                    cx.redraw(self);
+                    cx.redraw();
                 }
             }
         }
@@ -233,14 +233,14 @@ mod SelectableText {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                         self.selection.set_empty();
-                        cx.redraw(self);
+                        cx.redraw();
                         Used
                     }
                     Command::SelectAll => {
                         self.selection.set_sel_index(0);
                         self.selection.set_edit_index(self.text.str_len());
                         self.set_primary(cx);
-                        cx.redraw(self);
+                        cx.redraw();
                         Used
                     }
                     Command::Cut | Command::Copy => {
@@ -260,7 +260,7 @@ mod SelectableText {
                 Event::LostSelFocus => {
                     self.has_sel_focus = false;
                     self.selection.set_empty();
-                    cx.redraw(self);
+                    cx.redraw();
                     Used
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
@@ -498,7 +498,7 @@ mod ScrollText {
 
     impl Scrollable for Self {
         fn content_size(&self) -> Size {
-            self.label.rect().size
+            self.label.typeset_size()
         }
 
         fn max_scroll_offset(&self) -> Offset {
@@ -509,7 +509,7 @@ mod ScrollText {
             self.scroll.offset()
         }
 
-        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
             let offset = self.scroll.offset();
             if !action.is_empty() {

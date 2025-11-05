@@ -192,7 +192,7 @@ mod EditBox {
 
     impl Scrollable for Self {
         fn content_size(&self) -> Size {
-            self.inner.rect().size
+            self.inner.typeset_size()
         }
 
         fn max_scroll_offset(&self) -> Offset {
@@ -203,7 +203,7 @@ mod EditBox {
             self.scroll.offset()
         }
 
-        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
             let offset = self.scroll.offset();
             if !action.is_empty() {
