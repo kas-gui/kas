@@ -5,11 +5,12 @@
 
 //! Event handling: IsUsed and Scroll types
 
+#[allow(unused)] use super::EventCx;
+use super::components::KineticStart;
+#[allow(unused)] use crate::Events;
 use crate::geom::{Offset, Rect, Vec2};
 
 pub use IsUsed::{Unused, Used};
-
-use super::components::KineticStart;
 
 /// Return type of event-handling methods
 ///
@@ -70,30 +71,34 @@ impl std::ops::Not for IsUsed {
     }
 }
 
-/// Request to / notification of scrolling from a child
+/// Scroll notification and requests
 ///
-/// See: [`EventCx::set_scroll`](super::EventCx::set_scroll).
+/// This is used by [`EventCx::set_scroll`] and [`Events::handle_scroll`].
 #[derive(Clone, Debug, Default, PartialEq)]
 #[must_use]
 pub enum Scroll {
     /// No scrolling
     #[default]
     None,
-    /// Child has scrolled; no further scrolling needed
+    /// A child has scrolled
     ///
-    /// External scroll bars use this as a notification to update self.
+    /// No further scrolling is needed but external scroll bars may need to
+    /// update themselves.
     Scrolled,
-    /// Pan region by the given offset
+    /// Pan by the given offset
     ///
-    /// This may be returned to scroll the closest scrollable ancestor region.
-    /// This region should attempt to scroll self by this offset, then, if all
-    /// the offset was used, return `Scroll::Scrolled`, otherwise return
-    /// `Scroll::Offset(delta)` with the unused offset `delta`.
+    /// This is returned when pointer motion should cause scrolling but the
+    /// widget handling the motion event is unable to scroll itself.
+    /// The handler should attempt to scroll itself by this offset then set
+    /// `Scroll::Offset(remainder)` (if non-zero) or `Scroll::Scrolled`.
     ///
     /// With the usual scroll offset conventions, this delta must be subtracted
     /// from the scroll offset.
     Offset(Vec2),
     /// Start kinetic scrolling
+    ///
+    /// This is returned when pointer motion should cause kinetic scrolling but
+    /// the widget handling the motion event is unable to scroll itself.
     Kinetic(KineticStart),
     /// Focus the given rect
     ///

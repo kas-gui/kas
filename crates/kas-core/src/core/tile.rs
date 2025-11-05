@@ -7,7 +7,7 @@
 
 use crate::geom::{Coord, Offset, Rect};
 use crate::util::IdentifyWidget;
-use crate::{ChildIndices, HasId, Id, Layout, Role, RoleCx};
+use crate::{ChildIndices, HasId, Id, Layout, Role, RoleCx, WidgetStatus};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, RoleCxExt, Widget};
@@ -48,6 +48,13 @@ pub trait Tile: Layout {
     ///
     /// This method is implemented by the `#[widget]` macro.
     fn as_tile(&self) -> &dyn Tile {
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
+
+    /// Get the widget configuration status
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    fn status(&self) -> WidgetStatus {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 

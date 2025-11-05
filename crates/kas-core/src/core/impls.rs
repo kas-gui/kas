@@ -21,6 +21,8 @@ pub fn _configure<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) 
             && let Some(node) = widget.as_node(data).get_child(index)
         {
             cx.configure(node, id);
+
+            // NOTE: we don't handle cx.resize here since we assume that sizing will happen later.
         }
     }
     widget.post_configure(cx);
@@ -35,6 +37,10 @@ pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) {
     for index in widget.recurse_indices().into_iter() {
         if let Some(node) = widget.as_node(data).get_child(index) {
             cx.update(node);
+        }
+
+        if *cx.resize && widget.status().is_sized() {
+            cx.resize = widget.handle_resize(cx, data);
         }
     }
 }
@@ -88,6 +94,11 @@ pub fn _send<W: Events>(
                 );
             }
 
+            if *cx.resize {
+                debug_assert!(widget.status().is_sized());
+                cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
+            }
+
             if let Some(scroll) = cx.post_send(index) {
                 widget.handle_scroll(cx, data, scroll);
             }
@@ -127,6 +138,10 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
             );
         }
 
+        if *cx.resize && widget.status().is_sized() {
+            cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
+        }
+
         if let Some(scroll) = cx.post_send(index) {
             widget.handle_scroll(cx, data, scroll);
         }
@@ -153,11 +168,15 @@ pub fn _nav_next<W: Events>(
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
-    if !widget.navigable() {
+    let result = if !widget.navigable() {
         nav_next_non_nav(widget.as_node(data), cx, focus, advance)
     } else {
         nav_next_nav(widget.as_node(data), cx, focus, advance)
-    }
+    };
+
+    debug_assert!(!*cx.resize);
+
+    result
 }
 
 // Monomorphize nav_next here, not in _nav_next (which would push monomorphization up to the caller)

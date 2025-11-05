@@ -8,7 +8,7 @@
 use crate::event::EventState;
 use crate::text::format::FormattableText;
 use crate::theme::{SizeCx, Text, ThemeSize};
-use crate::{Id, Node};
+use crate::{ActionResize, Id, Node};
 use std::any::TypeId;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
@@ -25,7 +25,7 @@ use std::ops::{Deref, DerefMut};
 pub struct ConfigCx<'a> {
     sh: &'a dyn ThemeSize,
     pub(crate) ev: &'a mut EventState,
-    pub(crate) resize: bool,
+    pub(crate) resize: ActionResize,
     pub(crate) redraw: bool,
 }
 
@@ -37,7 +37,7 @@ impl<'a> ConfigCx<'a> {
         ConfigCx {
             sh,
             ev,
-            resize: false,
+            resize: ActionResize(false),
             redraw: false,
         }
     }
@@ -62,6 +62,7 @@ impl<'a> ConfigCx<'a> {
     /// All widgets must be configured after construction; see
     /// [widget lifecycle](crate::Widget#widget-lifecycle) and
     /// [configuration](Events#configuration).
+    /// Widgets must always be sized after configuration.
     ///
     /// Assigns `id` to the widget. This must be valid and is usually
     /// constructed with [`Events::make_child_id`].
@@ -122,7 +123,7 @@ impl<'a> ConfigCx<'a> {
     /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
     #[inline]
     pub fn resize(&mut self) {
-        self.resize = true;
+        self.resize = ActionResize(true);
     }
 }
 

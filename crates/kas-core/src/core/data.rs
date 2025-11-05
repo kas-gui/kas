@@ -105,7 +105,6 @@ impl DoubleEndedIterator for ChildIndicesIter {
 pub struct DefaultCoreType {
     pub _rect: Rect,
     pub _id: Id,
-    #[cfg(debug_assertions)]
     pub status: WidgetStatus,
 }
 
@@ -114,7 +113,6 @@ impl Clone for DefaultCoreType {
         DefaultCoreType {
             _rect: self._rect,
             _id: Default::default(),
-            #[cfg(debug_assertions)]
             status: self.status,
         }
     }
@@ -129,7 +127,6 @@ impl Clone for DefaultCoreType {
 /// It is not used in release builds.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-#[cfg(debug_assertions)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum WidgetStatus {
     #[default]
@@ -140,20 +137,19 @@ pub enum WidgetStatus {
     SetRect,
 }
 
-#[cfg(debug_assertions)]
 impl WidgetStatus {
-    fn require(&self, id: &Id, expected: Self) {
-        if *self < expected {
+    fn require(self, id: &Id, expected: Self) {
+        if self < expected {
             panic!("WidgetStatus of {id}: require {expected:?}, found {self:?}");
         }
     }
 
     /// Configure
     ///
-    /// Requires nothing. Re-configuration does not require repeating other actions.
+    /// Requires nothing. Re-configuration requires re-sizing.
     pub fn configure(&mut self, _id: &Id) {
         // re-configure does not require repeating other actions
-        *self = (*self).max(WidgetStatus::Configured);
+        *self = WidgetStatus::Configured;
     }
 
     /// Update
@@ -196,7 +192,19 @@ impl WidgetStatus {
     }
 
     /// Require that `set_rect` has been called
-    pub fn require_rect(&self, id: &Id) {
+    pub fn require_rect(self, id: &Id) {
         self.require(id, WidgetStatus::SetRect);
+    }
+
+    /// Get whether the widget is configured
+    #[inline]
+    pub fn is_configured(self) -> bool {
+        self >= WidgetStatus::Configured
+    }
+
+    /// Get whether the widget is sized
+    #[inline]
+    pub fn is_sized(self) -> bool {
+        self >= WidgetStatus::SetRect
     }
 }

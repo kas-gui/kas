@@ -144,6 +144,8 @@ pub trait Widget: Tile {
 
     /// Internal method: configure recursively
     ///
+    /// Requires status: none.
+    ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -151,12 +153,16 @@ pub trait Widget: Tile {
 
     /// Internal method: update recursively
     ///
+    /// Requires status: configured.
+    ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn _update(&mut self, cx: &mut ConfigCx, data: &Self::Data);
 
     /// Internal method: send recursively
+    ///
+    /// Requires status: configured and sized.
     ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -168,12 +174,16 @@ pub trait Widget: Tile {
     /// Traverses the widget tree to `id`, then unwinds.
     /// It is expected that some message is available on the stack.
     ///
+    /// Requires status: configured.
+    ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id);
 
     /// Internal method: search for the previous/next navigation target
+    ///
+    /// Requires status: configured.
     ///
     /// `focus`: the current focus or starting point.
     ///

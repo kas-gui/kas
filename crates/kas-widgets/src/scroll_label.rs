@@ -23,9 +23,15 @@ mod SelectableText {
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
     ///
-    /// Minimum size requirements of this widget are reduced, while the vertical
-    /// size is allowed to exceed the assigned rect. It is recommended to draw
-    /// using [`Self::draw_with_offset`].
+    /// ### Special behaviour
+    ///
+    /// The [`Self::typeset_size`] of this widget may exceed the size of
+    /// [`Self::rect`]. It is expected that this widget is only used as part of
+    /// a parent widget which provides scrolling of content. This parent should:
+    ///
+    /// - Call [`Self::draw_with_offset`] instead of [`Self::draw`]
+    /// - Wrap methods [`Self::set_text`] and [`Self::set_string`] (if exposed)
+    ///   to update the scroll offset as necessary.
     #[widget]
     #[layout(self.text)]
     pub struct SelectableText<A, T: FormattableText + 'static> {
@@ -112,6 +118,8 @@ mod SelectableText {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
+        ///
+        /// Returns `true` when the content size may have changed.
         pub fn set_text(&mut self, text: T) -> bool {
             self.text.set_text(text);
             if !self.text.prepare() {
@@ -193,11 +201,15 @@ mod SelectableText {
 
     impl SelectableText<(), String> {
         /// Set text contents from a string
+        ///
+        /// Returns `true` when the content size may have changed.
         #[inline]
-        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
+        pub fn set_string(&mut self, string: String) -> bool {
             if self.text.set_string(string) {
                 self.text.prepare();
-                cx.action(self, Action::SET_RECT);
+                true
+            } else {
+                false
             }
         }
     }
@@ -216,15 +228,9 @@ mod SelectableText {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             if let Some(method) = self.text_fn.as_ref() {
-                let text = method(cx, data);
-                if text.as_str() == self.text.as_str() {
-                    // NOTE(opt): avoiding re-preparation of text is a *huge*
-                    // optimisation. Move into kas-text?
-                    return;
+                if self.set_text(method(cx, data)) {
+                    cx.resize();
                 }
-                self.text.set_text(text);
-                self.text.prepare();
-                cx.action(self, Action::SET_RECT);
             }
         }
 
@@ -344,17 +350,12 @@ mod ScrollText {
             widget_set_rect!(rect);
             self.label.set_rect(cx, rect, hints);
 
-            let _ = self
-                .scroll
-                .set_sizes(self.rect().size, self.label.typeset_size());
-
             let w = cx.scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
             self.vert_bar.set_rect(cx, rect, AlignHints::NONE);
-            self.vert_bar
-                .set_limits(cx, self.scroll.max_offset().1, rect.size.1);
-            self.vert_bar.set_value(cx, self.scroll.offset().1);
+
+            self.update_content_size(cx);
         }
 
         fn draw(&self, mut draw: DrawCx) {
@@ -435,9 +436,7 @@ mod ScrollText {
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, cx: &mut EventState, text: T) {
             if self.label.set_text(text) {
-                self.vert_bar
-                    .set_limits(cx, self.scroll.max_offset().1, self.rect().size.1);
-
+                self.update_content_size(cx);
                 cx.redraw(self);
             }
         }
@@ -446,12 +445,22 @@ mod ScrollText {
         pub fn as_str(&self) -> &str {
             self.label.as_str()
         }
+
+        fn update_content_size(&mut self, cx: &mut EventState) {
+            let size = self.rect().size;
+            let _ = self.scroll.set_sizes(size, self.label.typeset_size());
+            self.vert_bar
+                .set_limits(cx, self.scroll.max_offset().1, size.1);
+            self.vert_bar.set_value(cx, self.scroll.offset().1);
+        }
     }
 
     impl ScrollText<(), String> {
         /// Set text contents from a string
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
-            self.label.set_string(cx, string);
+            if self.label.set_string(string) {
+                self.update_content_size(cx);
+            }
         }
     }
 
@@ -488,6 +497,18 @@ mod ScrollText {
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
                 self.set_scroll_offset(cx, offset);
             }
+        }
+
+        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
+            let size = self.label.rect().size;
+            let axis = AxisInfo::new(false, Some(size.1));
+            let mut resize = self.label.size_rules(&mut cx.size_cx(), axis).min_size() > size.0;
+            let axis = AxisInfo::new(true, Some(size.0));
+            resize |= self.label.size_rules(&mut cx.size_cx(), axis).min_size() > size.1;
+            self.label
+                .set_rect(&mut cx.size_cx(), self.label.rect(), Default::default());
+            self.update_content_size(cx);
+            ActionResize(resize)
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {

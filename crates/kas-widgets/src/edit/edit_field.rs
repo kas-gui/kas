@@ -60,6 +60,16 @@ mod EditField {
     /// [`ReplaceSelectedText`] may be used to replace selected text, where
     /// [`Self::is_editable`]. This triggers the action handlers
     /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
+    ///
+    /// ### Special behaviour
+    ///
+    /// The [`Self::typeset_size`] of this widget may exceed the size of
+    /// [`Self::rect`]. It is expected that this widget is only used as part of
+    /// a parent widget which provides scrolling of content. This parent should:
+    ///
+    /// - Call [`Self::draw_with_offset`] instead of [`Self::draw`]
+    /// - Wrap methods [`Self::set_str`] and [`Self::set_string`] (if exposed)
+    ///   to update the scroll offset as necessary.
     #[autoimpl(Clone, Debug where G: trait)]
     #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
@@ -164,7 +174,11 @@ mod EditField {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
+            let size = self.typeset_size();
             G::update(self, cx, data);
+            if size != self.typeset_size() {
+                cx.resize();
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
@@ -707,12 +721,16 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx) {
+        let size = self.typeset_size();
         if self.text.prepare() {
             self.text.ensure_no_left_overhang();
             cx.redraw();
         }
 
-        self.set_view_offset_from_cursor(cx);
+        if size != self.typeset_size() {
+            cx.resize();
+            self.set_view_offset_from_cursor(cx);
+        }
     }
 
     fn trim_paste(&self, text: &str) -> Range<usize> {
@@ -1063,6 +1081,7 @@ impl<G: EditGuard> EditField<G> {
         })
     }
 
+    // Set cursor position. It is assumed that the text has not changed.
     fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
         let rel_pos = (coord - self.rect().pos).cast();
         if let Ok(index) = self.text.text_index_nearest(rel_pos) {
@@ -1083,6 +1102,8 @@ impl<G: EditGuard> EditField<G> {
     }
 
     /// Update view_offset after the cursor index changes
+    ///
+    /// It is assumed that the text has not changed.
     ///
     /// A redraw is assumed since the cursor moved.
     fn set_view_offset_from_cursor(&mut self, cx: &mut EventCx) {

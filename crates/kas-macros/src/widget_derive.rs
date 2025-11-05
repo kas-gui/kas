@@ -195,6 +195,10 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
             self
         }
         #[inline]
+        fn status(&self) -> ::kas::WidgetStatus {
+            self.#inner.status()
+        }
+        #[inline]
         fn id_ref(&self) -> &::kas::Id {
             self.#inner.id_ref()
         }

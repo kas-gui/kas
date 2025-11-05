@@ -23,7 +23,7 @@ use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{Action, ActionMoved, HasId, Id, Node};
+use crate::{Action, ActionMoved, ActionResize, HasId, Id, Node};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
@@ -171,7 +171,7 @@ impl EventState {
 
         let mut cx = ConfigCx::new(sizer, self);
         cx.configure(node, id);
-        if cx.resize {
+        if *cx.resize {
             self.action |= Action::RESIZE;
         }
         // Ignore cx.redraw: we can assume a redraw will happen
@@ -195,11 +195,11 @@ impl EventState {
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
-            resize: false,
+            resize: ActionResize(false),
             redraw: false,
         };
         f(&mut cx);
-        if cx.resize {
+        if *cx.resize {
             self.action |= Action::RESIZE;
         } else if cx.redraw {
             self.action |= Action::REDRAW;
@@ -391,7 +391,7 @@ pub struct EventCx<'a> {
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
-    pub(crate) resize: bool,
+    pub(crate) resize: ActionResize,
     redraw: bool,
 }
 
@@ -413,6 +413,7 @@ impl<'a> EventCx<'a> {
     /// All widgets must be configured after construction; see
     /// [widget lifecycle](crate::Widget#widget-lifecycle) and
     /// [configuration](Events#configuration).
+    /// Widgets must always be sized after configuration.
     ///
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
@@ -477,7 +478,7 @@ impl<'a> EventCx<'a> {
     /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
     #[inline]
     pub fn resize(&mut self) {
-        self.resize = true;
+        self.resize = ActionResize(true);
     }
 
     /// Terminate the GUI

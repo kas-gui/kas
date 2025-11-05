@@ -7,10 +7,10 @@
 
 #[allow(unused)] use super::Layout;
 use super::{Tile, Widget};
-use crate::ChildIndices;
-#[allow(unused)] use crate::event::EventState;
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
+use crate::{ActionResize, ChildIndices};
 use crate::{Id, geom::Coord};
+#[allow(unused)] use crate::{Scrollable, event::EventState};
 #[allow(unused)] use kas_macros as macros;
 
 /// Widget event-handling
@@ -72,14 +72,7 @@ use crate::{Id, geom::Coord};
 ///
 /// ### Sizing
 ///
-/// See [`Layout#sizing`].
-///
-/// It is expected that widgets are sized after [configuration](#configuration)
-/// before any other `Events` methods are called, though it is not required that
-/// sizing is repeated after re-configuration. It might theoretically be
-/// possible to receive a message through [`Events::handle_messages`] before the
-/// widget is sized through [`EventState::send`] (or other `send_*` method)
-/// being called during configuration or update of this widget or a parent.
+/// Sizing must happen after configuration. See [`Layout#sizing`].
 ///
 /// [`#widget`]: macros::widget
 pub trait Events: Widget + Sized {
@@ -122,6 +115,8 @@ pub trait Events: Widget + Sized {
     /// to indicate that the button (not the inner label) handles clicks.
     ///
     /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
     ///
     /// Call [`Tile::try_probe`] instead.
     ///
@@ -218,9 +213,15 @@ pub trait Events: Widget + Sized {
 
     /// Mouse focus handler
     ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
+    ///
     /// Called when mouse moves over or leaves this widget.
     /// (This is a low-level alternative
     /// to [`Self::REDRAW_ON_MOUSE_OVER`] and [`Self::mouse_over_icon`].)
+    ///
+    /// # Implementation
     ///
     /// `state` is true when the mouse is over this widget.
     #[inline]
@@ -237,6 +238,10 @@ pub trait Events: Widget + Sized {
     ///
     /// This is the primary event handler (see [documentation](crate::event)).
     ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
+    ///
     /// This method is called on the primary event target. In this case,
     /// [`EventCx::last_child`] returns `None`.
     ///
@@ -245,6 +250,8 @@ pub trait Events: Widget + Sized {
     /// [is reusable](Event::is_reusable)). In this case,
     /// [`EventCx::last_child`] returns `Some(index)` with the index of the
     /// child being unwound from.
+    ///
+    /// # Implementation
     ///
     /// Default implementation of `handle_event`: do nothing; return
     /// [`Unused`].
@@ -257,6 +264,11 @@ pub trait Events: Widget + Sized {
     ///
     /// This is the secondary event handler (see [documentation](crate::event)).
     ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is configured. The
+    /// widget may or may not be sized.
+    ///
     /// It is implied that the stack contains at least one message.
     /// Use [`EventCx::try_pop`] and/or [`EventCx::try_peek`].
     ///
@@ -264,21 +276,58 @@ pub trait Events: Widget + Sized {
     /// This may return [`None`] (if no child was visited, which implies that
     /// the message was sent by `self`).
     ///
+    /// # Implementation
+    ///
     /// The default implementation does nothing.
     #[inline]
     fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
         let _ = (cx, data);
     }
 
+    /// Handler for resize requests
+    ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
+    ///
+    /// This method is called during [event handling](crate::event) whenever a
+    /// resize action is required (see [`ConfigCx::resize`], [`EventCx::resize`]).
+    ///
+    /// # Implementation
+    ///
+    /// Some widgets (for example, a scroll region) are able to handle resizes
+    /// locally and should implement this method to do so
+    /// (thus avoiding the need for a full-window resize).
+    ///
+    /// Return `ActionResize(true)` if further resizing is needed, or
+    /// `ActionResize(false)` if resizing is complete.
+    ///
+    /// The default implementation simply returns `ActionResize(true)`.
+    #[inline]
+    fn handle_resize(&mut self, cx: &mut ConfigCx, data: &Self::Data) -> ActionResize {
+        let _ = (cx, data);
+        ActionResize(true)
+    }
+
     /// Handler for scrolling
     ///
-    /// When, during [event handling](crate::event), a widget which is a strict
-    /// descendant of `self` (i.e. not `self`) calls [`EventCx::set_scroll`]
-    /// with a value other than [`Scroll::None`], this method is called.
+    /// # Calling
     ///
-    /// If the child is in an independent coordinate space, then this method
-    /// should call `cx.set_scroll(Scroll::None)` to avoid any reactions to
-    /// child's scroll requests.
+    /// This method may only be called after the widget is sized.
+    ///
+    /// This method is called during [event handling](crate::event) whenever the
+    /// scroll action is not [`Scroll::None`] (see [`EventCx::set_scroll`]).
+    ///
+    /// # Implementation
+    ///
+    /// Widgets should implement this if they support scrolling of children,
+    /// have [`translation`](Tile::translation) of children, depend on the
+    /// values of any [`Scrollable`] methods or would isolate parents from the
+    /// scrolling of a child.
+    ///
+    /// This method is expected to deal with scrolling only; if the content size
+    /// has changed and `cx.resize()` is called by the affected child, then
+    /// [`Self::handle_resize`] should be called before this method.
     ///
     /// [`EventCx::last_child`] may be called to find the child responsible,
     /// and should never return [`None`] (when called from this method).
