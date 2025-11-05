@@ -206,7 +206,7 @@ mod Stack {
         #[inline]
         fn recurse_indices(&self) -> ChildIndices {
             let end = self.widgets.len().min(self.size_limit.max(self.active + 1));
-            let start = end.saturating_sub(self.size_limit);
+            let start = end.saturating_sub(self.size_limit).min(self.active);
             ChildIndices::range(start..end)
         }
 
