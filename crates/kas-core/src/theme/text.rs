@@ -447,11 +447,6 @@ impl<T: FormattableText> Text<T> {
     /// May partially prepare the text for display, but does not otherwise
     /// modify `self`.
     pub fn measure_height(&mut self, wrap_width: f32) -> f32 {
-        if self.status >= Status::Wrapped {
-            let (tl, br) = self.display.bounding_box();
-            return br.1 - tl.1;
-        }
-
         self.prepare_runs();
         self.display.measure_height(wrap_width)
     }
