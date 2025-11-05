@@ -269,7 +269,7 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        if self.action.contains(Action::REGION_MOVED) {
+        if self.action_moved.0 {
             for grab in self.touch.touch_grab.iter_mut() {
                 grab.over = node.try_probe(grab.last_position.cast_nearest());
             }

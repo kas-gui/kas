@@ -23,7 +23,7 @@ use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{Action, HasId, Id, Node};
+use crate::{Action, ActionMoved, HasId, Id, Node};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
@@ -103,6 +103,7 @@ pub struct EventState {
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
     pub(crate) action: Action,
+    action_moved: ActionMoved,
 }
 
 impl EventState {
@@ -142,6 +143,7 @@ impl EventState {
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
             action: Action::empty(),
+            action_moved: ActionMoved(false),
         }
     }
 
@@ -173,7 +175,7 @@ impl EventState {
             self.action |= Action::RESIZE;
         }
         // Ignore cx.redraw: we can assume a redraw will happen
-        self.action |= Action::REGION_MOVED;
+        self.action_moved = ActionMoved(true);
     }
 
     /// Construct a [`EventCx`] referring to this state
@@ -304,10 +306,11 @@ impl EventState {
     }
 
     /// Notify that widgets under self may have moved
+    ///
+    /// This updates the widget(s) under mouse and touch events.
     #[inline]
     pub fn region_moved(&mut self) {
-        // Do not take id: this always applies to the whole window
-        self.action |= Action::REGION_MOVED;
+        self.action_moved = ActionMoved(true);
     }
 
     /// Notify that an [`Action`] should happen
@@ -325,7 +328,6 @@ impl EventState {
                 action.remove(Action::UPDATE);
             }
 
-            // TODO(opt): handle sub-tree SCROLLED. This is probably equivalent to using `_replay` without a message but with `scroll = Scroll::Scrolled`.
             // TODO(opt): handle sub-tree SET_RECT and RESIZE.
             // NOTE: our draw system is incompatible with partial redraws, and
             // in any case redrawing is extremely fast.
@@ -349,8 +351,20 @@ impl EventState {
     /// potentially more efficient (supports future optimisations), but not
     /// always possible.
     #[inline]
-    pub fn window_action(&mut self, action: Action) {
-        self.action |= action;
+    pub fn window_action(&mut self, action: impl Into<Action>) {
+        self.action |= action.into();
+    }
+
+    /// Request that the window be closed
+    #[inline]
+    pub fn close_own_window(&mut self) {
+        self.action |= Action::CLOSE;
+    }
+
+    /// Notify of an [`ActionMoved`]
+    #[inline]
+    pub fn action_moved(&mut self, action: ActionMoved) {
+        self.action_moved |= action;
     }
 
     /// Request update to widget `id`

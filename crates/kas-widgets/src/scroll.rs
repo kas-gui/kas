@@ -86,7 +86,7 @@ mod ScrollRegion {
         #[inline]
         fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
-            cx.action(&self, action);
+            cx.action_moved(action);
             self.scroll.offset()
         }
     }

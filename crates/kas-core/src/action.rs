@@ -8,6 +8,32 @@
 #[allow(unused)]
 use crate::event::{ConfigCx, EventCx, EventState};
 
+/// Action: widget has moved/opened/closed
+///
+/// When the state is `true`, this indicates that the following should happen:
+///
+/// -   Re-probe which widget is under the mouse / any touch instance / any
+///     other location picker since widgets may have moved
+/// -   Redraw the window
+#[must_use]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct ActionMoved(pub bool);
+
+impl std::ops::BitOr for ActionMoved {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, rhs: Self) -> Self {
+        ActionMoved(self.0 | rhs.0)
+    }
+}
+
+impl std::ops::BitOrAssign for ActionMoved {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
 bitflags! {
     /// Action required after processing
     ///
@@ -30,21 +56,6 @@ bitflags! {
         ///
         /// See also [`EventState::redraw`].
         const REDRAW = 1 << 0;
-        /// Some widgets within a region moved
-        ///
-        /// Used when a pop-up is closed or a region adjusted (e.g. scroll or switch
-        /// tab) to update which widget is under the mouse cursor / touch events.
-        /// Identifier is that of the parent widget/window encapsulating the region.
-        ///
-        /// Implies window redraw.
-        ///
-        /// See also [`EventState::region_moved`].
-        const REGION_MOVED = 1 << 4;
-        /// A widget was scrolled
-        ///
-        /// This is used for inter-widget communication (see `EditBox`). If not
-        /// handled locally, it is handled identially to [`Self::SET_RECT`].
-        const SCROLLED = 1 << 6;
         /// Reset size of all widgets without recalculating requirements
         const SET_RECT = 1 << 8;
         /// Resize all widgets in the window

@@ -164,7 +164,7 @@ mod EditBox {
             {
                 let offset = Offset(self.scroll.offset().0, y);
                 let action = self.scroll.set_offset(offset);
-                cx.action(&self, action);
+                cx.action_moved(action);
                 self.update_scroll_bar(cx);
             } else if self.is_editable()
                 && let Some(SetValueText(string)) = cx.try_pop()
@@ -206,8 +206,8 @@ mod EditBox {
         fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
             let offset = self.scroll.offset();
-            if !action.is_empty() {
-                cx.action(&self, action);
+            if action.0 {
+                cx.action_moved(action);
                 self.vert_bar.set_value(cx, offset.1);
             }
             offset

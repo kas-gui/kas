@@ -98,13 +98,13 @@ pub fn solve_size_rules<W: Tile + ?Sized>(
 ///
 /// [`SolveCache::apply_rect`] accepts a [`Rect`], updates constraints as
 /// necessary and sets widget positions within this `rect`.
+#[derive(Default)]
 pub struct SolveCache {
     // Technically we don't need to store min and ideal here, but it simplifies
     // the API for very little real cost.
     min: Size,
     ideal: Size,
     margins: Margins,
-    refresh_rules: bool,
     last_width: i32,
 }
 
@@ -139,39 +139,27 @@ impl SolveCache {
     /// Calculate required size of widget
     ///
     /// Assumes no explicit alignment.
-    pub fn find_constraints(mut widget: Node<'_>, cx: &mut SizeCx) -> Self {
+    pub fn find_constraints(&mut self, mut widget: Node<'_>, cx: &mut SizeCx) {
         let start = std::time::Instant::now();
 
         let w = widget.size_rules(cx, AxisInfo::new(false, None));
         let h = widget.size_rules(cx, AxisInfo::new(true, Some(w.ideal_size())));
 
-        let min = Size(w.min_size(), h.min_size());
-        let ideal = Size(w.ideal_size(), h.ideal_size());
-        let margins = Margins::hv(w.margins(), h.margins());
+        self.min = Size(w.min_size(), h.min_size());
+        self.ideal = Size(w.ideal_size(), h.ideal_size());
+        self.margins = Margins::hv(w.margins(), h.margins());
 
         log::trace!(
             target: "kas_perf::layout", "find_constraints: {}μs",
             start.elapsed().as_micros(),
         );
-        log::debug!("find_constraints: min={min:?}, ideal={ideal:?}, margins={margins:?}");
-        let refresh_rules = false;
-        let last_width = ideal.0;
-        SolveCache {
-            min,
-            ideal,
-            margins,
-            refresh_rules,
-            last_width,
-        }
-    }
-
-    /// Force updating of size rules
-    ///
-    /// This should be called whenever widget size rules have been changed. It
-    /// forces [`SolveCache::apply_rect`] to recompute these rules when next
-    /// called.
-    pub fn invalidate_rule_cache(&mut self) {
-        self.refresh_rules = true;
+        log::debug!(
+            "find_constraints: min={:?}, ideal={:?}, margins={:?}",
+            &self.min,
+            &self.ideal,
+            &self.margins
+        );
+        self.last_width = self.ideal.0;
     }
 
     /// Apply layout solution to a widget
@@ -180,10 +168,8 @@ impl SolveCache {
     /// If `inner_margin` is true, margins are internal to this `rect`; if not,
     /// the caller is responsible for handling margins.
     ///
-    /// If [`SolveCache::invalidate_rule_cache`] was called since rules were
-    /// last calculated then this method will recalculate all rules; otherwise
-    /// it will only do so if necessary (when dimensions do not match those
-    /// last used).
+    /// This method will only recalculate rules as necessary (namely height
+    /// rules when the width has changed).
     pub fn apply_rect(
         &mut self,
         mut widget: Node<'_>,
@@ -200,15 +186,7 @@ impl SolveCache {
 
         // We call size_rules not because we want the result, but to allow
         // internal layout solving.
-        if self.refresh_rules || width != self.last_width {
-            if self.refresh_rules {
-                let w = widget.size_rules(cx, AxisInfo::new(false, None));
-                self.min.0 = w.min_size();
-                self.ideal.0 = w.ideal_size();
-                self.margins.horiz = w.margins();
-                width = rect.size.0 - self.margins.sum_horiz();
-            }
-
+        if width != self.last_width {
             let h = widget.size_rules(cx, AxisInfo::new(true, Some(width)));
             self.min.1 = h.min_size();
             self.ideal.1 = h.ideal_size();
@@ -224,7 +202,6 @@ impl SolveCache {
         widget.set_rect(cx, rect, AlignHints::NONE);
 
         log::trace!(target: "kas_perf::layout", "apply_rect: {}μs", start.elapsed().as_micros());
-        self.refresh_rules = false;
     }
 
     /// Print widget heirarchy in the trace log

@@ -595,8 +595,7 @@ mod ListView {
             );
         }
 
-        /// Returns true if anything changed
-        fn update_content_size(&mut self, cx: &mut EventState) -> bool {
+        fn update_content_size(&mut self, cx: &mut EventState) {
             let data_len: i32 = self.data_len.cast();
             let view_size = self.rect().size - self.frame_size;
             let mut content_size = view_size;
@@ -605,8 +604,7 @@ mod ListView {
                 (self.skip * data_len - self.child_inter_margin).max(0),
             );
             let action = self.scroll.set_sizes(view_size, content_size);
-            cx.action(self, action);
-            !action.is_empty()
+            cx.action_moved(action);
         }
     }
 
@@ -632,8 +630,8 @@ mod ListView {
 
         fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
-            if !action.is_empty() {
-                cx.action(&self, action);
+            if action.0 {
+                cx.action_moved(action);
                 cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
             self.scroll.offset()
@@ -911,9 +909,9 @@ mod ListView {
                     return if let Some(i_data) = data_index {
                         // Set nav focus to i_data and update scroll position
                         let rect = solver.rect(i_data) - self.virtual_offset();
-                        let act = self.scroll.focus_rect(cx, rect, self.rect());
-                        if !act.is_empty() {
-                            cx.action(&self, act);
+                        let action = self.scroll.focus_rect(cx, rect, self.rect());
+                        if action.0 {
+                            cx.action_moved(action);
                             cx.config_cx(|cx| self.post_scroll(cx, data));
                         }
                         let index = i_data % usize::conv(self.cur_len);
@@ -1105,9 +1103,9 @@ mod ListView {
                 };
 
                 let rect = solver.rect(data_index) - self.virtual_offset();
-                let act = self.scroll.self_focus_rect(rect, self.rect());
-                if !act.is_empty() {
-                    cx.action(&self, act);
+                let action = self.scroll.self_focus_rect(rect, self.rect());
+                if action.0 {
+                    cx.action_moved(action);
                     self.post_scroll(cx, data);
                 }
 

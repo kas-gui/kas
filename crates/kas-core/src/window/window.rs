@@ -15,7 +15,7 @@ use crate::runner::AppData;
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::widgets::adapt::MapAny;
 use crate::widgets::{Border, Label, TitleBar};
-use crate::{Action, Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
+use crate::{Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{autoimpl, impl_self, widget_set_rect};
 use smallvec::SmallVec;
 
@@ -345,7 +345,7 @@ mod Window {
                     if let Some(id) = self.popups.last().map(|desc| desc.0) {
                         cx.close_window(id);
                     } else if self.props.escapable {
-                        cx.window_action(Action::CLOSE);
+                        cx.close_own_window();
                     }
                     Used
                 }
@@ -639,14 +639,14 @@ impl<Data: AppData> WindowWidget for Window<Data> {
 
         self.resize_popup(cx, data, index);
         cx.confirm_popup_is_sized(id);
-        cx.action(self.id(), Action::REGION_MOVED);
+        cx.region_moved();
     }
 
     fn remove_popup(&mut self, cx: &mut SizeCx, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                cx.action(self.id(), Action::REGION_MOVED);
+                cx.region_moved();
                 return;
             }
         }
@@ -707,7 +707,8 @@ impl<Data: AppData> Window<Data> {
         self.popups[index].2 = t;
         let r = r + t; // work in translated coordinate space
         let result = Widget::as_node(self, data).find_node(&popup.id, |mut node| {
-            let mut cache = layout::SolveCache::find_constraints(node.re(), cx);
+            let mut cache = layout::SolveCache::default();
+            cache.find_constraints(node.re(), cx);
             let ideal = cache.ideal(false);
             let m = cache.margins();
 
