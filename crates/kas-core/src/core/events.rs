@@ -72,14 +72,7 @@ use crate::{Id, geom::Coord};
 ///
 /// ### Sizing
 ///
-/// See [`Layout#sizing`].
-///
-/// It is expected that widgets are sized after [configuration](#configuration)
-/// before any other `Events` methods are called, though it is not required that
-/// sizing is repeated after re-configuration. It might theoretically be
-/// possible to receive a message through [`Events::handle_messages`] before the
-/// widget is sized through [`EventState::send`] (or other `send_*` method)
-/// being called during configuration or update of this widget or a parent.
+/// Sizing must happen after configuration. See [`Layout#sizing`].
 ///
 /// [`#widget`]: macros::widget
 pub trait Events: Widget + Sized {
@@ -122,6 +115,8 @@ pub trait Events: Widget + Sized {
     /// to indicate that the button (not the inner label) handles clicks.
     ///
     /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
     ///
     /// Call [`Tile::try_probe`] instead.
     ///
@@ -218,9 +213,15 @@ pub trait Events: Widget + Sized {
 
     /// Mouse focus handler
     ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
+    ///
     /// Called when mouse moves over or leaves this widget.
     /// (This is a low-level alternative
     /// to [`Self::REDRAW_ON_MOUSE_OVER`] and [`Self::mouse_over_icon`].)
+    ///
+    /// # Implementation
     ///
     /// `state` is true when the mouse is over this widget.
     #[inline]
@@ -237,6 +238,10 @@ pub trait Events: Widget + Sized {
     ///
     /// This is the primary event handler (see [documentation](crate::event)).
     ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
+    ///
     /// This method is called on the primary event target. In this case,
     /// [`EventCx::last_child`] returns `None`.
     ///
@@ -245,6 +250,8 @@ pub trait Events: Widget + Sized {
     /// [is reusable](Event::is_reusable)). In this case,
     /// [`EventCx::last_child`] returns `Some(index)` with the index of the
     /// child being unwound from.
+    ///
+    /// # Implementation
     ///
     /// Default implementation of `handle_event`: do nothing; return
     /// [`Unused`].
@@ -257,12 +264,19 @@ pub trait Events: Widget + Sized {
     ///
     /// This is the secondary event handler (see [documentation](crate::event)).
     ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is configured. The
+    /// widget may or may not be sized.
+    ///
     /// It is implied that the stack contains at least one message.
     /// Use [`EventCx::try_pop`] and/or [`EventCx::try_peek`].
     ///
     /// [`EventCx::last_child`] may be called to find the message's sender.
     /// This may return [`None`] (if no child was visited, which implies that
     /// the message was sent by `self`).
+    ///
+    /// # Implementation
     ///
     /// The default implementation does nothing.
     #[inline]
@@ -272,9 +286,15 @@ pub trait Events: Widget + Sized {
 
     /// Handler for scrolling
     ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
+    ///
     /// When, during [event handling](crate::event), a widget which is a strict
     /// descendant of `self` (i.e. not `self`) calls [`EventCx::set_scroll`]
     /// with a value other than [`Scroll::None`], this method is called.
+    ///
+    /// # Implementation
     ///
     /// If the child is in an independent coordinate space, then this method
     /// should call `cx.set_scroll(Scroll::None)` to avoid any reactions to

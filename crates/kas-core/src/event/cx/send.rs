@@ -49,6 +49,9 @@ impl EventState {
     /// If `id = Id::default()` and a [send target](super::ConfigCx::set_send_target_for)
     /// has been assigned for `M`, then `msg` will be sent to that target.
     ///
+    /// If `id` identifies a widget, that widget must be configured but does not
+    /// need to be sized.
+    ///
     /// ### Ordering and failure
     ///
     /// Messages sent via `send` and [`send_erased`](Self::send_erased) should
