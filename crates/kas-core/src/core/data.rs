@@ -138,8 +138,8 @@ pub enum WidgetStatus {
 }
 
 impl WidgetStatus {
-    fn require(&self, id: &Id, expected: Self) {
-        if *self < expected {
+    fn require(self, id: &Id, expected: Self) {
+        if self < expected {
             panic!("WidgetStatus of {id}: require {expected:?}, found {self:?}");
         }
     }
@@ -192,7 +192,19 @@ impl WidgetStatus {
     }
 
     /// Require that `set_rect` has been called
-    pub fn require_rect(&self, id: &Id) {
+    pub fn require_rect(self, id: &Id) {
         self.require(id, WidgetStatus::SetRect);
+    }
+
+    /// Get whether the widget is configured
+    #[inline]
+    pub fn is_configured(self) -> bool {
+        self >= WidgetStatus::Configured
+    }
+
+    /// Get whether the widget is sized
+    #[inline]
+    pub fn is_sized(self) -> bool {
+        self >= WidgetStatus::SetRect
     }
 }

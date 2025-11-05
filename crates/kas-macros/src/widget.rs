@@ -944,6 +944,10 @@ pub fn required_tile_methods(name: &str, core_path: &Toks) -> Toks {
             self
         }
         #[inline]
+        fn status(&self) -> ::kas::WidgetStatus {
+            #core_path.status
+        }
+        #[inline]
         fn id_ref(&self) -> &::kas::Id {
             &#core_path._id
         }
