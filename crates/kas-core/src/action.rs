@@ -7,6 +7,7 @@
 
 #[allow(unused)]
 use crate::event::{ConfigCx, EventCx, EventState};
+use std::ops::{BitOr, BitOrAssign, Deref};
 
 /// Action: widget has moved/opened/closed
 ///
@@ -19,7 +20,7 @@ use crate::event::{ConfigCx, EventCx, EventState};
 #[derive(Copy, Clone, Debug, Default)]
 pub struct ActionMoved(pub bool);
 
-impl std::ops::BitOr for ActionMoved {
+impl BitOr for ActionMoved {
     type Output = Self;
     #[inline]
     fn bitor(self, rhs: Self) -> Self {
@@ -27,10 +28,46 @@ impl std::ops::BitOr for ActionMoved {
     }
 }
 
-impl std::ops::BitOrAssign for ActionMoved {
+impl BitOrAssign for ActionMoved {
     #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
+    }
+}
+
+impl Deref for ActionMoved {
+    type Target = bool;
+    #[inline]
+    fn deref(&self) -> &bool {
+        &self.0
+    }
+}
+
+/// Action: widget must be resized
+#[must_use]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct ActionResize(pub bool);
+
+impl BitOr for ActionResize {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, rhs: Self) -> Self {
+        ActionResize(self.0 | rhs.0)
+    }
+}
+
+impl BitOrAssign for ActionResize {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl Deref for ActionResize {
+    type Target = bool;
+    #[inline]
+    fn deref(&self) -> &bool {
+        &self.0
     }
 }
 

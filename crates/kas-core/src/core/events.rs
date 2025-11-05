@@ -7,9 +7,9 @@
 
 #[allow(unused)] use super::Layout;
 use super::{Tile, Widget};
-use crate::ChildIndices;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
+use crate::{ActionResize, ChildIndices};
 use crate::{Id, geom::Coord};
 #[allow(unused)] use kas_macros as macros;
 
@@ -297,11 +297,12 @@ pub trait Events: Widget + Sized {
     ///
     /// # Implementation
     ///
-    /// Return `true` on success, `false` when a resize is still needed.
+    /// Return `ActionResize(true)` if further resizing is needed, or
+    /// `ActionResize(false)` if resizing is complete.
     #[inline]
-    fn handle_resize(&mut self, cx: &mut ConfigCx, data: &Self::Data) -> bool {
+    fn handle_resize(&mut self, cx: &mut ConfigCx, data: &Self::Data) -> ActionResize {
         let _ = (cx, data);
-        false
+        ActionResize(true)
     }
 
     /// Handler for scrolling

@@ -40,8 +40,8 @@ pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) {
         }
     }
 
-    if cx.resize && widget.status().is_sized() {
-        cx.resize = !widget.handle_resize(cx, data);
+    if *cx.resize && widget.status().is_sized() {
+        cx.resize = widget.handle_resize(cx, data);
     }
 }
 
@@ -110,9 +110,9 @@ pub fn _send<W: Events>(
         widget.handle_messages(cx, data);
     }
 
-    if cx.resize {
+    if *cx.resize {
         debug_assert!(widget.status().is_sized());
-        cx.resize = cx.config_cx(|cx| !widget.handle_resize(cx, data));
+        cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
     }
 
     is_used
@@ -154,8 +154,8 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
         log::debug!("_replay: {} cannot find path to {id}", widget.identify());
     }
 
-    if cx.resize && widget.status().is_sized() {
-        cx.resize = cx.config_cx(|cx| !widget.handle_resize(cx, data));
+    if *cx.resize && widget.status().is_sized() {
+        cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
     }
 }
 
@@ -174,8 +174,8 @@ pub fn _nav_next<W: Events>(
         nav_next_nav(widget.as_node(data), cx, focus, advance)
     };
 
-    if cx.resize && widget.status().is_sized() {
-        cx.resize = !widget.handle_resize(cx, data);
+    if *cx.resize && widget.status().is_sized() {
+        cx.resize = widget.handle_resize(cx, data);
     }
 
     result
