@@ -191,10 +191,7 @@ mod EditBox {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {
-            // Inner may have resized itself, hence we update sizes now.
-            let pos = self.rect().pos + self.frame_offset;
-            let size = self.update_content_size();
-            let rect = Rect { pos, size };
+            let rect = self.inner.rect();
             self.scroll.scroll(cx, self.id(), rect, scroll);
             self.update_scroll_bar(cx);
         }
@@ -241,10 +238,9 @@ mod EditBox {
             }
         }
 
-        fn update_content_size(&mut self) -> Size {
-            let size = self.rect().size - self.frame_size;
+        fn update_content_size(&mut self) {
+            let size = self.inner.rect().size;
             let _ = self.scroll.set_sizes(size, self.inner.typeset_size());
-            size
         }
 
         fn update_scroll_bar(&mut self, cx: &mut EventState) {

@@ -322,6 +322,10 @@ pub trait Events: Widget + Sized {
     ///
     /// # Implementation
     ///
+    /// This method is expected to deal with scrolling only; if the content size
+    /// has changed and `cx.resize()` is called by the affected child, then
+    /// [`Self::handle_resize`] should be called before this method.
+    ///
     /// If the child is in an independent coordinate space, then this method
     /// should call `cx.set_scroll(Scroll::None)` to avoid any reactions to
     /// child's scroll requests.
