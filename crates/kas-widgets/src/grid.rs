@@ -271,16 +271,6 @@ impl<W: Widget> Grid<Vec<(GridCellInfo, W)>> {
         grid
     }
 
-    /// Edit an existing grid via a builder
-    ///
-    /// This method will reconfigure `self` and all children.
-    pub fn edit<F: FnOnce(GridBuilder<W>)>(&mut self, cx: &mut ConfigCx, data: &W::Data, f: F) {
-        f(GridBuilder(&mut self.widgets));
-        self.dim = self.widgets.grid_dimensions();
-        let id = self.id();
-        cx.configure(self.as_node(data), id);
-    }
-
     /// True if there are no child widgets
     pub fn is_empty(&self) -> bool {
         self.widgets.is_empty()
