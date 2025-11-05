@@ -105,7 +105,6 @@ impl DoubleEndedIterator for ChildIndicesIter {
 pub struct DefaultCoreType {
     pub _rect: Rect,
     pub _id: Id,
-    #[cfg(debug_assertions)]
     pub status: WidgetStatus,
 }
 
@@ -114,7 +113,6 @@ impl Clone for DefaultCoreType {
         DefaultCoreType {
             _rect: self._rect,
             _id: Default::default(),
-            #[cfg(debug_assertions)]
             status: self.status,
         }
     }
@@ -129,7 +127,6 @@ impl Clone for DefaultCoreType {
 /// It is not used in release builds.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-#[cfg(debug_assertions)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum WidgetStatus {
     #[default]
@@ -140,7 +137,6 @@ pub enum WidgetStatus {
     SetRect,
 }
 
-#[cfg(debug_assertions)]
 impl WidgetStatus {
     fn require(&self, id: &Id, expected: Self) {
         if *self < expected {
