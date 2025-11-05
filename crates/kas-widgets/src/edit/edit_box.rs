@@ -180,6 +180,16 @@ mod EditBox {
             }
         }
 
+        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
+            let size = self.inner.rect().size;
+            let axis = AxisInfo::new(false, Some(size.1));
+            let mut resize = self.inner.size_rules(&mut cx.size_cx(), axis).min_size() > size.0;
+            let axis = AxisInfo::new(true, Some(size.0));
+            resize |= self.inner.size_rules(&mut cx.size_cx(), axis).min_size() > size.1;
+            self.update_content_size();
+            ActionResize(resize)
+        }
+
         fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {
             // Inner may have resized itself, hence we update sizes now.
             let pos = self.rect().pos + self.frame_offset;

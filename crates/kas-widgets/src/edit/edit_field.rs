@@ -174,7 +174,11 @@ mod EditField {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
+            let size = self.typeset_size();
             G::update(self, cx, data);
+            if size != self.typeset_size() {
+                cx.resize();
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {

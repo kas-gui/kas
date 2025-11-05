@@ -228,15 +228,9 @@ mod SelectableText {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             if let Some(method) = self.text_fn.as_ref() {
-                let text = method(cx, data);
-                if text.as_str() == self.text.as_str() {
-                    // NOTE(opt): avoiding re-preparation of text is a *huge*
-                    // optimisation. Move into kas-text?
-                    return;
+                if self.set_text(method(cx, data)) {
+                    cx.resize();
                 }
-                self.text.set_text(text);
-                self.text.prepare();
-                cx.action(self, Action::SET_RECT);
             }
         }
 
@@ -503,6 +497,18 @@ mod ScrollText {
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
                 self.set_scroll_offset(cx, offset);
             }
+        }
+
+        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
+            let size = self.label.rect().size;
+            let axis = AxisInfo::new(false, Some(size.1));
+            let mut resize = self.label.size_rules(&mut cx.size_cx(), axis).min_size() > size.0;
+            let axis = AxisInfo::new(true, Some(size.0));
+            resize |= self.label.size_rules(&mut cx.size_cx(), axis).min_size() > size.1;
+            self.label
+                .set_rect(&mut cx.size_cx(), self.label.rect(), Default::default());
+            self.update_content_size(cx);
+            ActionResize(resize)
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
