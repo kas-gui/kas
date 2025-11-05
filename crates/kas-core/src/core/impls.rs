@@ -21,11 +21,11 @@ pub fn _configure<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) 
             && let Some(node) = widget.as_node(data).get_child(index)
         {
             cx.configure(node, id);
+
+            // NOTE: we don't handle cx.resize here since we assume that sizing will happen later.
         }
     }
     widget.post_configure(cx);
-
-    // NOTE: we don't handle cx.resize here since we assume that sizing will happen later.
 }
 
 /// Generic implementation of [`Widget::_update`]
@@ -38,10 +38,10 @@ pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) {
         if let Some(node) = widget.as_node(data).get_child(index) {
             cx.update(node);
         }
-    }
 
-    if *cx.resize && widget.status().is_sized() {
-        cx.resize = widget.handle_resize(cx, data);
+        if *cx.resize && widget.status().is_sized() {
+            cx.resize = widget.handle_resize(cx, data);
+        }
     }
 }
 
@@ -94,6 +94,11 @@ pub fn _send<W: Events>(
                 );
             }
 
+            if *cx.resize {
+                debug_assert!(widget.status().is_sized());
+                cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
+            }
+
             if let Some(scroll) = cx.post_send(index) {
                 widget.handle_scroll(cx, data, scroll);
             }
@@ -108,11 +113,6 @@ pub fn _send<W: Events>(
 
     if cx.has_msg() {
         widget.handle_messages(cx, data);
-    }
-
-    if *cx.resize {
-        debug_assert!(widget.status().is_sized());
-        cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
     }
 
     is_used
@@ -138,6 +138,10 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
             );
         }
 
+        if *cx.resize && widget.status().is_sized() {
+            cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
+        }
+
         if let Some(scroll) = cx.post_send(index) {
             widget.handle_scroll(cx, data, scroll);
         }
@@ -152,10 +156,6 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
         // unmapped or removed.
         #[cfg(debug_assertions)]
         log::debug!("_replay: {} cannot find path to {id}", widget.identify());
-    }
-
-    if *cx.resize && widget.status().is_sized() {
-        cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
     }
 }
 
@@ -174,9 +174,7 @@ pub fn _nav_next<W: Events>(
         nav_next_nav(widget.as_node(data), cx, focus, advance)
     };
 
-    if *cx.resize && widget.status().is_sized() {
-        cx.resize = widget.handle_resize(cx, data);
-    }
+    debug_assert!(!*cx.resize);
 
     result
 }

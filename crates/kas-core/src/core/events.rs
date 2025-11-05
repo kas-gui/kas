@@ -290,15 +290,20 @@ pub trait Events: Widget + Sized {
     ///
     /// This method may only be called after the widget is sized.
     ///
-    /// This method is called when a widget (the callee or a descendant) has
-    /// requested a resize. Some widgets (for example, a scroll region) are able
-    /// to handle resizes locally and should implement this method to do so
-    /// (thus avoiding the need for a full-window resize).
+    /// When, during [event handling](crate::event), a widget which is a strict
+    /// descendant of `self` (i.e. not `self`) calls [`ConfigCx::resize`] or
+    /// [`EventCx::resize`], this method is called.
     ///
     /// # Implementation
     ///
+    /// Some widgets (for example, a scroll region) are able to handle resizes
+    /// locally and should implement this method to do so
+    /// (thus avoiding the need for a full-window resize).
+    ///
     /// Return `ActionResize(true)` if further resizing is needed, or
     /// `ActionResize(false)` if resizing is complete.
+    ///
+    /// The default implementation simply returns `ActionResize(true)`.
     #[inline]
     fn handle_resize(&mut self, cx: &mut ConfigCx, data: &Self::Data) -> ActionResize {
         let _ = (cx, data);
