@@ -422,7 +422,7 @@ impl<T: FormattableText> Text<T> {
                 .prepare_runs(&self.text, self.direction, self.font, self.dpem)
                 .expect("no suitable font found"),
             Status::ResizeLevelRuns => self.display.resize_runs(&self.text, self.dpem),
-            _ => (),
+            _ => return,
         }
 
         self.status = Status::LevelRuns;
