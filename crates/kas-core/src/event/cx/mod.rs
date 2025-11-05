@@ -413,6 +413,7 @@ impl<'a> EventCx<'a> {
     /// All widgets must be configured after construction; see
     /// [widget lifecycle](crate::Widget#widget-lifecycle) and
     /// [configuration](Events#configuration).
+    /// Widgets must always be sized after configuration.
     ///
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]

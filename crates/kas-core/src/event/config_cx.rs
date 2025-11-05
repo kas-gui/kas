@@ -62,6 +62,7 @@ impl<'a> ConfigCx<'a> {
     /// All widgets must be configured after construction; see
     /// [widget lifecycle](crate::Widget#widget-lifecycle) and
     /// [configuration](Events#configuration).
+    /// Widgets must always be sized after configuration.
     ///
     /// Assigns `id` to the widget. This must be valid and is usually
     /// constructed with [`Events::make_child_id`].

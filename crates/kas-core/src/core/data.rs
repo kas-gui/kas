@@ -150,10 +150,10 @@ impl WidgetStatus {
 
     /// Configure
     ///
-    /// Requires nothing. Re-configuration does not require repeating other actions.
+    /// Requires nothing. Re-configuration requires re-sizing.
     pub fn configure(&mut self, _id: &Id) {
         // re-configure does not require repeating other actions
-        *self = (*self).max(WidgetStatus::Configured);
+        *self = WidgetStatus::Configured;
     }
 
     /// Update
