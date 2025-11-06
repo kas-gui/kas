@@ -128,6 +128,15 @@ mod ScrollBar {
             self.direction.as_direction()
         }
 
+        /// Get whether the scroll bar is set as invisible
+        ///
+        /// This refers to the property set by [`Self::set_invisible`] / [`Self::with_invisible`],
+        /// not [`Self::currently_visible`].
+        #[inline]
+        pub fn is_invisible(&self) -> bool {
+            self.invisible
+        }
+
         /// Set invisible property
         ///
         /// An "invisible" scroll bar is only drawn on mouse-over
@@ -537,10 +546,10 @@ mod ScrollBars {
                 self.show_bars.0 = max_offset.0 > 0;
                 self.show_bars.1 = max_offset.1 > 0;
             }
-            if self.show_bars.0 && !self.horiz_bar.invisible {
+            if self.show_bars.0 && !self.horiz_bar.is_invisible() {
                 child_size.1 -= bar_width;
             }
-            if self.show_bars.1 && !self.vert_bar.invisible {
+            if self.show_bars.1 && !self.vert_bar.is_invisible() {
                 child_size.0 -= bar_width;
             }
 
