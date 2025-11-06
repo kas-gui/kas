@@ -15,6 +15,7 @@ use crate::text::fonts::FontSelector;
 use crate::text::format::FormattableText;
 use crate::text::*;
 use crate::{Action, Layout};
+use std::num::NonZeroUsize;
 
 /// Text type-setting object (theme aware)
 ///
@@ -442,13 +443,15 @@ impl<T: FormattableText> Text<T> {
         self.display.measure_width(max_width)
     }
 
-    /// Measure required vertical height
+    /// Measure required vertical height, wrapping as configured
+    ///
+    /// Stops after `max_lines`, if provided.
     ///
     /// May partially prepare the text for display, but does not otherwise
     /// modify `self`.
-    pub fn measure_height(&mut self, wrap_width: f32) -> f32 {
+    pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
         self.prepare_runs();
-        self.display.measure_height(wrap_width)
+        self.display.measure_height(wrap_width, max_lines)
     }
 
     /// Prepare text for display, as necessary
@@ -552,6 +555,20 @@ impl<T: FormattableText> Text<T> {
         Ok(self.wrapped_display()?.num_lines())
     }
 
+    /// Get line properties
+    #[inline]
+    pub fn get_line(&self, index: usize) -> Result<Option<&Line>, NotReady> {
+        Ok(self.wrapped_display()?.get_line(index))
+    }
+
+    /// Iterate over line properties
+    ///
+    /// [Requires status][Self#status-of-preparation]: lines have been wrapped.
+    #[inline]
+    pub fn lines(&self) -> Result<impl Iterator<Item = &Line>, NotReady> {
+        Ok(self.wrapped_display()?.lines())
+    }
+
     /// Find the line containing text `index`
     ///
     /// See [`TextDisplay::find_line`].
@@ -561,14 +578,6 @@ impl<T: FormattableText> Text<T> {
         index: usize,
     ) -> Result<Option<(usize, std::ops::Range<usize>)>, NotReady> {
         Ok(self.wrapped_display()?.find_line(index))
-    }
-
-    /// Get the range of a line, by line number
-    ///
-    /// See [`TextDisplay::line_range`].
-    #[inline]
-    pub fn line_range(&self, line: usize) -> Result<Option<std::ops::Range<usize>>, NotReady> {
-        Ok(self.wrapped_display()?.line_range(line))
     }
 
     /// Get the directionality of the current line
@@ -705,6 +714,6 @@ impl<T: FormattableText> SizableText for Text<T> {
     }
 
     fn measure_height(&mut self, wrap_width: f32) -> f32 {
-        Text::measure_height(self, wrap_width)
+        Text::measure_height(self, wrap_width, None)
     }
 }
