@@ -12,8 +12,6 @@ use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
 use kas::layout::{GridCellInfo, solve_size_rules};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
-#[allow(unused)] // doc links
-use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::ops::Range;

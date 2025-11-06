@@ -204,9 +204,12 @@ fn main() -> kas::runner::Result<()> {
     let data = MyData::new(false, 5);
 
     let clerk = Generator::default();
-    let list = ListView::new(clerk, ListEntryDriver).on_update(|cx, list, data: &MyData| {
-        list.set_direction(cx, data.dir);
-    });
+    let list = ListView::new(clerk, ListEntryDriver)
+        .on_update(|cx, list, data: &MyData| {
+            list.set_direction(cx, data.dir);
+        })
+        // .with_fixed_bars(false, true)
+        ;
     let tree = column![
         "Demonstration of dynamic widget creation / deletion",
         CheckButton::new("Explicit row limit:", |_, data: &MyData| data.row_limit)
@@ -217,7 +220,7 @@ fn main() -> kas::runner::Result<()> {
         "Contents of selected entry:",
         Text::new_gen(|_, data: &MyData| data.get_string(data.active)),
         Separator::new(),
-        ScrollBars::new(list).with_fixed_bars(false, true),
+        list,
     ];
 
     let ui = tree

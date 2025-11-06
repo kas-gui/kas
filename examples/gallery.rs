@@ -584,9 +584,9 @@ fn filter_list() -> Page<AppData> {
             core: widget_core!(),
             #[widget(&())] filter: EditBox<MonthYearFilterGuard> =
                 EditBox::default().with_multi_line(false),
-            #[widget(&self.filter.guard().0)] list: ScrollBars<ListView<Generator, driver::View, Down>>
+            #[widget(&self.filter.guard().0)] list: ListView<Generator, driver::View, Down>
                 =
-                ScrollBars::new(ListView::new(clerk, driver::View).with_num_visible(24)),
+                ListView::new(clerk, driver::View).with_num_visible(24),
         }
 
         impl Layout for Self {}
@@ -595,14 +595,14 @@ fn filter_list() -> Page<AppData> {
             type Data = Data;
 
             fn update(&mut self, cx: &mut ConfigCx, data: &Data) {
-                self.list.inner_mut().set_selection_mode(cx, data.mode);
+                self.list.set_selection_mode(cx, data.mode);
             }
 
             fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
                 if let Some(FilterUpdate) = cx.try_pop() {
                     cx.update(self.as_node(data));
                 } else if let Some(SelectionMsg::Select(key)) = cx.try_pop() {
-                    println!("Selected: {}", &self.list.inner().clerk().text(key))
+                    println!("Selected: {}", &self.list.clerk().text(key))
                 }
             }
         }
