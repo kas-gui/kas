@@ -353,7 +353,10 @@ impl<D: 'static> ThemeSize for Window<D> {
                 SizeRules::new(bound, bound, Stretch::Filler)
             }
         } else {
-            let wrap_width = axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY);
+            let wrap_width = wrap
+                .then(|| axis.other().map(|w| w.cast()))
+                .flatten()
+                .unwrap_or(f32::INFINITY);
             let bound: i32 = text.measure_height(wrap_width).cast_ceil();
             SizeRules::new(bound, bound, Stretch::Filler)
         };

@@ -235,6 +235,9 @@ pub trait ThemeSize {
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass);
 
     /// Get [`SizeRules`] for a text element
+    ///
+    /// Calculates required text dimensions according to the `class` and uses
+    /// theme-defined margins.
     fn text_rules(&self, text: &mut dyn SizableText, class: TextClass, axis: AxisInfo)
     -> SizeRules;
 }
