@@ -102,12 +102,15 @@ mod EditField {
                 let dpem = cx.dpem();
                 min = (self.width.0 * dpem).cast_ceil();
                 ideal = (self.width.1 * dpem).cast_ceil();
+            } else if let Some(width) = axis.other() {
+                // Use the height of the first line as a reference
+                let height = self
+                    .text
+                    .measure_height(width.cast(), std::num::NonZero::new(1));
+                min = (self.lines.0 * height).cast_ceil();
+                ideal = (self.lines.1 * height).cast_ceil();
             } else {
-                // TODO: line height depends on the font; 1em is not a good
-                // approximation. This code also misses inter-line spacing.
-                let dpem = cx.dpem();
-                min = (self.lines.0 * dpem).cast_ceil();
-                ideal = (self.lines.1 * dpem).cast_ceil();
+                unreachable!()
             };
 
             let rules = self.text.size_rules(cx, axis);

@@ -46,8 +46,13 @@ mod SelectableText {
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = kas::MacroDefinedLayout::size_rules(self, cx, axis);
-            if axis.is_vertical() {
-                rules.reduce_min_to(cx.dpem().cast_ceil());
+            if axis.is_vertical()
+                && let Some(width) = axis.other()
+            {
+                let height = self
+                    .text
+                    .measure_height(width.cast(), std::num::NonZero::new(3));
+                rules.reduce_min_to(height.cast_ceil());
             }
             rules
         }
