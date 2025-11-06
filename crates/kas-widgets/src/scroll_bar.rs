@@ -5,7 +5,7 @@
 
 //! `ScrollBar` control
 
-use super::{GripMsg, GripPart, ScrollRegion};
+use super::{GripMsg, GripPart};
 use kas::event::{Scroll, TimerHandle};
 use kas::prelude::*;
 use kas::theme::Feature;
@@ -663,72 +663,6 @@ mod ScrollBars {
             let offset = self.inner.scroll_offset();
             self.horiz_bar.set_value(cx, offset.0);
             self.vert_bar.set_value(cx, offset.1);
-        }
-    }
-}
-
-#[impl_self]
-mod ScrollBarRegion {
-    /// A scrollable region with bars
-    ///
-    /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
-    /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
-    /// while [`ScrollBars`] adds scroll bar controls.
-    #[autoimpl(Deref, DerefMut, Scrollable using self.0)]
-    #[derive(Clone, Debug, Default)]
-    #[derive_widget]
-    pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollBars<ScrollRegion<W>>);
-
-    impl Self {
-        /// Construct a `ScrollBarRegion<W>`
-        #[inline]
-        pub fn new(inner: W) -> Self {
-            ScrollBarRegion(ScrollBars::new(ScrollRegion::new(inner)))
-        }
-
-        /// Set fixed visibility of scroll bars (inline)
-        #[inline]
-        pub fn with_fixed_bars(self, horiz: bool, vert: bool) -> Self
-        where
-            Self: Sized,
-        {
-            ScrollBarRegion(self.0.with_fixed_bars(horiz, vert))
-        }
-
-        /// Set fixed, invisible bars (inline)
-        ///
-        /// In this mode scroll bars are either enabled but invisible until
-        /// mouse over or disabled completely.
-        #[inline]
-        pub fn with_invisible_bars(self, horiz: bool, vert: bool) -> Self
-        where
-            Self: Sized,
-        {
-            ScrollBarRegion(self.0.with_invisible_bars(horiz, vert))
-        }
-
-        /// Get current mode of scroll bars
-        #[inline]
-        pub fn scroll_bar_mode(&self) -> ScrollBarMode {
-            self.0.scroll_bar_mode()
-        }
-
-        /// Set scroll bar mode
-        #[inline]
-        pub fn set_scroll_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
-            self.0.set_scroll_bar_mode(cx, mode);
-        }
-
-        /// Access inner widget directly
-        #[inline]
-        pub fn inner(&self) -> &W {
-            self.0.inner.inner()
-        }
-
-        /// Access inner widget directly
-        #[inline]
-        pub fn inner_mut(&mut self) -> &mut W {
-            self.0.inner.inner_mut()
         }
     }
 }
