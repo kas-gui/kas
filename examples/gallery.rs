@@ -248,8 +248,7 @@ fn widgets() -> Page<AppData> {
         })
         .on_message(|cx, _, msg| {
             println!("Message: {msg:?}");
-            let act = cx.config().change_config(msg);
-            cx.window_action(act);
+            cx.change_config(msg);
         });
 
     let ui = adapt::AdaptEvents::new(ui)
@@ -814,17 +813,11 @@ fn main() -> kas::runner::Result<()> {
         .on_message(|cx, state, msg| match msg {
             Menu::Theme(name) => {
                 println!("Theme: {name:?}");
-                let act = cx
-                    .config()
-                    .update_theme(|theme| theme.set_active_theme(name));
-                cx.window_action(act);
+                cx.with_config(|config| config.update_theme(|theme| theme.set_active_theme(name)));
             }
             Menu::Colour(name) => {
                 println!("Colour scheme: {name:?}");
-                let act = cx
-                    .config()
-                    .update_theme(|theme| theme.set_active_scheme(name));
-                cx.window_action(act);
+                cx.with_config(|config| config.update_theme(|theme| theme.set_active_scheme(name)));
             }
             Menu::Disabled(disabled) => {
                 state.disabled = disabled;

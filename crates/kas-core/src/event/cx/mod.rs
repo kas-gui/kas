@@ -265,12 +265,6 @@ impl EventState {
         Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
     }
 
-    /// Update configuration data
-    #[inline]
-    pub fn change_config(&mut self, msg: ConfigMsg) {
-        self.action |= self.config.change_config(msg);
-    }
-
     /// Set/unset a widget as disabled
     ///
     /// Disabled status applies to all descendants and blocks reception of
@@ -446,6 +440,19 @@ impl<'a> EventCx<'a> {
     /// Get a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         self.runner.draw_shared()
+    }
+
+    /// Update configuration data
+    #[inline]
+    pub fn change_config(&mut self, msg: ConfigMsg) {
+        let action = self.config.change_config(msg);
+        self.window_action(action);
+    }
+
+    /// Update configuration data using a closure
+    pub fn with_config(&mut self, f: impl FnOnce(&WindowConfig) -> Action) {
+        let action = f(&self.config);
+        self.window_action(action);
     }
 
     /// Notify that a widget must be redrawn
