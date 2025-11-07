@@ -7,6 +7,7 @@
 
 use super::TextClass;
 #[allow(unused)] use super::{DrawCx, SizeCx};
+use crate::Layout;
 use crate::cast::Cast;
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::geom::{Rect, Vec2};
@@ -14,7 +15,6 @@ use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::text::fonts::FontSelector;
 use crate::text::format::FormattableText;
 use crate::text::*;
-use crate::{Action, Layout};
 use std::num::NonZeroUsize;
 
 /// Text type-setting object (theme aware)
@@ -491,31 +491,21 @@ impl<T: FormattableText> Text<T> {
         true
     }
 
-    /// Re-prepare, if previously prepared, and return an [`Action`]
+    /// Re-prepare, requesting a redraw or resize as required
     ///
-    /// Wraps [`Text::prepare`], returning an appropriate [`Action`]:
-    ///
-    /// -   When this `Text` object was previously prepared and has sufficient
-    ///     size, it is updated and [`Action::REDRAW`] is returned
-    /// -   When this `Text` object was previously prepared but does not have
-    ///     sufficient size, it is updated and [`Action::RESIZE`] is returned
-    /// -   When this `Text` object was not previously prepared,
-    ///     [`Action::empty()`] is returned without updating `self`.
+    /// The text is prepared and a redraw is requested. If the allocated size is
+    /// too small, a resize is requested.
     ///
     /// This is typically called after updating a `Text` object in a widget.
-    pub fn reprepare_action(&mut self) -> Action {
-        match self.prepare() {
-            false => Action::REDRAW,
-            true => {
-                let (tl, br) = self.display.bounding_box();
-                let bounds: Vec2 = self.rect.size.cast();
-                if tl.0 < 0.0 || tl.1 < 0.0 || br.0 > bounds.0 || br.1 > bounds.1 {
-                    Action::RESIZE
-                } else {
-                    Action::REDRAW
-                }
+    pub fn reprepare_action(&mut self, cx: &mut ConfigCx) {
+        if self.prepare() {
+            let (tl, br) = self.display.bounding_box();
+            let bounds: Vec2 = self.rect.size.cast();
+            if tl.0 < 0.0 || tl.1 < 0.0 || br.0 > bounds.0 || br.1 > bounds.1 {
+                cx.resize();
             }
         }
+        cx.redraw();
     }
 
     /// Offset prepared content to avoid left-overhangs

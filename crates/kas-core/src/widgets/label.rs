@@ -106,8 +106,7 @@ mod Label {
         /// Set text in an existing `Label`
         pub fn set_text(&mut self, cx: &mut ConfigCx, text: T) {
             self.text.set_text(text);
-            let act = self.text.reprepare_action();
-            cx.action(self, act);
+            self.text.reprepare_action(cx);
         }
 
         /// Get text contents
@@ -141,7 +140,7 @@ mod Label {
         /// Set text contents from a string
         pub fn set_string(&mut self, cx: &mut ConfigCx, string: String) {
             if self.text.set_string(string) {
-                cx.action(self.id(), self.text.reprepare_action());
+                self.text.reprepare_action(cx);
             }
         }
     }
