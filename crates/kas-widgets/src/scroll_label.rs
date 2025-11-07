@@ -378,8 +378,8 @@ mod ScrollText {
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::ScrollRegion {
-                offset: self.scroll_offset(),
-                max_offset: self.max_scroll_offset(),
+                offset: self.scroll.offset(),
+                max_offset: self.scroll.max_offset(),
             }
         }
 
@@ -500,7 +500,12 @@ mod ScrollText {
                 self.vert_bar.set_value(cx, self.scroll.offset().1);
                 cx.action_moved(action);
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                self.set_scroll_offset(cx, offset);
+                let action = self.scroll.set_offset(offset);
+                let offset = self.scroll.offset();
+                if action.0 {
+                    cx.action_moved(action);
+                    self.vert_bar.set_value(cx, offset.1);
+                }
             }
         }
 
@@ -519,30 +524,6 @@ mod ScrollText {
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
             self.scroll.scroll(cx, self.id(), self.rect(), scroll);
             self.vert_bar.set_value(cx, self.scroll.offset().1);
-        }
-    }
-
-    impl Scrollable for Self {
-        fn content_size(&self) -> Size {
-            self.label.typeset_size()
-        }
-
-        fn max_scroll_offset(&self) -> Offset {
-            self.scroll.max_offset()
-        }
-
-        fn scroll_offset(&self) -> Offset {
-            self.scroll.offset()
-        }
-
-        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
-            let action = self.scroll.set_offset(offset);
-            let offset = self.scroll.offset();
-            if action.0 {
-                cx.action_moved(action);
-                self.vert_bar.set_value(cx, offset.1);
-            }
-            offset
         }
     }
 }
