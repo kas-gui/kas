@@ -554,8 +554,9 @@ mod ScrollBars {
 
             let bar_width = cx.scroll_bar_width();
             if self.mode == ScrollBarMode::Auto {
-                let max_offset = self.inner.max_scroll_offset();
-                self.show_bars = (max_offset.0 > 0, max_offset.1 > 0);
+                let max_offset = self.inner.content_size() - child_size;
+                self.show_bars.0 = max_offset.0 > 0;
+                self.show_bars.1 = max_offset.1 > 0;
             }
             if self.show_bars.0 && !self.horiz_bar.invisible {
                 child_size.1 -= bar_width;
