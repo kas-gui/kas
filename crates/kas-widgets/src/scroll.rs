@@ -5,7 +5,7 @@
 
 //! Scroll region
 
-use crate::{ScrollBar, ScrollBarMode, ScrollBarMsg};
+use crate::{ScrollBar, ScrollBarMode, ScrollBarMsg, ScrollBarPair};
 use kas::event::{CursorIcon, Scroll, components::ScrollComponent};
 use kas::prelude::*;
 use std::fmt::Debug;
@@ -46,8 +46,7 @@ mod ScrollRegion {
         frame_size: Size,
         hints: AlignHints,
         scroll: ScrollComponent,
-        bar_mode: ScrollBarMode,
-        show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
+        bars: ScrollBarPair,
         #[widget(&())]
         horiz_bar: ScrollBar<kas::dir::Right>,
         #[widget(&())]
@@ -68,8 +67,7 @@ mod ScrollRegion {
                 frame_size: Default::default(),
                 hints: Default::default(),
                 scroll: Default::default(),
-                bar_mode: ScrollBarMode::Auto,
-                show_bars: (false, false),
+                bars: Default::default(),
                 horiz_bar: ScrollBar::new(),
                 vert_bar: ScrollBar::new(),
                 inner,
@@ -82,10 +80,9 @@ mod ScrollRegion {
         where
             Self: Sized,
         {
-            self.bar_mode = ScrollBarMode::Fixed(horiz, vert);
+            self.bars.set_mode(ScrollBarMode::Fixed(horiz, vert));
             self.horiz_bar.set_invisible(false);
             self.vert_bar.set_invisible(false);
-            self.show_bars = (horiz, vert);
             self
         }
 
@@ -98,33 +95,26 @@ mod ScrollRegion {
         where
             Self: Sized,
         {
-            self.bar_mode = ScrollBarMode::Invisible(horiz, vert);
+            self.bars.set_mode(ScrollBarMode::Invisible(horiz, vert));
             self.horiz_bar.set_invisible(true);
             self.vert_bar.set_invisible(true);
-            self.show_bars = (horiz, vert);
             self
         }
 
         /// Get current mode of scroll bars
         #[inline]
         pub fn bar_mode(&self) -> ScrollBarMode {
-            self.bar_mode
+            self.bars.mode()
         }
 
         /// Set scroll bar mode
         pub fn set_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
-            if mode != self.bar_mode {
-                self.bar_mode = mode;
+            if mode != self.bars.mode() {
+                self.bars.set_mode(mode);
                 let (invis_horiz, invis_vert) = match mode {
                     ScrollBarMode::Auto => (false, false),
-                    ScrollBarMode::Fixed(horiz, vert) => {
-                        self.show_bars = (horiz, vert);
-                        (false, false)
-                    }
-                    ScrollBarMode::Invisible(horiz, vert) => {
-                        self.show_bars = (horiz, vert);
-                        (horiz, vert)
-                    }
+                    ScrollBarMode::Fixed(_, _) => (false, false),
+                    ScrollBarMode::Invisible(horiz, vert) => (horiz, vert),
                 };
                 self.horiz_bar.set_invisible(invis_horiz);
                 self.vert_bar.set_invisible(invis_vert);
@@ -137,7 +127,7 @@ mod ScrollRegion {
         /// This method should only be used during construction.
         #[inline]
         pub fn with_bar_mode(mut self, mode: ScrollBarMode) -> Self {
-            self.bar_mode = mode;
+            self.bars.set_mode(mode);
             self
         }
 
@@ -188,79 +178,47 @@ mod ScrollRegion {
                 (x - self.frame_size.extract(dir)).max(self.min_child_size.extract(dir))
             });
 
-            let mut rules = self.inner.size_rules(cx, axis);
-            self.min_child_size.set_component(axis, rules.min_size());
-            rules.reduce_min_to(cx.min_scroll_size(axis));
+            let mut inner = self.inner.size_rules(cx, axis);
+            self.min_child_size.set_component(axis, inner.min_size());
+            inner.reduce_min_to(cx.min_scroll_size(axis));
 
             // We use a frame to contain the content margin within the scrollable area.
             let frame = kas::layout::FrameRules::ZERO;
-            let (mut rules, offset, size) = frame.surround(rules);
+            let (inner, offset, size) = frame.surround(inner);
             self.offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
 
-            let vert_rules = self.vert_bar.size_rules(cx, axis);
-            let horiz_rules = self.horiz_bar.size_rules(cx, axis);
-            let (use_horiz, use_vert) = match self.bar_mode {
-                ScrollBarMode::Fixed(horiz, vert) => (horiz, vert),
-                ScrollBarMode::Auto => (true, true),
-                ScrollBarMode::Invisible(_, _) => (false, false),
-            };
-            if axis.is_horizontal() && use_horiz {
-                rules.append(vert_rules);
-            } else if axis.is_vertical() && use_vert {
-                rules.append(horiz_rules);
-            }
-            rules
+            self.bars
+                .size_rules(cx, &mut self.horiz_bar, &mut self.vert_bar, inner, axis)
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.hints = hints;
-            let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let bar_width = cx.scroll_bar_width();
-            if self.bar_mode == ScrollBarMode::Auto {
-                let max_offset = self.max_scroll_offset();
-                self.show_bars = (max_offset.0 > 0, max_offset.1 > 0);
-            }
-            if self.show_bars.0 && !self.horiz_bar.is_invisible() {
-                child_size.1 -= bar_width;
-            }
-            if self.show_bars.1 && !self.vert_bar.is_invisible() {
-                child_size.0 -= bar_width;
-            }
+            child_size -= self.bars.rect_size_reduction(
+                cx,
+                &self.horiz_bar,
+                &self.vert_bar,
+                self.scroll.max_offset(),
+            );
 
-            self.scroll_rect = Rect::new(pos, child_size);
+            self.scroll_rect = Rect::new(rect.pos, child_size);
             let child_size = (child_size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos, child_size);
             self.inner.set_rect(cx, child_rect, hints);
             let _ = self
                 .scroll
                 .set_sizes(rect.size, child_size + self.frame_size);
-            let max_scroll_offset = self.max_scroll_offset();
 
-            if self.show_bars.0 {
-                let pos = Coord(pos.0, rect.pos2().1 - bar_width);
-                let size = Size::new(child_size.0, bar_width);
-                self.horiz_bar
-                    .set_rect(cx, Rect { pos, size }, AlignHints::NONE);
-                self.horiz_bar
-                    .set_limits(cx, max_scroll_offset.0, rect.size.0);
-            } else {
-                self.horiz_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
-            }
-
-            if self.show_bars.1 {
-                let pos = Coord(rect.pos2().0 - bar_width, pos.1);
-                let size = Size::new(bar_width, self.rect().size.1);
-                self.vert_bar
-                    .set_rect(cx, Rect { pos, size }, AlignHints::NONE);
-                self.vert_bar
-                    .set_limits(cx, max_scroll_offset.1, rect.size.1);
-            } else {
-                self.vert_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
-            }
+            self.bars.set_rects(
+                cx,
+                &mut self.horiz_bar,
+                &mut self.vert_bar,
+                rect,
+                self.scroll.max_offset(),
+            );
         }
 
         fn draw(&self, mut draw: DrawCx) {
@@ -268,33 +226,8 @@ mod ScrollRegion {
             draw.with_clip_region(self.scroll_rect, self.scroll_offset(), |mut draw| {
                 self.inner.draw(draw.re());
             });
-            if self.show_bars == (false, false) {
-                return;
-            }
 
-            // We use a new pass to draw scroll bars over inner content, but
-            // only when required to minimize cost:
-            let ev_state = draw.ev_state();
-            if matches!(self.bar_mode, ScrollBarMode::Invisible(_, _))
-                && (self.horiz_bar.currently_visible(ev_state)
-                    || self.vert_bar.currently_visible(ev_state))
-            {
-                draw.with_pass(|mut draw| {
-                    if self.show_bars.0 {
-                        self.horiz_bar.draw(draw.re());
-                    }
-                    if self.show_bars.1 {
-                        self.vert_bar.draw(draw.re());
-                    }
-                });
-            } else {
-                if self.show_bars.0 {
-                    self.horiz_bar.draw(draw.re());
-                }
-                if self.show_bars.1 {
-                    self.vert_bar.draw(draw.re());
-                }
-            }
+            self.bars.draw(draw, &self.horiz_bar, &self.vert_bar);
         }
     }
 

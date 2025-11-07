@@ -6,6 +6,7 @@
 //! `ScrollBar` control
 
 use super::{GripMsg, GripPart};
+use kas::dir::{Down, Right};
 use kas::event::{Scroll, TimerHandle};
 use kas::prelude::*;
 use kas::theme::Feature;
@@ -402,6 +403,141 @@ mod ScrollBar {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(GripMsg::PressMove(offset)) = cx.try_pop() {
                 self.apply_grip_offset(cx, offset);
+            }
+        }
+    }
+}
+
+/// Configuration and sizing helper for scroll bars
+///
+/// This is intended for usage with horizontal and vertical scroll bars, but
+/// does not contain the [`ScrollBar`] widgets themselves due to widget
+/// parentage limitations.
+#[derive(Clone, Debug, Default)]
+pub struct ScrollBarPair {
+    mode: ScrollBarMode,
+    show: (bool, bool), // set by user (or set_rect when mode == Auto)
+}
+
+impl ScrollBarPair {
+    /// Get the current bar mode
+    #[inline]
+    pub fn mode(&self) -> ScrollBarMode {
+        self.mode
+    }
+
+    /// Set the bar mode
+    pub fn set_mode(&mut self, mode: ScrollBarMode) {
+        self.mode = mode;
+        self.show = match mode {
+            ScrollBarMode::Auto => (true, true),
+            ScrollBarMode::Fixed(h, v) => (h, v),
+            ScrollBarMode::Invisible(h, v) => (h, v),
+        };
+    }
+
+    /// Calculate size rules for the parent widget
+    pub fn size_rules(
+        &self,
+        cx: &mut SizeCx,
+        horiz_bar: &mut ScrollBar<Right>,
+        vert_bar: &mut ScrollBar<Down>,
+        inner: SizeRules,
+        axis: AxisInfo,
+    ) -> SizeRules {
+        let vert_rules = vert_bar.size_rules(cx, axis);
+        let horiz_rules = horiz_bar.size_rules(cx, axis);
+        let (use_horiz, use_vert) = match self.mode {
+            ScrollBarMode::Fixed(horiz, vert) => (horiz, vert),
+            ScrollBarMode::Auto => (true, true),
+            ScrollBarMode::Invisible(_, _) => (false, false),
+        };
+        let mut rules = inner;
+        if axis.is_horizontal() && use_horiz {
+            rules.append(vert_rules);
+        } else if axis.is_vertical() && use_vert {
+            rules.append(horiz_rules);
+        }
+        rules
+    }
+
+    /// This should be subtracted from the child size area
+    pub fn rect_size_reduction(
+        &mut self,
+        cx: &mut SizeCx,
+        horiz_bar: &ScrollBar<Right>,
+        vert_bar: &ScrollBar<Down>,
+        max_offset: Offset,
+    ) -> Size {
+        let bar_width = cx.scroll_bar_width();
+        if self.mode == ScrollBarMode::Auto {
+            self.show = (max_offset.0 > 0, max_offset.1 > 0);
+        }
+        let mut size = Size::ZERO;
+        if self.show.0 && !horiz_bar.is_invisible() {
+            size.1 = bar_width;
+        }
+        if self.show.1 && !vert_bar.is_invisible() {
+            size.0 = bar_width;
+        }
+        size
+    }
+
+    /// Set bar sizes and positions
+    pub fn set_rects(
+        &self,
+        cx: &mut SizeCx,
+        horiz_bar: &mut ScrollBar<Right>,
+        vert_bar: &mut ScrollBar<Down>,
+        rect: Rect,
+        max_scroll_offset: Offset,
+    ) {
+        let bar_width = cx.scroll_bar_width();
+        if self.show.0 {
+            let pos = Coord(rect.pos.0, rect.pos2().1 - bar_width);
+            let size = Size::new(rect.size.0 - bar_width, bar_width);
+            horiz_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
+            horiz_bar.set_limits(cx, max_scroll_offset.0, rect.size.0);
+        } else {
+            horiz_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
+        }
+
+        if self.show.1 {
+            let pos = Coord(rect.pos2().0 - bar_width, rect.pos.1);
+            let size = Size::new(bar_width, rect.size.1);
+            vert_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
+            vert_bar.set_limits(cx, max_scroll_offset.1, rect.size.1);
+        } else {
+            vert_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
+        }
+    }
+
+    /// Draw bars
+    pub fn draw(&self, mut draw: DrawCx, horiz_bar: &ScrollBar<Right>, vert_bar: &ScrollBar<Down>) {
+        if self.show == (false, false) {
+            return;
+        }
+
+        // We use a new pass to draw scroll bars over inner content, but
+        // only when required to minimize cost:
+        let ev_state = draw.ev_state();
+        if matches!(self.mode, ScrollBarMode::Invisible(_, _))
+            && (horiz_bar.currently_visible(ev_state) || vert_bar.currently_visible(ev_state))
+        {
+            draw.with_pass(|mut draw| {
+                if self.show.0 {
+                    horiz_bar.draw(draw.re());
+                }
+                if self.show.1 {
+                    vert_bar.draw(draw.re());
+                }
+            });
+        } else {
+            if self.show.0 {
+                horiz_bar.draw(draw.re());
+            }
+            if self.show.1 {
+                vert_bar.draw(draw.re());
             }
         }
     }
