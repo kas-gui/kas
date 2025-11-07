@@ -88,13 +88,23 @@ mod Stack {
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut rules = SizeRules::EMPTY;
-            for entry in self.widgets.iter_mut() {
+            let (mut min, mut ideal) = (0, 0);
+            let mut m = (0, 0);
+            let mut stretch = Stretch::None;
+
+            for (i, entry) in self.widgets.iter_mut().enumerate() {
                 if entry.1 != usize::MAX {
-                    rules = rules.max(entry.0.size_rules(cx, axis));
+                    let rules = entry.0.size_rules(cx, axis);
+                    ideal = ideal.max(rules.ideal_size());
+                    m = (m.0.max(rules.margins().0), m.1.max(rules.margins().1));
+                    stretch = stretch.max(rules.stretch());
+                    if i == self.active {
+                        min = rules.min_size();
+                    }
                 }
             }
-            rules
+
+            SizeRules::new(min, ideal, stretch).with_margins(m)
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {

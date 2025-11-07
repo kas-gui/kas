@@ -593,6 +593,23 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         debug_assert!(solve_cache.min(false) <= solve_cache.ideal(false));
         self.widget.resize_popups(&mut cx, data);
 
+        // Update window size restrictions: the new width may have changed height requirements
+        let (restrict_min, restrict_max) = self.widget.properties().restrictions();
+        window.set_min_inner_size(restrict_min.then(|| {
+            window
+                .solve_cache
+                .min(true)
+                .as_physical()
+                .to_logical::<f64>(window.scale_factor())
+        }));
+        window.set_max_inner_size(restrict_max.then(|| {
+            window
+                .solve_cache
+                .ideal(true)
+                .as_physical()
+                .to_logical::<f64>(window.scale_factor())
+        }));
+
         window.set_visible(true);
         window.request_redraw();
         log::trace!(

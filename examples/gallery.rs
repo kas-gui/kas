@@ -723,10 +723,15 @@ KAS_CONFIG_MODE=readwrite
     )
     .unwrap();
 
-    let ui = column![ScrollLabel::new(desc), Separator::new(), EventConfig::new()]
-        .map_any()
-        .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
-    Page::new(ui)
+    let ui = column![
+        ScrollLabel::new(desc),
+        Separator::new(),
+        ScrollBarRegion::new(EventConfig::new())
+    ];
+    Page::new(
+        ui.map_any()
+            .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled)),
+    )
 }
 
 fn main() -> kas::runner::Result<()> {
