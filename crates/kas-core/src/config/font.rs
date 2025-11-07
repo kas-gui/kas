@@ -143,7 +143,9 @@ impl FontConfig {
     pub fn set_size(&mut self, pt_size: f32) -> Action {
         if self.size != pt_size {
             self.size = pt_size;
-            Action::THEME_UPDATE | Action::UPDATE
+            // NOTE: we use CONFIG_UPDATE because widget configuration *may* depend on font size.
+            // Currently nothing does; possibly font size could be hidden from widgets.
+            Action::CONFIG_UPDATE | Action::THEME_UPDATE
         } else {
             Action::empty()
         }

@@ -228,7 +228,9 @@ impl EventState {
         false
     }
 
-    /// Access event-handling configuration
+    /// Access configuration data
+    ///
+    /// All widgets will be reconfigured if configuration data changes.
     #[inline]
     pub fn config(&self) -> &WindowConfig {
         &self.config
@@ -263,7 +265,7 @@ impl EventState {
         Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
     }
 
-    /// Update event configuration
+    /// Update configuration data
     #[inline]
     pub fn change_config(&mut self, msg: ConfigMsg) {
         self.action |= self.config.change_config(msg);

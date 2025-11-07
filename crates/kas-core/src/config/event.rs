@@ -139,7 +139,7 @@ impl EventConfig {
             EventConfigMsg::ResetToDefault => *self = EventConfig::default(),
         }
 
-        Action::EVENT_CONFIG
+        Action::CONFIG_UPDATE
     }
 }
 

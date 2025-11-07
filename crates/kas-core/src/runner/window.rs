@@ -414,13 +414,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         data: &A,
         mut action: Action,
     ) {
-        if action.contains(Action::EVENT_CONFIG)
+        if action.contains(Action::CONFIG_UPDATE)
             && let Some(ref mut window) = self.window
         {
             self.ev_state.update_config(window.scale_factor() as f32);
-            action |= Action::UPDATE;
-        }
-        if action.contains(Action::UPDATE) {
+            self.reconfigure(data);
+        } else if action.contains(Action::UPDATE) {
             self.update(data);
         }
         if action.contains(Action::THEME_SWITCH) {

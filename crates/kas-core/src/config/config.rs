@@ -149,7 +149,7 @@ impl WindowConfig {
             c.is_dirty = true;
             f(&mut c);
 
-            Action::EVENT_CONFIG | Action::THEME_UPDATE
+            Action::CONFIG_UPDATE | Action::THEME_UPDATE
         } else {
             Action::empty()
         }

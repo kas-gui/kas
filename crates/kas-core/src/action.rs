@@ -103,12 +103,12 @@ bitflags! {
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         const THEME_UPDATE = 1 << 10;
-        /// Reload per-window cache of event configuration
+        /// Reload per-window cache of configuration data
         ///
-        /// Implies [`Action::UPDATE`].
+        /// Implies reconfiguration of all widgets.
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-        const EVENT_CONFIG = 1 << 11;
+        const CONFIG_UPDATE = 1 << 11;
         /// Switch themes, replacing theme-window instances
         ///
         /// Implies [`Action::RESIZE`].
