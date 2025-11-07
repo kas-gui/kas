@@ -72,6 +72,20 @@ impl Deref for ActionResize {
 }
 
 bitflags! {
+    /// Action: configuration data updates must be applied
+    #[must_use]
+    #[derive(Copy, Clone, Debug, Default)]
+    pub struct ConfigAction: u32 {
+        /// Event configuration data must be updated
+        const EVENT = 1 << 0;
+        /// Theme configuration data must be updated
+        const THEME = 1 << 10;
+        /// The theme must be switched
+        const THEME_SWITCH = 1 << 12;
+    }
+}
+
+bitflags! {
     /// Action required after processing
     ///
     /// Some methods operate directly on a context ([`ConfigCx`] or [`EventCx`])
@@ -99,24 +113,6 @@ bitflags! {
         ///
         /// See also [`EventState::resize`].
         const RESIZE = 1 << 9;
-        /// Update per-window theme data from theme configuration.
-        ///
-        /// Causes a resize if required by the configuration changes.
-        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-        const THEME_UPDATE = 1 << 10;
-        /// Reload per-window cache of configuration data
-        ///
-        /// Implies reconfiguration of all widgets.
-        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-        const CONFIG_UPDATE = 1 << 11;
-        /// Switch themes, replacing theme-window instances
-        ///
-        /// Implies [`Action::RESIZE`].
-        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-        const THEME_SWITCH = 1 << 12;
         /// The current window should be closed
         ///
         /// See also [`EventState::exit`] which closes the UI (all windows).

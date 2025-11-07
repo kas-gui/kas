@@ -201,6 +201,11 @@ where
                         window.update(&self.data);
                     }
                 }
+                Pending::ConfigUpdate(action) => {
+                    for (_, window) in self.windows.iter_mut() {
+                        window.config_update(&mut self.shared, &self.data, action);
+                    }
+                }
                 Pending::AddPopup(parent_id, id, popup) => {
                     log::debug!("Pending: adding overlay");
                     // TODO: support pop-ups as a special window, where available

@@ -18,7 +18,7 @@ use crate::layout::SolveCache;
 use crate::messages::Erased;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
 use crate::window::{BoxedWindow, Decorations, PopupDescriptor, WindowId, WindowWidget};
-use crate::{Action, Id, Layout, Tile, Widget, autoimpl};
+use crate::{Action, ConfigAction, Id, Layout, Tile, Widget, autoimpl};
 #[cfg(windows_platform)]
 use raw_window_handle::HasWindowHandle;
 use std::cell::RefCell;
@@ -380,7 +380,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if action.contains(Action::CLOSE) {
             return (action, None);
         }
-        self.handle_action(shared, data, action);
+        self.handle_action(data, action);
 
         let window = self.window.as_mut().unwrap();
         let resume = match (
@@ -408,32 +408,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub(super) fn handle_action(
-        &mut self,
-        shared: &mut Shared<A, G, T>,
-        data: &A,
-        mut action: Action,
-    ) {
-        if action.contains(Action::CONFIG_UPDATE)
-            && let Some(ref mut window) = self.window
-        {
-            self.ev_state.update_config(window.scale_factor() as f32);
-            self.reconfigure(data);
-        }
-        if action.contains(Action::THEME_SWITCH) {
-            if let Some(ref mut window) = self.window {
-                let config = self.ev_state.config();
-                window.theme_window = shared.theme.new_window(config);
-            }
-            action |= Action::RESIZE;
-        } else if action.contains(Action::THEME_UPDATE) {
-            if let Some(ref mut window) = self.window {
-                let config = self.ev_state.config();
-                if shared.theme.update_window(&mut window.theme_window, config) {
-                    action |= Action::RESIZE;
-                }
-            }
-        }
+    pub(super) fn handle_action(&mut self, data: &A, action: Action) {
         if action.contains(Action::RESIZE) {
             self.apply_size(data, false, true);
         }
@@ -441,6 +416,40 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             && let Some(ref mut window) = self.window
         {
             window.need_redraw = true;
+        }
+    }
+
+    /// Handle a configuration update
+    pub(super) fn config_update(
+        &mut self,
+        shared: &mut Shared<A, G, T>,
+        data: &A,
+        action: ConfigAction,
+    ) {
+        if action.contains(ConfigAction::EVENT)
+            && let Some(ref mut window) = self.window
+        {
+            self.ev_state.update_config(window.scale_factor() as f32);
+        }
+
+        let resize = if action.contains(ConfigAction::THEME_SWITCH) {
+            if let Some(ref mut window) = self.window {
+                let config = self.ev_state.config();
+                window.theme_window = shared.theme.new_window(config);
+            }
+            true
+        } else if action.contains(ConfigAction::THEME)
+            && let Some(ref mut window) = self.window
+        {
+            let config = self.ev_state.config();
+            shared.theme.update_window(&mut window.theme_window, config)
+        } else {
+            false
+        };
+
+        self.reconfigure(data);
+        if resize {
+            self.apply_size(data, false, true);
         }
     }
 

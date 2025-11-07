@@ -5,7 +5,7 @@
 
 //! Font configuration
 
-use crate::Action;
+use crate::ConfigAction;
 use crate::text::fonts::FontSelector;
 use crate::theme::TextClass;
 use std::collections::BTreeMap;
@@ -140,14 +140,12 @@ impl FontConfig {
     /// Units: logical (unscaled) pixels per Em.
     ///
     /// To convert to Points, multiply by three quarters.
-    pub fn set_size(&mut self, pt_size: f32) -> Action {
+    pub fn set_size(&mut self, pt_size: f32) -> ConfigAction {
         if self.size != pt_size {
             self.size = pt_size;
-            // NOTE: we use CONFIG_UPDATE because widget configuration *may* depend on font size.
-            // Currently nothing does; possibly font size could be hidden from widgets.
-            Action::CONFIG_UPDATE | Action::THEME_UPDATE
+            ConfigAction::THEME
         } else {
-            Action::empty()
+            ConfigAction::empty()
         }
     }
 }

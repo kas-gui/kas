@@ -23,7 +23,7 @@ use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{Action, ActionMoved, ActionResize, HasId, Id, Node};
+use crate::{Action, ActionMoved, ActionResize, ConfigAction, HasId, Id, Node};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
@@ -446,13 +446,17 @@ impl<'a> EventCx<'a> {
     #[inline]
     pub fn change_config(&mut self, msg: ConfigMsg) {
         let action = self.config.change_config(msg);
-        self.window_action(action);
+        if !action.is_empty() {
+            self.runner.config_update(action);
+        }
     }
 
     /// Update configuration data using a closure
-    pub fn with_config(&mut self, f: impl FnOnce(&WindowConfig) -> Action) {
+    pub fn with_config(&mut self, f: impl FnOnce(&WindowConfig) -> ConfigAction) {
         let action = f(&self.config);
-        self.window_action(action);
+        if !action.is_empty() {
+            self.runner.config_update(action);
+        }
     }
 
     /// Notify that a widget must be redrawn

@@ -7,7 +7,7 @@
 
 use super::{EventConfig, EventConfigMsg, EventWindowConfig};
 use super::{FontConfig, FontConfigMsg, ThemeConfig, ThemeConfigMsg};
-use crate::Action;
+use crate::ConfigAction;
 use crate::config::Shortcuts;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -136,7 +136,7 @@ impl WindowConfig {
     /// Update the base config
     ///
     /// Since it is not known which parts of the configuration are updated, all
-    /// configuration-update [`Action`]s must be performed.
+    /// configuration-update [`ConfigAction`]s must be performed.
     ///
     /// NOTE: adjusting font settings from a running app is not currently
     /// supported, excepting font size.
@@ -144,14 +144,14 @@ impl WindowConfig {
     /// NOTE: it is assumed that widget state is not affected by config except
     /// (a) state affected by a widget update (e.g. the `EventConfig` widget)
     /// and (b) widget size may be affected by font size.
-    pub fn update_base<F: FnOnce(&mut Config)>(&self, f: F) -> Action {
+    pub fn update_base<F: FnOnce(&mut Config)>(&self, f: F) -> ConfigAction {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
             f(&mut c);
 
-            Action::CONFIG_UPDATE | Action::THEME_UPDATE
+            ConfigAction::all()
         } else {
-            Action::empty()
+            ConfigAction::empty()
         }
     }
 
@@ -161,12 +161,12 @@ impl WindowConfig {
     }
 
     /// Update event configuration
-    pub fn update_event<F: FnOnce(&mut EventConfig) -> Action>(&self, f: F) -> Action {
+    pub fn update_event<F: FnOnce(&mut EventConfig) -> ConfigAction>(&self, f: F) -> ConfigAction {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
             f(&mut c.event)
         } else {
-            Action::empty()
+            ConfigAction::empty()
         }
     }
 
@@ -182,12 +182,12 @@ impl WindowConfig {
     /// To convert to Points, multiply by three quarters.
     ///
     /// NOTE: this is currently the only supported run-time update to font configuration.
-    pub fn set_font_size(&self, pt_size: f32) -> Action {
+    pub fn set_font_size(&self, pt_size: f32) -> ConfigAction {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
             c.font.set_size(pt_size)
         } else {
-            Action::empty()
+            ConfigAction::empty()
         }
     }
 
@@ -202,25 +202,25 @@ impl WindowConfig {
     }
 
     /// Update theme configuration
-    pub fn update_theme<F: FnOnce(&mut ThemeConfig) -> Action>(&self, f: F) -> Action {
+    pub fn update_theme<F: FnOnce(&mut ThemeConfig) -> ConfigAction>(&self, f: F) -> ConfigAction {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
 
             f(&mut c.theme)
         } else {
-            Action::empty()
+            ConfigAction::empty()
         }
     }
 
     /// Adjust shortcuts
-    pub fn update_shortcuts<F: FnOnce(&mut Shortcuts)>(&self, f: F) -> Action {
+    pub fn update_shortcuts<F: FnOnce(&mut Shortcuts)>(&self, f: F) -> ConfigAction {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
 
             f(&mut c.shortcuts);
         }
 
-        Action::empty()
+        ConfigAction::empty()
     }
 
     /// Scale factor
@@ -230,7 +230,7 @@ impl WindowConfig {
     }
 
     /// Update event configuration via a [`ConfigMsg`]
-    pub fn change_config(&self, msg: ConfigMsg) -> Action {
+    pub fn change_config(&self, msg: ConfigMsg) -> ConfigAction {
         match msg {
             ConfigMsg::Event(msg) => self.update_event(|ev| ev.change_config(msg)),
             ConfigMsg::Font(FontConfigMsg::Size(size)) => self.set_font_size(size),
