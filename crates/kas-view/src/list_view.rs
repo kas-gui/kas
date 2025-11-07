@@ -493,7 +493,7 @@ mod ListView {
                 self.token_update = self.token_update.max(Update::Token);
             }
 
-            let offset = self.scroll_offset().extract(self.direction);
+            let offset = self.scroll.offset().extract(self.direction);
             let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
 
             let alloc_len = self.widgets.len();
@@ -613,36 +613,6 @@ mod ListView {
         }
     }
 
-    impl Scrollable for Self {
-        fn content_size(&self) -> Size {
-            let data_len: i32 = self.data_len.cast();
-            let m = self.child_inter_margin;
-            let step = self.child_size_ideal + m;
-            let mut content_size = Size::ZERO;
-            content_size.set_component(self.direction, (step * data_len - m).max(0));
-            content_size
-        }
-
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.scroll.max_offset()
-        }
-
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.scroll.offset()
-        }
-
-        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
-            let action = self.scroll.set_offset(offset);
-            if action.0 {
-                cx.action_moved(action);
-                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
-            }
-            self.scroll.offset()
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
@@ -751,11 +721,27 @@ mod ListView {
             self.rect_update = true;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
+    }
 
-        fn draw(&self, mut draw: DrawCx) {
+    impl Viewport for Self {
+        fn content_size(&self) -> Size {
+            let data_len: i32 = self.data_len.cast();
+            let m = self.child_inter_margin;
+            let step = self.child_size_ideal + m;
+            let mut content_size = Size::ZERO;
+            content_size.set_component(self.direction, (step * data_len - m).max(0));
+            content_size
+        }
+
+        fn update_offset(&mut self, cx: &mut EventState, _: Rect, offset: Offset) {
+            // NOTE: we assume that the viewport is close enough to self.rect()
+            // that prepared widgets will suffice
+            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+        }
+
+        fn draw_with_offset(&self, mut draw: DrawCx, viewport: Rect, offset: Offset) {
             // We use a new pass to clip and offset scrolled content:
-            let offset = self.scroll_offset() + self.virtual_offset();
-            draw.with_clip_region(self.rect(), offset, |mut draw| {
+            draw.with_clip_region(viewport, offset + self.virtual_offset(), |mut draw| {
                 for child in &self.widgets[..self.cur_len.cast()] {
                     if let Some(key) = child.key() {
                         if self.selection.contains(key) {
@@ -770,7 +756,7 @@ mod ListView {
 
     impl Tile for Self {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_scroll_offset(self.scroll_offset(), self.max_scroll_offset());
+            cx.set_scroll_offset(self.scroll.offset(), self.scroll.max_offset());
             Role::OptionList {
                 len: self.len_is_known.then(|| self.data_len.cast()),
                 direction: self.direction.as_direction(),
@@ -839,7 +825,7 @@ mod ListView {
 
         #[inline]
         fn translation(&self, _: usize) -> Offset {
-            self.scroll_offset() + self.virtual_offset()
+            self.scroll.offset() + self.virtual_offset()
         }
     }
 
@@ -1021,7 +1007,11 @@ mod ListView {
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
             if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                self.set_scroll_offset(cx, offset);
+                let action = self.scroll.set_offset(offset);
+                if action.0 {
+                    cx.action_moved(action);
+                    cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+                }
                 return;
             }
 

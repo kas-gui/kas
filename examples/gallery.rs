@@ -584,9 +584,9 @@ fn filter_list() -> Page<AppData> {
             core: widget_core!(),
             #[widget(&())] filter: EditBox<MonthYearFilterGuard> =
                 EditBox::default().with_multi_line(false),
-            #[widget(&self.filter.guard().0)] list: ScrollBars<ListView<Generator, driver::View, Down>>
+            #[widget(&self.filter.guard().0)] list: ScrollRegion<ListView<Generator, driver::View, Down>>
                 =
-                ScrollBars::new(ListView::new(clerk, driver::View).with_num_visible(24)),
+                ScrollRegion::new_over_viewport(ListView::new(clerk, driver::View).with_num_visible(24)),
         }
 
         impl Layout for Self {}
