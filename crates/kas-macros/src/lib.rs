@@ -18,7 +18,6 @@ use syn::spanned::Spanned;
 mod collection;
 mod extends;
 mod make_layout;
-mod scroll_traits;
 mod visitors;
 mod widget;
 mod widget_args;
@@ -70,10 +69,6 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
-    use autoimpl::ImplTrait;
-    use scroll_traits::ImplScrollable;
-    use std::iter::once;
-
     let mut toks = item.clone();
     match syn::parse::<autoimpl::Attr>(attr) {
         Ok(autoimpl::Attr::ForDeref(ai)) => toks.extend(TokenStream::from(ai.expand(item.into()))),
@@ -84,7 +79,6 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
                 autoimpl::STD_IMPLS
                     .iter()
                     .cloned()
-                    .chain(once(&ImplScrollable as &dyn ImplTrait))
                     .find(|impl_| impl_.path().matches_ident_or_path(path))
             };
             toks.extend(TokenStream::from(ai.expand(item.into(), find_impl)))
@@ -443,7 +437,6 @@ pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
 /// #[impl_self]
 /// mod Map {
 ///     #[autoimpl(Deref, DerefMut using self.inner)]
-///     #[autoimpl(Scrollable using self.inner where W: trait)]
 ///     #[derive_widget(type Data = A)]
 ///     pub struct Map<A, W: Widget, F>
 ///     where

@@ -166,8 +166,8 @@ mod GridView {
     /// item, and may handle events and emit messages like other widegts.
     /// See [`Driver`] documentation for more on event handling.
     ///
-    /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
-    /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
+    /// This widget is scrollable, supporting keyboard, wheel and drag
+    /// scrolling. TODO
     ///
     /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
     /// If enabled, [`SelectionMsg`] messages are reported; view widgets may
@@ -436,7 +436,7 @@ mod GridView {
                 self.token_update = self.token_update.max(Update::Token);
             }
 
-            let offset = self.scroll_offset();
+            let offset = self.scroll.offset();
             let skip = (self.child_size + self.child_inter_margin).max(Size(1, 1));
             let first_col = u32::conv(u64::conv(offset.0) / u64::conv(skip.0));
             let first_row = u32::conv(u64::conv(offset.1) / u64::conv(skip.1));
@@ -577,41 +577,18 @@ mod GridView {
 
         fn update_content_size(&mut self, cx: &mut EventState) {
             let view_size = self.rect().size - self.frame_size;
-            let content_size = self.content_size();
+            let content_size = {
+                let data_len = self.data_len;
+                let m = self.child_inter_margin;
+                let step = self.child_size + m;
+                Size(
+                    step.0 * i32::conv(data_len.col) - m.0,
+                    step.1 * i32::conv(data_len.row) - m.1,
+                )
+                .max(Size::ZERO)
+            };
             let action = self.scroll.set_sizes(view_size, content_size);
             cx.action_moved(action);
-        }
-    }
-
-    impl Scrollable for Self {
-        fn content_size(&self) -> Size {
-            let data_len = self.data_len;
-            let m = self.child_inter_margin;
-            let step = self.child_size + m;
-            Size(
-                step.0 * i32::conv(data_len.col) - m.0,
-                step.1 * i32::conv(data_len.row) - m.1,
-            )
-            .max(Size::ZERO)
-        }
-
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.scroll.max_offset()
-        }
-
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.scroll.offset()
-        }
-
-        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
-            let action = self.scroll.set_offset(offset);
-            if action.0 {
-                cx.action_moved(action);
-                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
-            }
-            self.scroll.offset()
         }
     }
 
@@ -727,7 +704,7 @@ mod GridView {
 
         fn draw(&self, mut draw: DrawCx) {
             // We use a new pass to clip and offset scrolled content:
-            let offset = self.scroll_offset() + self.virtual_offset;
+            let offset = self.scroll.offset() + self.virtual_offset;
             let rect = self.rect() + offset;
             let num = self.cur_end();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
@@ -749,7 +726,7 @@ mod GridView {
 
     impl Tile for Self {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_scroll_offset(self.scroll_offset(), self.max_scroll_offset());
+            cx.set_scroll_offset(self.scroll.offset(), self.scroll.max_offset());
             Role::Grid {
                 columns: self.len_is_known.then(|| self.data_len.col.cast()),
                 rows: self.len_is_known.then(|| self.data_len.row.cast()),
@@ -781,7 +758,7 @@ mod GridView {
 
         #[inline]
         fn translation(&self, _: usize) -> Offset {
-            self.scroll_offset() + self.virtual_offset
+            self.scroll.offset() + self.virtual_offset
         }
     }
 
@@ -972,7 +949,11 @@ mod GridView {
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
             if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                self.set_scroll_offset(cx, offset);
+                let action = self.scroll.set_offset(offset);
+                if action.0 {
+                    cx.action_moved(action);
+                    cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+                }
                 return;
             }
 

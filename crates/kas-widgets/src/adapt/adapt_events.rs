@@ -8,8 +8,8 @@
 use super::{AdaptConfigCx, AdaptEventCx};
 #[allow(unused)] use kas::Events;
 use kas::event::{ConfigCx, Event, EventCx, IsUsed};
+use kas::impl_self;
 use kas::{Id, Node, Widget};
-use kas::{autoimpl, impl_self};
 use std::fmt::Debug;
 
 #[impl_self]
@@ -17,7 +17,6 @@ mod AdaptEvents {
     /// Wrapper with configure / update / message handling callbacks.
     ///
     /// This type is constructed by some [`AdaptWidget`](super::AdaptWidget) methods.
-    #[autoimpl(Scrollable using self.inner where W: trait)]
     #[derive_widget]
     pub struct AdaptEvents<W: Widget> {
         /// The inner widget

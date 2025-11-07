@@ -24,7 +24,6 @@ mod MapAny {
     /// [`DerefMut`](std::ops::DerefMut) to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Clone, Default where W: trait)]
-    #[autoimpl(Scrollable using self.inner where W: trait)]
     #[derive_widget(type Data = A)]
     pub struct MapAny<A, W: Widget<Data = ()>> {
         _a: std::marker::PhantomData<A>,

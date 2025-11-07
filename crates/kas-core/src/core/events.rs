@@ -7,10 +7,10 @@
 
 #[allow(unused)] use super::Layout;
 use super::{Tile, Widget};
+#[allow(unused)] use crate::event::EventState;
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::{ActionResize, ChildIndices};
 use crate::{Id, geom::Coord};
-#[allow(unused)] use crate::{Scrollable, event::EventState};
 #[allow(unused)] use kas_macros as macros;
 
 /// Widget event-handling
@@ -322,9 +322,8 @@ pub trait Events: Widget + Sized {
     /// # Implementation
     ///
     /// Widgets should implement this if they support scrolling of children,
-    /// have [`translation`](Tile::translation) of children, depend on the
-    /// values of any [`Scrollable`] methods or would isolate parents from the
-    /// scrolling of a child.
+    /// have [`translation`](Tile::translation) of children or would isolate
+    /// parents from the scrolling of a child.
     ///
     /// This method is expected to deal with scrolling only; if the content size
     /// has changed and `cx.resize()` is called by the affected child, then
