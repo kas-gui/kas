@@ -459,8 +459,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 }));
             }
             self.apply_size(data, false);
-        } else if action.contains(Action::SET_RECT) {
-            self.apply_size(data, false);
         }
         if !action.is_empty()
             && let Some(ref mut window) = self.window

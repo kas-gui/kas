@@ -328,7 +328,6 @@ impl EventState {
                 action.remove(Action::UPDATE);
             }
 
-            // TODO(opt): handle sub-tree SET_RECT and RESIZE.
             // NOTE: our draw system is incompatible with partial redraws, and
             // in any case redrawing is extremely fast.
 

@@ -93,8 +93,6 @@ bitflags! {
         ///
         /// See also [`EventState::redraw`].
         const REDRAW = 1 << 0;
-        /// Reset size of all widgets without recalculating requirements
-        const SET_RECT = 1 << 8;
         /// Resize all widgets in the window
         ///
         /// See also [`EventState::resize`].

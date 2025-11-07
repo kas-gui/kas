@@ -145,7 +145,6 @@ mod TabStack {
             }
 
             self.direction = direction;
-            // Note: most of the time Action::SET_RECT would be enough, but margins can be different
             cx.resize();
         }
 
