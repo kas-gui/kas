@@ -144,33 +144,6 @@ mod ScrollRegion {
         }
     }
 
-    impl Scrollable for Self {
-        #[inline]
-        fn content_size(&self) -> Size {
-            self.min_child_size
-        }
-
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.scroll.max_offset()
-        }
-
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.scroll.offset()
-        }
-
-        #[inline]
-        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
-            let action = self.scroll.set_offset(offset);
-            cx.action_moved(action);
-            let offset = self.scroll.offset();
-            self.horiz_bar.set_value(cx, offset.0);
-            self.vert_bar.set_value(cx, offset.1);
-            offset
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
             let dir = axis.as_direction();
@@ -228,7 +201,7 @@ mod ScrollRegion {
 
         fn draw(&self, mut draw: DrawCx) {
             // We use a new pass to clip and offset scrolled content:
-            draw.with_clip_region(self.scroll_rect, self.scroll_offset(), |mut draw| {
+            draw.with_clip_region(self.scroll_rect, self.scroll.offset(), |mut draw| {
                 self.inner.draw(draw.re());
             });
 
@@ -239,15 +212,15 @@ mod ScrollRegion {
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::ScrollRegion {
-                offset: self.scroll_offset(),
-                max_offset: self.max_scroll_offset(),
+                offset: self.scroll.offset(),
+                max_offset: self.scroll.max_offset(),
             }
         }
 
         #[inline]
         fn translation(&self, index: usize) -> Offset {
             if index == widget_index![self.inner] {
-                self.scroll_offset()
+                self.scroll.offset()
             } else {
                 Offset::ZERO
             }
@@ -267,7 +240,7 @@ mod ScrollRegion {
             }
 
             (!self.scroll.is_kinetic_scrolling())
-                .then(|| self.inner.try_probe(coord + self.scroll_offset()))
+                .then(|| self.inner.try_probe(coord + self.scroll.offset()))
                 .flatten()
                 .unwrap_or_else(|| self.id())
         }
@@ -287,7 +260,7 @@ mod ScrollRegion {
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.scroll_rect);
 
-            let offset = self.scroll_offset();
+            let offset = self.scroll.offset();
             self.horiz_bar.set_value(cx, offset.0);
             self.vert_bar.set_value(cx, offset.1);
             is_used
@@ -295,21 +268,25 @@ mod ScrollRegion {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let index = cx.last_child();
-            if index == Some(widget_index![self.horiz_bar])
+            let offset = if index == Some(widget_index![self.horiz_bar])
                 && let Some(ScrollBarMsg(x)) = cx.try_pop()
             {
-                let offset = Offset(x, self.scroll_offset().1);
-                let action = self.scroll.set_offset(offset);
-                cx.action_moved(action);
+                Offset(x, self.scroll.offset().1)
             } else if index == Some(widget_index![self.vert_bar])
                 && let Some(ScrollBarMsg(y)) = cx.try_pop()
             {
-                let offset = Offset(self.scroll_offset().0, y);
-                let action = self.scroll.set_offset(offset);
-                cx.action_moved(action);
+                Offset(self.scroll.offset().0, y)
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                self.set_scroll_offset(cx, offset);
-            }
+                offset
+            } else {
+                return;
+            };
+
+            let action = self.scroll.set_offset(offset);
+            cx.action_moved(action);
+            let offset = self.scroll.offset();
+            self.horiz_bar.set_value(cx, offset.0);
+            self.vert_bar.set_value(cx, offset.1);
         }
 
         fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
@@ -323,7 +300,7 @@ mod ScrollRegion {
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
             self.scroll.scroll(cx, self.id(), self.scroll_rect, scroll);
 
-            let offset = self.scroll_offset();
+            let offset = self.scroll.offset();
             self.horiz_bar.set_value(cx, offset.0);
             self.vert_bar.set_value(cx, offset.1);
         }
