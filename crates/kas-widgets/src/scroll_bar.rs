@@ -35,7 +35,7 @@ pub enum ScrollBarMode {
 
 /// Message from a [`ScrollBar`]
 #[derive(Copy, Clone, Debug)]
-pub struct ScrollMsg(pub i32);
+pub struct ScrollBarMsg(pub i32);
 
 const TIMER_HIDE: TimerHandle = TimerHandle::new(0, false);
 
@@ -48,7 +48,7 @@ mod ScrollBar {
     ///
     /// # Messages
     ///
-    /// On value change, pushes a value of type [`ScrollMsg`].
+    /// On value change, pushes a value of type [`ScrollBarMsg`].
     ///
     /// # Layout
     ///
@@ -298,7 +298,7 @@ mod ScrollBar {
             }
             let value = i32::conv((lhs + (rhs / 2)) / rhs);
             if self.set_value(cx, value) {
-                cx.push(ScrollMsg(value));
+                cx.push(ScrollBarMsg(value));
             }
         }
 
@@ -646,12 +646,12 @@ mod ScrollBars {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let index = cx.last_child();
             if index == Some(widget_index![self.horiz_bar]) {
-                if let Some(ScrollMsg(x)) = cx.try_pop() {
+                if let Some(ScrollBarMsg(x)) = cx.try_pop() {
                     let offset = Offset(x, self.inner.scroll_offset().1);
                     self.inner.set_scroll_offset(cx, offset);
                 }
             } else if index == Some(widget_index![self.vert_bar]) {
-                if let Some(ScrollMsg(y)) = cx.try_pop() {
+                if let Some(ScrollBarMsg(y)) = cx.try_pop() {
                     let offset = Offset(self.inner.scroll_offset().0, y);
                     self.inner.set_scroll_offset(cx, offset);
                 }

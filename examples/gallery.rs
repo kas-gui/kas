@@ -229,8 +229,8 @@ fn widgets() -> Page<AppData> {
 
     let ui = widgets
         .with_state(data)
-        .on_message(|_, data, ScrollMsg(value)| {
-            println!("ScrollMsg({value})");
+        .on_message(|_, data, ScrollBarMsg(value)| {
+            println!("ScrollBarMsg({value})");
             data.ratio = value as f32 / 100.0;
         })
         .on_message(|_, data, item| {
