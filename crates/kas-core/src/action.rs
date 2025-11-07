@@ -117,10 +117,6 @@ bitflags! {
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         const THEME_SWITCH = 1 << 12;
-        /// Update all widgets
-        ///
-        /// This is a notification that input data has changed.
-        const UPDATE = 1 << 17;
         /// The current window should be closed
         ///
         /// See also [`EventState::exit`] which closes the UI (all windows).

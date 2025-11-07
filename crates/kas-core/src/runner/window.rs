@@ -419,8 +419,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         {
             self.ev_state.update_config(window.scale_factor() as f32);
             self.reconfigure(data);
-        } else if action.contains(Action::UPDATE) {
-            self.update(data);
         }
         if action.contains(Action::THEME_SWITCH) {
             if let Some(ref mut window) = self.window {

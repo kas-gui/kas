@@ -261,8 +261,8 @@ mod ListView {
         /// Access the data clerk (mutably)
         ///
         /// Changes to the clerk must be notified with an update to the
-        /// `GridView`, for example using [`ConfigCx::update`],
-        /// [`EventCx::update`] or [`Action::UPDATE`].
+        /// `GridView`, for example using [`ConfigCx::update`] or
+        /// [`EventCx::update`].
         pub fn clerk_mut(&mut self) -> &mut C {
             &mut self.clerk
         }

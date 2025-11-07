@@ -324,18 +324,10 @@ impl EventState {
     /// affect the UI after a reconfigure action.
     #[inline]
     pub fn action(&mut self, id: impl HasId, action: Action) {
-        fn inner(cx: &mut EventState, id: Id, mut action: Action) {
-            if action.contains(Action::UPDATE) {
-                cx.request_update(id);
-                action.remove(Action::UPDATE);
-            }
+        // NOTE: redraws are fast enough not to bother handling locally
+        let _ = id;
 
-            // NOTE: our draw system is incompatible with partial redraws, and
-            // in any case redrawing is extremely fast.
-
-            cx.action |= action;
-        }
-        inner(self, id.has_id(), action)
+        self.action |= action;
     }
 
     /// Pass an [action](Self::action) given some `id`
