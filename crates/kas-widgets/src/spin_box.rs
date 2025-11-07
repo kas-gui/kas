@@ -322,7 +322,7 @@ mod SpinBox {
         /// Set the unit
         ///
         /// This is an annotation shown after the value.
-        pub fn set_unit(&mut self, cx: &mut EventState, unit: impl ToString) {
+        pub fn set_unit(&mut self, cx: &mut ConfigCx, unit: impl ToString) {
             self.unit.set_text(unit.to_string());
             let act = self.unit.reprepare_action();
             cx.action(self, act);

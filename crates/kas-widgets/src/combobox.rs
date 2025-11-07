@@ -119,17 +119,19 @@ mod ComboBox {
                         }
                     } else {
                         let last = self.len().saturating_sub(1);
-                        match cmd {
-                            cmd if cmd.is_activate() => {
-                                self.open_popup(cx, FocusSource::Key);
-                                cx.depress_with_key(&self, code);
-                            }
-                            Command::Up => self.set_active(cx, self.active.saturating_sub(1)),
-                            Command::Down => self.set_active(cx, (self.active + 1).min(last)),
-                            Command::Home => self.set_active(cx, 0),
-                            Command::End => self.set_active(cx, last),
-                            _ => return Unused,
-                        };
+                        if cmd.is_activate() {
+                            self.open_popup(cx, FocusSource::Key);
+                            cx.depress_with_key(&self, code);
+                        } else {
+                            let index = match cmd {
+                                Command::Up => self.active.saturating_sub(1),
+                                Command::Down => (self.active + 1).min(last),
+                                Command::Home => 0,
+                                Command::End => last,
+                                _ => return Unused,
+                            };
+                            cx.config_cx(|cx| self.set_active(cx, index));
+                        }
                     }
                     Used
                 }
@@ -142,7 +144,7 @@ mod ComboBox {
                                 .saturating_add((-y) as usize)
                                 .min(self.len().saturating_sub(1))
                         };
-                        self.set_active(cx, index);
+                        cx.config_cx(|cx| self.set_active(cx, index));
                         Used
                     } else {
                         Unused
@@ -196,7 +198,7 @@ mod ComboBox {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(SetIndex(index)) = cx.try_pop() {
-                self.set_active(cx, index);
+                cx.config_cx(|cx| self.set_active(cx, index));
                 self.popup.close(cx);
                 if let Some(ref f) = self.on_select {
                     if let Some(msg) = cx.try_pop() {
@@ -329,7 +331,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     }
 
     /// Set the active choice
-    pub fn set_active(&mut self, cx: &mut EventState, index: usize) {
+    pub fn set_active(&mut self, cx: &mut ConfigCx, index: usize) {
         if self.active != index && index < self.popup.inner.inner.len() {
             self.active = index;
             let string = if index < self.len() {

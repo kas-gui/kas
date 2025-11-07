@@ -165,7 +165,7 @@ mod TitleBar {
         }
 
         /// Set the title
-        pub fn set_title(&mut self, cx: &mut EventState, title: String) {
+        pub fn set_title(&mut self, cx: &mut ConfigCx, title: String) {
             self.title.set_string(cx, title)
         }
     }

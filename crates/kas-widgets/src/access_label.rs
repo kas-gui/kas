@@ -121,7 +121,7 @@ mod AccessLabel {
         }
 
         /// Set text in an existing `Label`
-        pub fn set_text(&mut self, cx: &mut EventState, text: AccessString) {
+        pub fn set_text(&mut self, cx: &mut ConfigCx, text: AccessString) {
             self.text.set_text(text);
             let act = self.text.reprepare_action();
             cx.action(self, act);
