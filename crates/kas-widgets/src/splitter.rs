@@ -73,9 +73,9 @@ mod Splitter {
         }
     }
 
-    impl<C: Collection> Splitter<C, Direction> {
+    impl<C: Collection, D: Directional + Eq> Splitter<C, D> {
         /// Set the direction of contents
-        pub fn set_direction(&mut self, cx: &mut ConfigCx, direction: Direction) {
+        pub fn set_direction(&mut self, cx: &mut ConfigCx, direction: D) {
             if direction == self.direction {
                 return;
             }

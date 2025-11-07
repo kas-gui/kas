@@ -208,9 +208,9 @@ mod ListView {
             Self::new(clerk, driver)
         }
     }
-    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, Direction> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>, D: Directional + Eq> ListView<C, V, D> {
         /// Set the direction of contents
-        pub fn set_direction(&mut self, cx: &mut ConfigCx, direction: Direction) {
+        pub fn set_direction(&mut self, cx: &mut ConfigCx, direction: D) {
             if direction == self.direction {
                 return;
             }
