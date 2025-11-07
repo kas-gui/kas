@@ -210,11 +210,13 @@ mod ListView {
     }
     impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, Direction> {
         /// Set the direction of contents
-        pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
-            if direction != self.direction {
-                self.direction = direction;
-                cx.action(self, Action::SET_RECT);
+        pub fn set_direction(&mut self, cx: &mut ConfigCx, direction: Direction) {
+            if direction == self.direction {
+                return;
             }
+
+            self.direction = direction;
+            cx.resize();
         }
     }
 
