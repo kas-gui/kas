@@ -294,11 +294,20 @@ impl EventState {
     }
 
     /// Notify that a widget must be redrawn
-    ///
-    /// This is equivalent to calling [`Self::action`] with [`Action::REDRAW`].
     #[inline]
     pub fn redraw(&mut self, id: impl HasId) {
-        self.action(id, Action::REDRAW);
+        // NOTE: redraws are fast enough not to bother handling locally
+        let _ = id;
+
+        self.action |= Action::REDRAW;
+    }
+
+    /// Redraw `id` if not `None`
+    #[inline]
+    pub(crate) fn opt_redraw(&mut self, id: Option<Id>) {
+        if let Some(id) = id {
+            self.redraw(id);
+        }
     }
 
     /// Notify that widgets under self may have moved
@@ -309,34 +318,7 @@ impl EventState {
         self.action_moved = ActionMoved(true);
     }
 
-    /// Notify that an [`Action`] should happen
-    ///
-    /// This causes the given action to happen after event handling.
-    ///
-    /// Whenever a widget is added, removed or replaced, a reconfigure action is
-    /// required. Should a widget's size requirements change, these will only
-    /// affect the UI after a reconfigure action.
-    #[inline]
-    pub fn action(&mut self, id: impl HasId, action: Action) {
-        // NOTE: redraws are fast enough not to bother handling locally
-        let _ = id;
-
-        self.action |= action;
-    }
-
-    /// Pass an [action](Self::action) given some `id`
-    #[inline]
-    pub(crate) fn opt_action(&mut self, id: Option<Id>, action: Action) {
-        if let Some(id) = id {
-            self.action(id, action);
-        }
-    }
-
     /// Notify that an [`Action`] should happen for the whole window
-    ///
-    /// Using [`Self::action`] with a widget `id` instead of this method is
-    /// potentially more efficient (supports future optimisations), but not
-    /// always possible.
     #[inline]
     pub fn window_action(&mut self, action: impl Into<Action>) {
         self.action |= action.into();
@@ -464,9 +446,6 @@ impl<'a> EventCx<'a> {
     /// "The current widget" is inferred from the widget tree traversal through
     /// which the `EventCx` is made accessible. The resize is handled locally
     /// during the traversal unwind if possible.
-    ///
-    /// Alternatively, a redraw may
-    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
     #[inline]
     pub fn redraw(&mut self) {
         self.redraw = true;
@@ -477,9 +456,6 @@ impl<'a> EventCx<'a> {
     /// "The current widget" is inferred from the widget tree traversal through
     /// which the `EventCx` is made accessible. The resize is handled locally
     /// during the traversal unwind if possible.
-    ///
-    /// Alternatively, a whole-window resize (some time in the near future) may
-    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
     #[inline]
     pub fn resize(&mut self) {
         self.resize = ActionResize(true);

@@ -303,7 +303,7 @@ impl<'a> EventCx<'a> {
             self.send_event(window, id, event);
         }
         self.mouse.last_pin = last_pin;
-        self.opt_action(redraw, Action::REDRAW);
+        self.opt_redraw(redraw);
 
         self.mouse.grab = None;
     }

@@ -467,7 +467,7 @@ impl<A> Stack<A> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// If the new child replaces the active page then [`Action::RESIZE`] is triggered.
+    /// If the new child replaces the active page then a resize is triggered.
     pub fn replace(
         &mut self,
         cx: &mut ConfigCx,

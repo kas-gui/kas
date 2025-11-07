@@ -409,8 +409,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
 
     /// Append a child widget
     ///
-    /// The new child is configured immediately. [`Action::RESIZE`] is
-    /// triggered.
+    /// The new child is configured immediately. Triggers a resize.
     ///
     /// Returns the new element's index.
     pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, mut widget: W) -> usize {
@@ -434,7 +433,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
 
     /// Remove the last child widget (if any) and return
     ///
-    /// Triggers [`Action::RESIZE`].
+    /// Triggers a resize.
     pub fn pop(&mut self, cx: &mut ConfigCx) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
@@ -461,7 +460,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
     ///
     /// Panics if `index > len`.
     ///
-    /// The new child is configured immediately. Triggers [`Action::RESIZE`].
+    /// The new child is configured immediately. Triggers a resize.
     pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut widget: W) {
         for v in self.id_map.values_mut() {
             if *v >= index {
@@ -489,7 +488,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers [`Action::RESIZE`].
+    /// Triggers a resize.
     pub fn remove(&mut self, cx: &mut ConfigCx, index: usize) -> W {
         if !self.grips.is_empty() {
             let index = index.min(self.grips.len());
@@ -520,7 +519,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// The new child is configured immediately. Triggers [`Action::RESIZE`].
+    /// The new child is configured immediately. Triggers a resize.
     pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut w: W) -> W {
         let id = self.make_next_id(false, index);
         cx.configure(w.as_node(data), id);
@@ -540,7 +539,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
 
     /// Append child widgets from an iterator
     ///
-    /// New children are configured immediately. Triggers [`Action::RESIZE`].
+    /// New children are configured immediately. Triggers a resize.
     pub fn extend<T: IntoIterator<Item = W>>(
         &mut self,
         data: &W::Data,
@@ -573,7 +572,7 @@ impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
 
     /// Resize, using the given closure to construct new widgets
     ///
-    /// New children are configured immediately. Triggers [`Action::RESIZE`].
+    /// New children are configured immediately. Triggers a resize.
     pub fn resize_with<F: Fn(usize) -> W>(
         &mut self,
         data: &W::Data,

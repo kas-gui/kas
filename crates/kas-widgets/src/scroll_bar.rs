@@ -181,8 +181,6 @@ mod ScrollBar {
         ///
         /// The choice of units is not important (e.g. can be pixels or lines),
         /// so long as both parameters use the same units.
-        ///
-        /// Returns [`Action::REDRAW`] if a redraw is required.
         pub fn set_limits(&mut self, cx: &mut EventState, max_value: i32, grip_size: i32) {
             // We should gracefully handle zero, though appearance may be wrong.
             self.grip_size = grip_size.max(1);

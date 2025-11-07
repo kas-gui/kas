@@ -14,9 +14,9 @@ use std::mem::transmute;
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
 use super::{EventCx, IsUsed};
 #[allow(unused)] use crate::Events; // for doc-links
+use crate::Id;
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
 use crate::geom::{Coord, DVec2, Offset, Vec2};
-use crate::{Action, Id};
 use cast::{CastApprox, Conv};
 pub(crate) use mouse::Mouse;
 pub(crate) use touch::Touch;
@@ -425,8 +425,8 @@ impl EventState {
 
         if redraw {
             log::trace!(target: "kas_core::event", "set_grab_depress: target={target:?}");
-            self.opt_action(old, Action::REDRAW);
-            self.opt_action(target, Action::REDRAW);
+            self.opt_redraw(old);
+            self.opt_redraw(target);
         }
         redraw
     }

@@ -237,7 +237,7 @@ impl EventState {
             grab.id,
             grab.start_id
         );
-        self.opt_action(grab.depress.clone(), Action::REDRAW);
+        self.opt_redraw(grab.depress.clone());
         self.touch.remove_pan_grab(grab.pan_grab);
         self.window_action(grab.flush_click_move());
         grab

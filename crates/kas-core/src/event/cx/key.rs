@@ -7,9 +7,9 @@
 
 use super::{EventCx, EventState, NavAdvance};
 #[allow(unused)] use crate::Events;
+use crate::HasId;
 use crate::event::{Command, Event, FocusSource};
 use crate::util::WidgetHierarchy;
-use crate::{Action, HasId};
 use crate::{Id, Node, geom::Rect, runner::WindowDataErased};
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
@@ -351,7 +351,7 @@ impl<'a> EventCx<'a> {
     pub(super) fn modifiers_changed(&mut self, state: ModifiersState) {
         if state.alt_key() != self.modifiers.alt_key() {
             // This controls drawing of access key indicators
-            self.window_action(Action::REDRAW);
+            self.redraw();
         }
         self.modifiers = state;
     }
