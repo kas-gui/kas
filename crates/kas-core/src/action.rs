@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Action enum
+//! Action types
 
 #[allow(unused)]
 use crate::event::{ConfigCx, EventCx, EventState};
@@ -92,17 +92,17 @@ bitflags! {
     /// while others don't reqiure a context but do require that some *action*
     /// is performed afterwards. This enum is used to convey that action.
     ///
-    /// An `Action` produced at run-time should be passed to a context, usually
-    /// via [`EventState::action`] (to associate the `Action` with a widget)
+    /// A `WindowAction` produced at run-time should be passed to a context, usually
+    /// via [`EventState::action`] (to associate the `WindowAction` with a widget)
     /// or [`EventState::window_action`] (if no particular widget is relevant).
     ///
-    /// An `Action` produced before starting the GUI may be discarded, for
+    /// A `WindowAction` produced before starting the GUI may be discarded, for
     /// example: `let _ = runner.config_mut().font.set_size(24.0);`.
     ///
-    /// Two `Action` values may be combined via bit-or (`a | b`).
+    /// Two `WindowAction` values may be combined via bit-or (`a | b`).
     #[must_use]
     #[derive(Copy, Clone, Debug, Default)]
-    pub struct Action: u32 {
+    pub struct WindowAction: u32 {
         /// The whole window requires redrawing
         ///
         /// See also [`EventState::redraw`].

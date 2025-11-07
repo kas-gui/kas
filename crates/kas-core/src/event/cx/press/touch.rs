@@ -9,7 +9,7 @@ use super::{GrabMode, Press, PressSource, velocity};
 use crate::config::EventWindowConfig;
 use crate::event::{Event, EventCx, EventState, FocusSource, NavAdvance, PressStart};
 use crate::geom::{Affine, DVec2, Vec2};
-use crate::{Action, Id, Node};
+use crate::{Id, Node, WindowAction};
 use cast::{Cast, CastApprox, CastFloat, Conv};
 use smallvec::SmallVec;
 use winit::event::TouchPhase;
@@ -33,19 +33,19 @@ pub(super) struct TouchGrab {
 }
 
 impl TouchGrab {
-    fn flush_click_move(&mut self) -> Action {
+    fn flush_click_move(&mut self) -> WindowAction {
         if self.mode == GrabMode::Click {
             if self.start_id == self.over {
                 if self.depress != self.over {
                     self.depress = self.over.clone();
-                    return Action::REDRAW;
+                    return WindowAction::REDRAW;
                 }
             } else if self.depress.is_some() {
                 self.depress = None;
-                return Action::REDRAW;
+                return WindowAction::REDRAW;
             }
         }
-        Action::empty()
+        WindowAction::empty()
     }
 }
 

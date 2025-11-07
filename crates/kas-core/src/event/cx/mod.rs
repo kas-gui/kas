@@ -23,7 +23,7 @@ use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{Action, ActionMoved, ActionResize, ConfigAction, HasId, Id, Node};
+use crate::{ActionMoved, ActionResize, ConfigAction, HasId, Id, Node, WindowAction};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
@@ -102,7 +102,7 @@ pub struct EventState {
     // Optional new target for selection focus. bool is true if this also gains key focus.
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
-    pub(crate) action: Action,
+    pub(crate) action: WindowAction,
     action_moved: ActionMoved,
 }
 
@@ -142,7 +142,7 @@ impl EventState {
             pending_update: None,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
-            action: Action::empty(),
+            action: WindowAction::empty(),
             action_moved: ActionMoved(false),
         }
     }
@@ -172,7 +172,7 @@ impl EventState {
         let mut cx = ConfigCx::new(sizer, self);
         cx.configure(node, id);
         if *cx.resize {
-            self.action |= Action::RESIZE;
+            self.action |= WindowAction::RESIZE;
         }
         // Ignore cx.redraw: we can assume a redraw will happen
         self.action_moved = ActionMoved(true);
@@ -200,9 +200,9 @@ impl EventState {
         };
         f(&mut cx);
         if *cx.resize {
-            self.action |= Action::RESIZE;
+            self.action |= WindowAction::RESIZE;
         } else if cx.redraw {
-            self.action |= Action::REDRAW;
+            self.action |= WindowAction::REDRAW;
         }
     }
 
@@ -299,7 +299,7 @@ impl EventState {
         // NOTE: redraws are fast enough not to bother handling locally
         let _ = id;
 
-        self.action |= Action::REDRAW;
+        self.action |= WindowAction::REDRAW;
     }
 
     /// Redraw `id` if not `None`
@@ -318,16 +318,16 @@ impl EventState {
         self.action_moved = ActionMoved(true);
     }
 
-    /// Notify that an [`Action`] should happen for the whole window
+    /// Notify that a [`WindowAction`] should happen for the whole window
     #[inline]
-    pub fn window_action(&mut self, action: impl Into<Action>) {
+    pub fn window_action(&mut self, action: impl Into<WindowAction>) {
         self.action |= action.into();
     }
 
     /// Request that the window be closed
     #[inline]
     pub fn close_own_window(&mut self) {
-        self.action |= Action::CLOSE;
+        self.action |= WindowAction::CLOSE;
     }
 
     /// Notify of an [`ActionMoved`]

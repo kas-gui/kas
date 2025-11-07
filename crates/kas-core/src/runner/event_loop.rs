@@ -8,7 +8,7 @@
 use super::{AppData, GraphicsInstance, Pending, Shared};
 use super::{ProxyAction, Window};
 use crate::theme::Theme;
-use crate::{Action, window::WindowId};
+use crate::{WindowAction, window::WindowId};
 use std::collections::HashMap;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
@@ -270,11 +270,11 @@ where
                 self.resumes.push((instant, *window_id));
             }
 
-            if close_all || action.contains(Action::CLOSE) {
+            if close_all || action.contains(WindowAction::CLOSE) {
                 window.suspend(&mut self.shared, &self.data);
 
                 // Call flush_pending again since suspend may queue messages.
-                // We don't care about the returned Action or resume times since
+                // We don't care about the returned WindowAction or resume times since
                 // the window is being destroyed.
                 let _ = window.flush_pending(&mut self.shared, &self.data);
 
