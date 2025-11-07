@@ -260,7 +260,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             need_redraw: true,
         });
 
-        self.apply_size(data, true);
+        self.apply_size(data, true, false);
 
         log::trace!(target: "kas_perf::wgpu::window", "resume: {}µs", time.elapsed().as_micros());
         Ok(winit_id)
@@ -307,7 +307,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                     .surface
                     .configure(&mut shared.draw.as_mut().unwrap().draw, size.cast())
                 {
-                    self.apply_size(data, false);
+                    self.apply_size(data, false, false);
                 }
                 false
             }
@@ -348,7 +348,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 };
 
                 if apply {
-                    self.apply_size(data, false);
+                    self.apply_size(data, false, false);
                 }
 
                 false
@@ -437,28 +437,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             }
         }
         if action.contains(Action::RESIZE) {
-            if let Some(ref mut window) = self.window {
-                let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
-                window
-                    .solve_cache
-                    .find_constraints(self.widget.as_node(data), &mut cx);
-                let (restrict_min, restrict_max) = self.widget.properties().restrictions();
-                window.set_min_inner_size(restrict_min.then(|| {
-                    window
-                        .solve_cache
-                        .min(true)
-                        .as_physical()
-                        .to_logical::<f64>(window.scale_factor())
-                }));
-                window.set_max_inner_size(restrict_max.then(|| {
-                    window
-                        .solve_cache
-                        .ideal(true)
-                        .as_physical()
-                        .to_logical::<f64>(window.scale_factor())
-                }));
-            }
-            self.apply_size(data, false);
+            self.apply_size(data, false, true);
         }
         if !action.is_empty()
             && let Some(ref mut window) = self.window
@@ -574,7 +553,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
     }
 
-    fn apply_size(&mut self, data: &A, first: bool) {
+    /// Solve for size requirements, apply, then update window size bounds
+    fn apply_size(&mut self, data: &A, first: bool, resize: bool) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;
@@ -584,6 +564,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let solve_cache = &mut window.solve_cache;
         let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
+        if resize {
+            solve_cache.find_constraints(self.widget.as_node(data), &mut cx);
+        }
         solve_cache.apply_rect(self.widget.as_node(data), &mut cx, rect, true);
         if first {
             solve_cache.print_widget_heirarchy(self.widget.as_tile());

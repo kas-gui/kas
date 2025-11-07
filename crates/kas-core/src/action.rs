@@ -95,6 +95,8 @@ bitflags! {
         const REDRAW = 1 << 0;
         /// Resize all widgets in the window
         ///
+        /// Solves for size rules, applies, and updates bounds on window size.
+        ///
         /// See also [`EventState::resize`].
         const RESIZE = 1 << 9;
         /// Update per-window theme data from theme configuration.
