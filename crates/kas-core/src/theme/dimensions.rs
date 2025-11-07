@@ -110,10 +110,7 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: &Parameters, config: &WindowConfig) -> Self {
-        let scale = config.scale_factor();
-        let dpem = scale * config.font().size();
-
+    pub fn new(params: &Parameters, scale: f32, dpem: f32) -> Self {
         let text_m0 = (params.m_text.0 * scale).cast_nearest();
         let text_m1 = (params.m_text.1 * scale).cast_nearest();
 
@@ -157,15 +154,25 @@ pub struct Window<D> {
 
 impl<D> Window<D> {
     pub fn new(dims: &Parameters, config: &WindowConfig) -> Self {
+        let scale = config.scale_factor();
+        let dpem = scale * config.font().size();
         Window {
             config: config.clone_base(),
-            dims: Dimensions::new(dims, config),
+            dims: Dimensions::new(dims, scale, dpem),
             anim: AnimState::new(&config.theme()),
         }
     }
 
-    pub fn update(&mut self, dims: &Parameters, config: &WindowConfig) {
-        self.dims = Dimensions::new(dims, config);
+    /// Updates self based on new `config` data
+    ///
+    /// Returns `true` if a resize is needed based on changes to `config` data.
+    /// Does not test whether `dims` have changed.
+    pub fn update(&mut self, dims: &Parameters, config: &WindowConfig) -> bool {
+        let scale = config.scale_factor();
+        let dpem = scale * config.font().size();
+        let need_resize = scale != self.dims.scale || dpem != self.dims.dpem;
+        self.dims = Dimensions::new(dims, scale, dpem);
+        need_resize
     }
 }
 

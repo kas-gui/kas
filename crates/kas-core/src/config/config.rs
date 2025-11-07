@@ -147,15 +147,9 @@ impl WindowConfig {
     pub fn update_base<F: FnOnce(&mut Config)>(&self, f: F) -> Action {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
-
-            let font_size = c.font.size();
             f(&mut c);
 
-            let mut action = Action::EVENT_CONFIG | Action::THEME_UPDATE;
-            if c.font.size() != font_size {
-                action |= Action::RESIZE;
-            }
-            action
+            Action::EVENT_CONFIG | Action::THEME_UPDATE
         } else {
             Action::empty()
         }

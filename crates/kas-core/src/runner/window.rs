@@ -432,9 +432,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         } else if action.contains(Action::THEME_UPDATE) {
             if let Some(ref mut window) = self.window {
                 let config = self.ev_state.config();
-                shared.theme.update_window(&mut window.theme_window, config);
+                if shared.theme.update_window(&mut window.theme_window, config) {
+                    action |= Action::RESIZE;
+                }
             }
-            action |= Action::RESIZE;
         }
         if action.contains(Action::RESIZE) {
             if let Some(ref mut window) = self.window {

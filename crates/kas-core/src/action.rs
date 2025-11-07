@@ -97,10 +97,9 @@ bitflags! {
         ///
         /// See also [`EventState::resize`].
         const RESIZE = 1 << 9;
-        /// Update [`Dimensions`](crate::theme::dimensions::Dimensions) instances
-        /// and theme configuration.
+        /// Update per-window theme data from theme configuration.
         ///
-        /// Implies [`Action::RESIZE`].
+        /// Causes a resize if required by the configuration changes.
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         const THEME_UPDATE = 1 << 10;

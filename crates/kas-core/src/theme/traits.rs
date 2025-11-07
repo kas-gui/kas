@@ -57,7 +57,9 @@ pub trait Theme<DS: DrawSharedImpl> {
     /// Update a window created by [`Theme::new_window`]
     ///
     /// This is called when the DPI factor changes or theme config or dimensions change.
-    fn update_window(&mut self, window: &mut Self::Window, config: &WindowConfig);
+    ///
+    /// Returns `true` when a resize is required based on changes to the scale factor or font size.
+    fn update_window(&mut self, window: &mut Self::Window, config: &WindowConfig) -> bool;
 
     /// Prepare to draw and construct a [`ThemeDraw`] object
     ///
