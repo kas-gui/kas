@@ -467,17 +467,19 @@ impl ScrollBarPair {
         cx: &mut SizeCx,
         horiz_bar: &ScrollBar<Right>,
         vert_bar: &ScrollBar<Down>,
-        max_offset: Offset,
+        required: (bool, bool),
     ) -> Size {
         let bar_width = cx.scroll_bar_width();
-        if self.mode == ScrollBarMode::Auto {
-            self.show = (max_offset.0 > 0, max_offset.1 > 0);
-        }
         let mut size = Size::ZERO;
-        if self.show.0 && !horiz_bar.is_invisible() {
+        let show = match self.mode {
+            ScrollBarMode::Auto => required,
+            ScrollBarMode::Fixed(h, v) => (h, v),
+            ScrollBarMode::Invisible(_, _) => (false, false),
+        };
+        if show.0 && !horiz_bar.is_invisible() {
             size.1 = bar_width;
         }
-        if self.show.1 && !vert_bar.is_invisible() {
+        if show.1 && !vert_bar.is_invisible() {
             size.0 = bar_width;
         }
         size
@@ -485,19 +487,22 @@ impl ScrollBarPair {
 
     /// Set bar sizes and positions
     pub fn set_rects(
-        &self,
+        &mut self,
         cx: &mut SizeCx,
         horiz_bar: &mut ScrollBar<Right>,
         vert_bar: &mut ScrollBar<Down>,
         rect: Rect,
-        max_scroll_offset: Offset,
+        max_offset: Offset,
     ) {
         let bar_width = cx.scroll_bar_width();
+        if self.mode == ScrollBarMode::Auto {
+            self.show = (max_offset.0 > 0, max_offset.1 > 0);
+        }
         if self.show.0 {
             let pos = Coord(rect.pos.0, rect.pos2().1 - bar_width);
             let size = Size::new(rect.size.0 - bar_width, bar_width);
             horiz_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
-            horiz_bar.set_limits(cx, max_scroll_offset.0, rect.size.0);
+            horiz_bar.set_limits(cx, max_offset.0, rect.size.0);
         } else {
             horiz_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
         }
@@ -506,7 +511,7 @@ impl ScrollBarPair {
             let pos = Coord(rect.pos2().0 - bar_width, rect.pos.1);
             let size = Size::new(bar_width, rect.size.1);
             vert_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
-            vert_bar.set_limits(cx, max_scroll_offset.1, rect.size.1);
+            vert_bar.set_limits(cx, max_offset.1, rect.size.1);
         } else {
             vert_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
         }

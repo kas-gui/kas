@@ -179,6 +179,8 @@ mod ScrollRegion {
             });
 
             let mut inner = self.inner.size_rules(cx, axis);
+            // let m = inner.margins_i32();
+            // let min = inner.min_size() + m.0 + m.1;
             self.min_child_size.set_component(axis, inner.min_size());
             inner.reduce_min_to(cx.min_scroll_size(axis));
 
@@ -195,22 +197,25 @@ mod ScrollRegion {
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.hints = hints;
-            let mut child_size = rect.size;
+            let mut window_size = rect.size;
 
-            child_size -= self.bars.rect_size_reduction(
-                cx,
-                &self.horiz_bar,
-                &self.vert_bar,
-                self.scroll.max_offset(),
+            let inner_size = window_size - self.frame_size;
+            let need_to_scroll = (
+                inner_size.0 < self.min_child_size.0,
+                inner_size.1 < self.min_child_size.1,
             );
 
-            self.scroll_rect = Rect::new(rect.pos, child_size);
-            let child_size = (child_size - self.frame_size).max(self.min_child_size);
+            window_size -=
+                self.bars
+                    .rect_size_reduction(cx, &self.horiz_bar, &self.vert_bar, need_to_scroll);
+
+            self.scroll_rect = Rect::new(rect.pos, window_size);
+            let child_size = (window_size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos, child_size);
             self.inner.set_rect(cx, child_rect, hints);
             let _ = self
                 .scroll
-                .set_sizes(rect.size, child_size + self.frame_size);
+                .set_sizes(window_size, child_size + self.frame_size);
 
             self.bars.set_rects(
                 cx,
