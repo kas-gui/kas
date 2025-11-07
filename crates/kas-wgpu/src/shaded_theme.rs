@@ -88,9 +88,9 @@ where
         dim::Window::new(&dimensions(), config)
     }
 
-    fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) {
+    fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) -> bool {
         self.base.cols = config.theme().get_active_scheme().into();
-        w.update(&dimensions(), config);
+        w.update(&dimensions(), config)
     }
 
     fn draw<'a>(

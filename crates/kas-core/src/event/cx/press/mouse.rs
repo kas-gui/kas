@@ -12,7 +12,7 @@ use crate::event::{
 use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::WindowErased;
 use crate::window::WindowWidget;
-use crate::{Action, Id, Node, TileExt};
+use crate::{Id, Node, TileExt, WindowAction};
 use cast::{CastApprox, CastFloat};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -303,7 +303,7 @@ impl<'a> EventCx<'a> {
             self.send_event(window, id, event);
         }
         self.mouse.last_pin = last_pin;
-        self.opt_action(redraw, Action::REDRAW);
+        self.opt_redraw(redraw);
 
         self.mouse.grab = None;
     }
@@ -315,7 +315,7 @@ impl<'a> EventCx<'a> {
         }
 
         if redraw {
-            self.action |= Action::REDRAW;
+            self.action |= WindowAction::REDRAW;
         }
 
         if self.action_moved.0 {

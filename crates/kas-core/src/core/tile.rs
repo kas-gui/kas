@@ -276,6 +276,22 @@ impl<W: Tile + ?Sized> HasId for &mut W {
 
 /// Extension trait over widgets
 pub trait TileExt: Tile {
+    /// Check whether this widget has been configured
+    ///
+    /// This is set once [configuration](Events#configuration) is complete.
+    #[inline]
+    fn is_configured(&self) -> bool {
+        self.status() >= WidgetStatus::Configured
+    }
+
+    /// Check whether this widget has been sized
+    ///
+    /// This is set once [sizing](Layout#sizing) is complete.
+    #[inline]
+    fn is_sized(&self) -> bool {
+        self.status() >= WidgetStatus::SetRect
+    }
+
     /// Test widget identifier for equality
     ///
     /// This method may be used to test against `Id`, `Option<Id>`

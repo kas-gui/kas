@@ -5,7 +5,7 @@
 
 //! Event handling configuration
 
-use crate::Action;
+use crate::ConfigAction;
 use crate::cast::Cast;
 #[allow(unused)] use crate::event::Event;
 use crate::event::ModifiersState;
@@ -120,7 +120,7 @@ impl Default for EventConfig {
 }
 
 impl EventConfig {
-    pub(super) fn change_config(&mut self, msg: EventConfigMsg) -> Action {
+    pub(super) fn change_config(&mut self, msg: EventConfigMsg) -> ConfigAction {
         match msg {
             EventConfigMsg::HoverDelay(v) => self.hover_delay_ms = v,
             EventConfigMsg::MenuDelay(v) => self.menu_delay_ms = v,
@@ -139,7 +139,7 @@ impl EventConfig {
             EventConfigMsg::ResetToDefault => *self = EventConfig::default(),
         }
 
-        Action::EVENT_CONFIG
+        ConfigAction::EVENT
     }
 }
 

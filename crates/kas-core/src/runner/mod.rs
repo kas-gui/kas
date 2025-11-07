@@ -11,6 +11,7 @@ mod runner;
 mod shared;
 mod window;
 
+use crate::ConfigAction;
 use crate::messages::Erased;
 use crate::window::{BoxedWindow, PopupDescriptor, WindowId};
 use event_loop::Loop;
@@ -194,11 +195,12 @@ impl AppData for () {
 }
 
 enum Pending<A: AppData> {
+    Update,
+    ConfigUpdate(ConfigAction),
     AddPopup(WindowId, WindowId, PopupDescriptor),
     RepositionPopup(WindowId, PopupDescriptor),
     AddWindow(WindowId, BoxedWindow<A>),
     CloseWindow(WindowId),
-    Update,
     Exit,
 }
 

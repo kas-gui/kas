@@ -23,7 +23,7 @@ use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::theme::{SizeCx, ThemeSize};
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{Action, ActionMoved, ActionResize, HasId, Id, Node};
+use crate::{ActionMoved, ActionResize, ConfigAction, HasId, Id, Node, WindowAction};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
@@ -102,7 +102,7 @@ pub struct EventState {
     // Optional new target for selection focus. bool is true if this also gains key focus.
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
-    pub(crate) action: Action,
+    pub(crate) action: WindowAction,
     action_moved: ActionMoved,
 }
 
@@ -142,7 +142,7 @@ impl EventState {
             pending_update: None,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
-            action: Action::empty(),
+            action: WindowAction::empty(),
             action_moved: ActionMoved(false),
         }
     }
@@ -172,7 +172,7 @@ impl EventState {
         let mut cx = ConfigCx::new(sizer, self);
         cx.configure(node, id);
         if *cx.resize {
-            self.action |= Action::RESIZE;
+            self.action |= WindowAction::RESIZE;
         }
         // Ignore cx.redraw: we can assume a redraw will happen
         self.action_moved = ActionMoved(true);
@@ -200,9 +200,9 @@ impl EventState {
         };
         f(&mut cx);
         if *cx.resize {
-            self.action |= Action::RESIZE;
+            self.action |= WindowAction::RESIZE;
         } else if cx.redraw {
-            self.action |= Action::REDRAW;
+            self.action |= WindowAction::REDRAW;
         }
     }
 
@@ -228,7 +228,9 @@ impl EventState {
         false
     }
 
-    /// Access event-handling configuration
+    /// Access configuration data
+    ///
+    /// All widgets will be reconfigured if configuration data changes.
     #[inline]
     pub fn config(&self) -> &WindowConfig {
         &self.config
@@ -263,12 +265,6 @@ impl EventState {
         Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
     }
 
-    /// Update event configuration
-    #[inline]
-    pub fn change_config(&mut self, msg: ConfigMsg) {
-        self.action |= self.config.change_config(msg);
-    }
-
     /// Set/unset a widget as disabled
     ///
     /// Disabled status applies to all descendants and blocks reception of
@@ -298,11 +294,20 @@ impl EventState {
     }
 
     /// Notify that a widget must be redrawn
-    ///
-    /// This is equivalent to calling [`Self::action`] with [`Action::REDRAW`].
     #[inline]
     pub fn redraw(&mut self, id: impl HasId) {
-        self.action(id, Action::REDRAW);
+        // NOTE: redraws are fast enough not to bother handling locally
+        let _ = id;
+
+        self.action |= WindowAction::REDRAW;
+    }
+
+    /// Redraw `id` if not `None`
+    #[inline]
+    pub(crate) fn opt_redraw(&mut self, id: Option<Id>) {
+        if let Some(id) = id {
+            self.redraw(id);
+        }
     }
 
     /// Notify that widgets under self may have moved
@@ -313,52 +318,16 @@ impl EventState {
         self.action_moved = ActionMoved(true);
     }
 
-    /// Notify that an [`Action`] should happen
-    ///
-    /// This causes the given action to happen after event handling.
-    ///
-    /// Whenever a widget is added, removed or replaced, a reconfigure action is
-    /// required. Should a widget's size requirements change, these will only
-    /// affect the UI after a reconfigure action.
+    /// Notify that a [`WindowAction`] should happen for the whole window
     #[inline]
-    pub fn action(&mut self, id: impl HasId, action: Action) {
-        fn inner(cx: &mut EventState, id: Id, mut action: Action) {
-            if action.contains(Action::UPDATE) {
-                cx.request_update(id);
-                action.remove(Action::UPDATE);
-            }
-
-            // TODO(opt): handle sub-tree SET_RECT and RESIZE.
-            // NOTE: our draw system is incompatible with partial redraws, and
-            // in any case redrawing is extremely fast.
-
-            cx.action |= action;
-        }
-        inner(self, id.has_id(), action)
-    }
-
-    /// Pass an [action](Self::action) given some `id`
-    #[inline]
-    pub(crate) fn opt_action(&mut self, id: Option<Id>, action: Action) {
-        if let Some(id) = id {
-            self.action(id, action);
-        }
-    }
-
-    /// Notify that an [`Action`] should happen for the whole window
-    ///
-    /// Using [`Self::action`] with a widget `id` instead of this method is
-    /// potentially more efficient (supports future optimisations), but not
-    /// always possible.
-    #[inline]
-    pub fn window_action(&mut self, action: impl Into<Action>) {
+    pub fn window_action(&mut self, action: impl Into<WindowAction>) {
         self.action |= action.into();
     }
 
     /// Request that the window be closed
     #[inline]
     pub fn close_own_window(&mut self) {
-        self.action |= Action::CLOSE;
+        self.action |= WindowAction::CLOSE;
     }
 
     /// Notify of an [`ActionMoved`]
@@ -455,14 +424,28 @@ impl<'a> EventCx<'a> {
         self.runner.draw_shared()
     }
 
+    /// Update configuration data
+    #[inline]
+    pub fn change_config(&mut self, msg: ConfigMsg) {
+        let action = self.config.change_config(msg);
+        if !action.is_empty() {
+            self.runner.config_update(action);
+        }
+    }
+
+    /// Update configuration data using a closure
+    pub fn with_config(&mut self, f: impl FnOnce(&WindowConfig) -> ConfigAction) {
+        let action = f(&self.config);
+        if !action.is_empty() {
+            self.runner.config_update(action);
+        }
+    }
+
     /// Notify that a widget must be redrawn
     ///
     /// "The current widget" is inferred from the widget tree traversal through
     /// which the `EventCx` is made accessible. The resize is handled locally
     /// during the traversal unwind if possible.
-    ///
-    /// Alternatively, a redraw may
-    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
     #[inline]
     pub fn redraw(&mut self) {
         self.redraw = true;
@@ -473,9 +456,6 @@ impl<'a> EventCx<'a> {
     /// "The current widget" is inferred from the widget tree traversal through
     /// which the `EventCx` is made accessible. The resize is handled locally
     /// during the traversal unwind if possible.
-    ///
-    /// Alternatively, a whole-window resize (some time in the near future) may
-    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
     #[inline]
     pub fn resize(&mut self) {
         self.resize = ActionResize(true);

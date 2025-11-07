@@ -5,7 +5,7 @@
 
 //! Adapter widgets (wrappers)
 
-#[allow(unused)] use crate::Action;
+#[allow(unused)] use crate::event::{ConfigCx, EventCx};
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::SizeCx;
@@ -58,7 +58,7 @@ mod Align {
         pub inner: W,
         /// Hints may be modified directly.
         ///
-        /// Use [`Action::RESIZE`] to apply changes.
+        /// Use [`ConfigCx::resize`] or [`EventCx::resize`] to apply changes.
         pub hints: AlignHints,
     }
 
@@ -93,7 +93,7 @@ mod Pack {
         pub inner: W,
         /// Hints may be modified directly.
         ///
-        /// Use [`Action::RESIZE`] to apply changes.
+        /// Use [`ConfigCx::resize`] or [`EventCx::resize`] to apply changes.
         pub hints: AlignHints,
         size: Size,
     }

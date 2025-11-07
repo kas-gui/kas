@@ -39,7 +39,7 @@
 use kas::Id;
 use kas::cast::Cast;
 use kas::event::{ConfigCx, EventCx};
-#[allow(unused)] use kas::{Action, Events, Widget};
+#[allow(unused)] use kas::{Events, Widget};
 use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::ops::Range;
@@ -295,7 +295,7 @@ pub trait AsyncClerk<Index>: Clerk<Index> {
     /// Note: this method is called automatically when input data changes. When
     /// data owned or referenced by the `TokenClerk` implementation is changed it
     /// may be necessary to explicitly update the view controller, e.g. using
-    /// [`ConfigCx::update`] or [`Action::UPDATE`].
+    /// [`ConfigCx::update`].
     ///
     /// This method may be called frequently and without changes to `data`.
     /// It is expected to be fast and non-blocking. Asynchronous updates to

@@ -208,13 +208,15 @@ mod ListView {
             Self::new(clerk, driver)
         }
     }
-    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, Direction> {
+    impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>, D: Directional + Eq> ListView<C, V, D> {
         /// Set the direction of contents
-        pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
-            if direction != self.direction {
-                self.direction = direction;
-                cx.action(self, Action::SET_RECT);
+        pub fn set_direction(&mut self, cx: &mut ConfigCx, direction: D) {
+            if direction == self.direction {
+                return;
             }
+
+            self.direction = direction;
+            cx.resize();
         }
     }
 
@@ -259,8 +261,8 @@ mod ListView {
         /// Access the data clerk (mutably)
         ///
         /// Changes to the clerk must be notified with an update to the
-        /// `GridView`, for example using [`ConfigCx::update`],
-        /// [`EventCx::update`] or [`Action::UPDATE`].
+        /// `GridView`, for example using [`ConfigCx::update`] or
+        /// [`EventCx::update`].
         pub fn clerk_mut(&mut self) -> &mut C {
             &mut self.clerk
         }

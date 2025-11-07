@@ -6,7 +6,7 @@
 //! Label widgets
 
 use super::adapt::MapAny;
-use crate::event::{ConfigCx, EventState};
+use crate::event::ConfigCx;
 use crate::geom::Rect;
 use crate::layout::AlignHints;
 use crate::text::format::FormattableText;
@@ -104,10 +104,9 @@ mod Label {
         }
 
         /// Set text in an existing `Label`
-        pub fn set_text(&mut self, cx: &mut EventState, text: T) {
+        pub fn set_text(&mut self, cx: &mut ConfigCx, text: T) {
             self.text.set_text(text);
-            let act = self.text.reprepare_action();
-            cx.action(self, act);
+            self.text.reprepare_action(cx);
         }
 
         /// Get text contents
@@ -139,9 +138,9 @@ mod Label {
 
     impl Label<String> {
         /// Set text contents from a string
-        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
+        pub fn set_string(&mut self, cx: &mut ConfigCx, string: String) {
             if self.text.set_string(string) {
-                cx.action(self.id(), self.text.reprepare_action());
+                self.text.reprepare_action(cx);
             }
         }
     }

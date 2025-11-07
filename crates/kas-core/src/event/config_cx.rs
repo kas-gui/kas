@@ -13,8 +13,7 @@ use std::any::TypeId;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
-#[allow(unused)] use crate::event::{Event, EventCx};
-#[allow(unused)] use crate::{Action, Events};
+#[allow(unused)] use crate::Events;
 
 /// Widget configuration and update context
 ///
@@ -105,9 +104,6 @@ impl<'a> ConfigCx<'a> {
     /// "The current widget" is inferred from the widget tree traversal through
     /// which the `EventCx` is made accessible. The resize is handled locally
     /// during the traversal unwind if possible.
-    ///
-    /// Alternatively, a redraw may
-    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
     #[inline]
     pub fn redraw(&mut self) {
         self.redraw = true;
@@ -118,9 +114,6 @@ impl<'a> ConfigCx<'a> {
     /// "The current widget" is inferred from the widget tree traversal through
     /// which the `EventCx` is made accessible. The resize is handled locally
     /// during the traversal unwind if possible.
-    ///
-    /// Alternatively, a whole-window resize (some time in the near future) may
-    /// be triggered by passing [`Action::RESIZE`] to [`EventState::action`].
     #[inline]
     pub fn resize(&mut self) {
         self.resize = ActionResize(true);

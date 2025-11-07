@@ -145,7 +145,6 @@ mod TabStack {
             }
 
             self.direction = direction;
-            // Note: most of the time Action::SET_RECT would be enough, but margins can be different
             cx.resize();
         }
 
@@ -333,7 +332,7 @@ impl<A> TabStack<A> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// If the new child replaces the active page then [`Action::RESIZE`] is triggered.
+    /// If the new child replaces the active page then a resize is triggered.
     pub fn replace(&mut self, cx: &mut ConfigCx, data: &A, index: usize, page: Page<A>) -> Page<A> {
         self.stack.replace(cx, data, index, page)
     }

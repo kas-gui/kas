@@ -21,7 +21,7 @@ pub use crate::layout::{Align, AlignHints, AlignPair, AxisInfo, SizeRules, Stret
 #[doc(no_inline)] pub use crate::theme::{DrawCx, SizeCx};
 #[doc(no_inline)] pub use crate::window::{Window, WindowId};
 #[doc(no_inline)]
-pub use crate::{Action, ActionMoved, ActionResize};
+pub use crate::{ActionMoved, ActionResize};
 #[doc(no_inline)]
 pub use crate::{ChildIndices, Node, Scrollable};
 #[doc(no_inline)]

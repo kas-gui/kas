@@ -186,8 +186,7 @@ mod Text {
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             if (self.text_fn)(cx, data, self.text.text_mut()) {
                 self.text.require_reprepare();
-                let action = self.text.reprepare_action();
-                cx.action(self, action);
+                self.text.reprepare_action(cx);
             }
         }
     }

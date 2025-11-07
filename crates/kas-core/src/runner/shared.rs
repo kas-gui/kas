@@ -6,7 +6,6 @@
 //! Shared state
 
 use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform};
-use crate::Id;
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
@@ -14,6 +13,7 @@ use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
+use crate::{ConfigAction, Id};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -145,6 +145,9 @@ where
 ///
 /// A `dyn RunnerT` object is used by [`crate::event::EventCx`].
 pub(crate) trait RunnerT {
+    /// Require configuration updates
+    fn config_update(&mut self, action: ConfigAction);
+
     /// Add a pop-up
     ///
     /// A pop-up may be presented as an overlay layer in the current window or
@@ -239,6 +242,10 @@ pub(crate) trait RunnerT {
 }
 
 impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared<Data, G, T> {
+    fn config_update(&mut self, action: ConfigAction) {
+        self.pending.push_back(Pending::ConfigUpdate(action));
+    }
+
     fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId {
         let id = self.window_id_factory.make_next();
         self.pending

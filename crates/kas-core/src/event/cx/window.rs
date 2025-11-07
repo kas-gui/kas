@@ -12,7 +12,7 @@ use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
-use crate::{Action, Id, Node};
+use crate::{Id, Node, WindowAction};
 use winit::window::ResizeDirection;
 
 impl EventState {
@@ -61,7 +61,7 @@ impl EventState {
         runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
         mut node: Node,
-    ) -> Action {
+    ) -> WindowAction {
         if !self.pending_send_targets.is_empty() {
             runner.set_send_targets(&mut self.pending_send_targets);
         }
@@ -113,7 +113,7 @@ impl EventState {
             // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
             if cx.action_moved.0 {
                 cx.action_moved.0 = false;
-                cx.action.insert(Action::REDRAW);
+                cx.action.insert(WindowAction::REDRAW);
             }
         });
 

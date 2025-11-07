@@ -99,7 +99,7 @@ mod WithLabel {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_label_text<T: Into<AccessString>>(&mut self, cx: &mut EventState, text: T) {
+        pub fn set_label_text<T: Into<AccessString>>(&mut self, cx: &mut ConfigCx, text: T) {
             self.label.set_text(cx, text.into());
         }
     }

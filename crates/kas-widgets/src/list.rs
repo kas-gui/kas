@@ -436,7 +436,6 @@ mod List {
             }
 
             self.direction = direction;
-            // Note: most of the time Action::SET_RECT would be enough, but margins can be different
             cx.resize();
         }
     }
@@ -504,8 +503,7 @@ mod List {
 
         /// Append a child widget
         ///
-        /// The new child is configured immediately. [`Action::RESIZE`] is
-        /// triggered.
+        /// The new child is configured immediately. Triggers a resize.
         ///
         /// Returns the new element's index.
         pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, mut widget: W) -> usize {
@@ -520,7 +518,7 @@ mod List {
 
         /// Remove the last child widget (if any) and return
         ///
-        /// Triggers [`Action::RESIZE`].
+        /// Triggers a resize.
         pub fn pop(&mut self, cx: &mut ConfigCx) -> Option<W> {
             let result = self.widgets.pop();
             if let Some(w) = result.as_ref() {
@@ -539,7 +537,7 @@ mod List {
         ///
         /// Panics if `index > len`.
         ///
-        /// The new child is configured immediately. Triggers [`Action::RESIZE`].
+        /// The new child is configured immediately. Triggers a resize.
         pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut widget: W) {
             for v in self.id_map.values_mut() {
                 if *v >= index {
@@ -557,7 +555,7 @@ mod List {
         ///
         /// Panics if `index` is out of bounds.
         ///
-        /// Triggers [`Action::RESIZE`].
+        /// Triggers a resize.
         pub fn remove(&mut self, cx: &mut ConfigCx, index: usize) -> W {
             let w = self.widgets.remove(index);
             if w.id_ref().is_valid() {
@@ -580,7 +578,7 @@ mod List {
         ///
         /// Does nothing if `self.len() < len`.
         ///
-        /// Triggers [`Action::RESIZE`].
+        /// Triggers a resize.
         pub fn truncate(&mut self, cx: &mut ConfigCx, len: usize) {
             if len < self.len() {
                 cx.resize();
@@ -602,7 +600,7 @@ mod List {
         ///
         /// Panics if `index` is out of bounds.
         ///
-        /// The new child is configured immediately. Triggers [`Action::RESIZE`].
+        /// The new child is configured immediately. Triggers a resize.
         pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut w: W) -> W {
             let id = self.make_child_id(index);
             cx.configure(w.as_node(data), id);
@@ -621,7 +619,7 @@ mod List {
 
         /// Append child widgets from an iterator
         ///
-        /// New children are configured immediately. Triggers [`Action::RESIZE`].
+        /// New children are configured immediately. Triggers a resize.
         pub fn extend<T>(&mut self, cx: &mut ConfigCx, data: &W::Data, iter: T)
         where
             T: IntoIterator<Item = W>,
@@ -641,7 +639,7 @@ mod List {
 
         /// Resize, using the given closure to construct new widgets
         ///
-        /// New children are configured immediately. Triggers [`Action::RESIZE`].
+        /// New children are configured immediately. Triggers a resize.
         pub fn resize_with<F>(&mut self, cx: &mut ConfigCx, data: &W::Data, len: usize, f: F)
         where
             F: Fn(usize) -> W,

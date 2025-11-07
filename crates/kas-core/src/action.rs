@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Action enum
+//! Action types
 
 #[allow(unused)]
 use crate::event::{ConfigCx, EventCx, EventState};
@@ -72,56 +72,47 @@ impl Deref for ActionResize {
 }
 
 bitflags! {
+    /// Action: configuration data updates must be applied
+    #[must_use]
+    #[derive(Copy, Clone, Debug, Default)]
+    pub struct ConfigAction: u32 {
+        /// Event configuration data must be updated
+        const EVENT = 1 << 0;
+        /// Theme configuration data must be updated
+        const THEME = 1 << 10;
+        /// The theme must be switched
+        const THEME_SWITCH = 1 << 12;
+    }
+}
+
+bitflags! {
     /// Action required after processing
     ///
     /// Some methods operate directly on a context ([`ConfigCx`] or [`EventCx`])
     /// while others don't reqiure a context but do require that some *action*
     /// is performed afterwards. This enum is used to convey that action.
     ///
-    /// An `Action` produced at run-time should be passed to a context, usually
-    /// via [`EventState::action`] (to associate the `Action` with a widget)
+    /// A `WindowAction` produced at run-time should be passed to a context, usually
+    /// via [`EventState::action`] (to associate the `WindowAction` with a widget)
     /// or [`EventState::window_action`] (if no particular widget is relevant).
     ///
-    /// An `Action` produced before starting the GUI may be discarded, for
+    /// A `WindowAction` produced before starting the GUI may be discarded, for
     /// example: `let _ = runner.config_mut().font.set_size(24.0);`.
     ///
-    /// Two `Action` values may be combined via bit-or (`a | b`).
+    /// Two `WindowAction` values may be combined via bit-or (`a | b`).
     #[must_use]
     #[derive(Copy, Clone, Debug, Default)]
-    pub struct Action: u32 {
+    pub struct WindowAction: u32 {
         /// The whole window requires redrawing
         ///
         /// See also [`EventState::redraw`].
         const REDRAW = 1 << 0;
-        /// Reset size of all widgets without recalculating requirements
-        const SET_RECT = 1 << 8;
         /// Resize all widgets in the window
+        ///
+        /// Solves for size rules, applies, and updates bounds on window size.
         ///
         /// See also [`EventState::resize`].
         const RESIZE = 1 << 9;
-        /// Update [`Dimensions`](crate::theme::dimensions::Dimensions) instances
-        /// and theme configuration.
-        ///
-        /// Implies [`Action::RESIZE`].
-        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-        const THEME_UPDATE = 1 << 10;
-        /// Reload per-window cache of event configuration
-        ///
-        /// Implies [`Action::UPDATE`].
-        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-        const EVENT_CONFIG = 1 << 11;
-        /// Switch themes, replacing theme-window instances
-        ///
-        /// Implies [`Action::RESIZE`].
-        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-        const THEME_SWITCH = 1 << 12;
-        /// Update all widgets
-        ///
-        /// This is a notification that input data has changed.
-        const UPDATE = 1 << 17;
         /// The current window should be closed
         ///
         /// See also [`EventState::exit`] which closes the UI (all windows).

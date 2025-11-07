@@ -108,8 +108,8 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         self.themes[self.active].new_window(config)
     }
 
-    fn update_window(&mut self, window: &mut Self::Window, config: &WindowConfig) {
-        self.themes[self.active].update_window(window, config);
+    fn update_window(&mut self, window: &mut Self::Window, config: &WindowConfig) -> bool {
+        self.themes[self.active].update_window(window, config)
     }
 
     fn draw<'a>(

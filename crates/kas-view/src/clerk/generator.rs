@@ -8,7 +8,7 @@
 use super::{AsyncClerk, Changes, Clerk, Key, Token, TokenChanges, TokenClerk};
 use kas::Id;
 use kas::event::ConfigCx;
-#[allow(unused)] use kas::{Action, Events, Widget};
+#[allow(unused)] use kas::{Events, Widget};
 use std::fmt::Debug;
 use std::ops::Range;
 
@@ -41,7 +41,7 @@ pub trait IndexedGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialE
     /// Note: this method is called automatically when input data changes. When
     /// data owned or referenced by the `IndexedGenerator` implementation is
     /// changed it may be necessary to explicitly update the view controller,
-    /// e.g. using [`ConfigCx::update`] or [`Action::UPDATE`].
+    /// e.g. using [`ConfigCx::update`].
     ///
     /// This method may be called frequently and without changes to `data`.
     fn update(&mut self, data: &Self::Data) -> GeneratorChanges<Index>;
@@ -71,7 +71,7 @@ pub trait KeyedGenerator<Index>: Clerk<Index, Item: Clone + Default + PartialEq>
     /// Note: this method is called automatically when input data changes. When
     /// data owned or referenced by the `KeyedGenerator` implementation is
     /// changed it may be necessary to explicitly update the view controller,
-    /// e.g. using [`ConfigCx::update`] or [`Action::UPDATE`].
+    /// e.g. using [`ConfigCx::update`].
     ///
     /// This method may be called frequently and without changes to `data`.
     fn update(&mut self, data: &Self::Data) -> GeneratorChanges<Index>;

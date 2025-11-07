@@ -5,7 +5,7 @@
 
 //! Theme configuration
 
-use crate::Action;
+use crate::ConfigAction;
 use crate::theme::ColorsSrgb;
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -66,7 +66,7 @@ impl Default for ThemeConfig {
 }
 
 impl ThemeConfig {
-    pub(super) fn change_config(&mut self, msg: ThemeConfigMsg) -> Action {
+    pub(super) fn change_config(&mut self, msg: ThemeConfigMsg) -> ConfigAction {
         match msg {
             ThemeConfigMsg::SetActiveTheme(theme) => self.set_active_theme(theme),
             ThemeConfigMsg::SetActiveScheme(scheme) => self.set_active_scheme(scheme),
@@ -74,7 +74,7 @@ impl ThemeConfig {
             ThemeConfigMsg::RemoveScheme(scheme) => self.remove_scheme(&scheme),
             ThemeConfigMsg::FadeDurationMs(dur) => {
                 self.transition_fade_ms = dur;
-                Action::empty()
+                ConfigAction::THEME
             }
         }
     }
@@ -85,13 +85,13 @@ impl ThemeConfig {
     ///
     /// Only does anything if `MultiTheme` (or another multiplexer) is in use
     /// and knows this theme.
-    pub fn set_active_theme(&mut self, theme: impl ToString) -> Action {
+    pub fn set_active_theme(&mut self, theme: impl ToString) -> ConfigAction {
         let theme = theme.to_string();
         if self.active_theme == theme {
-            Action::empty()
+            ConfigAction::empty()
         } else {
             self.active_theme = theme;
-            Action::THEME_SWITCH
+            ConfigAction::THEME_SWITCH
         }
     }
 
@@ -106,13 +106,13 @@ impl ThemeConfig {
     /// Set the active colour scheme (by name)
     ///
     /// Does nothing if the named scheme is not found.
-    pub fn set_active_scheme(&mut self, scheme: impl ToString) -> Action {
+    pub fn set_active_scheme(&mut self, scheme: impl ToString) -> ConfigAction {
         let scheme = scheme.to_string();
         if self.color_schemes.keys().any(|k| *k == scheme) {
             self.active_scheme = scheme.to_string();
-            Action::THEME_UPDATE
+            ConfigAction::THEME
         } else {
-            Action::empty()
+            ConfigAction::empty()
         }
     }
 
@@ -137,18 +137,18 @@ impl ThemeConfig {
     }
 
     /// Add or update a colour scheme
-    pub fn add_scheme(&mut self, scheme: impl ToString, colors: ColorsSrgb) -> Action {
+    pub fn add_scheme(&mut self, scheme: impl ToString, colors: ColorsSrgb) -> ConfigAction {
         self.color_schemes.insert(scheme.to_string(), colors);
-        Action::empty()
+        ConfigAction::empty()
     }
 
     /// Remove a colour scheme
-    pub fn remove_scheme(&mut self, scheme: &str) -> Action {
+    pub fn remove_scheme(&mut self, scheme: &str) -> ConfigAction {
         self.color_schemes.remove(scheme);
         if scheme == self.active_scheme {
-            Action::THEME_UPDATE
+            ConfigAction::THEME
         } else {
-            Action::empty()
+            ConfigAction::empty()
         }
     }
 

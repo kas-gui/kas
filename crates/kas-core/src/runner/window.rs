@@ -18,7 +18,7 @@ use crate::layout::SolveCache;
 use crate::messages::Erased;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
 use crate::window::{BoxedWindow, Decorations, PopupDescriptor, WindowId, WindowWidget};
-use crate::{Action, Id, Layout, Tile, Widget, autoimpl};
+use crate::{ConfigAction, Id, Layout, Tile, Widget, WindowAction, autoimpl};
 #[cfg(windows_platform)]
 use raw_window_handle::HasWindowHandle;
 use std::cell::RefCell;
@@ -260,7 +260,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             need_redraw: true,
         });
 
-        self.apply_size(data, true);
+        self.apply_size(data, true, false);
 
         log::trace!(target: "kas_perf::wgpu::window", "resume: {}µs", time.elapsed().as_micros());
         Ok(winit_id)
@@ -278,7 +278,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 .flush_pending(shared, window, self.widget.as_node(data));
 
             self.window = None;
-            !action.contains(Action::CLOSE)
+            !action.contains(WindowAction::CLOSE)
         } else {
             true
         }
@@ -307,7 +307,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                     .surface
                     .configure(&mut shared.draw.as_mut().unwrap().draw, size.cast())
                 {
-                    self.apply_size(data, false);
+                    self.apply_size(data, false, false);
                 }
                 false
             }
@@ -348,7 +348,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 };
 
                 if apply {
-                    self.apply_size(data, false);
+                    self.apply_size(data, false, false);
                 }
 
                 false
@@ -368,19 +368,19 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
-    ) -> (Action, Option<Instant>) {
+    ) -> (WindowAction, Option<Instant>) {
         let Some(ref window) = self.window else {
-            return (Action::empty(), None);
+            return (WindowAction::empty(), None);
         };
 
         let action = self
             .ev_state
             .flush_pending(shared, window, self.widget.as_node(data));
 
-        if action.contains(Action::CLOSE) {
+        if action.contains(WindowAction::CLOSE) {
             return (action, None);
         }
-        self.handle_action(shared, data, action);
+        self.handle_action(data, action);
 
         let window = self.window.as_mut().unwrap();
         let resume = match (
@@ -408,64 +408,48 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub(super) fn handle_action(
-        &mut self,
-        shared: &mut Shared<A, G, T>,
-        data: &A,
-        mut action: Action,
-    ) {
-        if action.contains(Action::EVENT_CONFIG)
-            && let Some(ref mut window) = self.window
-        {
-            self.ev_state.update_config(window.scale_factor() as f32);
-            action |= Action::UPDATE;
-        }
-        if action.contains(Action::UPDATE) {
-            self.update(data);
-        }
-        if action.contains(Action::THEME_SWITCH) {
-            if let Some(ref mut window) = self.window {
-                let config = self.ev_state.config();
-                window.theme_window = shared.theme.new_window(config);
-            }
-            action |= Action::RESIZE;
-        } else if action.contains(Action::THEME_UPDATE) {
-            if let Some(ref mut window) = self.window {
-                let config = self.ev_state.config();
-                shared.theme.update_window(&mut window.theme_window, config);
-            }
-            action |= Action::RESIZE;
-        }
-        if action.contains(Action::RESIZE) {
-            if let Some(ref mut window) = self.window {
-                let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
-                window
-                    .solve_cache
-                    .find_constraints(self.widget.as_node(data), &mut cx);
-                let (restrict_min, restrict_max) = self.widget.properties().restrictions();
-                window.set_min_inner_size(restrict_min.then(|| {
-                    window
-                        .solve_cache
-                        .min(true)
-                        .as_physical()
-                        .to_logical::<f64>(window.scale_factor())
-                }));
-                window.set_max_inner_size(restrict_max.then(|| {
-                    window
-                        .solve_cache
-                        .ideal(true)
-                        .as_physical()
-                        .to_logical::<f64>(window.scale_factor())
-                }));
-            }
-            self.apply_size(data, false);
-        } else if action.contains(Action::SET_RECT) {
-            self.apply_size(data, false);
+    pub(super) fn handle_action(&mut self, data: &A, action: WindowAction) {
+        if action.contains(WindowAction::RESIZE) {
+            self.apply_size(data, false, true);
         }
         if !action.is_empty()
             && let Some(ref mut window) = self.window
         {
             window.need_redraw = true;
+        }
+    }
+
+    /// Handle a configuration update
+    pub(super) fn config_update(
+        &mut self,
+        shared: &mut Shared<A, G, T>,
+        data: &A,
+        action: ConfigAction,
+    ) {
+        if action.contains(ConfigAction::EVENT)
+            && let Some(ref mut window) = self.window
+        {
+            self.ev_state.update_config(window.scale_factor() as f32);
+        }
+
+        let resize = if action.contains(ConfigAction::THEME_SWITCH) {
+            if let Some(ref mut window) = self.window {
+                let config = self.ev_state.config();
+                window.theme_window = shared.theme.new_window(config);
+            }
+            true
+        } else if action.contains(ConfigAction::THEME)
+            && let Some(ref mut window) = self.window
+        {
+            let config = self.ev_state.config();
+            shared.theme.update_window(&mut window.theme_window, config)
+        } else {
+            false
+        };
+
+        self.reconfigure(data);
+        if resize {
+            self.apply_size(data, false, true);
         }
     }
 
@@ -558,7 +542,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 
-    fn update(&mut self, data: &A) {
+    pub(super) fn update(&mut self, data: &A) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;
@@ -568,7 +552,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut cx = ConfigCx::new(&size, &mut self.ev_state);
         cx.update(self.widget.as_node(data));
         if *cx.resize {
-            self.ev_state.action |= Action::RESIZE;
+            self.ev_state.action |= WindowAction::RESIZE;
         } else if cx.redraw {
             window.request_redraw();
         }
@@ -576,7 +560,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
     }
 
-    fn apply_size(&mut self, data: &A, first: bool) {
+    /// Solve for size requirements, apply, then update window size bounds
+    fn apply_size(&mut self, data: &A, first: bool, resize: bool) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;
@@ -586,6 +571,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let solve_cache = &mut window.solve_cache;
         let mut cx = SizeCx::new(&mut self.ev_state, window.theme_window.size());
+        if resize {
+            solve_cache.find_constraints(self.widget.as_node(data), &mut cx);
+        }
         solve_cache.apply_rect(self.widget.as_node(data), &mut cx, rect, true);
         if first {
             solve_cache.print_widget_heirarchy(self.widget.as_tile());
@@ -662,7 +650,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let time2 = Instant::now();
 
         window.need_redraw = window.surface.common_mut().immediate_redraw();
-        self.ev_state.action -= Action::REDRAW;
+        self.ev_state.action -= WindowAction::REDRAW;
         // NOTE: we used to return Err(()) if !action.is_empty() here, e.g. if a
         // widget requested a resize during draw. Likely it's better not to do
         // this even if the frame is imperfect.

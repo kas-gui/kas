@@ -32,7 +32,9 @@ pub trait ThemeDst<DS: DrawSharedImpl> {
     /// Update a window created by [`Theme::new_window`]
     ///
     /// See also [`Theme::update_window`].
-    fn update_window(&mut self, window: &mut dyn Window, config: &WindowConfig);
+    ///
+    /// Returns `true` when a resize is required based on changes to the scale factor or font size.
+    fn update_window(&mut self, window: &mut dyn Window, config: &WindowConfig) -> bool;
 
     fn draw<'a>(
         &'a self,
@@ -57,9 +59,9 @@ impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
         Box::new(window)
     }
 
-    fn update_window(&mut self, window: &mut dyn Window, config: &WindowConfig) {
+    fn update_window(&mut self, window: &mut dyn Window, config: &WindowConfig) -> bool {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        self.update_window(window, config);
+        self.update_window(window, config)
     }
 
     fn draw<'b>(
