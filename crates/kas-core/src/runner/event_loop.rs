@@ -196,6 +196,11 @@ where
         let mut close_all = false;
         while let Some(pending) = self.shared.pending.pop_front() {
             match pending {
+                Pending::Update => {
+                    for (_, window) in self.windows.iter_mut() {
+                        window.update(&self.data);
+                    }
+                }
                 Pending::AddPopup(parent_id, id, popup) => {
                     log::debug!("Pending: adding overlay");
                     // TODO: support pop-ups as a special window, where available
@@ -247,11 +252,6 @@ where
                     }
                     if let Some(window) = self.windows.get_mut(&win_id) {
                         window.send_close(target);
-                    }
-                }
-                Pending::Update => {
-                    for (_, window) in self.windows.iter_mut() {
-                        window.handle_action(&mut self.shared, &self.data, Action::UPDATE);
                     }
                 }
                 Pending::Exit => close_all = true,

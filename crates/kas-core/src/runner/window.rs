@@ -535,7 +535,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 
-    fn update(&mut self, data: &A) {
+    pub(super) fn update(&mut self, data: &A) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;
