@@ -147,23 +147,16 @@ impl WidgetStatus {
     /// Configure
     ///
     /// Requires nothing. Re-configuration requires re-sizing.
-    pub fn configure(&mut self, _id: &Id) {
+    #[inline]
+    pub fn set_configured(&mut self) {
         // re-configure does not require repeating other actions
         *self = WidgetStatus::Configured;
     }
 
-    /// Update
-    ///
-    /// Requires configure. Does not affect status (note that widgets are always
-    /// updated immediately after configure, hence `WidgetStatus::Configured`
-    /// implies that `update` has been called or is just about to be called).
-    pub fn update(&self, id: &Id) {
+    /// Require configured status
+    #[inline]
+    pub fn require_configured(self, id: &Id) {
         self.require(id, WidgetStatus::Configured);
-
-        // Update-after-configure is already guaranteed (see impls module).
-        // NOTE: Update-after-data-change should be required but is hard to
-        // detect; we could store a data hash but draw does not receive data.
-        // As such we don't bother recording this operation.
     }
 
     /// Size rules
@@ -182,16 +175,23 @@ impl WidgetStatus {
         }
     }
 
+    /// Require that size rules have been determined for both axes
+    #[inline]
+    pub fn require_size_determined(&mut self, id: &Id) {
+        self.require(id, WidgetStatus::SizeRulesY);
+    }
+
     /// Set rect
     ///
     /// Requires calling `size_rules` for each axis. Re-calling `set_rect` does
     /// not require additional actions.
-    pub fn set_rect(&mut self, id: &Id) {
-        self.require(id, WidgetStatus::SizeRulesY);
+    #[inline]
+    pub fn set_sized(&mut self) {
         *self = WidgetStatus::SetRect;
     }
 
     /// Require that `set_rect` has been called
+    #[inline]
     pub fn require_rect(self, id: &Id) {
         self.require(id, WidgetStatus::SetRect);
     }

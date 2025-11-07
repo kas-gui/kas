@@ -546,9 +546,9 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 rect: ::kas::geom::Rect,
                 hints: ::kas::layout::AlignHints,
             ) {
-                #core_path.status.set_rect(&#core_path._id);
-
+                #core_path.status.require_size_determined(&#core_path._id);
                 ::kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
+                #core_path.status.set_sized();
             }
         };
 
@@ -587,9 +587,9 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 rect: ::kas::geom::Rect,
                 _: ::kas::layout::AlignHints,
             ) {
-                #core_path.status.set_rect(&#core_path._id);
-
+                #core_path.status.require_size_determined(&#core_path._id);
                 self.#core._rect = rect;
+                #core_path.status.set_sized();
             }
         };
 
@@ -639,7 +639,10 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
                 if let Some(ref core) = core_data {
                     f.block.stmts.insert(0, parse_quote! {
-                        self.#core.status.set_rect(&self.#core._id);
+                        self.#core.status.require_size_determined(&self.#core._id);
+                    });
+                    f.block.stmts.push(parse_quote! {
+                        self.#core.status.set_sized();
                     });
                 }
             }
@@ -979,9 +982,8 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             debug_assert!(id.is_valid(), "Widget::_configure called with invalid id!");
 
             #core_path._id = id;
-            #core_path.status.configure(&#core_path._id);
-
-            ::kas::impls::_configure(self, cx, data)
+            ::kas::impls::_configure(self, cx, data);
+            #core_path.status.set_configured();
         }
 
         fn _update(
@@ -989,9 +991,8 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
         ) {
-            #core_path.status.update(&#core_path._id);
-
-            ::kas::impls::_update(self, cx, data)
+            #core_path.status.require_configured(&#core_path._id);
+            ::kas::impls::_update(self, cx, data);
         }
 
         fn _send(
