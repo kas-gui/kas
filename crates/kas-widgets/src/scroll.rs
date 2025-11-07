@@ -24,6 +24,8 @@ mod ScrollRegion {
     ///
     /// ### Scroll bars
     ///
+    /// Scroll bars are optional; by default they are auto-enabled as required.
+    ///
     /// Scroll bar positioning does not respect the inner widget's margins, since
     /// the result looks poor when content is scrolled. Instead the content should
     /// force internal margins by wrapping contents with a (zero-sized) frame.
@@ -44,7 +46,7 @@ mod ScrollRegion {
         frame_size: Size,
         hints: AlignHints,
         scroll: ScrollComponent,
-        mode: ScrollBarMode,
+        bar_mode: ScrollBarMode,
         show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
         #[widget(&())]
         horiz_bar: ScrollBar<kas::dir::Right>,
@@ -66,7 +68,7 @@ mod ScrollRegion {
                 frame_size: Default::default(),
                 hints: Default::default(),
                 scroll: Default::default(),
-                mode: ScrollBarMode::Auto,
+                bar_mode: ScrollBarMode::Auto,
                 show_bars: (false, false),
                 horiz_bar: ScrollBar::new(),
                 vert_bar: ScrollBar::new(),
@@ -80,7 +82,7 @@ mod ScrollRegion {
         where
             Self: Sized,
         {
-            self.mode = ScrollBarMode::Fixed(horiz, vert);
+            self.bar_mode = ScrollBarMode::Fixed(horiz, vert);
             self.horiz_bar.set_invisible(false);
             self.vert_bar.set_invisible(false);
             self.show_bars = (horiz, vert);
@@ -96,7 +98,7 @@ mod ScrollRegion {
         where
             Self: Sized,
         {
-            self.mode = ScrollBarMode::Invisible(horiz, vert);
+            self.bar_mode = ScrollBarMode::Invisible(horiz, vert);
             self.horiz_bar.set_invisible(true);
             self.vert_bar.set_invisible(true);
             self.show_bars = (horiz, vert);
@@ -105,14 +107,14 @@ mod ScrollRegion {
 
         /// Get current mode of scroll bars
         #[inline]
-        pub fn scroll_bar_mode(&self) -> ScrollBarMode {
-            self.mode
+        pub fn bar_mode(&self) -> ScrollBarMode {
+            self.bar_mode
         }
 
         /// Set scroll bar mode
-        pub fn set_scroll_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
-            if mode != self.mode {
-                self.mode = mode;
+        pub fn set_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
+            if mode != self.bar_mode {
+                self.bar_mode = mode;
                 let (invis_horiz, invis_vert) = match mode {
                     ScrollBarMode::Auto => (false, false),
                     ScrollBarMode::Fixed(horiz, vert) => {
@@ -128,6 +130,15 @@ mod ScrollRegion {
                 self.vert_bar.set_invisible(invis_vert);
                 cx.resize();
             }
+        }
+
+        /// Set scroll bar mode (inline)
+        ///
+        /// This method should only be used during construction.
+        #[inline]
+        pub fn with_bar_mode(mut self, mode: ScrollBarMode) -> Self {
+            self.bar_mode = mode;
+            self
         }
 
         /// Access inner widget directly
@@ -189,7 +200,7 @@ mod ScrollRegion {
 
             let vert_rules = self.vert_bar.size_rules(cx, axis);
             let horiz_rules = self.horiz_bar.size_rules(cx, axis);
-            let (use_horiz, use_vert) = match self.mode {
+            let (use_horiz, use_vert) = match self.bar_mode {
                 ScrollBarMode::Fixed(horiz, vert) => (horiz, vert),
                 ScrollBarMode::Auto => (true, true),
                 ScrollBarMode::Invisible(_, _) => (false, false),
@@ -209,7 +220,7 @@ mod ScrollRegion {
             let mut child_size = rect.size;
 
             let bar_width = cx.scroll_bar_width();
-            if self.mode == ScrollBarMode::Auto {
+            if self.bar_mode == ScrollBarMode::Auto {
                 let max_offset = self.max_scroll_offset();
                 self.show_bars = (max_offset.0 > 0, max_offset.1 > 0);
             }
@@ -264,7 +275,7 @@ mod ScrollRegion {
             // We use a new pass to draw scroll bars over inner content, but
             // only when required to minimize cost:
             let ev_state = draw.ev_state();
-            if matches!(self.mode, ScrollBarMode::Invisible(_, _))
+            if matches!(self.bar_mode, ScrollBarMode::Invisible(_, _))
                 && (self.horiz_bar.currently_visible(ev_state)
                     || self.vert_bar.currently_visible(ev_state))
             {
