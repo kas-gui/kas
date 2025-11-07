@@ -296,8 +296,12 @@ mod ScrollRegion {
         }
 
         #[inline]
-        fn translation(&self, _: usize) -> Offset {
-            self.scroll_offset()
+        fn translation(&self, index: usize) -> Offset {
+            if index == widget_index![self.inner] {
+                self.scroll_offset()
+            } else {
+                Offset::ZERO
+            }
         }
     }
 
