@@ -6,7 +6,7 @@
 //! Collection macro
 
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
+use quote::{ToTokens, TokenStreamExt, quote};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -160,9 +160,8 @@ impl Item {
     fn parse(input: ParseStream, names: &mut NameGenerator) -> Result<Self> {
         if input.peek(LitStr) {
             let text: LitStr = input.parse()?;
-            let span = text.span();
             let mut ty = quote! { ::kas::widgets::Label<&'static str> };
-            let mut def = quote_spanned! {span=> ::kas::widgets::Label::new(#text) };
+            let mut def = quote! { ::kas::widgets::Label::new(#text) };
 
             if input.peek(Token![.]) && input.peek2(kw::align) {
                 let _: Token![.] = input.parse()?;
@@ -346,7 +345,7 @@ impl Collection {
                     let span = expr.span();
                     let ty = Ident::new(&format!("_W{index}"), span);
                     stor_ty.append_all(quote! { #stor: #ty, });
-                    stor_def.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
+                    stor_def.append_all(quote! { #stor: Box::new(#expr), });
                     ty_generics.push(ty);
 
                     stor.to_token_stream()

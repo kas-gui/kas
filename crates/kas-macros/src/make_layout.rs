@@ -8,7 +8,7 @@ use crate::widget_args::{Child, ChildIdent};
 use impl_tools_lib::scope::Scope;
 use proc_macro_error2::emit_error;
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
+use quote::{ToTokens, TokenStreamExt, quote};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{Expr, Ident, LitStr, Member, Meta, Token};
@@ -621,10 +621,9 @@ impl Layout {
                 fields
                     .ty_toks
                     .append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = ()>>, });
-                let span = expr.span();
                 fields
                     .def_toks
-                    .append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
+                    .append_all(quote! { #ident: Box::new(#expr), });
             }
             Layout::Frame(stor, layout, _, _) => {
                 fields
@@ -670,13 +669,12 @@ impl Layout {
             }
             Layout::Label(ident, text) => {
                 children.push(Child::new_core(ident.clone().into()));
-                let span = text.span();
                 fields
                     .ty_toks
                     .append_all(quote! { #ident: ::kas::widgets::Label<&'static str>, });
-                fields.def_toks.append_all(
-                    quote_spanned! {span=> #ident: ::kas::widgets::Label::new(#text), },
-                );
+                fields
+                    .def_toks
+                    .append_all(quote! { #ident: ::kas::widgets::Label::new(#text), });
             }
         }
     }
