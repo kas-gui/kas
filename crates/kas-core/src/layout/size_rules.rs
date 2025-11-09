@@ -453,15 +453,12 @@ impl SizeRules {
                     // If highest stretch is None, do not expand beyond ideal.
                     sum = 0;
                     let highest_stretch = total.stretch;
-                    if highest_stretch == Stretch::None {
-                        return;
-                    }
                     let mut targets = Targets::new();
                     let mut over = 0;
                     for i in 0..N {
                         out[i] = out[i].max(rules[i].b);
                         sum += out[i];
-                        if rules[i].stretch == highest_stretch {
+                        if highest_stretch > Stretch::None && rules[i].stretch == highest_stretch {
                             over += out[i] - rules[i].b;
                             targets.push(i.cast());
                         }
