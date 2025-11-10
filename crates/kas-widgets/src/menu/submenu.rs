@@ -134,6 +134,8 @@ mod SubMenu {
     }
 
     impl Events for Self {
+        const REDRAW_ON_MOUSE_OVER: bool = true;
+
         type Data = Data;
 
         fn probe(&self, _: Coord) -> Id {

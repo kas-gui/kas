@@ -348,6 +348,8 @@ impl ColorsLinear {
     pub fn menu_entry(&self, state: InputState) -> Option<Rgba> {
         if state.depress() || state.nav_focus() {
             Some(self.accent_soft.multiply(MULT_DEPRESS))
+        } else if state.under_mouse() {
+            Some(self.accent_soft)
         } else {
             None
         }
