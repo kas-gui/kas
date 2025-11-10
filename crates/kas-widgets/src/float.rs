@@ -26,7 +26,7 @@ use kas::prelude::*;
 /// In this case, _Item_ may be:
 ///
 /// -   A string literal (interpreted as a label widget), optionally followed by
-///     an [`align`] or [`pack`] method call
+///     any of the following method calls: [`align`], [`pack`], [`with_stretch`]
 /// -   An expression yielding an object implementing `Widget<Data = _A>`
 ///
 /// In case all _Item_ instances are a string literal, the data type of the
@@ -37,7 +37,8 @@ use kas::prelude::*;
 ///
 /// When called within [widget layout syntax], `float!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
-/// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
+/// methods [`map_any`], [`align`], [`pack`] and [`with_stretch`] are supported via
+/// emulation.
 ///
 /// In this case, _Item_ is evaluated using [widget layout syntax]. This is
 /// broadly similar to the above with a couple of exceptions:
@@ -66,6 +67,7 @@ use kas::prelude::*;
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
+/// [`with_stretch`]: crate::AdaptWidget::with_stretch
 #[macro_export]
 macro_rules! float {
     ( $( $ee:expr ),* ) => {

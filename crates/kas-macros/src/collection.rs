@@ -18,6 +18,7 @@ use syn::{braced, bracketed, parenthesized};
 mod kw {
     syn::custom_keyword!(align);
     syn::custom_keyword!(pack);
+    syn::custom_keyword!(with_stretch);
     syn::custom_keyword!(aligned_column);
     syn::custom_keyword!(aligned_row);
     syn::custom_keyword!(column);
@@ -183,6 +184,18 @@ impl Item {
 
                 ty = quote! { ::kas::widgets::adapt::Pack<#ty> };
                 def = quote! { ::kas::widgets::adapt::Pack::new(#def, #hints) };
+            } else if input.peek(Token![.]) && input.peek2(kw::with_stretch) {
+                let _: Token![.] = input.parse()?;
+                let _: kw::with_stretch = input.parse()?;
+
+                let inner;
+                let _ = parenthesized!(inner in input);
+                let horiz: Expr = inner.parse()?;
+                let _: Token![,] = input.parse()?;
+                let vert: Expr = inner.parse()?;
+
+                ty = quote! { ::kas::widgets::adapt::WithStretch<#ty> };
+                def = quote! { ::kas::widgets::adapt::WithStretch::new(#def, #horiz, #vert) };
             }
 
             Ok(Item::Label(names.next(), ty, def))

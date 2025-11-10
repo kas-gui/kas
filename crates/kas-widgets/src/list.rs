@@ -32,7 +32,7 @@ use std::ops::{Index, IndexMut};
 /// In this case, _Item_ may be:
 ///
 /// -   A string literal (interpreted as a label widget), optionally followed by
-///     an [`align`] or [`pack`] method call
+///     any of the following method calls: [`align`], [`pack`], [`with_stretch`]
 /// -   An expression yielding an object implementing `Widget<Data = _A>`
 ///
 /// In case all _Item_ instances are a string literal, the data type of the
@@ -43,7 +43,8 @@ use std::ops::{Index, IndexMut};
 ///
 /// When called within [widget layout syntax], `row!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
-/// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
+/// methods [`map_any`], [`align`], [`pack`] and [`with_stretch`] are supported via
+/// emulation.
 ///
 /// In this case, _Item_ is evaluated using [widget layout syntax]. This is
 /// broadly similar to the above with a couple of exceptions:
@@ -61,6 +62,7 @@ use std::ops::{Index, IndexMut};
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
+/// [`with_stretch`]: crate::AdaptWidget::with_stretch
 #[macro_export]
 macro_rules! row {
     ( $( $ee:expr ),* ) => {
@@ -89,7 +91,7 @@ macro_rules! row {
 /// In this case, _Item_ may be:
 ///
 /// -   A string literal (interpreted as a label widget), optionally followed by
-///     an [`align`] or [`pack`] method call
+///     any of the following method calls: [`align`], [`pack`], [`with_stretch`]
 /// -   An expression yielding an object implementing `Widget<Data = _A>`
 ///
 /// In case all _Item_ instances are a string literal, the data type of the
@@ -100,7 +102,8 @@ macro_rules! row {
 ///
 /// When called within [widget layout syntax], `column!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
-/// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
+/// methods [`map_any`], [`align`], [`pack`] and [`with_stretch`] are supported via
+/// emulation.
 ///
 /// In this case, _Item_ is evaluated using [widget layout syntax]. This is
 /// broadly similar to the above with a couple of exceptions:
@@ -121,6 +124,7 @@ macro_rules! row {
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
+/// [`with_stretch`]: crate::AdaptWidget::with_stretch
 #[macro_export]
 macro_rules! column {
     ( $( $ee:expr ),* ) => {
@@ -149,7 +153,7 @@ macro_rules! column {
 /// In this case, _Item_ may be:
 ///
 /// -   A string literal (interpreted as a label widget), optionally followed by
-///     an [`align`] or [`pack`] method call
+///     any of the following method calls: [`align`], [`pack`], [`with_stretch`]
 /// -   An expression yielding an object implementing `Widget<Data = _A>`
 ///
 /// In case all _Item_ instances are a string literal, the data type of the
@@ -160,7 +164,7 @@ macro_rules! column {
 ///
 /// When called within [widget layout syntax], `list!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
-/// methods [`map_any`], [`align`], [`pack`] and [`with_direction`] are
+/// methods [`map_any`], [`align`], [`pack`], [`with_stretch`] and [`with_direction`] are
 /// supported via emulation. In this case, calling [`with_direction`] is
 /// required. Note that the argument passed to [`with_direction`] is expanded
 /// at the use site, so for example `.with_direction(self.dir)` will read
@@ -183,6 +187,7 @@ macro_rules! column {
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
+/// [`with_stretch`]: crate::AdaptWidget::with_stretch
 /// [`with_direction`]: List::with_direction
 #[macro_export]
 macro_rules! list {

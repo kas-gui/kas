@@ -11,7 +11,7 @@ use crate::{ChildIndices, HasId, Id, Layout, Role, RoleCx, WidgetStatus};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, RoleCxExt, Widget};
-#[allow(unused)] use crate::layout::{self, AlignPair};
+#[allow(unused)] use crate::layout::{self};
 #[allow(unused)] use crate::theme::DrawCx;
 #[allow(unused)] use kas_macros as macros;
 
