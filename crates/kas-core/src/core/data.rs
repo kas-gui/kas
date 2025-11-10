@@ -146,11 +146,11 @@ impl WidgetStatus {
 
     /// Configure
     ///
-    /// Requires nothing. Re-configuration requires re-sizing.
+    /// Requires no prior state. Does not imply further actions.
     #[inline]
     pub fn set_configured(&mut self) {
         // re-configure does not require repeating other actions
-        *self = WidgetStatus::Configured;
+        *self = (*self).max(WidgetStatus::Configured);
     }
 
     /// Require configured status
