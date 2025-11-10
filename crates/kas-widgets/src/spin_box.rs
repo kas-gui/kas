@@ -206,6 +206,7 @@ mod SpinBox {
     #[layout(
         frame!(row![self.edit, self.unit, column! [self.b_up, self.b_down]])
             .with_style(FrameStyle::EditBox)
+            .with_stretch(None, Stretch::Filler)
     )]
     pub struct SpinBox<A, T: SpinValue> {
         core: widget_core!(),

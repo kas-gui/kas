@@ -22,7 +22,7 @@ pub fn _configure<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) 
         {
             cx.configure(node, id);
 
-            // NOTE: we don't handle cx.resize here since we assume that sizing will happen later.
+            // NOTE: we don't handle cx.resize here: resizes are not immediate during configuration
         }
     }
     widget.post_configure(cx);

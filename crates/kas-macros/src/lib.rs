@@ -594,7 +594,7 @@ pub fn widget_set_rect(input: TokenStream) -> TokenStream {
 /// In this case, _Item_ may be:
 ///
 /// -   A string literal (interpreted as a label widget), optionally followed by
-///     an [`align`] or [`pack`] method call
+///     any of the following method calls: [`align`], [`pack`], [`with_stretch`]
 /// -   An expression yielding an object implementing `Widget<Data = _A>`
 ///
 /// In case all _Item_ instances are a string literal, the data type of the
@@ -606,6 +606,7 @@ pub fn widget_set_rect(input: TokenStream) -> TokenStream {
 /// [`kas::Collection`]: https://docs.rs/kas/latest/kas/trait.Collection.html
 /// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
 /// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
+/// [`with_stretch`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_stretch
 #[proc_macro_error]
 #[proc_macro]
 pub fn collection(input: TokenStream) -> TokenStream {
@@ -638,7 +639,7 @@ pub fn collection(input: TokenStream) -> TokenStream {
 /// _Item_ may be:
 ///
 /// -   A string literal (interpreted as a label widget), optionally followed by
-///     an [`align`] or [`pack`] method call
+///     any of the following method calls: [`align`], [`pack`], [`with_stretch`]
 /// -   An expression yielding an object implementing `Widget<Data = _A>`
 ///
 /// In case all _Item_ instances are a string literal, the data type of the
@@ -650,6 +651,7 @@ pub fn collection(input: TokenStream) -> TokenStream {
 /// [`kas::CellCollection`]: https://docs.rs/kas/latest/kas/trait.CellCollection.html
 /// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
 /// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
+/// [`with_stretch`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_stretch
 #[proc_macro_error]
 #[proc_macro]
 pub fn cell_collection(input: TokenStream) -> TokenStream {

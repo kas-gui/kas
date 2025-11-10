@@ -21,8 +21,8 @@ use kas::theme::{Background, FrameStyle};
 ///
 /// When called within [widget layout syntax], `frame!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
-/// methods [`map_any`], [`align`], [`pack`] and [`with_style`] are supported
-/// via emulation.
+/// methods [`map_any`], [`align`], [`pack`], [`with_stretch`] and [`with_style`] are
+/// supported via emulation.
 ///
 /// # Example
 ///
@@ -34,6 +34,7 @@ use kas::theme::{Background, FrameStyle};
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
+/// [`with_stretch`]: crate::AdaptWidget::with_stretch
 /// [`with_style`]: Frame::with_style
 #[macro_export]
 macro_rules! frame {

@@ -55,6 +55,20 @@ pub trait AdaptWidget: Widget + Sized {
         Pack::new(self, hints)
     }
 
+    /// Adjust stretch policy
+    ///
+    /// Replaces the stretch policy of the inner widget.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn with_stretch(
+        self,
+        horiz: impl Into<Option<Stretch>>,
+        vert: impl Into<Option<Stretch>>,
+    ) -> WithStretch<Self> {
+        WithStretch::new(self, horiz, vert)
+    }
+
     /// Specify margins
     ///
     /// This replaces a widget's margins.

@@ -44,7 +44,7 @@ use std::ops::{Index, IndexMut};
 /// In this case, _Item_ may be:
 ///
 /// -   A string literal (interpreted as a label widget), optionally followed by
-///     an [`align`] or [`pack`] method call
+///     any of the following method calls: [`align`], [`pack`], [`with_stretch`]
 /// -   An expression yielding an object implementing `Widget<Data = _A>`
 ///
 /// In case all _Item_ instances are a string literal, the data type of the
@@ -72,7 +72,7 @@ use std::ops::{Index, IndexMut};
 /// [widget layout syntax]: macro@kas::layout
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
-/// [`float!`]: crate::float
+/// [`with_stretch`]: crate::AdaptWidget::with_stretch
 #[macro_export]
 macro_rules! grid {
     ( $( ($cc:expr, $rr:expr) => $ee:expr ),* ) => {

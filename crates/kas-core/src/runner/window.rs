@@ -347,8 +347,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                         .is_err()
                 };
 
-                if apply {
-                    self.apply_size(data, false, false);
+                let resize = self.ev_state.action.contains(WindowAction::RESIZE);
+                if apply || resize {
+                    self.ev_state.action.remove(WindowAction::RESIZE);
+                    self.apply_size(data, false, resize);
                 }
 
                 false
@@ -432,7 +434,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state.update_config(window.scale_factor() as f32);
         }
 
-        let resize = if action.contains(ConfigAction::THEME_SWITCH) {
+        let mut resize = if action.contains(ConfigAction::THEME_SWITCH) {
             if let Some(ref mut window) = self.window {
                 let config = self.ev_state.config();
                 window.theme_window = shared.theme.new_window(config);
@@ -447,8 +449,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             false
         };
 
+        resize |= self.ev_state.action.contains(WindowAction::RESIZE);
         self.reconfigure(data);
         if resize {
+            self.ev_state.action.remove(WindowAction::RESIZE);
             self.apply_size(data, false, true);
         }
     }

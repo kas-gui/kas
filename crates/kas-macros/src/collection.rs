@@ -6,7 +6,7 @@
 //! Collection macro
 
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
+use quote::{ToTokens, TokenStreamExt, quote};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -18,6 +18,7 @@ use syn::{braced, bracketed, parenthesized};
 mod kw {
     syn::custom_keyword!(align);
     syn::custom_keyword!(pack);
+    syn::custom_keyword!(with_stretch);
     syn::custom_keyword!(aligned_column);
     syn::custom_keyword!(aligned_row);
     syn::custom_keyword!(column);
@@ -160,9 +161,8 @@ impl Item {
     fn parse(input: ParseStream, names: &mut NameGenerator) -> Result<Self> {
         if input.peek(LitStr) {
             let text: LitStr = input.parse()?;
-            let span = text.span();
             let mut ty = quote! { ::kas::widgets::Label<&'static str> };
-            let mut def = quote_spanned! {span=> ::kas::widgets::Label::new(#text) };
+            let mut def = quote! { ::kas::widgets::Label::new(#text) };
 
             if input.peek(Token![.]) && input.peek2(kw::align) {
                 let _: Token![.] = input.parse()?;
@@ -184,6 +184,18 @@ impl Item {
 
                 ty = quote! { ::kas::widgets::adapt::Pack<#ty> };
                 def = quote! { ::kas::widgets::adapt::Pack::new(#def, #hints) };
+            } else if input.peek(Token![.]) && input.peek2(kw::with_stretch) {
+                let _: Token![.] = input.parse()?;
+                let _: kw::with_stretch = input.parse()?;
+
+                let inner;
+                let _ = parenthesized!(inner in input);
+                let horiz: Expr = inner.parse()?;
+                let _: Token![,] = input.parse()?;
+                let vert: Expr = inner.parse()?;
+
+                ty = quote! { ::kas::widgets::adapt::WithStretch<#ty> };
+                def = quote! { ::kas::widgets::adapt::WithStretch::new(#def, #horiz, #vert) };
             }
 
             Ok(Item::Label(names.next(), ty, def))
@@ -346,7 +358,7 @@ impl Collection {
                     let span = expr.span();
                     let ty = Ident::new(&format!("_W{index}"), span);
                     stor_ty.append_all(quote! { #stor: #ty, });
-                    stor_def.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
+                    stor_def.append_all(quote! { #stor: Box::new(#expr), });
                     ty_generics.push(ty);
 
                     stor.to_token_stream()

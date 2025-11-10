@@ -8,7 +8,7 @@ use crate::widget_args::{Child, ChildIdent};
 use impl_tools_lib::scope::Scope;
 use proc_macro_error2::emit_error;
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
+use quote::{ToTokens, TokenStreamExt, quote};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{Expr, Ident, LitStr, Member, Meta, Token};
@@ -20,6 +20,7 @@ mod kw {
 
     custom_keyword!(align);
     custom_keyword!(pack);
+    custom_keyword!(with_stretch);
     custom_keyword!(column);
     custom_keyword!(row);
     custom_keyword!(frame);
@@ -145,6 +146,7 @@ struct ListItem<C> {
 enum Layout {
     Align(Box<Layout>, Align),
     Pack(Box<Layout>, Pack),
+    Stretch(Box<Layout>, Stretch),
     Single(ExprMember),
     Widget(Ident, Expr),
     Frame(Ident, Box<Layout>, Expr, Expr),
@@ -212,6 +214,9 @@ impl Layout {
                 } else if input.peek(kw::pack) {
                     let pack = Pack::parse(dot_token, input, core_gen)?;
                     layout = Layout::Pack(Box::new(layout), pack);
+                } else if input.peek(kw::with_stretch) {
+                    let stretch = Stretch::parse(dot_token, input)?;
+                    layout = Layout::Stretch(Box::new(layout), stretch);
                 } else if let Ok(ident) = input.parse::<Ident>() {
                     let note_msg = if matches!(&layout, &Layout::Frame(_, _, _, _)) {
                         "supported methods on layout objects: `align`, `pack`, `with_style`, `with_background`"
@@ -571,11 +576,38 @@ impl Pack {
     }
 }
 
+#[derive(Debug)]
+#[allow(unused)]
+struct Stretch {
+    pub dot_token: Token![.],
+    pub kw: kw::with_stretch,
+    pub paren_token: token::Paren,
+    pub horiz: Expr,
+    pub comma_token: Token![,],
+    pub vert: Expr,
+}
+impl Stretch {
+    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
+        let content;
+        Ok(Stretch {
+            dot_token,
+            kw: input.parse()?,
+            paren_token: parenthesized!(content in input),
+            horiz: content.parse()?,
+            comma_token: content.parse()?,
+            vert: content.parse()?,
+        })
+    }
+}
+
 impl Layout {
     /// Validate that nothing refers to an invalid field
     fn validate(&self, fields: &[Member]) {
         match self {
-            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Frame(_, layout, _, _) => {
+            Layout::Align(layout, _)
+            | Layout::Pack(layout, _)
+            | Layout::Stretch(layout, _)
+            | Layout::Frame(_, layout, _, _) => {
                 layout.validate(fields);
             }
             Layout::Single(expr) => {
@@ -602,7 +634,7 @@ impl Layout {
 
     fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>) {
         match self {
-            Layout::Align(layout, _) => {
+            Layout::Align(layout, _) | Layout::Stretch(layout, _) => {
                 layout.append_fields(fields, children);
             }
             Layout::Single(_) => (),
@@ -621,10 +653,9 @@ impl Layout {
                 fields
                     .ty_toks
                     .append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = ()>>, });
-                let span = expr.span();
                 fields
                     .def_toks
-                    .append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
+                    .append_all(quote! { #ident: Box::new(#expr), });
             }
             Layout::Frame(stor, layout, _, _) => {
                 fields
@@ -670,13 +701,12 @@ impl Layout {
             }
             Layout::Label(ident, text) => {
                 children.push(Child::new_core(ident.clone().into()));
-                let span = text.span();
                 fields
                     .ty_toks
                     .append_all(quote! { #ident: ::kas::widgets::Label<&'static str>, });
-                fields.def_toks.append_all(
-                    quote_spanned! {span=> #ident: ::kas::widgets::Label::new(#text), },
-                );
+                fields
+                    .def_toks
+                    .append_all(quote! { #ident: ::kas::widgets::Label::new(#text), });
             }
         }
     }
@@ -684,7 +714,9 @@ impl Layout {
     /// Yield an implementation of `fn rect`, if easy
     fn rect(&self, core_path: &Toks) -> Option<Toks> {
         match self {
-            Layout::Align(layout, _) | Layout::Pack(layout, _) => layout.rect(core_path),
+            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Stretch(layout, _) => {
+                layout.rect(core_path)
+            }
             Layout::Single(expr) => Some(quote! { ::kas::Layout::rect(&#expr) }),
             Layout::Widget(stor, _) | Layout::Label(stor, _) => {
                 Some(quote! { ::kas::Layout::rect(&#core_path.#stor) })
@@ -695,17 +727,37 @@ impl Layout {
     }
 
     /// Yield an implementation of `fn size_rules`
+    ///
+    /// Expands to a series of statements.
     fn size_rules(&self, core_path: &Toks) -> Toks {
         match self {
             Layout::Align(layout, _) => layout.size_rules(core_path),
             Layout::Pack(layout, pack) => {
                 let stor = &pack.stor;
                 let inner = layout.size_rules(core_path);
-                quote! {{
+                quote! {
                     let rules = #inner;
                     #core_path.#stor.size.set_component(axis, rules.ideal_size());
                     rules
-                }}
+                }
+            }
+            Layout::Stretch(layout, stretch) => {
+                let inner = layout.size_rules(core_path);
+                let horiz = &stretch.horiz;
+                let vert = &stretch.vert;
+                quote! {
+                    let mut rules = { #inner };
+                    if axis.is_horizontal()
+                        && let Some(stretch) = (#horiz).into()
+                    {
+                        rules.set_stretch(stretch);
+                    } else if axis.is_vertical()
+                        && let Some(stretch) = (#vert).into()
+                    {
+                        rules.set_stretch(stretch);
+                    }
+                    rules
+                }
             }
             Layout::Single(expr) => quote! {
                 ::kas::Layout::size_rules(&mut #expr, cx, axis)
@@ -803,6 +855,7 @@ impl Layout {
                     #inner
                 } }
             }
+            Layout::Stretch(layout, _) => layout.set_rect(core_path),
             Layout::Single(expr) => quote! {
                 ::kas::Layout::set_rect(&mut #expr, cx, rect, hints);
             },
@@ -868,7 +921,10 @@ impl Layout {
         toks: &mut Toks,
     ) -> Option<()> {
         Some(match self {
-            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Frame(_, layout, _, _) => {
+            Layout::Align(layout, _)
+            | Layout::Pack(layout, _)
+            | Layout::Stretch(layout, _)
+            | Layout::Frame(_, layout, _, _) => {
                 layout.try_probe_recurse(core_path, children, toks)?
             }
             Layout::Single(expr) => {
@@ -912,7 +968,9 @@ impl Layout {
     /// Yield an implementation of `fn draw`
     fn draw(&self, core_path: &Toks) -> Toks {
         match self {
-            Layout::Align(layout, _) | Layout::Pack(layout, _) => layout.draw(core_path),
+            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Stretch(layout, _) => {
+                layout.draw(core_path)
+            }
             Layout::Single(expr) => quote! {
                 ::kas::Layout::draw(&#expr, draw.re());
             },
@@ -952,9 +1010,10 @@ impl Layout {
         output: &mut Vec<usize>,
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
-            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Frame(_, layout, _, _) => {
-                layout.nav_next(children, output)
-            }
+            Layout::Align(layout, _)
+            | Layout::Pack(layout, _)
+            | Layout::Stretch(layout, _)
+            | Layout::Frame(_, layout, _, _) => layout.nav_next(children, output),
             Layout::Single(m) => {
                 for (i, child) in children.enumerate() {
                     if let ChildIdent::Field(ref ident) = child.ident {

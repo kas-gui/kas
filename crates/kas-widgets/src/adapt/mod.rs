@@ -19,3 +19,60 @@ pub use adapt_widget::*;
 #[doc(inline)] pub use kas::widgets::adapt::*;
 pub use reserve::{Margins, Reserve};
 pub use with_label::{WithHiddenLabel, WithLabel};
+
+#[allow(unused)] use kas::event::{ConfigCx, EventCx};
+use kas::layout::{AxisInfo, SizeRules, Stretch};
+use kas::theme::SizeCx;
+use kas::{Layout, Widget, impl_self};
+
+#[impl_self]
+mod WithStretch {
+    /// Adjust stretch rules
+    ///
+    /// Usually, this type will be constructed through one of the methods on
+    /// trait [`AdaptWidget`].
+    #[derive_widget]
+    pub struct WithStretch<W: Widget> {
+        #[widget]
+        pub inner: W,
+        /// Horizontal stretch
+        ///
+        /// Use [`ConfigCx::resize`] or [`EventCx::resize`] to apply changes.
+        pub horiz: Option<Stretch>,
+        /// Vertical stretch
+        ///
+        /// Use [`ConfigCx::resize`] or [`EventCx::resize`] to apply changes.
+        pub vert: Option<Stretch>,
+    }
+
+    impl Self {
+        /// Construct
+        pub fn new(
+            inner: W,
+            horiz: impl Into<Option<Stretch>>,
+            vert: impl Into<Option<Stretch>>,
+        ) -> Self {
+            WithStretch {
+                inner,
+                horiz: horiz.into(),
+                vert: vert.into(),
+            }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(cx, axis);
+            if axis.is_horizontal()
+                && let Some(stretch) = self.horiz
+            {
+                rules.set_stretch(stretch);
+            } else if axis.is_vertical()
+                && let Some(stretch) = self.vert
+            {
+                rules.set_stretch(stretch);
+            }
+            rules
+        }
+    }
+}

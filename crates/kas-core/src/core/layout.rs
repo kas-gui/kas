@@ -11,7 +11,7 @@ use crate::theme::{DrawCx, SizeCx};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Tile, Widget};
-#[allow(unused)] use crate::layout::{self, AlignPair};
+#[allow(unused)] use crate::layout::{self};
 #[allow(unused)] use kas_macros as macros;
 
 /// Positioning and drawing routines for [`Widget`]s
