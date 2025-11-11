@@ -5,7 +5,7 @@
 
 //! `ScrollBar` control
 
-use super::{GripMsg, GripPart, ScrollRegion};
+use super::{ClipRegion, GripMsg, GripPart};
 use kas::event::{Scroll, TimerHandle};
 use kas::prelude::*;
 use kas::theme::Feature;
@@ -417,7 +417,7 @@ mod ScrollBars {
     /// Scroll bar positioning does not respect the inner widget's margins, since
     /// the result looks poor when content is scrolled. Instead the content should
     /// force internal margins by wrapping contents with a (zero-sized) frame.
-    /// [`ScrollRegion`] already does this.
+    /// [`ClipRegion`] already does this.
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct ScrollBars<W: Scrollable + Widget> {
@@ -651,13 +651,13 @@ mod ScrollBars {
 mod ScrollBarRegion {
     /// A scrollable region with bars
     ///
-    /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
-    /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
+    /// This is essentially a `ScrollBars<ClipRegion<W>>`:
+    /// [`ClipRegion`] handles the actual scrolling and wheel/touch events,
     /// while [`ScrollBars`] adds scroll bar controls.
     #[autoimpl(Deref, DerefMut using self.0)]
     #[derive(Clone, Debug, Default)]
     #[derive_widget]
-    pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollBars<ScrollRegion<W>>);
+    pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollBars<ClipRegion<W>>);
 
     impl Layout for Self {
         fn draw(&self, draw: DrawCx) {
@@ -670,7 +670,7 @@ mod ScrollBarRegion {
         /// Construct a `ScrollBarRegion<W>`
         #[inline]
         pub fn new(inner: W) -> Self {
-            ScrollBarRegion(ScrollBars::new(ScrollRegion::new(inner)))
+            ScrollBarRegion(ScrollBars::new(ClipRegion::new(inner)))
         }
 
         /// Set fixed visibility of scroll bars (inline)

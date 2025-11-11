@@ -10,14 +10,14 @@ use kas::prelude::*;
 use std::fmt::Debug;
 
 #[impl_self]
-mod ScrollRegion {
-    /// A scrollable region
+mod ClipRegion {
+    /// A region which clips its contents to a [`Viewport`]
     ///
     /// This region supports scrolling via mouse wheel and click/touch drag.
     ///
-    /// The ideal size of a `ScrollRegion` is the ideal size of its content:
+    /// The ideal size of a `ClipRegion` is the ideal size of its content:
     /// that is, all content may be shown at ideal size without scrolling.
-    /// The minimum size of a `ScrollRegion` is somewhat arbitrary (currently,
+    /// The minimum size of a `ClipRegion` is somewhat arbitrary (currently,
     /// fixed at the height of three lines of standard text). The inner size
     /// (content size) is `max(content_min_size, outer_size - content_margin)`.
     ///
@@ -30,7 +30,7 @@ mod ScrollRegion {
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
     #[derive(Clone, Debug, Default)]
     #[widget]
-    pub struct ScrollRegion<W: Widget> {
+    pub struct ClipRegion<W: Widget> {
         core: widget_core!(),
         min_child_size: Size,
         offset: Offset,
@@ -45,7 +45,7 @@ mod ScrollRegion {
         /// Construct a new scroll region around an inner widget
         #[inline]
         pub fn new(inner: W) -> Self {
-            ScrollRegion {
+            ClipRegion {
                 core: Default::default(),
                 min_child_size: Size::ZERO,
                 offset: Default::default(),
