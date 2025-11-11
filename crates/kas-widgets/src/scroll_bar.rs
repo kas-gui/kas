@@ -508,27 +508,6 @@ mod ScrollBars {
         }
     }
 
-    impl Scrollable for Self {
-        #[inline]
-        fn content_size(&self) -> Size {
-            self.inner.content_size()
-        }
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.inner.max_scroll_offset()
-        }
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.inner.scroll_offset()
-        }
-        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(cx, offset);
-            self.horiz_bar.set_value(cx, offset.0);
-            self.vert_bar.set_value(cx, offset.1);
-            offset
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = self.inner.size_rules(cx, axis);
@@ -666,7 +645,7 @@ mod ScrollBarRegion {
     /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
     /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
     /// while [`ScrollBars`] adds scroll bar controls.
-    #[autoimpl(Deref, DerefMut, Scrollable using self.0)]
+    #[autoimpl(Deref, DerefMut using self.0)]
     #[derive(Clone, Debug, Default)]
     #[derive_widget]
     pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollBars<ScrollRegion<W>>);
