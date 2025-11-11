@@ -8,7 +8,7 @@
 use crate::clerk::{Changes, Key, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
-use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
+use kas::event::{CursorIcon, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -797,6 +797,29 @@ mod ListView {
             None
         }
 
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            let solver = self.position_solver();
+            let first_data = self.first_data.cast();
+            let last_data = usize::conv(self.first_data) + usize::conv(self.cur_len) - 1;
+            let data_index = if let Some(index) = from {
+                let data = solver.child_to_data(index);
+                if !reverse && data < last_data {
+                    data + 1
+                } else if reverse && data > first_data {
+                    data - 1
+                } else {
+                    return None;
+                }
+            } else if !reverse {
+                first_data
+            } else {
+                last_data
+            };
+
+            let index = data_index % usize::conv(self.cur_len);
+            self.get_child(index).is_some().then_some(index)
+        }
+
         #[inline]
         fn translation(&self, _: usize) -> Offset {
             self.scroll_offset() + self.virtual_offset()
@@ -1052,83 +1075,6 @@ mod ListView {
             }
 
             None
-        }
-
-        // Non-standard implementation to allow mapping new children
-        fn _nav_next(
-            &mut self,
-            cx: &mut ConfigCx,
-            data: &C::Data,
-            focus: Option<&Id>,
-            advance: NavAdvance,
-        ) -> Option<Id> {
-            if cx.is_disabled(self.id_ref()) || self.cur_len == 0 {
-                return None;
-            }
-
-            let mut child = focus.and_then(|id| self.find_child_index(id));
-
-            if let Some(index) = child {
-                let mut opt_id = None;
-                let out = &mut opt_id;
-                if let Some(mut node) = self.as_node(data).get_child(index) {
-                    *out = node._nav_next(cx, focus, advance);
-                }
-                if let Some(id) = opt_id {
-                    return Some(id);
-                }
-            }
-
-            let reverse = match advance {
-                NavAdvance::None => return None,
-                NavAdvance::Forward(_) => false,
-                NavAdvance::Reverse(_) => true,
-            };
-
-            let mut starting_child = child;
-            loop {
-                let solver = self.position_solver();
-                let last_data = usize::conv(self.data_len).wrapping_sub(1);
-                let data_index = if let Some(index) = child {
-                    let data = solver.child_to_data(index);
-                    if !reverse && data < last_data {
-                        data + 1
-                    } else if reverse && data > 0 {
-                        data - 1
-                    } else {
-                        return None;
-                    }
-                } else if !reverse {
-                    0
-                } else {
-                    last_data
-                };
-
-                let rect = solver.rect(data_index) - self.virtual_offset();
-                let action = self.scroll.self_focus_rect(rect, self.rect());
-                if action.0 {
-                    cx.action_moved(action);
-                    self.post_scroll(cx, data);
-                }
-
-                let index = data_index % usize::conv(self.cur_len);
-
-                let mut opt_id = None;
-                let out = &mut opt_id;
-                if let Some(mut node) = self.as_node(data).get_child(index) {
-                    *out = node._nav_next(cx, focus, advance);
-                }
-                if let Some(id) = opt_id {
-                    return Some(id);
-                }
-
-                child = Some(index);
-                if starting_child == child {
-                    return None;
-                } else if starting_child.is_none() {
-                    starting_child = child;
-                }
-            }
         }
     }
 }
