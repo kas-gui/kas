@@ -93,8 +93,7 @@ mod EditBox {
             self.vert_bar.set_rect(cx, bar_rect, AlignHints::NONE);
 
             self.inner.set_rect(cx, rect, hints);
-            let _ = self.scroll.set_sizes(rect.size, self.inner.content_size());
-            self.update_scroll_bar(cx);
+            self.update_content_size(cx);
         }
 
         fn draw(&self, mut draw: DrawCx) {
@@ -154,34 +153,35 @@ mod EditBox {
                 size: self.rect().size - self.frame_size,
             };
             let used = self.scroll.scroll_by_event(cx, event, self.id(), rect);
-            self.update_scroll_bar(cx);
+            self.update_content_size(cx);
             used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, data: &G::Data) {
-            if cx.last_child() == Some(widget_index![self.vert_bar])
+            let action = if cx.last_child() == Some(widget_index![self.vert_bar])
                 && let Some(ScrollMsg(y)) = cx.try_pop()
             {
                 let offset = Offset(self.scroll.offset().0, y);
-                let action = self.scroll.set_offset(offset);
-                cx.action_moved(action);
-                self.update_scroll_bar(cx);
+                self.scroll.set_offset(offset)
+            } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
+                self.scroll.set_offset(offset)
             } else if self.is_editable()
                 && let Some(SetValueText(string)) = cx.try_pop()
             {
                 self.set_string(cx, string);
                 G::edit(&mut self.inner, cx, data);
                 G::activate(&mut self.inner, cx, data);
-            } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                let action = self.scroll.set_offset(offset);
-                let offset = self.scroll.offset();
-                if action.0 {
-                    cx.action_moved(action);
-                    self.vert_bar.set_value(cx, offset.1);
-                }
-            }
-            if let Some(&ReplaceSelectedText(_)) = cx.try_peek() {
+                return;
+            } else if let Some(&ReplaceSelectedText(_)) = cx.try_peek() {
                 self.inner.handle_messages(cx, data);
+                return;
+            } else {
+                return;
+            };
+
+            if action.0 {
+                cx.action_moved(action);
+                self.update_scroll_offset(cx);
             }
         }
 
@@ -191,14 +191,14 @@ mod EditBox {
             let mut resize = self.inner.size_rules(&mut cx.size_cx(), axis).min_size() > size.0;
             let axis = AxisInfo::new(true, Some(size.0));
             resize |= self.inner.size_rules(&mut cx.size_cx(), axis).min_size() > size.1;
-            self.update_content_size();
+            self.update_content_size(cx);
             ActionResize(resize)
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {
             let rect = self.inner.rect();
             self.scroll.scroll(cx, self.id(), rect, scroll);
-            self.update_scroll_bar(cx);
+            self.update_scroll_offset(cx);
         }
     }
 
@@ -219,15 +219,15 @@ mod EditBox {
             }
         }
 
-        fn update_content_size(&mut self) {
+        fn update_content_size(&mut self, cx: &mut EventState) {
             let size = self.inner.rect().size;
             let _ = self.scroll.set_sizes(size, self.inner.content_size());
+            let max_offset = self.scroll.max_offset().1;
+            self.vert_bar.set_limits(cx, max_offset, size.1);
+            self.update_scroll_offset(cx);
         }
 
-        fn update_scroll_bar(&mut self, cx: &mut EventState) {
-            let max_offset = self.scroll.max_offset().1;
-            self.vert_bar
-                .set_limits(cx, max_offset, self.inner.rect().size.1);
+        fn update_scroll_offset(&mut self, cx: &mut EventState) {
             self.vert_bar.set_value(cx, self.scroll.offset().1);
         }
 
@@ -247,8 +247,7 @@ mod EditBox {
         #[inline]
         pub fn set_str(&mut self, cx: &mut EventState, text: &str) {
             if self.inner.set_str(cx, text) {
-                self.update_content_size();
-                self.update_scroll_bar(cx);
+                self.update_content_size(cx);
             }
         }
 
@@ -258,8 +257,7 @@ mod EditBox {
         #[inline]
         pub fn set_string(&mut self, cx: &mut EventState, text: String) {
             if self.inner.set_string(cx, text) {
-                self.update_content_size();
-                self.update_scroll_bar(cx);
+                self.update_content_size(cx);
             }
         }
 
