@@ -14,21 +14,19 @@ use std::fmt::Debug;
 mod ClipRegion {
     /// A region which clips its contents to a [`Viewport`]
     ///
-    /// This region supports scrolling via mouse wheel and click/touch drag.
+    /// This is a low-level widget supporting content larger on the inside, but
+    /// without handling scrolling. You probably want to use [`ScrollRegion`]
+    /// instead.
     ///
-    /// The ideal size of a `ClipRegion` is the ideal size of its content:
-    /// that is, all content may be shown at ideal size without scrolling.
-    /// The minimum size of a `ClipRegion` is somewhat arbitrary (currently,
-    /// fixed at the height of three lines of standard text). The inner size
-    /// (content size) is `max(content_min_size, outer_size - content_margin)`.
+    /// ### Size
     ///
-    /// Scroll bars are not included; use [`ScrollBarRegion`] if you want those.
+    /// Kas's size model allows widgets to advertise two sizes: the *minimum*
+    /// size and the *ideal* size. This distinction is used to full effect here:
     ///
-    /// ### Messages
-    ///
-    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    ///
-    /// [`ScrollBarRegion`]: crate::ScrollBarRegion
+    /// -   The ideal size is that of the inner content, thus avoiding any need
+    ///     to scroll content.
+    /// -   The minimum size is an arbitrary size defined by the theme
+    ///     ([`SizeCx::min_scroll_size`]).
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct ClipRegion<W: Widget> {
@@ -118,15 +116,36 @@ mod ClipRegion {
 
 #[impl_self]
 mod ScrollRegion {
-    /// Scroll bar controls
+    /// A region which supports scrolling of content through a viewport
     ///
-    /// This is a wrapper adding scroll bar controls around a child. Note that this
-    /// widget does not enable scrolling; see [`ScrollBarRegion`] for that.
+    /// This region supports scrolling via mouse wheel and click/touch drag
+    /// as well as using scroll bars (optional).
     ///
-    /// Scroll bar positioning does not respect the inner widget's margins, since
-    /// the result looks poor when content is scrolled. Instead the content should
-    /// force internal margins by wrapping contents with a (zero-sized) frame.
-    /// [`ClipRegion`] already does this.
+    /// ### Size
+    ///
+    /// Kas's size model allows widgets to advertise two sizes: the *minimum*
+    /// size and the *ideal* size. This distinction is used to full effect here:
+    ///
+    /// -   The ideal size is that of the inner content, thus avoiding any need
+    ///     to scroll content.
+    /// -   The minimum size is an arbitrary size defined by the theme
+    ///     ([`SizeCx::min_scroll_size`]).
+    ///
+    /// ### Generic usage
+    ///
+    /// Though this widget is generic over any [`Viewport`], it is primarily
+    /// intended for usage with [`ClipRegion`]; the primary constructor
+    /// [`Self::new`] uses this while [`Self::new_over_viewport`] allows usage
+    /// with other implementations of [`Viewport`].
+    ///
+    /// It should be noted that scroll bar positioning does not respect the
+    /// inner widget's margins, since the result looks poor when content is
+    /// scrolled. Instead the inner widget should force internal margins by
+    /// wrapping contents with a (zero-sized) frame.
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct ScrollRegion<W: Viewport + Widget> {
