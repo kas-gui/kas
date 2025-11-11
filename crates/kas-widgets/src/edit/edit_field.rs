@@ -297,7 +297,7 @@ mod EditField {
                         self.selection.set_all(range.start + text.len());
                     }
                     self.edit_x_coord = None;
-                    self.prepare_text(cx);
+                    self.prepare_text(cx, false);
                     Used
                 }
                 Event::ImeCommit(text) => {
@@ -312,7 +312,7 @@ mod EditField {
 
                     self.selection.set_all(range.start + text.len());
                     self.edit_x_coord = None;
-                    self.prepare_text(cx);
+                    self.prepare_text(cx, false);
                     Used
                 }
                 Event::PressStart(press) if press.is_tertiary() => {
@@ -333,7 +333,7 @@ mod EditField {
                             .replace_range(index..index, &content[range.clone()]);
                         self.selection.set_all(index + range.len());
                         self.edit_x_coord = None;
-                        self.prepare_text(cx);
+                        self.prepare_text(cx, false);
 
                         G::edit(self, cx, data);
                     }
@@ -711,15 +711,19 @@ impl<G: EditGuard> EditField<G> {
         self.last_edit = edit;
     }
 
-    fn prepare_text(&mut self, cx: &mut EventCx) {
+    fn prepare_text(&mut self, cx: &mut EventCx, force_set_offset: bool) {
         let size = self.content_size();
         if self.text.prepare() {
             self.text.ensure_no_left_overhang();
             cx.redraw();
         }
 
+        let mut set_offset = force_set_offset;
         if size != self.content_size() {
             cx.resize();
+            set_offset = true;
+        }
+        if set_offset {
             self.set_view_offset_from_cursor(cx);
         }
     }
@@ -761,7 +765,7 @@ impl<G: EditGuard> EditField<G> {
         }
         self.edit_x_coord = None;
 
-        self.prepare_text(cx);
+        self.prepare_text(cx, false);
         Used
     }
 
@@ -1007,6 +1011,7 @@ impl<G: EditGuard> EditField<G> {
             self.current = CurrentAction::None;
         }
 
+        let mut force_set_offset = false;
         let result = match action {
             Action::None => EditAction::None,
             Action::Deselect => {
@@ -1014,7 +1019,10 @@ impl<G: EditGuard> EditField<G> {
                 cx.redraw();
                 EditAction::None
             }
-            Action::Activate => EditAction::Activate,
+            Action::Activate => {
+                force_set_offset = true;
+                EditAction::Activate
+            }
             Action::Edit => EditAction::Edit,
             Action::Insert(s, edit) => {
                 let mut index = cursor;
@@ -1052,12 +1060,13 @@ impl<G: EditGuard> EditField<G> {
                     self.set_primary(cx);
                 }
                 self.edit_x_coord = x_coord;
+                force_set_offset = true;
                 cx.redraw();
                 EditAction::None
             }
         };
 
-        self.prepare_text(cx);
+        self.prepare_text(cx, force_set_offset);
 
         Ok(match result {
             EditAction::None => Used,
