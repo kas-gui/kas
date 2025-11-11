@@ -122,10 +122,17 @@ mod ScrollRegion {
                 .scroll
                 .set_sizes(rect.size, child_size + self.frame_size);
         }
+    }
 
-        fn draw(&self, mut draw: DrawCx) {
+    impl Viewport for Self {
+        #[inline]
+        fn content_size(&self) -> Size {
+            self.min_child_size
+        }
+
+        fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
             // We use a new pass to clip and offset scrolled content:
-            draw.with_clip_region(self.rect(), self.scroll_offset(), |mut draw| {
+            draw.with_clip_region(rect, offset, |mut draw| {
                 self.inner.draw(draw.re());
             });
         }

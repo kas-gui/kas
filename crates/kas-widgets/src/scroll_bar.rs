@@ -671,6 +671,13 @@ mod ScrollBarRegion {
     #[derive_widget]
     pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollBars<ScrollRegion<W>>);
 
+    impl Layout for Self {
+        fn draw(&self, draw: DrawCx) {
+            let inner = &self.inner;
+            inner.draw_with_offset(draw, inner.rect(), inner.scroll_offset());
+        }
+    }
+
     impl Self {
         /// Construct a `ScrollBarRegion<W>`
         #[inline]
