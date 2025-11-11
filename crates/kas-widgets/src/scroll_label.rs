@@ -55,11 +55,11 @@ mod SelectableText {
     impl Viewport for Self {
         #[inline]
         fn content_size(&self) -> Size {
-            let mut size = self.rect().size;
             if let Ok((tl, br)) = self.text.bounding_box() {
-                size.1 = size.1.max((br.1 - tl.1).cast_ceil());
+                (br - tl).cast_ceil()
+            } else {
+                Size::ZERO
             }
-            size
         }
 
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
