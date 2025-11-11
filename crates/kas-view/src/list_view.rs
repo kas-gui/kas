@@ -147,6 +147,8 @@ mod ListView {
         cur_len: u32,
         /// First data item mapped to a widget
         first_data: u32,
+        /// Last data item to have navigation focus
+        last_focus: u32,
         direction: D,
         align_hints: AlignHints,
         ideal_visible: i32,
@@ -236,6 +238,7 @@ mod ListView {
                 len_is_known: false,
                 cur_len: 0,
                 first_data: 0,
+                last_focus: 0,
                 direction,
                 align_hints: Default::default(),
                 ideal_visible: 5,
@@ -799,22 +802,30 @@ mod ListView {
 
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             let solver = self.position_solver();
-            let first_data = self.first_data.cast();
-            let size: usize = self.rect().size.extract(self.direction).cast();
-            let last_visible = first_data + size / usize::conv(self.skip);
-            let data_index = if let Some(index) = from {
-                let data = solver.child_to_data(index);
-                if !reverse && data < last_visible {
-                    data + 1
-                } else if reverse && data > first_data {
-                    data - 1
+            let data_index = if V::TAB_NAVIGABLE {
+                let first_data = self.first_data.cast();
+                let size: usize = self.rect().size.extract(self.direction).cast();
+                let last_visible = first_data + size / usize::conv(self.skip);
+                if let Some(index) = from {
+                    let data = solver.child_to_data(index);
+                    if !reverse && data < last_visible {
+                        data + 1
+                    } else if reverse && data > first_data {
+                        data - 1
+                    } else {
+                        return None;
+                    }
+                } else if !reverse {
+                    first_data
                 } else {
-                    return None;
+                    last_visible
                 }
-            } else if !reverse {
-                first_data
             } else {
-                last_visible
+                if from.is_some() {
+                    return None;
+                } else {
+                    self.last_focus.cast()
+                }
             };
 
             let index = data_index % usize::conv(self.cur_len);
@@ -944,6 +955,7 @@ mod ListView {
                         let w = &self.widgets[index];
                         if w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
+                            self.last_focus = i_data.cast();
                         }
                         Used
                     } else {
@@ -960,6 +972,8 @@ mod ListView {
                         let w = &mut self.widgets[index];
                         if w.key() == Some(key) {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
+                            let solver = self.position_solver();
+                            self.last_focus = solver.child_to_data(index).cast();
                         }
                     }
 
