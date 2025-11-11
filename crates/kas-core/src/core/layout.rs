@@ -190,6 +190,25 @@ pub trait Viewport: Layout {
     /// This method is called during sizing.
     fn content_size(&self) -> Size;
 
+    /// Update the scroll offset
+    ///
+    /// The `viewport` and `offset` parameters are the same as those of
+    /// [`Viewport::draw_with_offset`].
+    ///
+    /// # Calling
+    ///
+    /// This method should be called after [`Layout::set_rect`] and whenever the
+    /// scroll offset changes to allow preparation of content. It must be called
+    /// before drawing and event handling operations using this new `offset`.
+    ///
+    /// # Implementation
+    ///
+    /// This method only needs to do anything in cases where only a subset of
+    /// content is prepared.
+    fn update_offset(&mut self, viewport: Rect, offset: Offset) {
+        let _ = (viewport, offset);
+    }
+
     /// Draw with a scroll offset
     ///
     /// Drawing should be clamped to the given `viewport`. This `viewport` may
