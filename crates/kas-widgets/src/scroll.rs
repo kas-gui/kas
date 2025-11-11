@@ -143,12 +143,22 @@ mod ScrollRegion {
         inner: W,
     }
 
-    impl Self {
-        /// Construct
+    impl<Inner: Widget> ScrollRegion<ClipRegion<Inner>> {
+        /// Construct a scroll region
         ///
-        /// By default scroll bars are automatically enabled based on requirements.
+        /// Uses [`ScrollBarMode::Auto`] by default.
         #[inline]
-        pub fn new(inner: W) -> Self {
+        pub fn new(inner: Inner) -> Self {
+            Self::new_over_viewport(ClipRegion::new(inner))
+        }
+    }
+
+    impl Self {
+        /// Construct over a [`Viewport`]
+        ///
+        /// Uses [`ScrollBarMode::Auto`] by default.
+        #[inline]
+        pub fn new_over_viewport(inner: W) -> Self {
             ScrollRegion {
                 core: Default::default(),
                 scroll: Default::default(),
@@ -427,72 +437,6 @@ mod ScrollRegion {
             let offset = self.scroll.offset();
             self.horiz_bar.set_value(cx, offset.0);
             self.vert_bar.set_value(cx, offset.1);
-        }
-    }
-}
-
-#[impl_self]
-mod ScrollBarRegion {
-    /// A scrollable region with bars
-    ///
-    /// This is essentially a `ScrollRegion<ClipRegion<W>>`:
-    /// [`ClipRegion`] handles the actual scrolling and wheel/touch events,
-    /// while [`ScrollRegion`] adds scroll bar controls.
-    #[autoimpl(Deref, DerefMut using self.0)]
-    #[derive(Clone, Debug, Default)]
-    #[derive_widget]
-    pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollRegion<ClipRegion<W>>);
-
-    impl Self {
-        /// Construct a `ScrollBarRegion<W>`
-        #[inline]
-        pub fn new(inner: W) -> Self {
-            ScrollBarRegion(ScrollRegion::new(ClipRegion::new(inner)))
-        }
-
-        /// Set fixed visibility of scroll bars (inline)
-        #[inline]
-        pub fn with_fixed_bars(self, horiz: bool, vert: bool) -> Self
-        where
-            Self: Sized,
-        {
-            ScrollBarRegion(self.0.with_fixed_bars(horiz, vert))
-        }
-
-        /// Set fixed, invisible bars (inline)
-        ///
-        /// In this mode scroll bars are either enabled but invisible until
-        /// mouse over or disabled completely.
-        #[inline]
-        pub fn with_invisible_bars(self, horiz: bool, vert: bool) -> Self
-        where
-            Self: Sized,
-        {
-            ScrollBarRegion(self.0.with_invisible_bars(horiz, vert))
-        }
-
-        /// Get current mode of scroll bars
-        #[inline]
-        pub fn scroll_bar_mode(&self) -> ScrollBarMode {
-            self.0.scroll_bar_mode()
-        }
-
-        /// Set scroll bar mode
-        #[inline]
-        pub fn set_scroll_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
-            self.0.set_scroll_bar_mode(cx, mode);
-        }
-
-        /// Access inner widget directly
-        #[inline]
-        pub fn inner(&self) -> &W {
-            self.0.inner.inner()
-        }
-
-        /// Access inner widget directly
-        #[inline]
-        pub fn inner_mut(&mut self) -> &mut W {
-            self.0.inner.inner_mut()
         }
     }
 }

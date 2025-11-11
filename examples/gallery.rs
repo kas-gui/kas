@@ -254,7 +254,7 @@ fn widgets() -> Page<AppData> {
     let ui = adapt::AdaptEvents::new(ui)
         .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
 
-    Page::new(ScrollBarRegion::new(ui))
+    Page::new(ScrollRegion::new(ui))
 }
 
 fn editor() -> Page<AppData> {
@@ -725,7 +725,7 @@ KAS_CONFIG_MODE=readwrite
     let ui = column![
         ScrollLabel::new(desc),
         Separator::new(),
-        ScrollBarRegion::new(EventConfig::new())
+        ScrollRegion::new(EventConfig::new())
     ];
     Page::new(
         ui.map_any()
