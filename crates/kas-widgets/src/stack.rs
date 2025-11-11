@@ -145,9 +145,7 @@ mod Stack {
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
-            let Some(key) = id.next_key_after(self.id_ref()) else {
-                return None;
-            };
+            let key = id.next_key_after(self.id_ref())?;
             for (i, w) in self.widgets.iter().enumerate() {
                 if w.1 == key {
                     return Some(i);

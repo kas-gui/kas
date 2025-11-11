@@ -21,7 +21,7 @@
 
 use kas::prelude::*;
 use kas::widgets::edit::{EditBox, EditField, EditGuard};
-use kas::widgets::{Button, Label, List, RadioButton, ScrollBarRegion, Separator, Text};
+use kas::widgets::{Button, Label, List, RadioButton, ScrollRegion, Separator, Text};
 use kas::widgets::{column, row};
 
 #[derive(Debug)]
@@ -175,7 +175,7 @@ fn main() -> kas::runner::Result<()> {
         "Contents of selected entry:",
         Text::new_str(|data: &Data| &data.active_string),
         Separator::new(),
-        ScrollBarRegion::new(list).with_fixed_bars(false, true),
+        ScrollRegion::new(list).with_fixed_bars(false, true),
     ];
 
     let ui = tree

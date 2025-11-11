@@ -265,7 +265,7 @@ where
     }
 
     fn colors(&self) -> &ColorsLinear {
-        &self.cols
+        self.cols
     }
 
     fn draw_rounded(&mut self) -> Option<&mut dyn DrawRounded> {

@@ -5,38 +5,35 @@
 
 //! Scroll region
 
+use crate::{ScrollBar, ScrollBarMode, ScrollMsg};
 use kas::event::{CursorIcon, Scroll, components::ScrollComponent};
 use kas::prelude::*;
 use std::fmt::Debug;
 
 #[impl_self]
-mod ScrollRegion {
-    /// A scrollable region
+mod ClipRegion {
+    /// A region which clips its contents to a [`Viewport`]
     ///
-    /// This region supports scrolling via mouse wheel and click/touch drag.
+    /// This is a low-level widget supporting content larger on the inside, but
+    /// without handling scrolling. You probably want to use [`ScrollRegion`]
+    /// instead.
     ///
-    /// The ideal size of a `ScrollRegion` is the ideal size of its content:
-    /// that is, all content may be shown at ideal size without scrolling.
-    /// The minimum size of a `ScrollRegion` is somewhat arbitrary (currently,
-    /// fixed at the height of three lines of standard text). The inner size
-    /// (content size) is `max(content_min_size, outer_size - content_margin)`.
+    /// ### Size
     ///
-    /// Scroll bars are not included; use [`ScrollBarRegion`] if you want those.
+    /// Kas's size model allows widgets to advertise two sizes: the *minimum*
+    /// size and the *ideal* size. This distinction is used to full effect here:
     ///
-    /// ### Messages
-    ///
-    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    ///
-    /// [`ScrollBarRegion`]: crate::ScrollBarRegion
+    /// -   The ideal size is that of the inner content, thus avoiding any need
+    ///     to scroll content.
+    /// -   The minimum size is an arbitrary size defined by the theme
+    ///     ([`SizeCx::min_scroll_size`]).
     #[derive(Clone, Debug, Default)]
     #[widget]
-    pub struct ScrollRegion<W: Widget> {
+    pub struct ClipRegion<W: Widget> {
         core: widget_core!(),
         min_child_size: Size,
         offset: Offset,
         frame_size: Size,
-        hints: AlignHints,
-        scroll: ScrollComponent,
         #[widget]
         inner: W,
     }
@@ -45,13 +42,11 @@ mod ScrollRegion {
         /// Construct a new scroll region around an inner widget
         #[inline]
         pub fn new(inner: W) -> Self {
-            ScrollRegion {
+            ClipRegion {
                 core: Default::default(),
                 min_child_size: Size::ZERO,
                 offset: Default::default(),
                 frame_size: Default::default(),
-                hints: Default::default(),
-                scroll: Default::default(),
                 inner,
             }
         }
@@ -66,30 +61,6 @@ mod ScrollRegion {
         #[inline]
         pub fn inner_mut(&mut self) -> &mut W {
             &mut self.inner
-        }
-    }
-
-    impl Scrollable for Self {
-        #[inline]
-        fn content_size(&self) -> Size {
-            self.min_child_size
-        }
-
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.scroll.max_offset()
-        }
-
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.scroll.offset()
-        }
-
-        #[inline]
-        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
-            let action = self.scroll.set_offset(offset);
-            cx.action_moved(action);
-            self.scroll.offset()
         }
     }
 
@@ -114,34 +85,23 @@ mod ScrollRegion {
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
-            self.hints = hints;
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos, child_size);
             self.inner.set_rect(cx, child_rect, hints);
-            let _ = self
-                .scroll
-                .set_sizes(rect.size, child_size + self.frame_size);
-        }
-
-        fn draw(&self, mut draw: DrawCx) {
-            // We use a new pass to clip and offset scrolled content:
-            draw.with_clip_region(self.rect(), self.scroll_offset(), |mut draw| {
-                self.inner.draw(draw.re());
-            });
         }
     }
 
-    impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::ScrollRegion {
-                offset: self.scroll_offset(),
-                max_offset: self.max_scroll_offset(),
-            }
+    impl Viewport for Self {
+        #[inline]
+        fn content_size(&self) -> Size {
+            self.min_child_size
         }
 
-        #[inline]
-        fn translation(&self, _: usize) -> Offset {
-            self.scroll_offset()
+        fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+            // We use a new pass to clip and offset scrolled content:
+            draw.with_clip_region(rect, offset, |mut draw| {
+                self.inner.draw(draw.re());
+            });
         }
     }
 
@@ -149,12 +109,292 @@ mod ScrollRegion {
         type Data = W::Data;
 
         fn probe(&self, coord: Coord) -> Id {
+            self.inner.try_probe(coord).unwrap_or_else(|| self.id())
+        }
+    }
+}
+
+#[impl_self]
+mod ScrollRegion {
+    /// A region which supports scrolling of content through a viewport
+    ///
+    /// This region supports scrolling via mouse wheel and click/touch drag
+    /// as well as using scroll bars (optional).
+    ///
+    /// ### Size
+    ///
+    /// Kas's size model allows widgets to advertise two sizes: the *minimum*
+    /// size and the *ideal* size. This distinction is used to full effect here:
+    ///
+    /// -   The ideal size is that of the inner content, thus avoiding any need
+    ///     to scroll content.
+    /// -   The minimum size is an arbitrary size defined by the theme
+    ///     ([`SizeCx::min_scroll_size`]).
+    ///
+    /// ### Generic usage
+    ///
+    /// Though this widget is generic over any [`Viewport`], it is primarily
+    /// intended for usage with [`ClipRegion`]; the primary constructor
+    /// [`Self::new`] uses this while [`Self::new_over_viewport`] allows usage
+    /// with other implementations of [`Viewport`].
+    ///
+    /// It should be noted that scroll bar positioning does not respect the
+    /// inner widget's margins, since the result looks poor when content is
+    /// scrolled. Instead the inner widget should force internal margins by
+    /// wrapping contents with a (zero-sized) frame.
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
+    #[derive(Clone, Debug, Default)]
+    #[widget]
+    pub struct ScrollRegion<W: Viewport + Widget> {
+        core: widget_core!(),
+        scroll: ScrollComponent,
+        mode: ScrollBarMode,
+        show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
+        hints: AlignHints,
+        #[widget(&())]
+        horiz_bar: ScrollBar<kas::dir::Right>,
+        #[widget(&())]
+        vert_bar: ScrollBar<kas::dir::Down>,
+        #[widget]
+        inner: W,
+    }
+
+    impl<Inner: Widget> ScrollRegion<ClipRegion<Inner>> {
+        /// Construct a scroll region
+        ///
+        /// Uses [`ScrollBarMode::Auto`] by default.
+        #[inline]
+        pub fn new(inner: Inner) -> Self {
+            Self::new_over_viewport(ClipRegion::new(inner))
+        }
+    }
+
+    impl Self {
+        /// Construct over a [`Viewport`]
+        ///
+        /// Uses [`ScrollBarMode::Auto`] by default.
+        #[inline]
+        pub fn new_over_viewport(inner: W) -> Self {
+            ScrollRegion {
+                core: Default::default(),
+                scroll: Default::default(),
+                mode: ScrollBarMode::Auto,
+                show_bars: (false, false),
+                hints: Default::default(),
+                horiz_bar: ScrollBar::new(),
+                vert_bar: ScrollBar::new(),
+                inner,
+            }
+        }
+
+        /// Set fixed visibility of scroll bars (inline)
+        #[inline]
+        pub fn with_fixed_bars(mut self, horiz: bool, vert: bool) -> Self
+        where
+            Self: Sized,
+        {
+            self.mode = ScrollBarMode::Fixed(horiz, vert);
+            self.horiz_bar.set_invisible(false);
+            self.vert_bar.set_invisible(false);
+            self.show_bars = (horiz, vert);
+            self
+        }
+
+        /// Set fixed, invisible bars (inline)
+        ///
+        /// In this mode scroll bars are either enabled but invisible until
+        /// mouse over or disabled completely.
+        #[inline]
+        pub fn with_invisible_bars(mut self, horiz: bool, vert: bool) -> Self
+        where
+            Self: Sized,
+        {
+            self.mode = ScrollBarMode::Invisible(horiz, vert);
+            self.horiz_bar.set_invisible(true);
+            self.vert_bar.set_invisible(true);
+            self.show_bars = (horiz, vert);
+            self
+        }
+
+        /// Get current mode of scroll bars
+        #[inline]
+        pub fn scroll_bar_mode(&self) -> ScrollBarMode {
+            self.mode
+        }
+
+        /// Set scroll bar mode
+        pub fn set_scroll_bar_mode(&mut self, cx: &mut ConfigCx, mode: ScrollBarMode) {
+            if mode != self.mode {
+                self.mode = mode;
+                let (invis_horiz, invis_vert) = match mode {
+                    ScrollBarMode::Auto => (false, false),
+                    ScrollBarMode::Fixed(horiz, vert) => {
+                        self.show_bars = (horiz, vert);
+                        (false, false)
+                    }
+                    ScrollBarMode::Invisible(horiz, vert) => {
+                        self.show_bars = (horiz, vert);
+                        (horiz, vert)
+                    }
+                };
+                self.horiz_bar.set_invisible(invis_horiz);
+                self.vert_bar.set_invisible(invis_vert);
+                cx.resize();
+            }
+        }
+
+        /// Access inner widget directly
+        #[inline]
+        pub fn inner(&self) -> &W {
+            &self.inner
+        }
+
+        /// Access inner widget directly
+        #[inline]
+        pub fn inner_mut(&mut self) -> &mut W {
+            &mut self.inner
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(cx, axis);
+            let vert_rules = self.vert_bar.size_rules(cx, axis);
+            let horiz_rules = self.horiz_bar.size_rules(cx, axis);
+            let (use_horiz, use_vert) = match self.mode {
+                ScrollBarMode::Fixed(horiz, vert) => (horiz, vert),
+                ScrollBarMode::Auto => (true, true),
+                ScrollBarMode::Invisible(_, _) => (false, false),
+            };
+            if axis.is_horizontal() && use_horiz {
+                rules.append(vert_rules);
+            } else if axis.is_vertical() && use_vert {
+                rules.append(horiz_rules);
+            }
+            rules
+        }
+
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
+            widget_set_rect!(rect);
+            self.hints = hints;
+            let pos = rect.pos;
+            let mut child_size = rect.size;
+
+            let bar_width = cx.scroll_bar_width();
+            let content_size = self.inner.content_size();
+            if self.mode == ScrollBarMode::Auto {
+                let max_offset = content_size - child_size;
+                self.show_bars.0 = max_offset.0 > 0;
+                self.show_bars.1 = max_offset.1 > 0;
+            }
+            if self.show_bars.0 && !self.horiz_bar.is_invisible() {
+                child_size.1 -= bar_width;
+            }
+            if self.show_bars.1 && !self.vert_bar.is_invisible() {
+                child_size.0 -= bar_width;
+            }
+
+            let child_rect = Rect::new(pos, child_size);
+            self.inner.set_rect(cx, child_rect, hints);
+
+            let _ = self.scroll.set_sizes(child_size, content_size);
+            let max_scroll_offset = self.scroll.max_offset();
+
+            if self.show_bars.0 {
+                let pos = Coord(pos.0, rect.pos2().1 - bar_width);
+                let size = Size::new(child_size.0, bar_width);
+                self.horiz_bar
+                    .set_rect(cx, Rect { pos, size }, AlignHints::NONE);
+                self.horiz_bar
+                    .set_limits(cx, max_scroll_offset.0, rect.size.0);
+            } else {
+                self.horiz_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
+            }
+
+            if self.show_bars.1 {
+                let pos = Coord(rect.pos2().0 - bar_width, pos.1);
+                let size = Size::new(bar_width, self.rect().size.1);
+                self.vert_bar
+                    .set_rect(cx, Rect { pos, size }, AlignHints::NONE);
+                self.vert_bar
+                    .set_limits(cx, max_scroll_offset.1, rect.size.1);
+            } else {
+                self.vert_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
+            }
+        }
+
+        fn draw(&self, mut draw: DrawCx) {
+            let viewport = self.inner.rect();
+            self.inner
+                .draw_with_offset(draw.re(), viewport, self.scroll.offset());
+            if self.show_bars == (false, false) {
+                return;
+            }
+
+            // We use a new pass to draw scroll bars over inner content, but
+            // only when required to minimize cost:
+            let ev_state = draw.ev_state();
+            if matches!(self.mode, ScrollBarMode::Invisible(_, _))
+                && (self.horiz_bar.currently_visible(ev_state)
+                    || self.vert_bar.currently_visible(ev_state))
+            {
+                draw.with_pass(|mut draw| {
+                    if self.show_bars.0 {
+                        self.horiz_bar.draw(draw.re());
+                    }
+                    if self.show_bars.1 {
+                        self.vert_bar.draw(draw.re());
+                    }
+                });
+            } else {
+                if self.show_bars.0 {
+                    self.horiz_bar.draw(draw.re());
+                }
+                if self.show_bars.1 {
+                    self.vert_bar.draw(draw.re());
+                }
+            }
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::ScrollRegion {
+                offset: self.scroll.offset(),
+                max_offset: self.scroll.max_offset(),
+            }
+        }
+
+        #[inline]
+        fn translation(&self, index: usize) -> Offset {
+            if index == widget_index![self.inner] {
+                self.scroll.offset()
+            } else {
+                Offset::ZERO
+            }
+        }
+    }
+
+    impl Events for Self {
+        type Data = W::Data;
+
+        fn probe(&self, coord: Coord) -> Id {
+            if let Some(id) = self
+                .vert_bar
+                .try_probe(coord)
+                .or_else(|| self.horiz_bar.try_probe(coord))
+            {
+                return id;
+            }
             if self.scroll.is_kinetic_scrolling() {
                 return self.id();
             }
 
             self.inner
-                .try_probe(coord + self.scroll_offset())
+                .try_probe(coord + self.scroll.offset())
                 .unwrap_or_else(|| self.id())
         }
 
@@ -169,14 +409,37 @@ mod ScrollRegion {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            self.scroll
-                .scroll_by_event(cx, event, self.id(), self.rect())
+            let is_used = self
+                .scroll
+                .scroll_by_event(cx, event, self.id(), self.inner.rect());
+
+            let offset = self.scroll.offset();
+            self.horiz_bar.set_value(cx, offset.0);
+            self.vert_bar.set_value(cx, offset.1);
+
+            is_used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                self.set_scroll_offset(cx, offset);
-            }
+            let index = cx.last_child();
+            let offset = if index == Some(widget_index![self.horiz_bar])
+                && let Some(ScrollMsg(x)) = cx.try_pop()
+            {
+                Offset(x, self.scroll.offset().1)
+            } else if index == Some(widget_index![self.vert_bar])
+                && let Some(ScrollMsg(y)) = cx.try_pop()
+            {
+                Offset(self.scroll.offset().0, y)
+            } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
+                self.horiz_bar.set_value(cx, offset.0);
+                self.vert_bar.set_value(cx, offset.1);
+                offset
+            } else {
+                return;
+            };
+
+            let action = self.scroll.set_offset(offset);
+            cx.action_moved(action);
         }
 
         fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
@@ -189,6 +452,10 @@ mod ScrollRegion {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
             self.scroll.scroll(cx, self.id(), self.rect(), scroll);
+
+            let offset = self.scroll.offset();
+            self.horiz_bar.set_value(cx, offset.0);
+            self.vert_bar.set_value(cx, offset.1);
         }
     }
 }
