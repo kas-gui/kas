@@ -614,7 +614,7 @@ impl Layout {
                 // Note that try_probe_recurse fails on non-widget fields though these might still
                 // be valid layout targets; if not then the requirement for an explicit fn probe
                 // may be confusing without this error.
-                if !fields.iter().any(|ident| *ident == expr.member) {
+                if !fields.contains(&expr.member) {
                     emit_error!(expr, "not a field of self")
                 }
             }
