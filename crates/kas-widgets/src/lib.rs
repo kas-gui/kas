@@ -22,7 +22,7 @@
 //! ## Container widgets
 //!
 //! -   [`Frame`]: a frame around content
-//! -   [`ClipRegion`], [`ScrollBarRegion`]: larger on the inside
+//! -   [`ClipRegion`], [`ScrollRegion`], [`ScrollBarRegion`]: larger on the inside
 //! -   [`Stack`], [`TabStack`]: a stack of widgets in the same rect
 //! -   [`List`]: a row / column of children
 //! -   [`Splitter`]: like [`List`] but with resizing handles
@@ -104,8 +104,8 @@ pub use grip::{GripMsg, GripPart};
 pub use list::*;
 pub use progress::ProgressBar;
 pub use radio_box::{RadioBox, RadioButton};
-pub use scroll::ClipRegion;
-pub use scroll_bar::{ScrollBar, ScrollBarMode, ScrollBarRegion, ScrollBars, ScrollMsg};
+pub use scroll::{ClipRegion, ScrollBarRegion, ScrollRegion};
+pub use scroll_bar::{ScrollBar, ScrollBarMode, ScrollBars, ScrollMsg};
 pub use scroll_label::{ScrollLabel, ScrollText, SelectableLabel, SelectableText};
 pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
