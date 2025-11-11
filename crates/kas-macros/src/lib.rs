@@ -424,11 +424,28 @@ pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// ```ignore
 /// #[impl_self]
-/// mod ScrollBarRegion {
-///     #[autoimpl(Deref, DerefMut using self.0)]
-///     #[derive(Clone, Default)]
+/// mod Align {
+///     /// Apply an alignment hint
 ///     #[derive_widget]
-///     pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollBars<ScrollRegion<W>>);
+///     pub struct Align<W: Widget> {
+///         #[widget]
+///         pub inner: W,
+///         hints: AlignHints,
+///     }
+///
+///     impl Self {
+///         /// Construct
+///         #[inline]
+///         pub fn new(inner: W, hints: AlignHints) -> Self {
+///             Align { inner, hints }
+///         }
+///     }
+///
+///     impl Layout for Self {
+///         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
+///             self.inner.set_rect(cx, rect, self.hints.combine(hints));
+///         }
+///     }
 /// }
 /// ```
 ///
