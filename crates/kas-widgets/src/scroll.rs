@@ -270,9 +270,9 @@ mod ScrollRegion {
 
             let child_rect = Rect::new(pos, child_size);
             self.inner.set_rect(cx, child_rect, hints);
-            let max_scroll_offset = self.scroll.max_offset();
 
             let _ = self.scroll.set_sizes(child_size, content_size);
+            let max_scroll_offset = self.scroll.max_offset();
 
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
@@ -298,7 +298,9 @@ mod ScrollRegion {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            self.inner.draw(draw.re());
+            let viewport = self.inner.rect();
+            self.inner
+                .draw_with_offset(draw.re(), viewport, self.scroll.offset());
             if self.show_bars == (false, false) {
                 return;
             }
@@ -378,8 +380,15 @@ mod ScrollRegion {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            self.scroll
-                .scroll_by_event(cx, event, self.id(), self.inner.rect())
+            let is_used = self
+                .scroll
+                .scroll_by_event(cx, event, self.id(), self.inner.rect());
+
+            let offset = self.scroll.offset();
+            self.horiz_bar.set_value(cx, offset.0);
+            self.vert_bar.set_value(cx, offset.1);
+
+            is_used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
@@ -433,13 +442,6 @@ mod ScrollBarRegion {
     #[derive(Clone, Debug, Default)]
     #[derive_widget]
     pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollRegion<ClipRegion<W>>);
-
-    impl Layout for Self {
-        fn draw(&self, draw: DrawCx) {
-            let inner = &self.inner;
-            inner.draw_with_offset(draw, inner.rect(), self.scroll.offset());
-        }
-    }
 
     impl Self {
         /// Construct a `ScrollBarRegion<W>`
