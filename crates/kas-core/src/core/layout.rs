@@ -226,5 +226,17 @@ pub trait Viewport: Layout {
     ///
     /// This method should be called instead of [`Layout::draw`] by compatible
     /// parent widgets.
+    ///
+    /// # Implementation
+    ///
+    /// ## Method modification
+    ///
+    /// The `#[widget]` macro injects a call to [`DrawCx::set_id`] into this
+    /// method where possible, allowing correct detection of disabled and
+    /// highlight states.
+    ///
+    /// This method modification should never cause issues (besides the implied
+    /// limitation that widgets cannot easily detect a parent's state while
+    /// being drawn).
     fn draw_with_offset(&self, draw: DrawCx, viewport: Rect, offset: Offset);
 }
