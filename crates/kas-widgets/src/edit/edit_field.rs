@@ -130,10 +130,6 @@ mod EditField {
                 self.set_ime_cursor_area(cx);
             }
         }
-
-        fn draw(&self, draw: DrawCx) {
-            self.draw_with_offset(draw, self.rect(), Offset::ZERO);
-        }
     }
 
     impl Viewport for Self {

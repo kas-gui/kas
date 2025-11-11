@@ -32,6 +32,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
     let mut ty_data: Option<syn::ImplItemType> = None;
 
+    let mut viewport_draw_span = None;
     let mut get_child = None;
     let mut child_node = None;
     let mut find_child_index = None;
@@ -73,6 +74,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             {
                 if layout_impl.is_none() {
                     layout_impl = Some(index);
+                }
+            } else if *path == parse_quote! { ::kas::Viewport }
+                || *path == parse_quote! { kas::Viewport }
+                || *path == parse_quote! { Viewport }
+            {
+                for item in &impl_.items {
+                    if let ImplItem::Fn(item) = item {
+                        if item.sig.ident == "draw_with_offset" {
+                            viewport_draw_span = Some(item.span());
+                        }
+                    }
                 }
             } else if *path == parse_quote! { ::kas::Tile }
                 || *path == parse_quote! { kas::Tile }
@@ -470,7 +482,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             self.rect().contains(coord).then(|| ::kas::Events::probe(self, coord))
         }
     });
-    let mut fn_draw = None;
+
+    let mut fn_draw = if viewport_draw_span.is_some() {
+        Some(quote! {
+            fn draw(&self, draw: ::kas::theme::DrawCx) {
+                self.draw_with_offset(draw, self.rect(), ::kas::geom::Offset::ZERO);
+            }
+        })
+    } else {
+        None
+    };
+
     if let Some(tree) = layout {
         // TODO(opt): omit field widget.core._rect if not set here
         let mut set_rect = quote! {};
@@ -564,13 +586,15 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             });
         }
 
-        fn_draw = Some(quote! {
-            fn draw(&self, draw: ::kas::theme::DrawCx) {
-                #core_path.status.require_rect(&#core_path._id);
+        if fn_draw.is_none() {
+            fn_draw = Some(quote! {
+                fn draw(&self, draw: ::kas::theme::DrawCx) {
+                    #core_path.status.require_rect(&#core_path._id);
 
-                ::kas::MacroDefinedLayout::draw(self, draw);
-            }
-        });
+                    ::kas::MacroDefinedLayout::draw(self, draw);
+                }
+            });
+        }
     } else {
         // TODO(opt): omit field widget.core._rect if a custom `fn rect` defintion is used
         fn_rect = quote! {
@@ -675,8 +699,15 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
-            if let Some(ref core) = core_data {
-                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                if let Some(span) = viewport_draw_span {
+                    emit_error!(
+                        f, "definition of `fn draw` is redundant";
+                        note = span => "definition of `fn draw_with_offset`"
+                    );
+                }
+
+                if let Some(ref core) = core_data {
                     f.block.stmts.insert(0, parse_quote! {
                         self.#core.status.require_rect(&self.#core._id);
                     });

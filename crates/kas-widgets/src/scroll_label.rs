@@ -50,10 +50,6 @@ mod SelectableText {
             }
             rules
         }
-
-        fn draw(&self, mut draw: DrawCx) {
-            self.draw_with_offset(draw, self.rect(), Offset::ZERO);
-        }
     }
 
     impl Viewport for Self {
