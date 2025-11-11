@@ -5,7 +5,7 @@
 
 //! Layout, Tile and TileExt traits
 
-use crate::geom::Rect;
+use crate::geom::{Offset, Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
 use kas_macros::autoimpl;
@@ -159,4 +159,84 @@ pub trait MacroDefinedLayout {
 
     /// Draw a widget and its children
     fn draw(&self, draw: DrawCx);
+}
+
+/// Layout routines for scrollable content
+///
+/// A `Viewport` supports content larger than its assigned `rect` (the `rect`
+/// passed to [`Layout::set_rect`]). This `rect` is considered the viewport
+/// through which content may be viewed (approximately: see
+/// [`Self::draw_with_offset`]).
+///
+/// If the parent widget supports scrolling over contents implementing
+/// `Viewport`, it should call [`Viewport::draw_with_offset`] instead of
+/// [`Layout::draw`].
+///
+/// It is intended that the widget implementing this trait is the child of some
+/// parent widget which supports scrolling through event handling and provision
+/// of a scroll offset, and that this parent uses the methods of this trait
+/// where applicable (in particular, calling [`Viewport::draw_with_offset`]
+/// instead of [`Layout::draw`]). In case the parent does not support scrolling,
+/// the widget should remain usable (but with only a subset of content being
+/// accessible).
+pub trait Viewport: Layout {
+    /// Get content size
+    ///
+    /// When the content size is larger than the viewport, content becomes
+    /// scrollable with a maximum offset of `content_size - viewport_size`.
+    ///
+    /// # Calling
+    ///
+    /// This method is called during sizing.
+    fn content_size(&self) -> Size;
+
+    /// Update the scroll offset
+    ///
+    /// The `viewport` and `offset` parameters are the same as those of
+    /// [`Viewport::draw_with_offset`].
+    ///
+    /// # Calling
+    ///
+    /// This method should be called after [`Layout::set_rect`] and whenever the
+    /// scroll offset changes to allow preparation of content. It must be called
+    /// before drawing and event handling operations using this new `offset`.
+    ///
+    /// # Implementation
+    ///
+    /// This method only needs to do anything in cases where only a subset of
+    /// content is prepared.
+    fn update_offset(&mut self, viewport: Rect, offset: Offset) {
+        let _ = (viewport, offset);
+    }
+
+    /// Draw with a scroll offset
+    ///
+    /// Drawing should be clamped to the given `viewport`. This `viewport` may
+    /// be the same as [`Layout::rect`] but is allowed to be slightly different;
+    /// for example `EditBox` passes a larger [`Rect`] to allow drawing in the
+    /// margin allocated between its frame and content.
+    ///
+    /// The `offset` should be the same as that used by the parent widget
+    /// in [`Tile::translation`].
+    ///
+    /// Effectively, content is drawn at position `self.rect().pos - offset`
+    /// but clamped to `viewport`.
+    ///
+    /// # Calling
+    ///
+    /// This method should be called instead of [`Layout::draw`] by compatible
+    /// parent widgets.
+    ///
+    /// # Implementation
+    ///
+    /// ## Method modification
+    ///
+    /// The `#[widget]` macro injects a call to [`DrawCx::set_id`] into this
+    /// method where possible, allowing correct detection of disabled and
+    /// highlight states.
+    ///
+    /// This method modification should never cause issues (besides the implied
+    /// limitation that widgets cannot easily detect a parent's state while
+    /// being drawn).
+    fn draw_with_offset(&self, draw: DrawCx, viewport: Rect, offset: Offset);
 }

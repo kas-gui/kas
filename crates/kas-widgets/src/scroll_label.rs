@@ -25,13 +25,7 @@ mod SelectableText {
     ///
     /// ### Special behaviour
     ///
-    /// The [`Self::typeset_size`] of this widget may exceed the size of
-    /// [`Self::rect`]. It is expected that this widget is only used as part of
-    /// a parent widget which provides scrolling of content. This parent should:
-    ///
-    /// - Call [`Self::draw_with_offset`] instead of [`Self::draw`]
-    /// - Wrap methods [`Self::set_text`] and [`Self::set_string`] (if exposed)
-    ///   to update the scroll offset as necessary.
+    /// This is a [`Viewport`] widget.
     #[widget]
     #[layout(self.text)]
     pub struct SelectableText<A, T: FormattableText + 'static> {
@@ -56,9 +50,26 @@ mod SelectableText {
             }
             rules
         }
+    }
 
-        fn draw(&self, mut draw: DrawCx) {
-            self.draw_with_offset(draw, self.rect(), Offset::ZERO);
+    impl Viewport for Self {
+        #[inline]
+        fn content_size(&self) -> Size {
+            if let Ok((tl, br)) = self.text.bounding_box() {
+                (br - tl).cast_ceil()
+            } else {
+                Size::ZERO
+            }
+        }
+
+        fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+            let pos = self.rect().pos - offset;
+
+            if self.selection.is_empty() {
+                draw.text_pos(pos, rect, &self.text);
+            } else {
+                draw.text_selected(pos, rect, &self.text, self.selection.range());
+            }
         }
     }
 
@@ -174,33 +185,6 @@ mod SelectableText {
         #[inline]
         pub fn as_str(&self) -> &str {
             self.text.as_str()
-        }
-
-        /// Get the size of the type-set text
-        ///
-        /// We only support content spilling over on the bottom edge.
-        #[inline]
-        pub fn typeset_size(&self) -> Size {
-            let mut size = self.rect().size;
-            if let Ok((tl, br)) = self.text.bounding_box() {
-                size.1 = size.1.max((br.1 - tl.1).cast_ceil());
-            }
-            size
-        }
-
-        /// Draw with an offset
-        ///
-        /// Draws at position `self.rect().pos - offset` bounded by `rect`.
-        ///
-        /// This may be called instead of [`Layout::draw`].
-        pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            let pos = self.rect().pos - offset;
-
-            if self.selection.is_empty() {
-                draw.text_pos(pos, rect, &self.text);
-            } else {
-                draw.text_selected(pos, rect, &self.text, self.selection.range());
-            }
         }
     }
 
@@ -378,8 +362,8 @@ mod ScrollText {
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::ScrollRegion {
-                offset: self.scroll_offset(),
-                max_offset: self.max_scroll_offset(),
+                offset: self.scroll.offset(),
+                max_offset: self.scroll.max_offset(),
             }
         }
 
@@ -453,7 +437,8 @@ mod ScrollText {
 
         fn update_content_size(&mut self, cx: &mut EventState) {
             let size = self.rect().size;
-            let _ = self.scroll.set_sizes(size, self.label.typeset_size());
+            let _ = self.scroll.set_sizes(size, self.label.content_size());
+            self.label.update_offset(self.rect(), self.scroll.offset());
             self.vert_bar
                 .set_limits(cx, self.scroll.max_offset().1, size.1);
             self.vert_bar.set_value(cx, self.scroll.offset().1);
@@ -487,20 +472,27 @@ mod ScrollText {
             let is_used = self
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.rect());
+            self.label.update_offset(self.rect(), self.scroll.offset());
             self.vert_bar.set_value(cx, self.scroll.offset().1);
             is_used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if cx.last_child() == Some(widget_index![self.vert_bar])
+            let action = if cx.last_child() == Some(widget_index![self.vert_bar])
                 && let Some(ScrollMsg(y)) = cx.try_pop()
             {
                 let offset = Offset(self.scroll.offset().0, y);
-                let action = self.scroll.set_offset(offset);
-                self.vert_bar.set_value(cx, self.scroll.offset().1);
-                cx.action_moved(action);
+                self.scroll.set_offset(offset)
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                self.set_scroll_offset(cx, offset);
+                self.scroll.set_offset(offset)
+            } else {
+                return;
+            };
+
+            if action.0 {
+                cx.action_moved(action);
+                self.label.update_offset(self.rect(), self.scroll.offset());
+                self.vert_bar.set_value(cx, self.scroll.offset().1);
             }
         }
 
@@ -518,31 +510,8 @@ mod ScrollText {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
             self.scroll.scroll(cx, self.id(), self.rect(), scroll);
+            self.label.update_offset(self.rect(), self.scroll.offset());
             self.vert_bar.set_value(cx, self.scroll.offset().1);
-        }
-    }
-
-    impl Scrollable for Self {
-        fn content_size(&self) -> Size {
-            self.label.typeset_size()
-        }
-
-        fn max_scroll_offset(&self) -> Offset {
-            self.scroll.max_offset()
-        }
-
-        fn scroll_offset(&self) -> Offset {
-            self.scroll.offset()
-        }
-
-        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
-            let action = self.scroll.set_offset(offset);
-            let offset = self.scroll.offset();
-            if action.0 {
-                cx.action_moved(action);
-                self.vert_bar.set_value(cx, offset.1);
-            }
-            offset
         }
     }
 }

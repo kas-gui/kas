@@ -12,7 +12,7 @@ use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
 use syn::ImplItem::{self, Verbatim};
 use syn::parse::{Error, Result};
 use syn::spanned::Spanned;
-use syn::{FnArg, Ident, ItemImpl, MacroDelimiter, Member, Meta, Pat, Type};
+use syn::{FnArg, Ident, ImplItemFn, ItemImpl, MacroDelimiter, Member, Meta, Pat, Type};
 use syn::{parse_quote, parse2};
 
 /// Custom widget definition
@@ -27,6 +27,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
     let mut widget_impl = None;
     let mut layout_impl = None;
+    let mut viewport_impl = None;
     let mut tile_impl = None;
     let mut events_impl = None;
 
@@ -73,6 +74,13 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             {
                 if layout_impl.is_none() {
                     layout_impl = Some(index);
+                }
+            } else if *path == parse_quote! { ::kas::Viewport }
+                || *path == parse_quote! { kas::Viewport }
+                || *path == parse_quote! { Viewport }
+            {
+                if viewport_impl.is_none() {
+                    viewport_impl = Some(index);
                 }
             } else if *path == parse_quote! { ::kas::Tile }
                 || *path == parse_quote! { kas::Tile }
@@ -470,7 +478,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             self.rect().contains(coord).then(|| ::kas::Events::probe(self, coord))
         }
     });
-    let mut fn_draw = None;
+
+    let mut fn_draw = if viewport_impl.is_some() {
+        Some(quote! {
+            fn draw(&self, draw: ::kas::theme::DrawCx) {
+                self.draw_with_offset(draw, self.rect(), ::kas::geom::Offset::ZERO);
+            }
+        })
+    } else {
+        None
+    };
+
     if let Some(tree) = layout {
         // TODO(opt): omit field widget.core._rect if not set here
         let mut set_rect = quote! {};
@@ -564,13 +582,15 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             });
         }
 
-        fn_draw = Some(quote! {
-            fn draw(&self, draw: ::kas::theme::DrawCx) {
-                #core_path.status.require_rect(&#core_path._id);
+        if fn_draw.is_none() {
+            fn_draw = Some(quote! {
+                fn draw(&self, draw: ::kas::theme::DrawCx) {
+                    #core_path.status.require_rect(&#core_path._id);
 
-                ::kas::MacroDefinedLayout::draw(self, draw);
-            }
-        });
+                    ::kas::MacroDefinedLayout::draw(self, draw);
+                }
+            });
+        }
     } else {
         // TODO(opt): omit field widget.core._rect if a custom `fn rect` defintion is used
         fn_rect = quote! {
@@ -600,7 +620,28 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         });
     }
 
+    fn modify_draw(f: &mut ImplItemFn, core: &Member) {
+        f.block.stmts.insert(0, parse_quote! {
+            self.#core.status.require_rect(&self.#core._id);
+        });
+
+        if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(1) {
+            // NOTE: if the 'draw' parameter is unnamed or not 'mut'
+            // then we don't need to call DrawCx::set_id since no
+            // calls to draw methods are possible.
+            if let Pat::Ident(ref pat_ident) = *arg.pat {
+                if pat_ident.mutability.is_some() {
+                    let draw = &pat_ident.ident;
+                    f.block.stmts.insert(0, parse_quote! {
+                        #draw.set_id(::kas::Tile::id(self));
+                    });
+                }
+            }
+        }
+    }
+
     let mut widget_set_rect_span = None;
+    let mut layout_draw_span = None;
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
@@ -675,25 +716,11 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
-            if let Some(ref core) = core_data {
-                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                    f.block.stmts.insert(0, parse_quote! {
-                        self.#core.status.require_rect(&self.#core._id);
-                    });
+            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                layout_draw_span = Some(f.span());
 
-                    if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(1) {
-                        // NOTE: if the 'draw' parameter is unnamed or not 'mut'
-                        // then we don't need to call DrawCx::set_id since no
-                        // calls to draw methods are possible.
-                        if let Pat::Ident(ref pat_ident) = *arg.pat {
-                            if pat_ident.mutability.is_some() {
-                                let draw = &pat_ident.ident;
-                                f.block.stmts.insert(0, parse_quote! {
-                                    #draw.set_id(::kas::Tile::id(self));
-                                });
-                            }
-                        }
-                    }
+                if let Some(ref core) = core_data {
+                    modify_draw(f, core);
                 }
             }
         } else if let Some(method) = fn_draw {
@@ -708,6 +735,29 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #fn_draw
             }
         });
+    }
+
+    if let Some(index) = viewport_impl {
+        let viewport_impl = &mut scope.impls[index];
+        let item_idents = collect_idents(viewport_impl);
+
+        if let Some((index, _)) = item_idents
+            .iter()
+            .find(|(_, ident)| *ident == "draw_with_offset")
+        {
+            if let ImplItem::Fn(f) = &mut viewport_impl.items[*index] {
+                if let Some(span) = layout_draw_span {
+                    emit_error!(
+                        span, "definition of `fn draw` is redundant";
+                        note = f.span() => "definition of `fn draw_with_offset`"
+                    );
+                }
+
+                if let Some(ref core) = core_data {
+                    modify_draw(f, core);
+                }
+            }
+        }
     }
 
     let required_tile_methods = required_tile_methods(&name.to_string(), &core_path);

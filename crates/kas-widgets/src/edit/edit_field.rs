@@ -63,13 +63,7 @@ mod EditField {
     ///
     /// ### Special behaviour
     ///
-    /// The [`Self::typeset_size`] of this widget may exceed the size of
-    /// [`Self::rect`]. It is expected that this widget is only used as part of
-    /// a parent widget which provides scrolling of content. This parent should:
-    ///
-    /// - Call [`Self::draw_with_offset`] instead of [`Self::draw`]
-    /// - Wrap methods [`Self::set_str`] and [`Self::set_string`] (if exposed)
-    ///   to update the scroll offset as necessary.
+    /// This is a [`Viewport`] widget.
     #[autoimpl(Clone, Debug where G: trait)]
     #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
@@ -136,9 +130,26 @@ mod EditField {
                 self.set_ime_cursor_area(cx);
             }
         }
+    }
 
-        fn draw(&self, draw: DrawCx) {
-            self.draw_with_offset(draw, self.rect(), Offset::ZERO);
+    impl Viewport for Self {
+        #[inline]
+        fn content_size(&self) -> Size {
+            if let Ok((tl, br)) = self.text.bounding_box() {
+                (br - tl).cast_ceil()
+            } else {
+                Size::ZERO
+            }
+        }
+
+        fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+            let pos = self.rect().pos - offset;
+
+            draw.text_selected(pos, rect, &self.text, self.selection.range());
+
+            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
+                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
+            }
         }
     }
 
@@ -177,9 +188,9 @@ mod EditField {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
-            let size = self.typeset_size();
+            let size = self.content_size();
             G::update(self, cx, data);
-            if size != self.typeset_size() {
+            if size != self.content_size() {
                 cx.resize();
             }
         }
@@ -281,7 +292,7 @@ mod EditField {
                         self.selection.set_all(range.start + text.len());
                     }
                     self.edit_x_coord = None;
-                    self.prepare_text(cx);
+                    self.prepare_text(cx, false);
                     Used
                 }
                 Event::ImeCommit(text) => {
@@ -296,7 +307,7 @@ mod EditField {
 
                     self.selection.set_all(range.start + text.len());
                     self.edit_x_coord = None;
-                    self.prepare_text(cx);
+                    self.prepare_text(cx, false);
                     Used
                 }
                 Event::PressStart(press) if press.is_tertiary() => {
@@ -317,7 +328,7 @@ mod EditField {
                             .replace_range(index..index, &content[range.clone()]);
                         self.selection.set_all(index + range.len());
                         self.edit_x_coord = None;
-                        self.prepare_text(cx);
+                        self.prepare_text(cx, false);
 
                         G::edit(self, cx, data);
                     }
@@ -475,34 +486,6 @@ mod EditField {
                     rect.pos += Offset::conv(self.rect().pos);
                     cx.set_ime_cursor_area(self.id_ref(), rect);
                 }
-            }
-        }
-
-        /// Get the size of the type-set text
-        ///
-        /// `EditField` ensures text has no left or top overhang.
-        #[inline]
-        pub fn typeset_size(&self) -> Size {
-            let mut size = self.rect().size;
-            if let Ok((tl, br)) = self.text.bounding_box() {
-                size.1 = size.1.max((br.1 - tl.1).cast_ceil());
-                size.0 = size.0.max((br.0 - tl.0).cast_ceil());
-            }
-            size
-        }
-
-        /// Draw with an offset
-        ///
-        /// Draws at position `self.rect() - offset`.
-        ///
-        /// This may be called instead of [`Layout::draw`].
-        pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            let pos = self.rect().pos - offset;
-
-            draw.text_selected(pos, rect, &self.text, self.selection.range());
-
-            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
-                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
             }
         }
     }
@@ -723,15 +706,19 @@ impl<G: EditGuard> EditField<G> {
         self.last_edit = edit;
     }
 
-    fn prepare_text(&mut self, cx: &mut EventCx) {
-        let size = self.typeset_size();
+    fn prepare_text(&mut self, cx: &mut EventCx, force_set_offset: bool) {
+        let size = self.content_size();
         if self.text.prepare() {
             self.text.ensure_no_left_overhang();
             cx.redraw();
         }
 
-        if size != self.typeset_size() {
+        let mut set_offset = force_set_offset;
+        if size != self.content_size() {
             cx.resize();
+            set_offset = true;
+        }
+        if set_offset {
             self.set_view_offset_from_cursor(cx);
         }
     }
@@ -773,7 +760,7 @@ impl<G: EditGuard> EditField<G> {
         }
         self.edit_x_coord = None;
 
-        self.prepare_text(cx);
+        self.prepare_text(cx, false);
         Used
     }
 
@@ -1019,6 +1006,7 @@ impl<G: EditGuard> EditField<G> {
             self.current = CurrentAction::None;
         }
 
+        let mut force_set_offset = false;
         let result = match action {
             Action::None => EditAction::None,
             Action::Deselect => {
@@ -1026,7 +1014,10 @@ impl<G: EditGuard> EditField<G> {
                 cx.redraw();
                 EditAction::None
             }
-            Action::Activate => EditAction::Activate,
+            Action::Activate => {
+                force_set_offset = true;
+                EditAction::Activate
+            }
             Action::Edit => EditAction::Edit,
             Action::Insert(s, edit) => {
                 let mut index = cursor;
@@ -1064,12 +1055,13 @@ impl<G: EditGuard> EditField<G> {
                     self.set_primary(cx);
                 }
                 self.edit_x_coord = x_coord;
+                force_set_offset = true;
                 cx.redraw();
                 EditAction::None
             }
         };
 
-        self.prepare_text(cx);
+        self.prepare_text(cx, force_set_offset);
 
         Ok(match result {
             EditAction::None => Used,
