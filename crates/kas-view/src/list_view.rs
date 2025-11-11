@@ -712,7 +712,7 @@ mod ListView {
                 self.skip = 1; // avoid divide by 0
                 0
             } else {
-                usize::conv((size + skip - 1) / skip + 1)
+                usize::conv(size).div_ceil(usize::conv(skip)) + 1
             };
 
             let avail_widgets = self.widgets.len();
@@ -800,10 +800,11 @@ mod ListView {
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             let solver = self.position_solver();
             let first_data = self.first_data.cast();
-            let last_data = usize::conv(self.first_data) + usize::conv(self.cur_len) - 1;
+            let size: usize = self.rect().size.extract(self.direction).cast();
+            let last_visible = first_data + size / usize::conv(self.skip);
             let data_index = if let Some(index) = from {
                 let data = solver.child_to_data(index);
-                if !reverse && data < last_data {
+                if !reverse && data < last_visible {
                     data + 1
                 } else if reverse && data > first_data {
                     data - 1
@@ -813,7 +814,7 @@ mod ListView {
             } else if !reverse {
                 first_data
             } else {
-                last_data
+                last_visible
             };
 
             let index = data_index % usize::conv(self.cur_len);
