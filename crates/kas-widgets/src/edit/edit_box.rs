@@ -93,7 +93,7 @@ mod EditBox {
             self.vert_bar.set_rect(cx, bar_rect, AlignHints::NONE);
 
             self.inner.set_rect(cx, rect, hints);
-            let _ = self.scroll.set_sizes(rect.size, self.inner.typeset_size());
+            let _ = self.scroll.set_sizes(rect.size, self.inner.content_size());
             self.update_scroll_bar(cx);
         }
 
@@ -221,7 +221,7 @@ mod EditBox {
 
         fn update_content_size(&mut self) {
             let size = self.inner.rect().size;
-            let _ = self.scroll.set_sizes(size, self.inner.typeset_size());
+            let _ = self.scroll.set_sizes(size, self.inner.content_size());
         }
 
         fn update_scroll_bar(&mut self, cx: &mut EventState) {

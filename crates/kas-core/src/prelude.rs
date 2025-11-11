@@ -25,7 +25,7 @@ pub use crate::{ActionMoved, ActionResize};
 #[doc(no_inline)]
 pub use crate::{ChildIndices, Node, Scrollable};
 #[doc(no_inline)]
-pub use crate::{Events, Layout, Role, RoleCx, RoleCxExt, Tile, TileExt, Widget};
+pub use crate::{Events, Layout, Role, RoleCx, RoleCxExt, Tile, TileExt, Viewport, Widget};
 #[doc(no_inline)] pub use crate::{HasId, Id};
 #[doc(no_inline)]
 pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, impl_self};

@@ -63,13 +63,7 @@ mod EditField {
     ///
     /// ### Special behaviour
     ///
-    /// The [`Self::typeset_size`] of this widget may exceed the size of
-    /// [`Self::rect`]. It is expected that this widget is only used as part of
-    /// a parent widget which provides scrolling of content. This parent should:
-    ///
-    /// - Call [`Self::draw_with_offset`] instead of [`Self::draw`]
-    /// - Wrap methods [`Self::set_str`] and [`Self::set_string`] (if exposed)
-    ///   to update the scroll offset as necessary.
+    /// This is a [`Viewport`] widget.
     #[autoimpl(Clone, Debug where G: trait)]
     #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
@@ -142,6 +136,28 @@ mod EditField {
         }
     }
 
+    impl Viewport for Self {
+        #[inline]
+        fn content_size(&self) -> Size {
+            let mut size = self.rect().size;
+            if let Ok((tl, br)) = self.text.bounding_box() {
+                size.1 = size.1.max((br.1 - tl.1).cast_ceil());
+                size.0 = size.0.max((br.0 - tl.0).cast_ceil());
+            }
+            size
+        }
+
+        fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+            let pos = self.rect().pos - offset;
+
+            draw.text_selected(pos, rect, &self.text, self.selection.range());
+
+            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
+                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
+            }
+        }
+    }
+
     impl Tile for Self {
         fn navigable(&self) -> bool {
             true
@@ -177,9 +193,9 @@ mod EditField {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
-            let size = self.typeset_size();
+            let size = self.content_size();
             G::update(self, cx, data);
-            if size != self.typeset_size() {
+            if size != self.content_size() {
                 cx.resize();
             }
         }
@@ -477,34 +493,6 @@ mod EditField {
                 }
             }
         }
-
-        /// Get the size of the type-set text
-        ///
-        /// `EditField` ensures text has no left or top overhang.
-        #[inline]
-        pub fn typeset_size(&self) -> Size {
-            let mut size = self.rect().size;
-            if let Ok((tl, br)) = self.text.bounding_box() {
-                size.1 = size.1.max((br.1 - tl.1).cast_ceil());
-                size.0 = size.0.max((br.0 - tl.0).cast_ceil());
-            }
-            size
-        }
-
-        /// Draw with an offset
-        ///
-        /// Draws at position `self.rect() - offset`.
-        ///
-        /// This may be called instead of [`Layout::draw`].
-        pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            let pos = self.rect().pos - offset;
-
-            draw.text_selected(pos, rect, &self.text, self.selection.range());
-
-            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
-                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
-            }
-        }
     }
 }
 
@@ -724,13 +712,13 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx) {
-        let size = self.typeset_size();
+        let size = self.content_size();
         if self.text.prepare() {
             self.text.ensure_no_left_overhang();
             cx.redraw();
         }
 
-        if size != self.typeset_size() {
+        if size != self.content_size() {
             cx.resize();
             self.set_view_offset_from_cursor(cx);
         }
