@@ -302,6 +302,8 @@ mod ScrollRegion {
 
             let _ = self.scroll.set_sizes(child_size, content_size);
             let max_scroll_offset = self.scroll.max_offset();
+            self.inner
+                .update_offset(cx, child_rect, self.scroll.offset());
 
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
@@ -409,13 +411,17 @@ mod ScrollRegion {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            let initial_offset = self.scroll.offset();
             let is_used = self
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.inner.rect());
 
             let offset = self.scroll.offset();
-            self.horiz_bar.set_value(cx, offset.0);
-            self.vert_bar.set_value(cx, offset.1);
+            if offset != initial_offset {
+                self.horiz_bar.set_value(cx, offset.0);
+                self.vert_bar.set_value(cx, offset.1);
+                self.inner.update_offset(cx, self.inner.rect(), offset);
+            }
 
             is_used
         }
@@ -440,6 +446,7 @@ mod ScrollRegion {
 
             let action = self.scroll.set_offset(offset);
             cx.action_moved(action);
+            self.inner.update_offset(cx, self.inner.rect(), offset);
         }
 
         fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
@@ -456,6 +463,7 @@ mod ScrollRegion {
             let offset = self.scroll.offset();
             self.horiz_bar.set_value(cx, offset.0);
             self.vert_bar.set_value(cx, offset.1);
+            self.inner.update_offset(cx, self.inner.rect(), offset);
         }
     }
 }
