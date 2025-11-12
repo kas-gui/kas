@@ -9,10 +9,10 @@ use proc_macro2::TokenStream as Toks;
 use quote::quote;
 use syn::ItemStruct;
 
-pub struct ImplScrollable;
-impl ImplTrait for ImplScrollable {
+pub struct ImplViewport;
+impl ImplTrait for ImplViewport {
     fn path(&self) -> SimplePath {
-        SimplePath::new(&["", "kas", "Scrollable"])
+        SimplePath::new(&["", "kas", "Viewport"])
     }
 
     fn support_ignore(&self) -> bool {
@@ -31,23 +31,33 @@ impl ImplTrait for ImplScrollable {
                     self.#using.content_size()
                 }
                 #[inline]
-                fn max_scroll_offset(&self) -> ::kas::geom::Offset {
-                    self.#using.max_scroll_offset()
-                }
-                #[inline]
-                fn scroll_offset(&self) -> ::kas::geom::Offset {
-                    self.#using.scroll_offset()
-                }
-                #[inline]
-                fn set_scroll_offset(
+                fn update_offset(
                     &mut self,
                     cx: &mut ::kas::event::EventState,
+                    viewport: ::kas::geom::Rect,
                     offset: ::kas::geom::Offset,
-                ) -> ::kas::geom::Offset {
-                    self.#using.set_scroll_offset(cx, offset)
+                ) {
+                    self.#using.update_offset(cx, viewport, offset)
+                }
+                #[inline]
+                fn draw_with_offset(
+                    &self,
+                    draw: ::kas::theme::DrawCx,
+                    viewport: ::kas::geom::Rect,
+                    offset: ::kas::geom::Offset,
+                ) {
+                    self.#using.draw_with_offset(draw, viewport, offset);
+                }
+                #[inline]
+                fn try_probe_with_offset(
+                    &self,
+                    coord: ::kas::geom::Coord,
+                    offset: ::kas::geom::Offset,
+                ) -> Option<::kas::Id> {
+                    self.#using.try_probe_with_offset(coord, offset)
                 }
             };
-            Ok((quote! { ::kas::Scrollable }, methods))
+            Ok((quote! { ::kas::Viewport }, methods))
         } else {
             Err(Error::RequireUsing)
         }

@@ -19,6 +19,8 @@ mod Reserve {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](crate::adapt::AdaptWidget).
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget]
     pub struct Reserve<W: Widget> {
         #[widget]
@@ -69,6 +71,8 @@ mod Margins {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](crate::adapt::AdaptWidget).
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget]
     pub struct Margins<W: Widget> {
         #[widget]

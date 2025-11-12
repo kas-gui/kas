@@ -71,7 +71,7 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     use autoimpl::ImplTrait;
-    use scroll_traits::ImplScrollable;
+    use scroll_traits::ImplViewport;
     use std::iter::once;
 
     let mut toks = item.clone();
@@ -84,7 +84,7 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
                 autoimpl::STD_IMPLS
                     .iter()
                     .cloned()
-                    .chain(once(&ImplScrollable as &dyn ImplTrait))
+                    .chain(once(&ImplViewport as &dyn ImplTrait))
                     .find(|impl_| impl_.path().matches_ident_or_path(path))
             };
             toks.extend(TokenStream::from(ai.expand(item.into(), find_impl)))
