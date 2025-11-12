@@ -396,7 +396,7 @@ mod ScrollRegion {
             }
 
             self.inner
-                .try_probe(coord + self.scroll.offset())
+                .try_probe_with_offset(coord, self.scroll.offset())
                 .unwrap_or_else(|| self.id())
         }
 

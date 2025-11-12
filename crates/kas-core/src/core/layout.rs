@@ -5,8 +5,9 @@
 
 //! Layout, Tile and TileExt traits
 
+use crate::Id;
 use crate::event::EventState;
-use crate::geom::{Offset, Rect, Size};
+use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
 use kas_macros::autoimpl;
@@ -176,8 +177,7 @@ pub trait MacroDefinedLayout {
 /// It is intended that the widget implementing this trait is the child of some
 /// parent widget which supports scrolling through event handling and provision
 /// of a scroll offset, and that this parent uses the methods of this trait
-/// where applicable (in particular, calling [`Viewport::draw_with_offset`]
-/// instead of [`Layout::draw`]). In case the parent does not support scrolling,
+/// where applicable (see below). In case the parent does not support scrolling,
 /// the widget should remain usable (but with only a subset of content being
 /// accessible).
 pub trait Viewport: Layout {
@@ -240,4 +240,20 @@ pub trait Viewport: Layout {
     /// limitation that widgets cannot easily detect a parent's state while
     /// being drawn).
     fn draw_with_offset(&self, draw: DrawCx, viewport: Rect, offset: Offset);
+
+    /// Probe a coordinate for a widget's [`Id`]
+    ///
+    /// # Calling
+    ///
+    /// This method should be called instead of [`Tile::try_probe`].
+    ///
+    /// # Implementation
+    ///
+    /// The default implementation will normally suffice. It calls
+    /// [`Events::probe`] with `coord + offset` when
+    /// `self.rect().contains(coord)`.
+    fn try_probe_with_offset(&self, coord: Coord, offset: Offset) -> Option<Id> {
+        let _ = (coord, offset);
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 }
