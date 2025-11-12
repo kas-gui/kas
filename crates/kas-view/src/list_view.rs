@@ -7,8 +7,7 @@
 
 use crate::clerk::{Changes, Key, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
-use kas::event::components::ScrollComponent;
-use kas::event::{CursorIcon, FocusSource, Scroll, TimerHandle};
+use kas::event::{FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -117,16 +116,16 @@ mod ListView {
     /// item, and may handle events and emit messages like other widegts.
     /// See [`Driver`] documentation for more on event handling.
     ///
-    /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
-    /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
+    /// ### Special behaviour
+    ///
+    /// This is a [`Viewport`] widget.
+    ///
+    /// This widget supports navigation of children using arrow keys and other
+    /// navigation keys when those keys are not handled by the child itself.
     ///
     /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
     /// If enabled, [`SelectionMsg`] messages are reported; view widgets may
     /// emit [`kas::messages::Select`] to have themselves be selected.
-    ///
-    /// ### Messages
-    ///
-    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[widget]
     pub struct ListView<C: TokenClerk<usize>, V, D = Direction>
     where
@@ -157,8 +156,8 @@ mod ListView {
         child_inter_margin: i32,
         skip: i32,
         child_size: Size,
-        scroll: ScrollComponent,
-        // Widget translation is scroll.offset() + virtual_offset
+        /// The current view offset
+        offset: Offset,
         virtual_offset: i32,
         sel_mode: SelectionMode,
         sel_style: SelectionStyle,
@@ -247,7 +246,7 @@ mod ListView {
                 child_inter_margin: 0,
                 skip: 1,
                 child_size: Size::ZERO,
-                scroll: Default::default(),
+                offset: Offset::ZERO,
                 virtual_offset: 0,
                 sel_mode: SelectionMode::None,
                 sel_style: SelectionStyle::Highlight,
@@ -493,7 +492,7 @@ mod ListView {
                 self.token_update = self.token_update.max(Update::Token);
             }
 
-            let offset = self.scroll.offset().extract(self.direction);
+            let offset = self.offset.extract(self.direction);
             let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
 
             let alloc_len = self.widgets.len();
@@ -608,8 +607,8 @@ mod ListView {
                 self.direction,
                 (self.skip * data_len - self.child_inter_margin).max(0),
             );
-            let action = self.scroll.set_sizes(view_size, content_size);
-            cx.action_moved(action);
+            // let action = self.scroll.set_sizes(view_size, content_size);
+            // cx.action_moved(action);
         }
     }
 
@@ -736,6 +735,7 @@ mod ListView {
         fn update_offset(&mut self, cx: &mut EventState, _: Rect, offset: Offset) {
             // NOTE: we assume that the viewport is close enough to self.rect()
             // that prepared widgets will suffice
+            self.offset = offset;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
 
@@ -755,8 +755,7 @@ mod ListView {
     }
 
     impl Tile for Self {
-        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_scroll_offset(self.scroll.offset(), self.scroll.max_offset());
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::OptionList {
                 len: self.len_is_known.then(|| self.data_len.cast()),
                 direction: self.direction.as_direction(),
@@ -825,17 +824,11 @@ mod ListView {
 
         #[inline]
         fn translation(&self, _: usize) -> Offset {
-            self.scroll.offset() + self.virtual_offset()
+            self.virtual_offset()
         }
     }
 
     impl Events for Self {
-        fn mouse_over_icon(&self) -> Option<CursorIcon> {
-            self.scroll
-                .is_kinetic_scrolling()
-                .then_some(CursorIcon::AllScroll)
-        }
-
         #[inline]
         fn make_child_id(&mut self, _: usize) -> Id {
             // We configure children in map_view_widgets and do not want this method to be called
@@ -843,10 +836,6 @@ mod ListView {
         }
 
         fn probe(&self, coord: Coord) -> Id {
-            if self.scroll.is_kinetic_scrolling() {
-                return self.id();
-            }
-
             let coord = coord + self.translation(0);
             for child in &self.widgets[..self.cur_len.cast()] {
                 if child.token.is_some()
@@ -906,7 +895,7 @@ mod ListView {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
-            let mut is_used = match event {
+            match event {
                 Event::Command(cmd, _) => {
                     let last = usize::conv(self.data_len).wrapping_sub(1);
                     if last == usize::MAX {
@@ -937,11 +926,7 @@ mod ListView {
                     return if let Some(i_data) = data_index {
                         // Set nav focus to i_data and update scroll position
                         let rect = solver.rect(i_data) - self.virtual_offset();
-                        let action = self.scroll.focus_rect(cx, rect, self.rect());
-                        if action.0 {
-                            cx.action_moved(action);
-                            cx.config_cx(|cx| self.post_scroll(cx, data));
-                        }
+                        cx.set_scroll(Scroll::Rect(rect));
                         let index = i_data % usize::conv(self.cur_len);
                         let w = &self.widgets[index];
                         if w.token.is_some() {
@@ -977,7 +962,6 @@ mod ListView {
                         let w = &mut self.widgets[index];
                         if success
                             && !matches!(self.sel_mode, SelectionMode::None)
-                            && !self.scroll.is_kinetic_scrolling()
                             && w.key() == Some(key)
                             && w.item.rect().contains(press.coord + self.translation(0))
                         {
@@ -990,31 +974,11 @@ mod ListView {
                     cx.config_cx(|cx| self.post_scroll(cx, data));
                     Used
                 }
-                _ => Unused, // fall through to scroll handler
-            };
-
-            let offset = self.scroll.offset();
-            is_used |= self
-                .scroll
-                .scroll_by_event(cx, event, self.id(), self.rect());
-            if offset != self.scroll.offset() {
-                // We may process multiple 'moved' events per frame; TIMER_UPDATE_WIDGETS will only
-                // be processed once per frame.
-                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+                _ => Unused,
             }
-            is_used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
-            if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                let action = self.scroll.set_offset(offset);
-                if action.0 {
-                    cx.action_moved(action);
-                    cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
-                }
-                return;
-            }
-
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child
@@ -1065,10 +1029,8 @@ mod ListView {
             }
         }
 
-        fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
-            self.scroll
-                .scroll(cx, self.id(), self.rect(), scroll - self.virtual_offset());
-            cx.config_cx(|cx| self.post_scroll(cx, data));
+        fn handle_scroll(&mut self, cx: &mut EventCx, _: &C::Data, scroll: Scroll) {
+            cx.set_scroll(scroll - self.virtual_offset());
         }
     }
 
