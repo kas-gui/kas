@@ -159,7 +159,7 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
     }
 }
 
-/// Generic implementation of [`Widget::_nav_next`]
+/// Generic implementation of [`Tile::_nav_next`]
 #[inline(always)]
 pub fn _nav_next<W: Events>(
     widget: &W,

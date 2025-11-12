@@ -45,7 +45,9 @@ use std::default::Default;
 ///
 /// struct MyDriver;
 /// impl<Key> Driver<Key, f32> for MyDriver {
+///     const TAB_NAVIGABLE: bool = false;
 ///     type Widget = Text<f32, String>;
+///
 ///     fn make(&mut self, _: &Key) -> Self::Widget {
 ///         Text::new_gen(|_, data: &f32| data.to_string())
 ///     }
