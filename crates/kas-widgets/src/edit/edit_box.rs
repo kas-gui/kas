@@ -229,7 +229,7 @@ mod EditBox {
 
         fn update_scroll_offset(&mut self, cx: &mut EventState) {
             self.inner
-                .update_offset(self.clip_rect, self.scroll.offset());
+                .update_offset(cx, self.clip_rect, self.scroll.offset());
             self.vert_bar.set_value(cx, self.scroll.offset().1);
         }
 

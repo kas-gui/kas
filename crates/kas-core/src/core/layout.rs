@@ -5,6 +5,7 @@
 
 //! Layout, Tile and TileExt traits
 
+use crate::event::EventState;
 use crate::geom::{Offset, Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
@@ -205,8 +206,8 @@ pub trait Viewport: Layout {
     ///
     /// This method only needs to do anything in cases where only a subset of
     /// content is prepared.
-    fn update_offset(&mut self, viewport: Rect, offset: Offset) {
-        let _ = (viewport, offset);
+    fn update_offset(&mut self, cx: &mut EventState, viewport: Rect, offset: Offset) {
+        let _ = (cx, viewport, offset);
     }
 
     /// Draw with a scroll offset
