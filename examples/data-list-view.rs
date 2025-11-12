@@ -219,7 +219,7 @@ fn main() -> kas::runner::Result<()> {
         "Contents of selected entry:",
         Text::new_gen(|_, data: &MyData| data.get_string(data.active)),
         Separator::new(),
-        ScrollRegion::new_over_viewport(list).with_fixed_bars(false, true),
+        ScrollRegion::new_viewport(list).with_fixed_bars(false, true),
     ];
 
     let ui = tree

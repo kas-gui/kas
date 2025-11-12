@@ -163,12 +163,15 @@ mod ScrollRegion {
     }
 
     impl<Inner: Widget> ScrollRegion<ClipRegion<Inner>> {
-        /// Construct a scroll region
+        /// Construct a scroll region using a [`ClipRegion`]
+        ///
+        /// This is probably the constructor you want *unless* the inner widget
+        /// already implements [`Viewport`].
         ///
         /// Uses [`ScrollBarMode::Auto`] by default.
         #[inline]
-        pub fn new(inner: Inner) -> Self {
-            Self::new_over_viewport(ClipRegion::new(inner))
+        pub fn new_clip(inner: Inner) -> Self {
+            Self::new_viewport(ClipRegion::new(inner))
         }
     }
 
@@ -177,7 +180,7 @@ mod ScrollRegion {
         ///
         /// Uses [`ScrollBarMode::Auto`] by default.
         #[inline]
-        pub fn new_over_viewport(inner: W) -> Self {
+        pub fn new_viewport(inner: W) -> Self {
             ScrollRegion {
                 core: Default::default(),
                 scroll: Default::default(),

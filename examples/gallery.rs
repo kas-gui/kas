@@ -254,7 +254,7 @@ fn widgets() -> Page<AppData> {
     let ui = adapt::AdaptEvents::new(ui)
         .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
 
-    Page::new(ScrollRegion::new(ui))
+    Page::new(ScrollRegion::new_clip(ui))
 }
 
 fn editor() -> Page<AppData> {
@@ -586,7 +586,7 @@ fn filter_list() -> Page<AppData> {
                 EditBox::default().with_multi_line(false),
             #[widget(&self.filter.guard().0)] list: ScrollRegion<ListView<Generator, driver::View, Down>>
                 =
-                ScrollRegion::new_over_viewport(ListView::new(clerk, driver::View).with_num_visible(24)),
+                ScrollRegion::new_viewport(ListView::new(clerk, driver::View).with_num_visible(24)),
         }
 
         impl Layout for Self {}
@@ -725,7 +725,7 @@ KAS_CONFIG_MODE=readwrite
     let ui = column![
         ScrollLabel::new(desc),
         Separator::new(),
-        ScrollRegion::new(EventConfig::new())
+        ScrollRegion::new_clip(EventConfig::new())
     ];
     Page::new(
         ui.map_any()
