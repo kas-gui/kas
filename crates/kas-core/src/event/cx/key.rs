@@ -336,7 +336,7 @@ impl<'a> EventCx<'a> {
         if let Some(id) = target {
             self.close_non_ancestors_of(Some(&id));
 
-            if let Some(id) = self.nav_next(widget.re(), Some(&id), NavAdvance::None) {
+            if let Some(id) = self.nav_next(widget.as_tile(), Some(&id), NavAdvance::None) {
                 self.request_nav_focus(id, FocusSource::Key);
             }
 

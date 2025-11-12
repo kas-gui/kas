@@ -175,13 +175,13 @@ impl<'a> EventCx<'a> {
     #[inline]
     pub(super) fn nav_next(
         &mut self,
-        mut widget: Node<'_>,
+        tile: &dyn Tile,
         focus: Option<&Id>,
         advance: NavAdvance,
     ) -> Option<Id> {
         log::trace!(target: "kas_core::event", "nav_next: focus={focus:?}, advance={advance:?}");
 
-        self.config_cx(|cx| widget._nav_next(cx, focus, advance))
+        self.config_cx(|cx| tile._nav_next(cx, focus, advance))
     }
 
     pub(super) fn handle_pending_nav_focus(&mut self, widget: Node<'_>) {
@@ -262,9 +262,9 @@ impl<'a> EventCx<'a> {
         // Whether to restart from the beginning on failure
         let restart = focus.is_some();
 
-        let mut opt_id = self.nav_next(widget.re(), focus.as_ref(), advance);
+        let mut opt_id = self.nav_next(widget.as_tile(), focus.as_ref(), advance);
         if restart && opt_id.is_none() {
-            opt_id = self.nav_next(widget.re(), None, advance);
+            opt_id = self.nav_next(widget.as_tile(), None, advance);
         }
 
         self.set_nav_focus_impl(widget, opt_id, source);

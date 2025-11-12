@@ -138,6 +138,8 @@ mod ListEntry {
 
 struct ListEntryDriver;
 impl Driver<usize, MyItem> for ListEntryDriver {
+    const TAB_NAVIGABLE: bool = true;
+
     type Widget = ListEntry;
 
     fn make(&mut self, key: &usize) -> Self::Widget {

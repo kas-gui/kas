@@ -827,6 +827,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 }
             }
         }
+
+        tile_impl.items.push(Verbatim(widget_nav_next()));
     } else {
         #[cfg(feature = "nightly-pedantic")]
         if fn_role.is_none() {
@@ -863,6 +865,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         };
 
+        let fn_r_nav_next = widget_nav_next();
+
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
@@ -871,6 +875,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #fn_child_indices
                 #fn_try_probe
                 #fn_nav_next
+                #fn_r_nav_next
             }
         });
     }
@@ -941,10 +946,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 .items
                 .push(Verbatim(widget_recursive_methods(&core_path)));
         }
-
-        if !has_item("_nav_next") {
-            widget_impl.items.push(Verbatim(widget_nav_next()));
-        }
     } else {
         let fns_as_node = widget_as_node();
 
@@ -956,7 +957,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
 
         let fns_recurse = widget_recursive_methods(&core_path);
-        let fn_nav_next = widget_nav_next();
 
         scope.generated.push(quote_spanned! {attr_span=>
             impl #impl_generics ::kas::Widget for #impl_target {
@@ -964,7 +964,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #fns_as_node
                 #fn_child_node
                 #fns_recurse
-                #fn_nav_next
             }
         });
     }
@@ -1069,13 +1068,12 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
 fn widget_nav_next() -> Toks {
     quote! {
         fn _nav_next(
-            &mut self,
+            &self,
             cx: &mut ::kas::event::ConfigCx,
-            data: &Self::Data,
             focus: Option<&::kas::Id>,
             advance: ::kas::event::NavAdvance,
         ) -> Option<::kas::Id> {
-            ::kas::impls::_nav_next(self, cx, data, focus, advance)
+            ::kas::impls::_nav_next(self, cx, focus, advance)
         }
     }
 }

@@ -8,7 +8,7 @@
 use crate::clerk::{Changes, Key, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
-use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
+use kas::event::{CursorIcon, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -147,6 +147,8 @@ mod ListView {
         cur_len: u32,
         /// First data item mapped to a widget
         first_data: u32,
+        /// Last data item to have navigation focus
+        last_focus: u32,
         direction: D,
         align_hints: AlignHints,
         ideal_visible: i32,
@@ -236,6 +238,7 @@ mod ListView {
                 len_is_known: false,
                 cur_len: 0,
                 first_data: 0,
+                last_focus: 0,
                 direction,
                 align_hints: Default::default(),
                 ideal_visible: 5,
@@ -712,7 +715,7 @@ mod ListView {
                 self.skip = 1; // avoid divide by 0
                 0
             } else {
-                usize::conv((size + skip - 1) / skip + 1)
+                usize::conv(size).div_ceil(usize::conv(skip)) + 1
             };
 
             let avail_widgets = self.widgets.len();
@@ -795,6 +798,43 @@ mod ListView {
                 }
             }
             None
+        }
+
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            if self.data_len == 0 {
+                return None;
+            }
+
+            let solver = self.position_solver();
+            let data_index = if V::TAB_NAVIGABLE {
+                let first_data: usize = self.first_data.cast();
+                let last_data = usize::conv(self.data_len) - 1;
+                let size: usize = self.rect().size.extract(self.direction).cast();
+                let last_visible = (first_data + size / usize::conv(self.skip)).min(last_data);
+                if let Some(index) = from {
+                    let data = solver.child_to_data(index);
+                    if !reverse && data < last_visible {
+                        data + 1
+                    } else if reverse && data > first_data {
+                        data - 1
+                    } else {
+                        return None;
+                    }
+                } else if !reverse {
+                    first_data
+                } else {
+                    last_visible
+                }
+            } else {
+                if from.is_some() {
+                    return None;
+                } else {
+                    self.last_focus.cast()
+                }
+            };
+
+            let index = data_index % usize::conv(self.cur_len);
+            self.get_child(index).is_some().then_some(index)
         }
 
         #[inline]
@@ -920,6 +960,7 @@ mod ListView {
                         let w = &self.widgets[index];
                         if w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
+                            self.last_focus = i_data.cast();
                         }
                         Used
                     } else {
@@ -936,6 +977,8 @@ mod ListView {
                         let w = &mut self.widgets[index];
                         if w.key() == Some(key) {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
+                            let solver = self.position_solver();
+                            self.last_focus = solver.child_to_data(index).cast();
                         }
                     }
 
@@ -1052,83 +1095,6 @@ mod ListView {
             }
 
             None
-        }
-
-        // Non-standard implementation to allow mapping new children
-        fn _nav_next(
-            &mut self,
-            cx: &mut ConfigCx,
-            data: &C::Data,
-            focus: Option<&Id>,
-            advance: NavAdvance,
-        ) -> Option<Id> {
-            if cx.is_disabled(self.id_ref()) || self.cur_len == 0 {
-                return None;
-            }
-
-            let mut child = focus.and_then(|id| self.find_child_index(id));
-
-            if let Some(index) = child {
-                let mut opt_id = None;
-                let out = &mut opt_id;
-                if let Some(mut node) = self.as_node(data).get_child(index) {
-                    *out = node._nav_next(cx, focus, advance);
-                }
-                if let Some(id) = opt_id {
-                    return Some(id);
-                }
-            }
-
-            let reverse = match advance {
-                NavAdvance::None => return None,
-                NavAdvance::Forward(_) => false,
-                NavAdvance::Reverse(_) => true,
-            };
-
-            let mut starting_child = child;
-            loop {
-                let solver = self.position_solver();
-                let last_data = usize::conv(self.data_len).wrapping_sub(1);
-                let data_index = if let Some(index) = child {
-                    let data = solver.child_to_data(index);
-                    if !reverse && data < last_data {
-                        data + 1
-                    } else if reverse && data > 0 {
-                        data - 1
-                    } else {
-                        return None;
-                    }
-                } else if !reverse {
-                    0
-                } else {
-                    last_data
-                };
-
-                let rect = solver.rect(data_index) - self.virtual_offset();
-                let action = self.scroll.self_focus_rect(rect, self.rect());
-                if action.0 {
-                    cx.action_moved(action);
-                    self.post_scroll(cx, data);
-                }
-
-                let index = data_index % usize::conv(self.cur_len);
-
-                let mut opt_id = None;
-                let out = &mut opt_id;
-                if let Some(mut node) = self.as_node(data).get_child(index) {
-                    *out = node._nav_next(cx, focus, advance);
-                }
-                if let Some(id) = opt_id {
-                    return Some(id);
-                }
-
-                child = Some(index);
-                if starting_child == child {
-                    return None;
-                } else if starting_child.is_none() {
-                    starting_child = child;
-                }
-            }
         }
     }
 }

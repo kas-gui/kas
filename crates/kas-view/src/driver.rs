@@ -45,7 +45,9 @@ use std::default::Default;
 ///
 /// struct MyDriver;
 /// impl<Key> Driver<Key, f32> for MyDriver {
+///     const TAB_NAVIGABLE: bool = false;
 ///     type Widget = Text<f32, String>;
+///
 ///     fn make(&mut self, _: &Key) -> Self::Widget {
 ///         Text::new_gen(|_, data: &f32| data.to_string())
 ///     }
@@ -59,6 +61,15 @@ use std::default::Default;
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
 pub trait Driver<Key, Item> {
+    /// If `true`, then <kbd>Tab</kbd> will navigate between list items,
+    /// otherwise <kbd>Tab</kbd> will only select the last-used item.
+    ///
+    /// Arrow keys should be able to navigate between items regardless (if
+    /// [`Self::navigable`] returns true or another widget is navigable which
+    /// doesn't handle arrow keys), thus it is usually recommended to set this
+    /// to `false`.
+    const TAB_NAVIGABLE: bool;
+
     /// Type of the widget used to view data
     type Widget: kas::Widget<Data = Item>;
 
@@ -104,7 +115,9 @@ pub struct View;
 macro_rules! impl_via_to_string {
     ($t:ty) => {
         impl<Key> Driver<Key, $t> for View {
+            const TAB_NAVIGABLE: bool = false;
             type Widget = Text<$t, String>;
+
             fn make(&mut self, _: &Key) -> Self::Widget {
                 Text::new_gen(|_, data: &$t| data.to_string())
             }
@@ -130,7 +143,9 @@ impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
 impl<Key> Driver<Key, bool> for View {
+    const TAB_NAVIGABLE: bool = false;
     type Widget = CheckBox<bool>;
+
     fn make(&mut self, _: &Key) -> Self::Widget {
         CheckBox::new(|_, data: &bool| *data).with_editable(false)
     }

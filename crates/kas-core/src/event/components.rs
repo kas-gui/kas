@@ -245,9 +245,13 @@ impl ScrollComponent {
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn self_focus_rect(&mut self, rect: Rect, window_rect: Rect) -> ActionMoved {
         self.kinetic.stop();
-        let v = rect.pos - window_rect.pos;
-        let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
-        let offset = self.offset.max(v + off).min(v);
+        let max_vis = rect.pos - window_rect.pos;
+        let extra_size = Offset::conv(rect.size) - Offset::conv(window_rect.size);
+        let min_vis = max_vis + extra_size;
+        let center = max_vis + extra_size / 2;
+        let lb = (min_vis + center) / 2;
+        let ub = (max_vis + center) / 2;
+        let offset = self.offset.max(lb).min(ub);
         self.set_offset(offset)
     }
 

@@ -314,6 +314,17 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         }
     };
 
+    let fn_nav_next = quote! {
+        fn _nav_next(
+            &self,
+            cx: &mut ::kas::event::ConfigCx,
+            focus: Option<&::kas::Id>,
+            advance: ::kas::event::NavAdvance,
+        ) -> Option<::kas::Id> {
+            self.#inner._nav_next(cx, focus, advance)
+        }
+    };
+
     if let Some(index) = tile_impl {
         let tile_impl = &mut scope.impls[index];
         let item_idents = collect_idents(tile_impl);
@@ -328,6 +339,10 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         if !has_item("try_probe") {
             tile_impl.items.push(Verbatim(fn_try_probe));
         }
+
+        if !has_item("_nav_next") {
+            tile_impl.items.push(Verbatim(fn_nav_next));
+        }
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
@@ -335,6 +350,7 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
                 #tile_methods
                 #fn_role
                 #fn_try_probe
+                #fn_nav_next
             }
         });
     }
@@ -402,18 +418,6 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
             self.#inner._replay(cx, data, id);
         }
     };
-    let fn_nav_next = quote! {
-        fn _nav_next(
-            &mut self,
-            cx: &mut ::kas::event::ConfigCx,
-            data: &Self::Data,
-            focus: Option<&::kas::Id>,
-            advance: ::kas::event::NavAdvance,
-        ) -> Option<::kas::Id> {
-            #map_data
-            self.#inner._nav_next(cx, data, focus, advance)
-        }
-    };
 
     if let Some(index) = widget_impl {
         let widget_impl = &mut scope.impls[index];
@@ -449,10 +453,6 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         if !has_item("_replay") {
             widget_impl.items.push(Verbatim(fn_replay));
         }
-
-        if !has_item("_nav_next") {
-            widget_impl.items.push(Verbatim(fn_nav_next));
-        }
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget for #impl_target {
@@ -463,7 +463,6 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
                 #fn_update
                 #fn_send
                 #fn_replay
-                #fn_nav_next
             }
         });
     }

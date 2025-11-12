@@ -8,7 +8,7 @@
 use crate::clerk::{Changes, Key, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::ScrollComponent;
-use kas::event::{CursorIcon, FocusSource, NavAdvance, Scroll, TimerHandle};
+use kas::event::{CursorIcon, FocusSource, Scroll, TimerHandle};
 use kas::layout::{GridCellInfo, solve_size_rules};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -195,6 +195,8 @@ mod GridView {
         len_is_known: bool,
         cur_len: GridIndex,
         first_data: GridIndex,
+        /// Last data item to have navigation focus
+        last_focus: GridIndex,
         child_size_min: Size,
         child_size_ideal: Size,
         child_inter_margin: Size,
@@ -237,6 +239,7 @@ mod GridView {
                 len_is_known: false,
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
+                last_focus: GridIndex::ZERO,
                 child_size_min: Size::ZERO,
                 child_size_ideal: Size::ZERO,
                 child_inter_margin: Size::ZERO,
@@ -781,6 +784,68 @@ mod GridView {
             None
         }
 
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            if self.data_len.col == 0 || self.data_len.row == 0 {
+                return None;
+            }
+
+            let solver = self.position_solver();
+            let cell = if V::TAB_NAVIGABLE {
+                let first_data = self.first_data;
+                let skip = self.child_size + self.child_inter_margin;
+                let stride = self.rect().size.cwise_div(skip);
+                let last_visible = GridIndex {
+                    col: (first_data.col + u32::conv(stride.0)).min(self.data_len.col - 1),
+                    row: (first_data.row + u32::conv(stride.1)).min(self.data_len.row - 1),
+                };
+                if let Some(index) = from {
+                    let cell = solver.child_to_data(index);
+                    if !reverse {
+                        if cell.col + 1 < last_visible.col {
+                            GridIndex {
+                                col: cell.col + 1,
+                                row: cell.row,
+                            }
+                        } else if cell.row + 1 < last_visible.row {
+                            GridIndex {
+                                col: 0,
+                                row: cell.row + 1,
+                            }
+                        } else {
+                            return None;
+                        }
+                    } else {
+                        if cell.col > first_data.col {
+                            GridIndex {
+                                col: cell.col - 1,
+                                row: cell.row,
+                            }
+                        } else if cell.row > first_data.row {
+                            GridIndex {
+                                col: self.data_len.col - 1,
+                                row: cell.row - 1,
+                            }
+                        } else {
+                            return None;
+                        }
+                    }
+                } else if !reverse {
+                    first_data
+                } else {
+                    last_visible
+                }
+            } else {
+                if from.is_some() {
+                    return None;
+                } else {
+                    self.last_focus
+                }
+            };
+
+            let index = solver.data_to_child(cell);
+            self.get_child(index).is_some().then_some(index)
+        }
+
         #[inline]
         fn translation(&self, _: usize) -> Offset {
             self.scroll_offset() + self.virtual_offset
@@ -916,6 +981,7 @@ mod GridView {
 
                         if w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
+                            self.last_focus = cell;
                         }
                         Used
                     } else {
@@ -932,6 +998,8 @@ mod GridView {
                         let w = &mut self.widgets[index];
                         if w.key() == Some(key) {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
+                            let solver = self.position_solver();
+                            self.last_focus = solver.child_to_data(index);
                         }
                     }
 
@@ -1046,103 +1114,6 @@ mod GridView {
             }
 
             None
-        }
-
-        // Non-standard implementation to allow mapping new children
-        fn _nav_next(
-            &mut self,
-            cx: &mut ConfigCx,
-            data: &C::Data,
-            focus: Option<&Id>,
-            advance: NavAdvance,
-        ) -> Option<Id> {
-            if cx.is_disabled(self.id_ref()) || self.cur_len == GridIndex::ZERO {
-                return None;
-            }
-
-            let mut child = focus.and_then(|id| self.find_child_index(id));
-
-            if let Some(index) = child {
-                let mut opt_id = None;
-                let out = &mut opt_id;
-                if let Some(mut node) = self.as_node(data).get_child(index) {
-                    *out = node._nav_next(cx, focus, advance);
-                }
-                if let Some(id) = opt_id {
-                    return Some(id);
-                }
-            }
-
-            let reverse = match advance {
-                NavAdvance::None => return None,
-                NavAdvance::Forward(_) => false,
-                NavAdvance::Reverse(_) => true,
-            };
-
-            let mut starting_child = child;
-            loop {
-                let mut solver = self.position_solver();
-                let mut cell;
-                if let Some(index) = child {
-                    cell = solver.child_to_data(index);
-                    if !reverse {
-                        if cell.col + 1 < self.data_len.col {
-                            cell.col += 1;
-                        } else if cell.row + 1 < self.data_len.row {
-                            cell = GridIndex {
-                                col: 0,
-                                row: cell.row + 1,
-                            };
-                        } else {
-                            return None;
-                        }
-                    } else {
-                        if cell.col > 0 {
-                            cell.col -= 1;
-                        } else if cell.row > 0 {
-                            cell = GridIndex {
-                                col: self.data_len.col - 1,
-                                row: cell.row - 1,
-                            };
-                        } else {
-                            return None;
-                        }
-                    }
-                } else if !reverse {
-                    cell = GridIndex::ZERO;
-                } else {
-                    cell = GridIndex {
-                        col: self.data_len.col - 1,
-                        row: self.data_len.row - 1,
-                    };
-                }
-
-                let rect = solver.rect(cell) - self.virtual_offset;
-                let action = self.scroll.self_focus_rect(rect, self.rect());
-                if action.0 {
-                    cx.action_moved(action);
-                    self.post_scroll(cx, data);
-                    solver = self.position_solver();
-                }
-
-                let index = solver.data_to_child(cell);
-
-                let mut opt_id = None;
-                let out = &mut opt_id;
-                if let Some(mut node) = self.as_node(data).get_child(index) {
-                    *out = node._nav_next(cx, focus, advance);
-                }
-                if let Some(id) = opt_id {
-                    return Some(id);
-                }
-
-                child = Some(index);
-                if starting_child == child {
-                    return None;
-                } else if starting_child.is_none() {
-                    starting_child = child;
-                }
-            }
         }
     }
 }
