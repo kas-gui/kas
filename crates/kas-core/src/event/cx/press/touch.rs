@@ -304,7 +304,7 @@ impl<'a> EventCx<'a> {
 
     pub(in crate::event::cx) fn handle_touch_event(
         &mut self,
-        mut node: Node<'_>,
+        node: Node<'_>,
         touch: winit::event::Touch,
     ) {
         let source = PressSource::touch(touch.id);
@@ -317,7 +317,7 @@ impl<'a> EventCx<'a> {
 
                 if let Some(id) = over {
                     if self.config.event().touch_nav_focus()
-                        && let Some(id) = self.nav_next(node.re(), Some(&id), NavAdvance::None)
+                        && let Some(id) = self.nav_next(node.as_tile(), Some(&id), NavAdvance::None)
                     {
                         self.set_nav_focus(id, FocusSource::Pointer);
                     }

@@ -9,7 +9,7 @@
 use super::{Node, Tile};
 use crate::Id;
 #[allow(unused)] use crate::event::EventState;
-use crate::event::{ConfigCx, Event, EventCx, IsUsed, NavAdvance};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 #[allow(unused)] use kas_macros as macros;
 use kas_macros::autoimpl;
 
@@ -180,21 +180,4 @@ pub trait Widget: Tile {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id);
-
-    /// Internal method: search for the previous/next navigation target
-    ///
-    /// Requires status: configured.
-    ///
-    /// `focus`: the current focus or starting point.
-    ///
-    /// Do not implement this method directly!
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    fn _nav_next(
-        &mut self,
-        cx: &mut ConfigCx,
-        data: &Self::Data,
-        focus: Option<&Id>,
-        advance: NavAdvance,
-    ) -> Option<Id>;
 }

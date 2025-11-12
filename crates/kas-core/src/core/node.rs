@@ -6,7 +6,7 @@
 //! Node API for widgets
 
 use super::Widget;
-use crate::event::{ConfigCx, Event, EventCx, IsUsed, NavAdvance};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::SizeCx;
@@ -27,19 +27,11 @@ trait NodeT {
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules;
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints);
 
-    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
-
     fn _configure(&mut self, cx: &mut ConfigCx, id: Id);
     fn _update(&mut self, cx: &mut ConfigCx);
 
     fn _send(&mut self, cx: &mut EventCx, id: Id, event: Event) -> IsUsed;
     fn _replay(&mut self, cx: &mut EventCx, id: Id);
-    fn _nav_next(
-        &mut self,
-        cx: &mut ConfigCx,
-        focus: Option<&Id>,
-        advance: NavAdvance,
-    ) -> Option<Id>;
 }
 #[cfg(not(feature = "unsafe_node"))]
 impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
@@ -72,10 +64,6 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0.set_rect(cx, rect, hints);
     }
 
-    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-        self.0.nav_next(reverse, from)
-    }
-
     fn _configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.0._configure(cx, self.1, id);
     }
@@ -88,14 +76,6 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     }
     fn _replay(&mut self, cx: &mut EventCx, id: Id) {
         self.0._replay(cx, self.1, id);
-    }
-    fn _nav_next(
-        &mut self,
-        cx: &mut ConfigCx,
-        focus: Option<&Id>,
-        advance: NavAdvance,
-    ) -> Option<Id> {
-        self.0._nav_next(cx, self.1, focus, advance)
     }
 }
 
@@ -271,11 +251,6 @@ impl<'a> Node<'a> {
         self.0.set_rect(cx, rect, hints);
     }
 
-    /// Navigation in spatial order
-    pub(crate) fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-        self.0.nav_next(reverse, from)
-    }
-
     /// Internal method: configure recursively
     pub(crate) fn _configure(&mut self, cx: &mut ConfigCx, id: Id) {
         cfg_if::cfg_if! {
@@ -316,23 +291,6 @@ impl<'a> Node<'a> {
                 self.0._replay(cx, self.1, id);
             } else {
                 self.0._replay(cx, id);
-            }
-        }
-    }
-
-    /// Internal method: search for the previous/next navigation target
-    // NOTE: public on account of ListView
-    pub fn _nav_next(
-        &mut self,
-        cx: &mut ConfigCx,
-        focus: Option<&Id>,
-        advance: NavAdvance,
-    ) -> Option<Id> {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "unsafe_node")] {
-                self.0._nav_next(cx, self.1, focus, advance)
-            } else {
-                self.0._nav_next(cx, focus, advance)
             }
         }
     }

@@ -461,7 +461,7 @@ impl<'a> EventCx<'a> {
                 }
 
                 if self.config.event().mouse_nav_focus()
-                    && let Some(id) = self.nav_next(window.re(), Some(&id), NavAdvance::None)
+                    && let Some(id) = self.nav_next(window.as_tile(), Some(&id), NavAdvance::None)
                 {
                     self.set_nav_focus(id, FocusSource::Pointer);
                 }

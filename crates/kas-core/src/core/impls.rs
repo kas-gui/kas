@@ -6,7 +6,7 @@
 //! Widget method implementations
 
 use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, NavAdvance, Scroll, Unused};
-use crate::{Events, Id, Node, Tile, Widget};
+use crate::{Events, Id, Tile, Widget};
 
 /// Generic implementation of [`Widget::_configure`]
 ///
@@ -162,16 +162,15 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
 /// Generic implementation of [`Widget::_nav_next`]
 #[inline(always)]
 pub fn _nav_next<W: Events>(
-    widget: &mut W,
+    widget: &W,
     cx: &mut ConfigCx,
-    data: &<W as Widget>::Data,
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
     let result = if !widget.navigable() {
-        nav_next_non_nav(widget.as_node(data), cx, focus, advance)
+        nav_next_non_nav(widget.as_tile(), cx, focus, advance)
     } else {
-        nav_next_nav(widget.as_node(data), cx, focus, advance)
+        nav_next_nav(widget.as_tile(), cx, focus, advance)
     };
 
     debug_assert!(!*cx.resize);
@@ -181,30 +180,30 @@ pub fn _nav_next<W: Events>(
 
 // Monomorphize nav_next here, not in _nav_next (which would push monomorphization up to the caller)
 fn nav_next_non_nav(
-    widget: Node<'_>,
+    tile: &dyn Tile,
     cx: &mut ConfigCx,
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
-    nav_next::<false>(widget, cx, focus, advance)
+    nav_next::<false>(tile, cx, focus, advance)
 }
 
 fn nav_next_nav(
-    widget: Node<'_>,
+    tile: &dyn Tile,
     cx: &mut ConfigCx,
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
-    nav_next::<true>(widget, cx, focus, advance)
+    nav_next::<true>(tile, cx, focus, advance)
 }
 
 fn nav_next<const NAVIGABLE: bool>(
-    mut widget: Node<'_>,
+    tile: &dyn Tile,
     cx: &mut ConfigCx,
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
-    let id = widget.id_ref();
+    let id = tile.id_ref();
     if !id.is_valid() {
         log::warn!("nav_next: encountered unconfigured node!");
         return None;
@@ -213,12 +212,12 @@ fn nav_next<const NAVIGABLE: bool>(
     }
     let is_not_focus = *id != focus;
 
-    let mut child = focus.and_then(|id| widget.find_child_index(id));
+    let mut child = focus.and_then(|id| tile.find_child_index(id));
 
     if let Some(index) = child {
         let mut opt_id = None;
         let out = &mut opt_id;
-        if let Some(mut node) = widget.get_child(index) {
+        if let Some(node) = tile.get_child(index) {
             *out = node._nav_next(cx, focus, advance);
         }
         if let Some(id) = opt_id {
@@ -234,7 +233,7 @@ fn nav_next<const NAVIGABLE: bool>(
             _ => false,
         };
         if can_match_self {
-            return Some(widget.id_ref().clone());
+            return Some(tile.id_ref().clone());
         }
     }
 
@@ -244,10 +243,10 @@ fn nav_next<const NAVIGABLE: bool>(
         NavAdvance::Reverse(_) => true,
     };
 
-    while let Some(index) = widget.nav_next(rev, child) {
+    while let Some(index) = tile.nav_next(rev, child) {
         let mut opt_id = None;
         let out = &mut opt_id;
-        if let Some(mut node) = widget.get_child(index) {
+        if let Some(node) = tile.get_child(index) {
             *out = node._nav_next(cx, focus, advance);
         }
         if let Some(id) = opt_id {
@@ -264,7 +263,7 @@ fn nav_next<const NAVIGABLE: bool>(
             _ => false,
         };
         if can_match_self {
-            return Some(widget.id_ref().clone());
+            return Some(tile.id_ref().clone());
         }
     }
 
