@@ -405,9 +405,9 @@ impl ScrollComponent {
     }
 }
 
-#[impl_default(Phase::None)]
+#[impl_default(TextPhase::None)]
 #[derive(Clone, Debug, PartialEq)]
-enum Phase {
+enum TextPhase {
     None,
     PressStart(PressSource, Coord), // source, coord
     Pan(PressSource),               // source
@@ -417,10 +417,11 @@ enum Phase {
 /// Handles text selection and panning from mouse and touch events
 #[derive(Clone, Debug, Default)]
 pub struct TextInput {
-    phase: Phase,
+    phase: TextPhase,
 }
 
 /// Result of [`TextInput::handle`]
+#[derive(Clone, Debug)]
 pub enum TextInputAction {
     /// Event is used, no action
     Used,
@@ -458,24 +459,23 @@ impl TextInput {
     /// `Timer(pl)` where `pl == 1<<60 || pl == (1<<60)+1`.
     /// May request press grabs and timer updates.
     ///
-    /// Implements scrolling and text selection behaviour, excluding handling of
-    /// [`Event::Scroll`].
+    /// May call [`EventCx::set_scroll`] to initiate scrolling.
     pub fn handle(&mut self, cx: &mut EventCx, w_id: Id, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
             Event::PressStart(press) if press.is_primary() => {
                 let mut action = Action::Used;
                 let icon = if press.is_touch() {
-                    self.phase = Phase::PressStart(*press, press.coord());
+                    self.phase = TextPhase::PressStart(*press, press.coord());
                     let delay = cx.config().event().touch_select_delay();
                     cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
                     None
                 } else if press.is_mouse() {
                     if cx.config_enable_mouse_text_pan() {
-                        self.phase = Phase::Pan(*press);
+                        self.phase = TextPhase::Pan(*press);
                         Some(CursorIcon::Grabbing)
                     } else {
-                        self.phase = Phase::Cursor(*press, press.coord());
+                        self.phase = TextPhase::Cursor(*press, press.coord());
                         action = Action::CursorStart {
                             coord: press.coord(),
                             clear: !cx.modifiers().shift_key(),
@@ -493,20 +493,20 @@ impl TextInput {
                 action
             }
             Event::PressMove { press, delta } => match self.phase {
-                Phase::PressStart(source, start_coord) if *press == source => {
+                TextPhase::PressStart(source, start_coord) if *press == source => {
                     let delta = press.coord - start_coord;
                     if cx.config_test_pan_thresh(delta) {
-                        self.phase = Phase::Pan(source);
+                        self.phase = TextPhase::Pan(source);
                         cx.set_scroll(Scroll::Offset(delta.cast()));
                     }
                     Action::Used
                 }
-                Phase::Pan(source) if *press == source => {
+                TextPhase::Pan(source) if *press == source => {
                     cx.set_scroll(Scroll::Offset(delta));
                     Action::Used
                 }
-                Phase::Cursor(source, _) if *press == source => {
-                    self.phase = Phase::Cursor(source, press.coord);
+                TextPhase::Cursor(source, _) if *press == source => {
+                    self.phase = TextPhase::Cursor(source, press.coord);
                     Action::CursorMove {
                         coord: press.coord,
                         repeats: press.repetitions(),
@@ -515,8 +515,8 @@ impl TextInput {
                 _ => Action::Used,
             },
             Event::PressEnd { press, .. } => match std::mem::take(&mut self.phase) {
-                Phase::None | Phase::PressStart(_, _) => Action::Used,
-                Phase::Pan(source) => {
+                TextPhase::None | TextPhase::PressStart(_, _) => Action::Used,
+                TextPhase::Pan(source) => {
                     if *press == source
                         && let Some(vel) = cx.press_velocity(source)
                     {
@@ -526,11 +526,11 @@ impl TextInput {
 
                     Action::Used
                 }
-                Phase::Cursor(_, coord) => Action::CursorEnd { coord },
+                TextPhase::Cursor(_, coord) => Action::CursorEnd { coord },
             },
             Event::Timer(TIMER_SELECT) => match self.phase {
-                Phase::PressStart(touch_id, coord) => {
-                    self.phase = Phase::Cursor(touch_id, coord);
+                TextPhase::PressStart(touch_id, coord) => {
+                    self.phase = TextPhase::Cursor(touch_id, coord);
                     Action::CursorStart {
                         coord,
                         clear: !cx.modifiers().shift_key(),
@@ -549,13 +549,13 @@ impl TextInput {
     /// [`TextInputAction::CursorStart`] or [`TextInputAction::CursorMove`].
     #[inline]
     pub fn is_selecting(&self) -> bool {
-        matches!(&self.phase, Phase::Cursor(_, _))
+        matches!(&self.phase, TextPhase::Cursor(_, _))
     }
 
     /// Interrupt an on-going selection action, if any
     pub fn stop_selecting(&mut self) {
         if self.is_selecting() {
-            self.phase = Phase::None;
+            self.phase = TextPhase::None;
         }
     }
 }
