@@ -785,14 +785,18 @@ mod GridView {
         }
 
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            if self.data_len.col == 0 || self.data_len.row == 0 {
+                return None;
+            }
+
             let solver = self.position_solver();
             let cell = if V::TAB_NAVIGABLE {
                 let first_data = self.first_data;
                 let skip = self.child_size + self.child_inter_margin;
-                let last_visible = self.rect().size.cwise_div(skip);
+                let stride = self.rect().size.cwise_div(skip);
                 let last_visible = GridIndex {
-                    col: u32::conv(last_visible.0).min(self.data_len.col - 1),
-                    row: u32::conv(last_visible.1).min(self.data_len.row - 1),
+                    col: (first_data.col + u32::conv(stride.0)).min(self.data_len.col - 1),
+                    row: (first_data.row + u32::conv(stride.1)).min(self.data_len.row - 1),
                 };
                 if let Some(index) = from {
                     let cell = solver.child_to_data(index);

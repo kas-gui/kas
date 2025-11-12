@@ -801,11 +801,16 @@ mod ListView {
         }
 
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            if self.data_len == 0 {
+                return None;
+            }
+
             let solver = self.position_solver();
             let data_index = if V::TAB_NAVIGABLE {
-                let first_data = self.first_data.cast();
+                let first_data: usize = self.first_data.cast();
+                let last_data = usize::conv(self.data_len) - 1;
                 let size: usize = self.rect().size.extract(self.direction).cast();
-                let last_visible = first_data + size / usize::conv(self.skip);
+                let last_visible = (first_data + size / usize::conv(self.skip)).min(last_data);
                 if let Some(index) = from {
                     let data = solver.child_to_data(index);
                     if !reverse && data < last_visible {
