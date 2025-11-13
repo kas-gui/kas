@@ -103,6 +103,9 @@ impl<C: TokenClerk<usize>, V: Driver<C::Key, C::Item>> WidgetData<C, V> {
     }
 }
 
+#[derive(Debug)]
+struct FocusIndex(usize);
+
 #[impl_self]
 mod ListView {
     /// View controller for 1D indexable data (list)
@@ -143,6 +146,7 @@ mod ListView {
         data_len: u32,
         token_update: Update,
         rect_update: bool,
+        immediate_scroll_update: bool,
         len_is_known: bool,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
@@ -237,6 +241,7 @@ mod ListView {
                 data_len: 0,
                 token_update: Update::None,
                 rect_update: false,
+                immediate_scroll_update: false,
                 len_is_known: false,
                 cur_len: 0,
                 first_data: 0,
@@ -731,7 +736,14 @@ mod ListView {
 
         fn update_offset(&mut self, cx: &mut ConfigCx, data: &Self::Data, _: Rect, offset: Offset) {
             self.offset = offset;
-            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            if self.immediate_scroll_update {
+                self.immediate_scroll_update = false;
+                self.post_scroll(cx, data);
+            } else {
+                // NOTE: using a frame timer instead of immediate update is an
+                // optimization (for high-poll-rate mice) but not essential.
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            }
         }
 
         fn draw_with_offset(&self, mut draw: DrawCx, viewport: Rect, offset: Offset) {
@@ -933,8 +945,11 @@ mod ListView {
                         cx.set_scroll(Scroll::Rect(rect));
                         let index = i_data % usize::conv(self.cur_len);
                         let w = &self.widgets[index];
-                        if w.token.is_some() {
+                        if w.item.index == i_data && w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
+                        } else {
+                            self.immediate_scroll_update = true;
+                            cx.send(self.id(), FocusIndex(i_data));
                         }
                         Used
                     } else {
@@ -973,6 +988,16 @@ mod ListView {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
+            if let Some(FocusIndex(i_data)) = cx.try_pop() {
+                let index = i_data % usize::conv(self.cur_len);
+                let w = &self.widgets[index];
+                if w.item.index == i_data && w.token.is_some() {
+                    cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
+                } else {
+                    log::error!("ListView failed to set focus: data item {i_data:?} not in view");
+                }
+            }
+
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child

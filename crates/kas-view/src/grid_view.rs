@@ -154,6 +154,9 @@ impl Key for GridIndex {
     }
 }
 
+#[derive(Debug)]
+struct FocusGridCell(GridIndex);
+
 #[impl_self]
 mod GridView {
     /// View controller for 2D indexable data (grid)
@@ -193,6 +196,7 @@ mod GridView {
         data_len: GridIndex,
         token_update: Update,
         rect_update: bool,
+        immediate_scroll_update: bool,
         len_is_known: bool,
         cur_len: GridIndex,
         first_data: GridIndex,
@@ -238,6 +242,7 @@ mod GridView {
                 data_len: GridIndex::ZERO,
                 token_update: Update::None,
                 rect_update: false,
+                immediate_scroll_update: false,
                 len_is_known: false,
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
@@ -714,7 +719,14 @@ mod GridView {
 
         fn update_offset(&mut self, cx: &mut ConfigCx, data: &Self::Data, _: Rect, offset: Offset) {
             self.offset = offset;
-            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            if self.immediate_scroll_update {
+                self.immediate_scroll_update = false;
+                self.post_scroll(cx, data);
+            } else {
+                // NOTE: using a frame timer instead of immediate update is an
+                // optimization (for high-poll-rate mice) but not essential.
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            }
         }
 
         fn draw_with_offset(&self, mut draw: DrawCx, viewport: Rect, offset: Offset) {
@@ -958,9 +970,11 @@ mod GridView {
 
                         let index = solver.data_to_child(cell);
                         let w = &self.widgets[index];
-
-                        if w.token.is_some() {
+                        if w.item.index == cell && w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
+                        } else {
+                            self.immediate_scroll_update = true;
+                            cx.send(self.id(), FocusGridCell(cell));
                         }
                         Used
                     } else {
@@ -999,6 +1013,17 @@ mod GridView {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
+            if let Some(FocusGridCell(cell)) = cx.try_pop() {
+                let solver = self.position_solver();
+                let index = solver.data_to_child(cell);
+                let w = &self.widgets[index];
+                if w.item.index == cell && w.token.is_some() {
+                    cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
+                } else {
+                    log::error!("GridView failed to set focus: data item {cell:?} not in view");
+                }
+            }
+
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child
