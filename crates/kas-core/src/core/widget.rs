@@ -10,6 +10,8 @@ use super::{Node, Tile};
 use crate::Id;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed};
+use crate::geom::{Coord, Offset, Rect, Size};
+use crate::theme::{DrawCx, SizeCx};
 #[allow(unused)] use kas_macros as macros;
 use kas_macros::autoimpl;
 
@@ -180,4 +182,118 @@ pub trait Widget: Tile {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id);
+}
+
+/// Layout routines for scrollable content
+///
+/// A `Viewport` supports content larger than its assigned `rect` (the `rect`
+/// passed to [`Layout::set_rect`]). This `rect` is considered the viewport
+/// through which content may be viewed (approximately: see
+/// [`Self::draw_with_offset`]).
+///
+/// If the parent widget supports scrolling over contents implementing
+/// `Viewport`, it should call [`Viewport::draw_with_offset`] instead of
+/// [`Layout::draw`].
+///
+/// It is intended that the widget implementing this trait is the child of some
+/// parent widget which supports scrolling through event handling and provision
+/// of a scroll offset, and that this parent uses the methods of this trait
+/// where applicable (see below). In case the parent does not support scrolling,
+/// the widget should remain usable (but with only a subset of content being
+/// accessible).
+pub trait Viewport: Widget {
+    /// Get content size
+    ///
+    /// When the content size is larger than the viewport, content becomes
+    /// scrollable with a maximum offset of `content_size - viewport_size`.
+    ///
+    /// # Calling
+    ///
+    /// This method is called during sizing.
+    fn content_size(&self) -> Size;
+
+    /// Set the scroll offset
+    ///
+    /// The `viewport` and `offset` parameters are the same as those of
+    /// [`Viewport::draw_with_offset`].
+    ///
+    /// # Calling
+    ///
+    /// This method should be called immediately after [`Layout::set_rect`]
+    /// (unless it's known that the implementation doesn't use this method).
+    ///
+    /// # Implementation
+    ///
+    /// This method only needs to do anything in cases where only a subset of
+    /// content is prepared.
+    fn set_offset(&mut self, cx: &mut SizeCx, viewport: Rect, offset: Offset) {
+        let _ = (cx, viewport, offset);
+    }
+
+    /// Update the scroll offset
+    ///
+    /// The `viewport` and `offset` parameters are the same as those of
+    /// [`Viewport::draw_with_offset`].
+    ///
+    /// # Calling
+    ///
+    /// This method should be called whenever the scroll offset changes to allow
+    /// preparation of content (unless it's known that the implementation
+    /// doesn't use this method). It must be called before drawing and event
+    /// handling operations using this new `offset`.
+    ///
+    /// # Implementation
+    ///
+    /// This method only needs to do anything in cases where only a subset of
+    /// content is prepared.
+    fn update_offset(&mut self, cx: &mut ConfigCx, viewport: Rect, offset: Offset) {
+        let _ = (cx, viewport, offset);
+    }
+
+    /// Draw with a scroll offset
+    ///
+    /// Drawing should be clamped to the given `viewport`. This `viewport` may
+    /// be the same as [`Layout::rect`] but is allowed to be slightly different;
+    /// for example `EditBox` passes a larger [`Rect`] to allow drawing in the
+    /// margin allocated between its frame and content.
+    ///
+    /// The `offset` should be the same as that used by the parent widget
+    /// in [`Tile::translation`].
+    ///
+    /// Effectively, content is drawn at position `self.rect().pos - offset`
+    /// but clamped to `viewport`.
+    ///
+    /// # Calling
+    ///
+    /// This method should be called instead of [`Layout::draw`] by compatible
+    /// parent widgets.
+    ///
+    /// # Implementation
+    ///
+    /// ## Method modification
+    ///
+    /// The `#[widget]` macro injects a call to [`DrawCx::set_id`] into this
+    /// method where possible, allowing correct detection of disabled and
+    /// highlight states.
+    ///
+    /// This method modification should never cause issues (besides the implied
+    /// limitation that widgets cannot easily detect a parent's state while
+    /// being drawn).
+    fn draw_with_offset(&self, draw: DrawCx, viewport: Rect, offset: Offset);
+
+    /// Probe a coordinate for a widget's [`Id`]
+    ///
+    /// # Calling
+    ///
+    /// This method should be called instead of [`Tile::try_probe`].
+    ///
+    /// # Implementation
+    ///
+    /// The default implementation will normally suffice. It calls
+    /// [`Events::probe`] with `coord + offset` when
+    /// `self.rect().contains(coord)`.
+    fn try_probe_with_offset(&self, coord: Coord, offset: Offset) -> Option<Id> {
+        let _ = (coord, offset);
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 }
