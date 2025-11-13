@@ -7,13 +7,13 @@
 
 use crate::clerk::{Changes, Key, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
-use kas::event::components::ScrollComponent;
-use kas::event::{CursorIcon, FocusSource, Scroll, TimerHandle};
+use kas::event::components::{ClickInput, ClickInputAction};
+use kas::event::{FocusSource, Scroll, TimerHandle};
 use kas::layout::{GridCellInfo, solve_size_rules};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
-use kas_widgets::ScrollBars;
+use kas_widgets::ScrollRegion;
 use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::ops::Range;
@@ -168,16 +168,17 @@ mod GridView {
     /// item, and may handle events and emit messages like other widegts.
     /// See [`Driver`] documentation for more on event handling.
     ///
-    /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
-    /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
+    /// ### Special behaviour
+    ///
+    /// This is a [`Viewport`] widget. It should be wrapped by a scroll handler
+    /// like [`ScrollRegion`].
+    ///
+    /// This widget supports navigation of children using arrow keys and other
+    /// navigation keys when those keys are not handled by the child itself.
     ///
     /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
     /// If enabled, [`SelectionMsg`] messages are reported; view widgets may
     /// emit [`kas::messages::Select`] to have themselves be selected.
-    ///
-    /// ### Messages
-    ///
-    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[widget]
     pub struct GridView<C: TokenClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
         core: widget_core!(),
@@ -201,13 +202,14 @@ mod GridView {
         child_size_ideal: Size,
         child_inter_margin: Size,
         child_size: Size,
-        scroll: ScrollComponent,
-        // Widget translation is scroll.offset() + virtual_offset
+        /// The current view offset
+        offset: Offset,
         virtual_offset: Offset,
         sel_mode: SelectionMode,
         sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
         selection: LinearSet<C::Key>,
+        click: ClickInput,
         press_target: Option<(usize, C::Key)>,
     }
 
@@ -244,11 +246,12 @@ mod GridView {
                 child_size_ideal: Size::ZERO,
                 child_inter_margin: Size::ZERO,
                 child_size: Size::ZERO,
-                scroll: Default::default(),
+                offset: Offset::ZERO,
                 virtual_offset: Offset::ZERO,
                 sel_mode: SelectionMode::None,
                 sel_style: SelectionStyle::Highlight,
                 selection: Default::default(),
+                click: Default::default(),
                 press_target: None,
             }
         }
@@ -441,7 +444,7 @@ mod GridView {
                 self.token_update = self.token_update.max(Update::Token);
             }
 
-            let offset = self.scroll_offset();
+            let offset = self.offset;
             let skip = (self.child_size + self.child_inter_margin).max(Size(1, 1));
             let first_col = u32::conv(u64::conv(offset.0) / u64::conv(skip.0));
             let first_row = u32::conv(u64::conv(offset.1) / u64::conv(skip.1));
@@ -458,7 +461,7 @@ mod GridView {
                 data_len = result.len();
                 if data_len != self.data_len {
                     self.data_len = data_len;
-                    self.update_content_size(cx);
+                    cx.resize();
                     self.token_update = Update::Token;
                 }
             } else {
@@ -579,45 +582,6 @@ mod GridView {
                 end.row - start.row,
             );
         }
-
-        fn update_content_size(&mut self, cx: &mut EventState) {
-            let view_size = self.rect().size - self.frame_size;
-            let content_size = self.content_size();
-            let action = self.scroll.set_sizes(view_size, content_size);
-            cx.action_moved(action);
-        }
-    }
-
-    impl Scrollable for Self {
-        fn content_size(&self) -> Size {
-            let data_len = self.data_len;
-            let m = self.child_inter_margin;
-            let step = self.child_size + m;
-            Size(
-                step.0 * i32::conv(data_len.col) - m.0,
-                step.1 * i32::conv(data_len.row) - m.1,
-            )
-            .max(Size::ZERO)
-        }
-
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.scroll.max_offset()
-        }
-
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.scroll.offset()
-        }
-
-        fn set_scroll_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
-            let action = self.scroll.set_offset(offset);
-            if action.0 {
-                cx.action_moved(action);
-                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
-            }
-            self.scroll.offset()
-        }
     }
 
     impl Layout for Self {
@@ -682,7 +646,6 @@ mod GridView {
             let child_size = Size(avail.0 / cols, avail.1 / rows)
                 .clamp(self.child_size_min, self.child_size_ideal);
             self.child_size = child_size;
-            self.update_content_size(cx);
 
             let skip = self.child_size + self.child_inter_margin;
             if skip.0 == 0 || skip.1 == 0 {
@@ -729,13 +692,33 @@ mod GridView {
             self.rect_update = true;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }
+    }
 
-        fn draw(&self, mut draw: DrawCx) {
+    impl Viewport for Self {
+        fn content_size(&self) -> Size {
+            let data_len = self.data_len;
+            let m = self.child_inter_margin;
+            let step = self.child_size + m;
+            Size(
+                step.0 * i32::conv(data_len.col) - m.0,
+                step.1 * i32::conv(data_len.row) - m.1,
+            )
+            .max(Size::ZERO)
+        }
+
+        fn update_offset(&mut self, cx: &mut EventState, _: Rect, offset: Offset) {
+            // NOTE: we assume that the viewport is close enough to self.rect()
+            // that prepared widgets will suffice
+            self.offset = offset;
+            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+        }
+
+        fn draw_with_offset(&self, mut draw: DrawCx, viewport: Rect, offset: Offset) {
             // We use a new pass to clip and offset scrolled content:
-            let offset = self.scroll_offset() + self.virtual_offset;
-            let rect = self.rect() + offset;
+            let offset = offset + self.virtual_offset;
+            let rect = viewport + offset;
             let num = self.cur_end();
-            draw.with_clip_region(self.rect(), offset, |mut draw| {
+            draw.with_clip_region(viewport, offset, |mut draw| {
                 for child in &self.widgets[..num] {
                     if let Some(key) = child.key() {
                         // Note: we don't know which widgets within 0..num are
@@ -753,8 +736,7 @@ mod GridView {
     }
 
     impl Tile for Self {
-        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_scroll_offset(self.scroll_offset(), self.max_scroll_offset());
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Grid {
                 columns: self.len_is_known.then(|| self.data_len.col.cast()),
                 rows: self.len_is_known.then(|| self.data_len.row.cast()),
@@ -848,17 +830,11 @@ mod GridView {
 
         #[inline]
         fn translation(&self, _: usize) -> Offset {
-            self.scroll_offset() + self.virtual_offset
+            self.virtual_offset
         }
     }
 
     impl Events for Self {
-        fn mouse_over_icon(&self) -> Option<CursorIcon> {
-            self.scroll
-                .is_kinetic_scrolling()
-                .then_some(CursorIcon::AllScroll)
-        }
-
         #[inline]
         fn make_child_id(&mut self, _: usize) -> Id {
             // We configure children in map_view_widgets and do not want this method to be called
@@ -866,10 +842,6 @@ mod GridView {
         }
 
         fn probe(&self, coord: Coord) -> Id {
-            if self.scroll.is_kinetic_scrolling() {
-                return self.id();
-            }
-
             let num = self.cur_end();
             let coord = coord + self.translation(0);
             for child in &self.widgets[..num] {
@@ -931,8 +903,17 @@ mod GridView {
             ChildIndices::none()
         }
 
+        fn child_nav_focus(&mut self, cx: &mut EventCx, _: Id) {
+            if let Some(index) = cx.last_child()
+                && self.get_child(index).is_some()
+            {
+                let solver = self.position_solver();
+                self.last_focus = solver.child_to_data(index);
+            }
+        }
+
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
-            let mut is_used = match event {
+            match event {
                 Event::Command(cmd, _) => {
                     let len = self.data_len;
                     if len == GridIndex::ZERO {
@@ -941,7 +922,7 @@ mod GridView {
                     let (last_col, last_row) = (len.col.wrapping_sub(1), len.row.wrapping_sub(1));
 
                     let row_len = self.cur_len.row;
-                    let mut solver = self.position_solver();
+                    let solver = self.position_solver();
                     let cell = match cx.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
                         None => return Unused,
@@ -965,87 +946,55 @@ mod GridView {
                         // TODO: C::ViewUp, ...
                         _ => None,
                     };
-                    return if let Some((col, row)) = data_index {
+                    if let Some((col, row)) = data_index {
                         let cell = GridIndex { col, row };
                         // Set nav focus and update scroll position
                         let rect = solver.rect(cell) - self.virtual_offset;
-                        let action = self.scroll.focus_rect(cx, rect, self.rect());
-                        if action.0 {
-                            cx.action_moved(action);
-                            cx.config_cx(|cx| self.post_scroll(cx, data));
-                            solver = self.position_solver();
-                        }
+                        cx.set_scroll(Scroll::Rect(rect));
 
                         let index = solver.data_to_child(cell);
                         let w = &self.widgets[index];
 
                         if w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
-                            self.last_focus = cell;
                         }
                         Used
                     } else {
                         Unused
-                    };
-                }
-                Event::PressStart(ref press)
-                    if press.is_primary() && cx.config().event().mouse_nav_focus() =>
-                {
-                    if let Some(index) = cx.last_child() {
-                        self.press_target = self.widgets[index].key().map(|k| (index, k.clone()));
                     }
-                    if let Some((index, ref key)) = self.press_target {
-                        let w = &mut self.widgets[index];
-                        if w.key() == Some(key) {
-                            cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
-                            let solver = self.position_solver();
-                            self.last_focus = solver.child_to_data(index);
-                        }
-                    }
-
-                    // Press may also be grabbed by scroll component (replacing
-                    // this). Either way we can select on PressEnd.
-                    press.grab_click(self.id()).complete(cx)
-                }
-                Event::PressEnd { ref press, success } if press.is_primary() => {
-                    if let Some((index, ref key)) = self.press_target {
-                        let w = &mut self.widgets[index];
-                        if success
-                            && !matches!(self.sel_mode, SelectionMode::None)
-                            && !self.scroll.is_kinetic_scrolling()
-                            && w.key() == Some(key)
-                            && w.item.rect().contains(press.coord + self.translation(0))
-                        {
-                            cx.push(kas::messages::Select);
-                        }
-                    }
-                    Used
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
                     cx.config_cx(|cx| self.post_scroll(cx, data));
                     Used
                 }
-                _ => Unused, // fall through to scroll handler
-            };
-
-            let offset = self.scroll.offset();
-            is_used |= self
-                .scroll
-                .scroll_by_event(cx, event, self.id(), self.rect());
-            if offset != self.scroll.offset() {
-                // We may process multiple 'moved' events per frame; TIMER_UPDATE_WIDGETS will only
-                // be processed once per frame.
-                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+                event => match self.click.handle(cx, self.id(), event) {
+                    ClickInputAction::Used => Used,
+                    ClickInputAction::Unused => Unused,
+                    ClickInputAction::ClickStart { .. } => {
+                        if let Some(index) = cx.last_child() {
+                            self.press_target =
+                                self.widgets[index].key().map(|k| (index, k.clone()));
+                        }
+                        Used
+                    }
+                    ClickInputAction::ClickEnd { coord, success } => {
+                        if let Some((index, ref key)) = self.press_target {
+                            let w = &mut self.widgets[index];
+                            if success
+                                && !matches!(self.sel_mode, SelectionMode::None)
+                                && w.key() == Some(key)
+                                && w.item.rect().contains(coord + self.translation(0))
+                            {
+                                cx.push(kas::messages::Select);
+                            }
+                        }
+                        Used
+                    }
+                },
             }
-            is_used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
-            if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                self.set_scroll_offset(cx, offset);
-                return;
-            }
-
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child
@@ -1094,10 +1043,8 @@ mod GridView {
             }
         }
 
-        fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
-            self.scroll
-                .scroll(cx, self.id(), self.rect(), scroll - self.virtual_offset);
-            cx.config_cx(|cx| self.post_scroll(cx, data));
+        fn handle_scroll(&mut self, cx: &mut EventCx, _: &C::Data, scroll: Scroll) {
+            cx.set_scroll(scroll - self.virtual_offset);
         }
     }
 

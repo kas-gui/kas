@@ -758,6 +758,23 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 }
             }
         }
+
+        if !item_idents
+            .iter()
+            .any(|(_, ident)| *ident == "try_probe_with_offset")
+        {
+            viewport_impl.items.push(parse_quote! {
+                fn try_probe_with_offset(
+                    &self,
+                    coord: ::kas::geom::Coord,
+                    offset: ::kas::geom::Offset,
+                ) -> Option<::kas::Id> {
+                    self.#core.status.require_rect(&self.#core._id);
+
+                    self.rect().contains(coord).then(|| ::kas::Events::probe(self, coord + offset))
+                }
+            });
+        }
     }
 
     let required_tile_methods = required_tile_methods(&name.to_string(), &core_path);

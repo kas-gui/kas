@@ -5,7 +5,7 @@
 
 //! Scrollable and selectable label
 
-use super::{ScrollBar, ScrollMsg};
+use super::{ScrollBar, ScrollBarMsg};
 use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
@@ -438,7 +438,8 @@ mod ScrollText {
         fn update_content_size(&mut self, cx: &mut EventState) {
             let size = self.rect().size;
             let _ = self.scroll.set_sizes(size, self.label.content_size());
-            self.label.update_offset(self.rect(), self.scroll.offset());
+            self.label
+                .update_offset(cx, self.rect(), self.scroll.offset());
             self.vert_bar
                 .set_limits(cx, self.scroll.max_offset().1, size.1);
             self.vert_bar.set_value(cx, self.scroll.offset().1);
@@ -472,14 +473,15 @@ mod ScrollText {
             let is_used = self
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.rect());
-            self.label.update_offset(self.rect(), self.scroll.offset());
+            self.label
+                .update_offset(cx, self.rect(), self.scroll.offset());
             self.vert_bar.set_value(cx, self.scroll.offset().1);
             is_used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let action = if cx.last_child() == Some(widget_index![self.vert_bar])
-                && let Some(ScrollMsg(y)) = cx.try_pop()
+                && let Some(ScrollBarMsg(y)) = cx.try_pop()
             {
                 let offset = Offset(self.scroll.offset().0, y);
                 self.scroll.set_offset(offset)
@@ -491,7 +493,8 @@ mod ScrollText {
 
             if action.0 {
                 cx.action_moved(action);
-                self.label.update_offset(self.rect(), self.scroll.offset());
+                self.label
+                    .update_offset(cx, self.rect(), self.scroll.offset());
                 self.vert_bar.set_value(cx, self.scroll.offset().1);
             }
         }
@@ -510,7 +513,8 @@ mod ScrollText {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
             self.scroll.scroll(cx, self.id(), self.rect(), scroll);
-            self.label.update_offset(self.rect(), self.scroll.offset());
+            self.label
+                .update_offset(cx, self.rect(), self.scroll.offset());
             self.vert_bar.set_value(cx, self.scroll.offset().1);
         }
     }

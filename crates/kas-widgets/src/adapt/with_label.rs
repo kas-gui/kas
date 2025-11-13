@@ -16,7 +16,9 @@ mod WithLabel {
     /// event `Event::Command(Command::Activate)`.
     ///
     /// Mouse/touch input on the label sends events to the inner widget.
-    #[derive(Clone, Default)]
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Clone where W: trait)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[widget]
     #[layout(list![self.inner, self.label].with_direction(self.dir))]
     pub struct WithLabel<W: Widget, D: Directional = Direction> {
@@ -135,7 +137,9 @@ mod WithHiddenLabel {
     ///
     /// This label is not normally visible but may be read by accessibility
     /// tools and tooltips.
-    #[derive(Clone, Default)]
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Clone where W: trait)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget]
     pub struct WithHiddenLabel<W: Widget> {
         #[widget]

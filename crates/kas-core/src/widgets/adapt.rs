@@ -24,7 +24,7 @@ mod MapAny {
     /// [`DerefMut`](std::ops::DerefMut) to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Clone, Default where W: trait)]
-    #[autoimpl(Scrollable using self.inner where W: trait)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget(type Data = A)]
     pub struct MapAny<A, W: Widget<Data = ()>> {
         _a: std::marker::PhantomData<A>,
@@ -52,6 +52,9 @@ mod Align {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](https://docs.rs/kas/latest/kas/widgets/trait.AdaptWidget.html).
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Clone where W: trait)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget]
     pub struct Align<W: Widget> {
         #[widget]
@@ -87,6 +90,9 @@ mod Pack {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](https://docs.rs/kas/latest/kas/widgets/trait.AdaptWidget.html).
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Clone where W: trait)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget]
     pub struct Pack<W: Widget> {
         #[widget]

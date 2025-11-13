@@ -530,13 +530,6 @@ pub trait RoleCx {
     /// not the primary value, for example an image's alternate text or a label
     /// next to a control.
     fn set_label_impl(&mut self, label: TextOrSource<'_>);
-
-    /// Set scroll offset
-    ///
-    /// This sets the current `scroll_offset` and the `max_scroll_offset`. The
-    /// minimum offset is assumed to be zero. It is expected that this supports
-    /// setting the scroll offset and [`Event::Scroll`].
-    fn set_scroll_offset(&mut self, scroll_offset: Offset, max_scroll_offset: Offset);
 }
 
 /// Convenience methods over a [`RoleCx`]

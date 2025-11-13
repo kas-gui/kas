@@ -229,8 +229,8 @@ fn widgets() -> Page<AppData> {
 
     let ui = widgets
         .with_state(data)
-        .on_message(|_, data, ScrollMsg(value)| {
-            println!("ScrollMsg({value})");
+        .on_message(|_, data, ScrollBarMsg(value)| {
+            println!("ScrollBarMsg({value})");
             data.ratio = value as f32 / 100.0;
         })
         .on_message(|_, data, item| {
@@ -254,7 +254,7 @@ fn widgets() -> Page<AppData> {
     let ui = adapt::AdaptEvents::new(ui)
         .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
 
-    Page::new(ScrollRegion::new(ui))
+    Page::new(ScrollRegion::new_clip(ui))
 }
 
 fn editor() -> Page<AppData> {
@@ -584,9 +584,9 @@ fn filter_list() -> Page<AppData> {
             core: widget_core!(),
             #[widget(&())] filter: EditBox<MonthYearFilterGuard> =
                 EditBox::default().with_multi_line(false),
-            #[widget(&self.filter.guard().0)] list: ScrollBars<ListView<Generator, driver::View, Down>>
+            #[widget(&self.filter.guard().0)] list: ScrollRegion<ListView<Generator, driver::View, Down>>
                 =
-                ScrollBars::new(ListView::new(clerk, driver::View).with_num_visible(24)),
+                ScrollRegion::new_viewport(ListView::new(clerk, driver::View).with_num_visible(24)),
         }
 
         impl Layout for Self {}
@@ -725,7 +725,7 @@ KAS_CONFIG_MODE=readwrite
     let ui = column![
         ScrollLabel::new(desc),
         Separator::new(),
-        ScrollRegion::new(EventConfig::new())
+        ScrollRegion::new_clip(EventConfig::new())
     ];
     Page::new(
         ui.map_any()

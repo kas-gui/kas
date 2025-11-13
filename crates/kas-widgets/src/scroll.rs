@@ -5,7 +5,7 @@
 
 //! Scroll region
 
-use crate::{ScrollBar, ScrollBarMode, ScrollMsg};
+use crate::{ScrollBar, ScrollBarMode, ScrollBarMsg};
 use kas::event::{CursorIcon, Scroll, components::ScrollComponent};
 use kas::prelude::*;
 use std::fmt::Debug;
@@ -135,7 +135,7 @@ mod ScrollRegion {
     ///
     /// Though this widget is generic over any [`Viewport`], it is primarily
     /// intended for usage with [`ClipRegion`]; the primary constructor
-    /// [`Self::new`] uses this while [`Self::new_over_viewport`] allows usage
+    /// [`Self::new_clip`] uses this while [`Self::new_viewport`] allows usage
     /// with other implementations of [`Viewport`].
     ///
     /// It should be noted that scroll bar positioning does not respect the
@@ -163,12 +163,15 @@ mod ScrollRegion {
     }
 
     impl<Inner: Widget> ScrollRegion<ClipRegion<Inner>> {
-        /// Construct a scroll region
+        /// Construct a scroll region using a [`ClipRegion`]
+        ///
+        /// This is probably the constructor you want *unless* the inner widget
+        /// already implements [`Viewport`].
         ///
         /// Uses [`ScrollBarMode::Auto`] by default.
         #[inline]
-        pub fn new(inner: Inner) -> Self {
-            Self::new_over_viewport(ClipRegion::new(inner))
+        pub fn new_clip(inner: Inner) -> Self {
+            Self::new_viewport(ClipRegion::new(inner))
         }
     }
 
@@ -177,7 +180,7 @@ mod ScrollRegion {
         ///
         /// Uses [`ScrollBarMode::Auto`] by default.
         #[inline]
-        pub fn new_over_viewport(inner: W) -> Self {
+        pub fn new_viewport(inner: W) -> Self {
             ScrollRegion {
                 core: Default::default(),
                 scroll: Default::default(),
@@ -302,6 +305,8 @@ mod ScrollRegion {
 
             let _ = self.scroll.set_sizes(child_size, content_size);
             let max_scroll_offset = self.scroll.max_offset();
+            self.inner
+                .update_offset(cx, child_rect, self.scroll.offset());
 
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
@@ -394,7 +399,7 @@ mod ScrollRegion {
             }
 
             self.inner
-                .try_probe(coord + self.scroll.offset())
+                .try_probe_with_offset(coord, self.scroll.offset())
                 .unwrap_or_else(|| self.id())
         }
 
@@ -409,13 +414,17 @@ mod ScrollRegion {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            let initial_offset = self.scroll.offset();
             let is_used = self
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.inner.rect());
 
             let offset = self.scroll.offset();
-            self.horiz_bar.set_value(cx, offset.0);
-            self.vert_bar.set_value(cx, offset.1);
+            if offset != initial_offset {
+                self.horiz_bar.set_value(cx, offset.0);
+                self.vert_bar.set_value(cx, offset.1);
+                self.inner.update_offset(cx, self.inner.rect(), offset);
+            }
 
             is_used
         }
@@ -423,11 +432,11 @@ mod ScrollRegion {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let index = cx.last_child();
             let offset = if index == Some(widget_index![self.horiz_bar])
-                && let Some(ScrollMsg(x)) = cx.try_pop()
+                && let Some(ScrollBarMsg(x)) = cx.try_pop()
             {
                 Offset(x, self.scroll.offset().1)
             } else if index == Some(widget_index![self.vert_bar])
-                && let Some(ScrollMsg(y)) = cx.try_pop()
+                && let Some(ScrollBarMsg(y)) = cx.try_pop()
             {
                 Offset(self.scroll.offset().0, y)
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
@@ -440,6 +449,7 @@ mod ScrollRegion {
 
             let action = self.scroll.set_offset(offset);
             cx.action_moved(action);
+            self.inner.update_offset(cx, self.inner.rect(), offset);
         }
 
         fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
@@ -456,6 +466,7 @@ mod ScrollRegion {
             let offset = self.scroll.offset();
             self.horiz_bar.set_value(cx, offset.0);
             self.vert_bar.set_value(cx, offset.1);
+            self.inner.update_offset(cx, self.inner.rect(), offset);
         }
     }
 }

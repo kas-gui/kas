@@ -17,7 +17,8 @@ mod AdaptEvents {
     /// Wrapper with configure / update / message handling callbacks.
     ///
     /// This type is constructed by some [`AdaptWidget`](super::AdaptWidget) methods.
-    #[autoimpl(Scrollable using self.inner where W: trait)]
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget]
     pub struct AdaptEvents<W: Widget> {
         /// The inner widget

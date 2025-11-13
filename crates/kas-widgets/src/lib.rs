@@ -34,7 +34,7 @@
 //! -   [`CheckBox`], [`CheckButton`]: checkable boxes
 //! -   [`RadioBox`], [`RadioButton`]: linked checkable boxes
 //! -   [`ComboBox`]: a drop-down menu over a list
-//! -   [`ScrollBar`]: a scroll bar; [`ScrollBars`]: a wrapper adding scroll
+//! -   [`ScrollBar`]: a scroll bar
 //!     bars around an inner widget
 //! -   [`Slider`]: a slider
 //! -   [`SpinBox`]: numeric entry
@@ -105,7 +105,7 @@ pub use list::*;
 pub use progress::ProgressBar;
 pub use radio_box::{RadioBox, RadioButton};
 pub use scroll::{ClipRegion, ScrollRegion};
-pub use scroll_bar::{ScrollBar, ScrollBarMode, ScrollBars, ScrollMsg};
+pub use scroll_bar::{ScrollBar, ScrollBarMode, ScrollBarMsg};
 pub use scroll_label::{ScrollLabel, ScrollText, SelectableLabel, SelectableText};
 pub use separator::Separator;
 pub use slider::{Slider, SliderValue};

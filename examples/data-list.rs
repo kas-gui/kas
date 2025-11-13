@@ -175,7 +175,7 @@ fn main() -> kas::runner::Result<()> {
         "Contents of selected entry:",
         Text::new_str(|data: &Data| &data.active_string),
         Separator::new(),
-        ScrollRegion::new(list).with_fixed_bars(false, true),
+        ScrollRegion::new_clip(list).with_fixed_bars(false, true),
     ];
 
     let ui = tree

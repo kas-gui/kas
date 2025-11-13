@@ -38,7 +38,7 @@ mod Adapt {
     /// `generic_associated_types_extended`, but it was removed due to being
     /// stale, experimental and unsound. But even if Rust did gain this feature,
     /// it is not clear that [`Widget::Data`] should be generic.)
-    #[autoimpl(Scrollable using self.inner where W: trait)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[widget]
     #[layout(self.inner)]
     pub struct Adapt<A, W: Widget> {
@@ -188,7 +188,7 @@ mod Map {
     /// [`Id`]. It supports [`Deref`](std::ops::Deref) and
     /// [`DerefMut`](std::ops::DerefMut) to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
-    #[autoimpl(Scrollable using self.inner where W: trait)]
+    #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget(type Data = A)]
     pub struct Map<A, W: Widget, F>
     where
