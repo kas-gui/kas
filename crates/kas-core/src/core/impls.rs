@@ -102,6 +102,10 @@ pub fn _send<W: Events>(
             if let Some(scroll) = cx.post_send(index) {
                 widget.handle_scroll(cx, data, scroll);
             }
+
+            if matches!(&event, Event::NavFocus(_)) {
+                widget.child_nav_focus(cx, id);
+            }
         }
 
         do_handle_event = !is_used && event.is_reusable();

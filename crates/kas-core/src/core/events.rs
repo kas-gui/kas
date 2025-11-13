@@ -235,6 +235,19 @@ pub trait Events: Widget + Sized {
         }
     }
 
+    /// Notification that a child received navigation focus
+    ///
+    /// This is received after the child `id` receives [`Event::NavFocus`],
+    /// hence [`EventCx::last_child`] should be set.
+    ///
+    /// # Calling
+    ///
+    /// This method may only be called after the widget is sized.
+    #[inline]
+    fn child_nav_focus(&mut self, cx: &mut EventCx, id: Id) {
+        let _ = (cx, id);
+    }
+
     /// Handle an [`Event`]
     ///
     /// This is the primary event handler (see [documentation](crate::event)).

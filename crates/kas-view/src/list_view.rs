@@ -897,6 +897,15 @@ mod ListView {
             ChildIndices::none()
         }
 
+        fn child_nav_focus(&mut self, cx: &mut EventCx, _: Id) {
+            if let Some(index) = cx.last_child()
+                && self.get_child(index).is_some()
+            {
+                let solver = self.position_solver();
+                self.last_focus = solver.child_to_data(index).cast();
+            }
+        }
+
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(cmd, _) => {
@@ -934,7 +943,6 @@ mod ListView {
                         let w = &self.widgets[index];
                         if w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
-                            self.last_focus = i_data.cast();
                         }
                         Used
                     } else {
@@ -952,14 +960,6 @@ mod ListView {
                         if let Some(index) = cx.last_child() {
                             self.press_target =
                                 self.widgets[index].key().map(|k| (index, k.clone()));
-                        }
-                        if let Some((index, ref key)) = self.press_target {
-                            let w = &mut self.widgets[index];
-                            if w.key() == Some(key) {
-                                cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
-                                let solver = self.position_solver();
-                                self.last_focus = solver.child_to_data(index).cast();
-                            }
                         }
                         Used
                     }
