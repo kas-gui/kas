@@ -5,7 +5,7 @@
 
 //! Scrollable and selectable label
 
-use super::{ScrollBar, ScrollMsg};
+use super::{ScrollBar, ScrollBarMsg};
 use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
@@ -481,7 +481,7 @@ mod ScrollText {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let action = if cx.last_child() == Some(widget_index![self.vert_bar])
-                && let Some(ScrollMsg(y)) = cx.try_pop()
+                && let Some(ScrollBarMsg(y)) = cx.try_pop()
             {
                 let offset = Offset(self.scroll.offset().0, y);
                 self.scroll.set_offset(offset)

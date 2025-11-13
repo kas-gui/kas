@@ -35,7 +35,7 @@ pub enum ScrollBarMode {
 
 /// Message from a [`ScrollBar`]
 #[derive(Copy, Clone, Debug)]
-pub struct ScrollMsg(pub i32);
+pub struct ScrollBarMsg(pub i32);
 
 const TIMER_HIDE: TimerHandle = TimerHandle::new(0, false);
 
@@ -48,7 +48,7 @@ mod ScrollBar {
     ///
     /// # Messages
     ///
-    /// On value change, pushes a value of type [`ScrollMsg`].
+    /// On value change, pushes a value of type [`ScrollBarMsg`].
     ///
     /// # Layout
     ///
@@ -298,7 +298,7 @@ mod ScrollBar {
             }
             let value = i32::conv((lhs + (rhs / 2)) / rhs);
             if self.set_value(cx, value) {
-                cx.push(ScrollMsg(value));
+                cx.push(ScrollBarMsg(value));
             }
         }
 

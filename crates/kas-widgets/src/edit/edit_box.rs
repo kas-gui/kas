@@ -6,7 +6,7 @@
 //! The [`EditField`] and [`EditBox`] widgets, plus supporting items
 
 use super::*;
-use crate::{ScrollBar, ScrollMsg};
+use crate::{ScrollBar, ScrollBarMsg};
 use kas::event::Scroll;
 use kas::event::components::ScrollComponent;
 use kas::messages::{ReplaceSelectedText, SetValueText};
@@ -159,7 +159,7 @@ mod EditBox {
 
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, data: &G::Data) {
             let action = if cx.last_child() == Some(widget_index![self.vert_bar])
-                && let Some(ScrollMsg(y)) = cx.try_pop()
+                && let Some(ScrollBarMsg(y)) = cx.try_pop()
             {
                 let offset = Offset(self.scroll.offset().0, y);
                 self.scroll.set_offset(offset)

@@ -5,7 +5,7 @@
 
 //! Scroll region
 
-use crate::{ScrollBar, ScrollBarMode, ScrollMsg};
+use crate::{ScrollBar, ScrollBarMode, ScrollBarMsg};
 use kas::event::{CursorIcon, Scroll, components::ScrollComponent};
 use kas::prelude::*;
 use std::fmt::Debug;
@@ -432,11 +432,11 @@ mod ScrollRegion {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let index = cx.last_child();
             let offset = if index == Some(widget_index![self.horiz_bar])
-                && let Some(ScrollMsg(x)) = cx.try_pop()
+                && let Some(ScrollBarMsg(x)) = cx.try_pop()
             {
                 Offset(x, self.scroll.offset().1)
             } else if index == Some(widget_index![self.vert_bar])
-                && let Some(ScrollMsg(y)) = cx.try_pop()
+                && let Some(ScrollBarMsg(y)) = cx.try_pop()
             {
                 Offset(self.scroll.offset().0, y)
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
