@@ -729,7 +729,7 @@ mod ListView {
             self.offset = offset;
         }
 
-        fn update_offset(&mut self, cx: &mut ConfigCx, _: Rect, offset: Offset) {
+        fn update_offset(&mut self, cx: &mut ConfigCx, data: &Self::Data, _: Rect, offset: Offset) {
             self.offset = offset;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }

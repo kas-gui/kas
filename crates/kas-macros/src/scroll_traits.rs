@@ -43,10 +43,11 @@ impl ImplTrait for ImplViewport {
                 fn update_offset(
                     &mut self,
                     cx: &mut ::kas::event::ConfigCx,
+                    data: &Self::Data,
                     viewport: ::kas::geom::Rect,
                     offset: ::kas::geom::Offset,
                 ) {
-                    self.#using.update_offset(cx, viewport, offset)
+                    self.#using.update_offset(cx, data, viewport, offset)
                 }
                 #[inline]
                 fn draw_with_offset(

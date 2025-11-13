@@ -246,8 +246,14 @@ pub trait Viewport: Widget {
     ///
     /// This method only needs to do anything in cases where only a subset of
     /// content is prepared.
-    fn update_offset(&mut self, cx: &mut ConfigCx, viewport: Rect, offset: Offset) {
-        let _ = (cx, viewport, offset);
+    fn update_offset(
+        &mut self,
+        cx: &mut ConfigCx,
+        data: &Self::Data,
+        viewport: Rect,
+        offset: Offset,
+    ) {
+        let _ = (cx, data, viewport, offset);
     }
 
     /// Draw with a scroll offset
