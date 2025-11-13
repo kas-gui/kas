@@ -507,7 +507,7 @@ mod ListView {
                 data_len = result.len();
                 if data_len != usize::conv(self.data_len) {
                     self.data_len = data_len.cast();
-                    self.update_content_size(cx);
+                    cx.resize();
                 }
             } else {
                 data_len = self.data_len.cast();
@@ -601,18 +601,6 @@ mod ListView {
                 range.len(),
             );
         }
-
-        fn update_content_size(&mut self, cx: &mut EventState) {
-            let data_len: i32 = self.data_len.cast();
-            let view_size = self.rect().size - self.frame_size;
-            let mut content_size = view_size;
-            content_size.set_component(
-                self.direction,
-                (self.skip * data_len - self.child_inter_margin).max(0),
-            );
-            // let action = self.scroll.set_sizes(view_size, content_size);
-            // cx.action_moved(action);
-        }
     }
 
     impl Layout for Self {
@@ -681,7 +669,6 @@ mod ListView {
 
             self.child_size = child_size;
             self.skip = skip;
-            self.update_content_size(cx);
 
             let req_widgets = if skip == 0 {
                 self.skip = 1; // avoid divide by 0
