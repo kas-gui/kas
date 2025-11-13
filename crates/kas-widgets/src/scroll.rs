@@ -135,7 +135,7 @@ mod ScrollRegion {
     ///
     /// Though this widget is generic over any [`Viewport`], it is primarily
     /// intended for usage with [`ClipRegion`]; the primary constructor
-    /// [`Self::new`] uses this while [`Self::new_over_viewport`] allows usage
+    /// [`Self::new_clip`] uses this while [`Self::new_viewport`] allows usage
     /// with other implementations of [`Viewport`].
     ///
     /// It should be noted that scroll bar positioning does not respect the

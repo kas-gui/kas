@@ -946,7 +946,7 @@ mod GridView {
                         // TODO: C::ViewUp, ...
                         _ => None,
                     };
-                    return if let Some((col, row)) = data_index {
+                    if let Some((col, row)) = data_index {
                         let cell = GridIndex { col, row };
                         // Set nav focus and update scroll position
                         let rect = solver.rect(cell) - self.virtual_offset;
@@ -961,7 +961,7 @@ mod GridView {
                         Used
                     } else {
                         Unused
-                    };
+                    }
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
                     cx.config_cx(|cx| self.post_scroll(cx, data));

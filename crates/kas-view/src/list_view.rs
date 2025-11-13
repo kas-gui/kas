@@ -923,7 +923,7 @@ mod ListView {
                         // TODO: C::ViewUp, ...
                         _ => None,
                     };
-                    return if let Some(i_data) = data_index {
+                    if let Some(i_data) = data_index {
                         // Set nav focus to i_data and update scroll position
                         let rect = solver.rect(i_data) - self.virtual_offset();
                         cx.set_scroll(Scroll::Rect(rect));
@@ -935,7 +935,7 @@ mod ListView {
                         Used
                     } else {
                         Unused
-                    };
+                    }
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
                     cx.config_cx(|cx| self.post_scroll(cx, data));
