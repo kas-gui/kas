@@ -13,7 +13,7 @@ use kas::layout::{GridCellInfo, solve_size_rules};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
-use kas_widgets::ScrollBars;
+use kas_widgets::ScrollRegion;
 use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::ops::Range;
@@ -170,7 +170,8 @@ mod GridView {
     ///
     /// ### Special behaviour
     ///
-    /// This is a [`Viewport`] widget.
+    /// This is a [`Viewport`] widget. It should be wrapped by a scroll handler
+    /// like [`ScrollRegion`].
     ///
     /// This widget supports navigation of children using arrow keys and other
     /// navigation keys when those keys are not handled by the child itself.
