@@ -38,7 +38,6 @@ pub(crate) fn apply_scroll_props_to_node(offset: Offset, max_offset: Offset, nod
 struct WalkCx {
     label: Option<String>,
     labelled_by: Option<NodeId>,
-    scroll_offset: Option<(Offset, Offset)>,
 }
 
 impl WalkCx {
@@ -47,9 +46,6 @@ impl WalkCx {
             node.set_label(label);
         } else if let Some(id) = self.labelled_by.take() {
             node.set_labelled_by(vec![id]);
-        }
-        if let Some((offset, max_offset)) = self.scroll_offset.take() {
-            apply_scroll_props_to_node(offset, max_offset, node);
         }
     }
 }
@@ -61,10 +57,6 @@ impl RoleCx for WalkCx {
             TextOrSource::Owned(s) => self.label = Some(s),
             TextOrSource::Source(id) => self.labelled_by = Some(id.into()),
         }
-    }
-
-    fn set_scroll_offset(&mut self, offset: Offset, max_offset: Offset) {
-        self.scroll_offset = Some((offset, max_offset));
     }
 }
 
