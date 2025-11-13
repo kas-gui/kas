@@ -3,7 +3,7 @@
 use kas::prelude::*;
 use kas::view::clerk::{Clerk, GeneratorChanges, IndexedGenerator, Len};
 use kas::view::{GridIndex, GridView, SelectionMode, SelectionMsg, driver};
-use kas::widgets::{EditBox, ScrollBars, column, row};
+use kas::widgets::{EditBox, ScrollRegion, column, row};
 
 /// A cache of the visible part of our table
 #[derive(Debug, Default)]
@@ -52,7 +52,7 @@ fn main() -> kas::runner::Result<()> {
     let table = GridView::new(clerk, driver::View)
         .with_num_visible(12, 12)
         .with_selection_mode(SelectionMode::Single);
-    let table = ScrollBars::new(table);
+    let table = ScrollRegion::new_viewport(table);
 
     #[derive(Debug)]
     struct SetLen(u32);
