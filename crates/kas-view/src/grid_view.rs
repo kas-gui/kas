@@ -202,8 +202,6 @@ mod GridView {
         first_data: GridIndex,
         /// Last data item to have navigation focus
         last_focus: GridIndex,
-        child_size_min: Size,
-        child_size_ideal: Size,
         child_inter_margin: Size,
         child_size: Size,
         /// The current view offset
@@ -247,8 +245,6 @@ mod GridView {
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
                 last_focus: GridIndex::ZERO,
-                child_size_min: Size::ZERO,
-                child_size_ideal: Size::ZERO,
                 child_inter_margin: Size::ZERO,
                 child_size: Size::ZERO,
                 offset: Offset::ZERO,
@@ -599,16 +595,9 @@ mod GridView {
             };
             let frame = kas::layout::FrameRules::new(0, inner_margin, (0, 0));
 
-            let other = axis.other().map(|mut size| {
-                // Use same logic as in set_rect to find per-child size:
-                let other_axis = axis.flipped();
-                size -= self.frame_size.extract(other_axis);
-                let (cols, rows) = (self.ideal_len.col.cast(), self.ideal_len.row.cast());
-                let div = Size(cols, rows).extract(other_axis);
-                (size / div)
-                    .min(self.child_size_ideal.extract(other_axis))
-                    .max(self.child_size_min.extract(other_axis))
-            });
+            let other = axis
+                .other()
+                .map(|_| self.child_size.extract(axis.flipped()));
             axis = AxisInfo::new(axis.is_vertical(), other);
 
             let mut rules = SizeRules::EMPTY;
@@ -618,23 +607,27 @@ mod GridView {
                     rules = rules.max(child_rules);
                 }
             }
-            self.child_size_min
-                .set_component(axis, rules.min_size().max(1));
-            self.child_size_ideal
-                .set_component(axis, rules.ideal_size().max(cx.min_element_size()));
+
+            // Always use min child size
+            let size = rules.min_size().max(1);
+            self.child_size.set_component(axis, size);
 
             let m = rules.margins();
-            self.child_inter_margin.set_component(
-                axis,
-                m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast(),
-            );
+            let inter_margin = m.0.max(m.1).max(inner_margin.0).max(inner_margin.1);
+            let stretch = rules.stretch();
+            let m = rules.margins();
+            self.child_inter_margin
+                .set_component(axis, inter_margin.cast());
+            let inter_margin: i32 = inter_margin.cast();
 
-            let ideal_len = match axis.is_vertical() {
+            let min_len = 2;
+            let ideal_len = i32::conv(match axis.is_vertical() {
                 false => self.ideal_len.col,
                 true => self.ideal_len.row,
-            };
-            rules.multiply_with_margin(2, ideal_len.cast());
-            rules.set_stretch(rules.stretch().max(Stretch::High));
+            });
+            let min = min_len * size + (min_len - 1) * inter_margin;
+            let ideal = ideal_len * size + (ideal_len - 1) * inter_margin;
+            let rules = SizeRules::new(min, ideal, stretch.max(Stretch::High)).with_margins(m);
 
             let (rules, offset, size) = frame.surround(rules);
             self.frame_offset.set_component(axis, offset);
@@ -645,12 +638,6 @@ mod GridView {
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.align_hints = hints;
-
-            let avail = rect.size - self.frame_size;
-            let (cols, rows): (i32, i32) = (self.ideal_len.col.cast(), self.ideal_len.row.cast());
-            let child_size = Size(avail.0 / cols, avail.1 / rows)
-                .clamp(self.child_size_min, self.child_size_ideal);
-            self.child_size = child_size;
 
             let skip = self.child_size + self.child_inter_margin;
             if skip.0 == 0 || skip.1 == 0 {
@@ -701,9 +688,9 @@ mod GridView {
 
     impl Viewport for Self {
         fn content_size(&self) -> Size {
-            let data_len = self.data_len;
             let m = self.child_inter_margin;
             let step = self.child_size + m;
+            let data_len = self.data_len;
             Size(
                 step.0 * i32::conv(data_len.col) - m.0,
                 step.1 * i32::conv(data_len.row) - m.1,

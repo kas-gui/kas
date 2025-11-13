@@ -157,8 +157,6 @@ mod ListView {
         direction: D,
         align_hints: AlignHints,
         ideal_visible: i32,
-        child_size_min: i32,
-        child_size_ideal: i32,
         child_inter_margin: i32,
         skip: i32,
         child_size: Size,
@@ -249,8 +247,6 @@ mod ListView {
                 direction,
                 align_hints: Default::default(),
                 ideal_visible: 5,
-                child_size_min: 0,
-                child_size_ideal: 0,
                 child_inter_margin: 0,
                 skip: 1,
                 child_size: Size::ZERO,
@@ -619,15 +615,12 @@ mod ListView {
             };
             let frame = kas::layout::FrameRules::new(0, inner_margin, (0, 0));
 
-            let other = axis.other().map(|mut size| {
-                // Use same logic as in set_rect to find per-child size:
-                let other_axis = axis.flipped();
-                size -= self.frame_size.extract(other_axis);
-                if self.direction.is_horizontal() == other_axis.is_horizontal() {
-                    size = (size / self.ideal_visible)
-                        .clamp(self.child_size_min, self.child_size_ideal);
+            let other = axis.other().map(|size| {
+                if self.direction.is_horizontal() == axis.is_vertical() {
+                    self.child_size.extract(axis.flipped())
+                } else {
+                    size - self.frame_size.extract(axis.flipped())
                 }
-                size
             });
             axis = AxisInfo::new(axis.is_vertical(), other);
 
@@ -639,13 +632,20 @@ mod ListView {
                 }
             }
             if axis.is_vertical() == self.direction.is_vertical() {
-                self.child_size_min = rules.min_size().max(1);
-                self.child_size_ideal = rules.ideal_size().max(cx.min_element_size());
+                // Always use min child size
+                let size = rules.min_size().max(1);
+                self.child_size.set_component(axis, size);
                 let m = rules.margins();
-                self.child_inter_margin =
-                    m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast();
-                rules.multiply_with_margin(2, self.ideal_visible);
-                rules.set_stretch(rules.stretch().max(Stretch::High));
+                let inter_margin = m.0.max(m.1).max(inner_margin.0).max(inner_margin.1);
+                self.child_inter_margin = inter_margin.cast();
+                let inter_margin: i32 = inter_margin.cast();
+                let stretch = rules.stretch();
+
+                let (min_len, ideal_len) = (2, self.ideal_visible);
+                let min = min_len * size + (min_len - 1) * inter_margin;
+                let ideal = ideal_len * size + (ideal_len - 1) * inter_margin;
+
+                rules = SizeRules::new(min, ideal, stretch.max(Stretch::High)).with_margins(m);
             } else {
                 rules.set_stretch(rules.stretch().max(Stretch::Low));
             }
@@ -659,27 +659,20 @@ mod ListView {
             widget_set_rect!(rect);
             self.align_hints = hints;
 
-            let mut child_size = rect.size - self.frame_size;
-            let (size, skip);
-            if self.direction.is_horizontal() {
-                child_size.0 = (child_size.0 / self.ideal_visible)
-                    .clamp(self.child_size_min, self.child_size_ideal);
-                size = rect.size.0;
-                skip = child_size.0 + self.child_inter_margin;
+            let skip = if self.direction.is_horizontal() {
+                self.child_size.1 = rect.size.1 - self.frame_size.1;
+                self.child_size.0 + self.child_inter_margin
             } else {
-                child_size.1 = (child_size.1 / self.ideal_visible)
-                    .clamp(self.child_size_min, self.child_size_ideal);
-                size = rect.size.1;
-                skip = child_size.1 + self.child_inter_margin;
-            }
-
-            self.child_size = child_size;
-            self.skip = skip;
+                self.child_size.0 = rect.size.0 - self.frame_size.0;
+                self.child_size.1 + self.child_inter_margin
+            };
 
             let req_widgets = if skip == 0 {
                 self.skip = 1; // avoid divide by 0
                 0
             } else {
+                self.skip = skip;
+                let size = rect.size.extract(self.direction);
                 usize::conv(size).div_ceil(usize::conv(skip)) + 1
             };
 
@@ -722,7 +715,7 @@ mod ListView {
         fn content_size(&self) -> Size {
             let data_len: i32 = self.data_len.cast();
             let m = self.child_inter_margin;
-            let step = self.child_size_ideal + m;
+            let step = self.child_size.extract(self.direction) + m;
             let mut content_size = Size::ZERO;
             content_size.set_component(self.direction, (step * data_len - m).max(0));
             content_size
