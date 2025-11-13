@@ -460,7 +460,7 @@ pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
 /// #[impl_self]
 /// mod Map {
 ///     #[autoimpl(Deref, DerefMut using self.inner)]
-///     #[autoimpl(Scrollable using self.inner where W: trait)]
+///     #[autoimpl(Viewport using self.inner where W: trait)]
 ///     #[derive_widget(type Data = A)]
 ///     pub struct Map<A, W: Widget, F>
 ///     where
