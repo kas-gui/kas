@@ -31,9 +31,18 @@ impl ImplTrait for ImplViewport {
                     self.#using.content_size()
                 }
                 #[inline]
+                fn set_offset(
+                    &mut self,
+                    cx: &mut ::kas::theme::SizeCx,
+                    viewport: ::kas::geom::Rect,
+                    offset: ::kas::geom::Offset,
+                ) {
+                    self.#using.set_offset(cx, viewport, offset)
+                }
+                #[inline]
                 fn update_offset(
                     &mut self,
-                    cx: &mut ::kas::event::EventState,
+                    cx: &mut ::kas::event::ConfigCx,
                     viewport: ::kas::geom::Rect,
                     offset: ::kas::geom::Offset,
                 ) {

@@ -706,9 +706,13 @@ mod GridView {
             .max(Size::ZERO)
         }
 
-        fn update_offset(&mut self, cx: &mut EventState, _: Rect, offset: Offset) {
+        fn set_offset(&mut self, _: &mut SizeCx, _: Rect, offset: Offset) {
             // NOTE: we assume that the viewport is close enough to self.rect()
             // that prepared widgets will suffice
+            self.offset = offset;
+        }
+
+        fn update_offset(&mut self, cx: &mut ConfigCx, _: Rect, offset: Offset) {
             self.offset = offset;
             cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
         }

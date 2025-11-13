@@ -6,7 +6,7 @@
 //! Layout, Tile and TileExt traits
 
 use crate::Id;
-use crate::event::EventState;
+use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
@@ -191,6 +191,24 @@ pub trait Viewport: Layout {
     /// This method is called during sizing.
     fn content_size(&self) -> Size;
 
+    /// Set the scroll offset
+    ///
+    /// The `viewport` and `offset` parameters are the same as those of
+    /// [`Viewport::draw_with_offset`].
+    ///
+    /// # Calling
+    ///
+    /// This method should be called immediately after [`Layout::set_rect`]
+    /// (unless it's known that the implementation doesn't use this method).
+    ///
+    /// # Implementation
+    ///
+    /// This method only needs to do anything in cases where only a subset of
+    /// content is prepared.
+    fn set_offset(&mut self, cx: &mut SizeCx, viewport: Rect, offset: Offset) {
+        let _ = (cx, viewport, offset);
+    }
+
     /// Update the scroll offset
     ///
     /// The `viewport` and `offset` parameters are the same as those of
@@ -198,15 +216,16 @@ pub trait Viewport: Layout {
     ///
     /// # Calling
     ///
-    /// This method should be called after [`Layout::set_rect`] and whenever the
-    /// scroll offset changes to allow preparation of content. It must be called
-    /// before drawing and event handling operations using this new `offset`.
+    /// This method should be called whenever the scroll offset changes to allow
+    /// preparation of content (unless it's known that the implementation
+    /// doesn't use this method). It must be called before drawing and event
+    /// handling operations using this new `offset`.
     ///
     /// # Implementation
     ///
     /// This method only needs to do anything in cases where only a subset of
     /// content is prepared.
-    fn update_offset(&mut self, cx: &mut EventState, viewport: Rect, offset: Offset) {
+    fn update_offset(&mut self, cx: &mut ConfigCx, viewport: Rect, offset: Offset) {
         let _ = (cx, viewport, offset);
     }
 
