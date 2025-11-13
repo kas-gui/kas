@@ -7,6 +7,7 @@
 
 use crate::clerk::{Changes, Key, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
+use kas::event::components::{ClickInput, ClickInputAction};
 use kas::event::{FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
@@ -163,6 +164,7 @@ mod ListView {
         sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
         selection: LinearSet<C::Key>,
+        click: ClickInput,
         press_target: Option<(usize, C::Key)>,
     }
 
@@ -251,6 +253,7 @@ mod ListView {
                 sel_mode: SelectionMode::None,
                 sel_style: SelectionStyle::Highlight,
                 selection: Default::default(),
+                click: Default::default(),
                 press_target: None,
             }
         }
@@ -938,43 +941,42 @@ mod ListView {
                         Unused
                     };
                 }
-                Event::PressStart(ref press)
-                    if press.is_primary() && cx.config().event().mouse_nav_focus() =>
-                {
-                    if let Some(index) = cx.last_child() {
-                        self.press_target = self.widgets[index].key().map(|k| (index, k.clone()));
-                    }
-                    if let Some((index, ref key)) = self.press_target {
-                        let w = &mut self.widgets[index];
-                        if w.key() == Some(key) {
-                            cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
-                            let solver = self.position_solver();
-                            self.last_focus = solver.child_to_data(index).cast();
-                        }
-                    }
-
-                    // Press may also be grabbed by scroll component (replacing
-                    // this). Either way we can select on PressEnd.
-                    press.grab_click(self.id()).complete(cx)
-                }
-                Event::PressEnd { ref press, success } if press.is_primary() => {
-                    if let Some((index, ref key)) = self.press_target {
-                        let w = &mut self.widgets[index];
-                        if success
-                            && !matches!(self.sel_mode, SelectionMode::None)
-                            && w.key() == Some(key)
-                            && w.item.rect().contains(press.coord + self.translation(0))
-                        {
-                            cx.push(kas::messages::Select);
-                        }
-                    }
-                    Used
-                }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
                     cx.config_cx(|cx| self.post_scroll(cx, data));
                     Used
                 }
-                _ => Unused,
+                event => match self.click.handle(cx, self.id(), event) {
+                    ClickInputAction::Used => Used,
+                    ClickInputAction::Unused => Unused,
+                    ClickInputAction::ClickStart { .. } => {
+                        if let Some(index) = cx.last_child() {
+                            self.press_target =
+                                self.widgets[index].key().map(|k| (index, k.clone()));
+                        }
+                        if let Some((index, ref key)) = self.press_target {
+                            let w = &mut self.widgets[index];
+                            if w.key() == Some(key) {
+                                cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
+                                let solver = self.position_solver();
+                                self.last_focus = solver.child_to_data(index).cast();
+                            }
+                        }
+                        Used
+                    }
+                    ClickInputAction::ClickEnd { coord, success } => {
+                        if let Some((index, ref key)) = self.press_target {
+                            let w = &mut self.widgets[index];
+                            if success
+                                && !matches!(self.sel_mode, SelectionMode::None)
+                                && w.key() == Some(key)
+                                && w.item.rect().contains(coord + self.translation(0))
+                            {
+                                cx.push(kas::messages::Select);
+                            }
+                        }
+                        Used
+                    }
+                },
             }
         }
 
