@@ -38,6 +38,7 @@ mod EditBox {
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
         scroll: ScrollComponent,
+        // NOTE: inner is a Viewport which doesn't use update methods, therefore we don't call them.
         #[widget]
         inner: EditField<G>,
         #[widget(&())]
@@ -228,8 +229,6 @@ mod EditBox {
         }
 
         fn update_scroll_offset(&mut self, cx: &mut EventState) {
-            self.inner
-                .update_offset(cx, self.clip_rect, self.scroll.offset());
             self.vert_bar.set_value(cx, self.scroll.offset().1);
         }
 

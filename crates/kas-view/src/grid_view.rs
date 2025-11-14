@@ -154,6 +154,9 @@ impl Key for GridIndex {
     }
 }
 
+#[derive(Debug)]
+struct FocusGridCell(GridIndex);
+
 #[impl_self]
 mod GridView {
     /// View controller for 2D indexable data (grid)
@@ -193,13 +196,12 @@ mod GridView {
         data_len: GridIndex,
         token_update: Update,
         rect_update: bool,
+        immediate_scroll_update: bool,
         len_is_known: bool,
         cur_len: GridIndex,
         first_data: GridIndex,
         /// Last data item to have navigation focus
         last_focus: GridIndex,
-        child_size_min: Size,
-        child_size_ideal: Size,
         child_inter_margin: Size,
         child_size: Size,
         /// The current view offset
@@ -238,12 +240,11 @@ mod GridView {
                 data_len: GridIndex::ZERO,
                 token_update: Update::None,
                 rect_update: false,
+                immediate_scroll_update: false,
                 len_is_known: false,
                 cur_len: GridIndex::ZERO,
                 first_data: GridIndex::ZERO,
                 last_focus: GridIndex::ZERO,
-                child_size_min: Size::ZERO,
-                child_size_ideal: Size::ZERO,
                 child_inter_margin: Size::ZERO,
                 child_size: Size::ZERO,
                 offset: Offset::ZERO,
@@ -594,16 +595,9 @@ mod GridView {
             };
             let frame = kas::layout::FrameRules::new(0, inner_margin, (0, 0));
 
-            let other = axis.other().map(|mut size| {
-                // Use same logic as in set_rect to find per-child size:
-                let other_axis = axis.flipped();
-                size -= self.frame_size.extract(other_axis);
-                let (cols, rows) = (self.ideal_len.col.cast(), self.ideal_len.row.cast());
-                let div = Size(cols, rows).extract(other_axis);
-                (size / div)
-                    .min(self.child_size_ideal.extract(other_axis))
-                    .max(self.child_size_min.extract(other_axis))
-            });
+            let other = axis
+                .other()
+                .map(|_| self.child_size.extract(axis.flipped()));
             axis = AxisInfo::new(axis.is_vertical(), other);
 
             let mut rules = SizeRules::EMPTY;
@@ -613,23 +607,27 @@ mod GridView {
                     rules = rules.max(child_rules);
                 }
             }
-            self.child_size_min
-                .set_component(axis, rules.min_size().max(1));
-            self.child_size_ideal
-                .set_component(axis, rules.ideal_size().max(cx.min_element_size()));
+
+            // Always use min child size
+            let size = rules.min_size().max(1);
+            self.child_size.set_component(axis, size);
 
             let m = rules.margins();
-            self.child_inter_margin.set_component(
-                axis,
-                m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast(),
-            );
+            let inter_margin = m.0.max(m.1).max(inner_margin.0).max(inner_margin.1);
+            let stretch = rules.stretch();
+            let m = rules.margins();
+            self.child_inter_margin
+                .set_component(axis, inter_margin.cast());
+            let inter_margin: i32 = inter_margin.cast();
 
-            let ideal_len = match axis.is_vertical() {
+            let min_len = 2;
+            let ideal_len = i32::conv(match axis.is_vertical() {
                 false => self.ideal_len.col,
                 true => self.ideal_len.row,
-            };
-            rules.multiply_with_margin(2, ideal_len.cast());
-            rules.set_stretch(rules.stretch().max(Stretch::High));
+            });
+            let min = min_len * size + (min_len - 1) * inter_margin;
+            let ideal = ideal_len * size + (ideal_len - 1) * inter_margin;
+            let rules = SizeRules::new(min, ideal, stretch.max(Stretch::High)).with_margins(m);
 
             let (rules, offset, size) = frame.surround(rules);
             self.frame_offset.set_component(axis, offset);
@@ -640,12 +638,6 @@ mod GridView {
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.align_hints = hints;
-
-            let avail = rect.size - self.frame_size;
-            let (cols, rows): (i32, i32) = (self.ideal_len.col.cast(), self.ideal_len.row.cast());
-            let child_size = Size(avail.0 / cols, avail.1 / rows)
-                .clamp(self.child_size_min, self.child_size_ideal);
-            self.child_size = child_size;
 
             let skip = self.child_size + self.child_inter_margin;
             if skip.0 == 0 || skip.1 == 0 {
@@ -696,9 +688,9 @@ mod GridView {
 
     impl Viewport for Self {
         fn content_size(&self) -> Size {
-            let data_len = self.data_len;
             let m = self.child_inter_margin;
             let step = self.child_size + m;
+            let data_len = self.data_len;
             Size(
                 step.0 * i32::conv(data_len.col) - m.0,
                 step.1 * i32::conv(data_len.row) - m.1,
@@ -706,11 +698,22 @@ mod GridView {
             .max(Size::ZERO)
         }
 
-        fn update_offset(&mut self, cx: &mut EventState, _: Rect, offset: Offset) {
+        fn set_offset(&mut self, _: &mut SizeCx, _: Rect, offset: Offset) {
             // NOTE: we assume that the viewport is close enough to self.rect()
             // that prepared widgets will suffice
             self.offset = offset;
-            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+        }
+
+        fn update_offset(&mut self, cx: &mut ConfigCx, data: &Self::Data, _: Rect, offset: Offset) {
+            self.offset = offset;
+            if self.immediate_scroll_update {
+                self.immediate_scroll_update = false;
+                self.post_scroll(cx, data);
+            } else {
+                // NOTE: using a frame timer instead of immediate update is an
+                // optimization (for high-poll-rate mice) but not essential.
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            }
         }
 
         fn draw_with_offset(&self, mut draw: DrawCx, viewport: Rect, offset: Offset) {
@@ -954,9 +957,11 @@ mod GridView {
 
                         let index = solver.data_to_child(cell);
                         let w = &self.widgets[index];
-
-                        if w.token.is_some() {
+                        if w.item.index == cell && w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
+                        } else {
+                            self.immediate_scroll_update = true;
+                            cx.send(self.id(), FocusGridCell(cell));
                         }
                         Used
                     } else {
@@ -995,6 +1000,17 @@ mod GridView {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
+            if let Some(FocusGridCell(cell)) = cx.try_pop() {
+                let solver = self.position_solver();
+                let index = solver.data_to_child(cell);
+                let w = &self.widgets[index];
+                if w.item.index == cell && w.token.is_some() {
+                    cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
+                } else {
+                    log::error!("GridView failed to set focus: data item {cell:?} not in view");
+                }
+            }
+
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child
