@@ -382,7 +382,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if action.contains(WindowAction::CLOSE) {
             return (action, None);
         }
-        self.handle_action(data, action);
+
+        if action.contains(WindowAction::RESIZE) {
+            self.apply_size(data, false, true);
+        }
+        if !action.is_empty()
+            && let Some(ref mut window) = self.window
+        {
+            window.need_redraw = true;
+        }
 
         let window = self.window.as_mut().unwrap();
         let resume = match (
@@ -407,18 +415,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Send an erased message
     pub(super) fn send_erased(&mut self, id: Id, msg: Erased) {
         self.ev_state.send_erased(id, msg);
-    }
-
-    /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub(super) fn handle_action(&mut self, data: &A, action: WindowAction) {
-        if action.contains(WindowAction::RESIZE) {
-            self.apply_size(data, false, true);
-        }
-        if !action.is_empty()
-            && let Some(ref mut window) = self.window
-        {
-            window.need_redraw = true;
-        }
     }
 
     /// Handle a configuration update
