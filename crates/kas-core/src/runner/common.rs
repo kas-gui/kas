@@ -36,9 +36,9 @@ pub enum Error {
     EventLoop(#[from] winit::error::EventLoopError),
 }
 
-impl From<winit::error::OsError> for Error {
-    fn from(error: winit::error::OsError) -> Self {
-        Error::EventLoop(winit::error::EventLoopError::Os(error))
+impl From<winit::error::RequestError> for Error {
+    fn from(error: winit::error::RequestError) -> Self {
+        Error::EventLoop(error.into())
     }
 }
 

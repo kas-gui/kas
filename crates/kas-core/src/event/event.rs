@@ -513,7 +513,6 @@ impl Command {
                 NamedKey::ScrollLock => Command::ScrollLock,
                 NamedKey::Enter => Command::Enter,
                 NamedKey::Tab => Command::Tab,
-                NamedKey::Space => Command::Space,
                 NamedKey::ArrowDown => Command::Down,
                 NamedKey::ArrowLeft => Command::Left,
                 NamedKey::ArrowRight => Command::Right,

@@ -5,7 +5,8 @@
 
 //! Window widgets
 
-use super::{Decorations, Icon, Popup, PopupDescriptor, ResizeDirection, WindowId};
+use super::icon::Icon;
+use super::{Decorations, Popup, PopupDescriptor, ResizeDirection, WindowId};
 use crate::cast::Cast;
 use crate::dir::{Direction, Directional};
 use crate::event::{Command, ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};

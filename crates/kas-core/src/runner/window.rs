@@ -34,7 +34,7 @@ use winit::window::{ImePurpose, WindowAttributes};
 /// Window fields requiring a frame or surface
 #[crate::autoimpl(Deref, DerefMut using self.window)]
 struct WindowData<G: GraphicsInstance> {
-    window: Arc<winit::window::Window>,
+    window: Arc<Box<dyn winit::window::Window>>,
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
     surface: G::Surface<'static>,
@@ -84,18 +84,20 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     #[inline]
-    pub(super) fn winit_window(&self) -> Option<&winit::window::Window> {
-        self.theme_and_window.as_ref().map(|d| &*d.1.window)
+    pub(super) fn winit_window(&self) -> Option<&dyn winit::window::Window> {
+        self.theme_and_window.as_ref().map(|d| &**d.1.window)
     }
 
-    /// Open (resume) a window
-    pub(super) fn resume(
+    /// Open the window and create render surfaces
+    pub(super) fn create_surfaces(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
-        el: &ActiveEventLoop,
-        #[allow(unused)] modal_parent: Option<&winit::window::Window>,
+        el: &dyn ActiveEventLoop,
+        #[allow(unused)] modal_parent: Option<&dyn winit::window::Window>,
     ) -> super::Result<winit::window::WindowId> {
+        debug_assert!(self.theme_and_window.is_none());
+
         let time = Instant::now();
 
         // We use the logical size and scale factor of the largest monitor as
@@ -104,7 +106,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut scale_factor = 1.0;
         let mut product = 0;
         for monitor in el.available_monitors() {
-            let size = monitor.size();
+            let Some(size) = monitor.current_video_mode().map(|mode| mode.size()) else {
+                continue;
+            };
             let p = size.width * size.height;
             if p > product {
                 product = p;
@@ -137,7 +141,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let props = self.widget.properties();
         let mut attrs = WindowAttributes::default();
-        attrs.inner_size = Some(ideal.into());
+        attrs.surface_size = Some(ideal.into());
         attrs.title = self.widget.title().to_string();
         attrs.visible = false;
         let transparent = props.transparent();
@@ -152,10 +156,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 .to_logical::<f64>(scale_factor);
             min.width = min.width.min(max_size.width);
             min.height = min.height.min(max_size.height);
-            attrs.min_inner_size = Some(min.into());
+            attrs.min_surface_size = Some(min.into());
+        } else {
+            attrs.min_surface_size = Some(PhysicalSize::new(1, 1).into());
         }
         if restrict_max {
-            attrs.max_inner_size = Some(ideal.into());
+            attrs.max_surface_size = Some(ideal.into());
         }
         #[cfg(windows_platform)]
         if let Some(handle) = modal_parent.and_then(|p| p.window_handle().ok()) {
@@ -186,25 +192,23 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
             solve_cache.find_constraints(node, &mut cx);
 
-            if let Some(monitor) = window.current_monitor() {
-                max_physical_size = monitor.size();
-            }
-            let max_size = max_physical_size.to_logical::<f64>(scale_factor);
-
-            let mut ideal = solve_cache
-                .ideal(true)
-                .max(min_size)
-                .as_physical()
-                .to_logical(scale_factor);
-            if ideal.width > max_size.width {
-                ideal.width = max_size.width;
-            }
-            if ideal.height > max_size.height {
-                ideal.height = max_size.height;
+            if let Some(mode) = window
+                .current_monitor()
+                .and_then(|mon| mon.current_video_mode())
+            {
+                max_physical_size = mode.size();
             }
 
-            if let Some(size) = window.request_inner_size(ideal) {
-                debug_assert_eq!(size, window.inner_size());
+            let mut ideal = solve_cache.ideal(true).max(min_size).as_physical();
+            if ideal.width > max_physical_size.width {
+                ideal.width = max_physical_size.width;
+            }
+            if ideal.height > max_physical_size.height {
+                ideal.height = max_physical_size.height;
+            }
+
+            if let Some(size) = window.request_surface_size(ideal.into()) {
+                debug_assert_eq!(size, window.surface_size());
             } else {
                 // We will receive WindowEvent::Resized and resize then.
                 // Unfortunately we can't rely on this since some platforms (X11)
@@ -212,7 +216,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             }
         }
 
-        let size: Size = window.inner_size().cast();
+        let size: Size = window.surface_size().cast();
         log::info!(
             "Window::resume: constructed with physical size {size:?}, scale factor {scale_factor}",
         );
@@ -233,15 +237,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
         let window = Arc::new(window);
         let mut surface = shared.instance.new_surface(window.clone(), transparent)?;
-        shared.resume(&surface)?;
+        shared.create_draw_shared(&surface)?;
         surface.configure(&mut shared.draw.as_mut().unwrap().draw, size);
 
         let winit_id = window.id();
 
         #[cfg(feature = "accesskit")]
-        let proxy = shared.proxy.0.clone();
-        #[cfg(feature = "accesskit")]
-        let accesskit = accesskit_winit::Adapter::with_event_loop_proxy(el, &window, proxy);
+        let accesskit =
+            accesskit_winit::Adapter::with_event_loop_proxy(el, &window, el.create_proxy());
 
         let window = WindowData {
             window,
@@ -265,7 +268,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         Ok(winit_id)
     }
 
-    /// Close (suspend) the window, keeping state (widget)
+    /// Application suspended. Clean up temporary state.
     ///
     /// Returns `true` unless this `Window` should be destoyed.
     pub(super) fn suspend(&mut self, shared: &mut Shared<A, G, T>, data: &A) -> bool {
@@ -279,11 +282,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 self.widget.as_node(data),
             );
 
-            self.theme_and_window = None;
             !action.contains(WindowAction::CLOSE)
         } else {
             true
         }
+    }
+
+    /// Destroy render surface(s)
+    pub(super) fn destroy_surfaces(&mut self) {
+        self.theme_and_window = None;
     }
 
     /// Handle an event
@@ -304,7 +311,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         match event {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => false,
-            WindowEvent::Resized(size) => {
+            WindowEvent::SurfaceResized(size) => {
                 if window
                     .surface
                     .configure(&mut shared.draw.as_mut().unwrap().draw, size.cast())
@@ -315,7 +322,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             }
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
-                mut inner_size_writer,
+                mut surface_size_writer,
             } => {
                 // This event is generated when constructing a window but already handled
                 if scale_factor as f32 == self.ev_state.config.scale_factor() {
@@ -346,8 +353,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                     true
                 } else {
                     let size = size.max(min);
-                    inner_size_writer
-                        .request_inner_size(size.as_physical())
+                    surface_size_writer
+                        .request_surface_size(size.as_physical())
                         .is_err()
                 };
 
@@ -586,20 +593,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         // Update window size restrictions: the new width may have changed height requirements
         let (restrict_min, restrict_max) = self.widget.properties().restrictions();
-        window.set_min_inner_size(restrict_min.then(|| {
-            window
-                .solve_cache
-                .min(true)
-                .as_physical()
-                .to_logical::<f64>(window.scale_factor())
-        }));
-        window.set_max_inner_size(restrict_max.then(|| {
-            window
-                .solve_cache
-                .ideal(true)
-                .as_physical()
-                .to_logical::<f64>(window.scale_factor())
-        }));
+        let min_size = restrict_min
+            .then(|| window.solve_cache.min(true).as_physical())
+            .unwrap_or(PhysicalSize::new(1, 1));
+        window.set_min_surface_size(Some(min_size.into()));
+        window.set_max_surface_size(
+            restrict_max.then(|| window.solve_cache.ideal(true).as_physical().into()),
+        );
 
         window.set_visible(true);
         window.request_redraw();
@@ -713,7 +713,7 @@ pub(crate) trait WindowDataErased {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
-    fn winit_window(&self) -> Option<&winit::window::Window>;
+    fn winit_window(&self) -> Option<&dyn winit::window::Window>;
 }
 
 impl<G: GraphicsInstance> WindowDataErased for WindowData<G> {
@@ -728,7 +728,7 @@ impl<G: GraphicsInstance> WindowDataErased for WindowData<G> {
 
     #[inline]
     fn set_cursor_icon(&self, icon: CursorIcon) {
-        self.window.set_cursor(icon);
+        self.window.set_cursor(icon.into());
     }
 
     fn set_ime_allowed(&self, purpose: Option<ImePurpose>) {
@@ -739,12 +739,14 @@ impl<G: GraphicsInstance> WindowDataErased for WindowData<G> {
     }
 
     fn set_ime_cursor_area(&self, rect: Rect) {
-        self.window
-            .set_ime_cursor_area(rect.pos.as_physical(), rect.size.as_physical());
+        self.window.set_ime_cursor_area(
+            rect.pos.as_physical().into(),
+            rect.size.as_physical().into(),
+        );
     }
 
     #[inline]
-    fn winit_window(&self) -> Option<&winit::window::Window> {
-        Some(&self.window)
+    fn winit_window(&self) -> Option<&dyn winit::window::Window> {
+        Some(&**self.window)
     }
 }
