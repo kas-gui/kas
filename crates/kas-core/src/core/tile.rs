@@ -5,7 +5,7 @@
 
 //! Layout, Tile and TileExt traits
 
-use crate::event::{ConfigCx, NavAdvance};
+use crate::event::{EventState, NavAdvance};
 use crate::geom::{Coord, Offset, Rect};
 use crate::util::IdentifyWidget;
 use crate::{ChildIndices, HasId, Id, Layout, Role, RoleCx, WidgetStatus};
@@ -269,7 +269,7 @@ pub trait Tile: Layout {
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    fn _nav_next(&self, cx: &mut ConfigCx, focus: Option<&Id>, advance: NavAdvance) -> Option<Id>;
+    fn _nav_next(&self, cx: &EventState, focus: Option<&Id>, advance: NavAdvance) -> Option<Id>;
 }
 
 impl<W: Tile + ?Sized> HasId for &W {
