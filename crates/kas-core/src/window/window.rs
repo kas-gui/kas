@@ -363,7 +363,7 @@ mod Window {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(kas::messages::SetWindowTitle(title)) = cx.try_pop() {
-                cx.config_cx(|cx| self.title_bar.set_title(cx, title));
+                self.title_bar.set_title(cx, title);
                 if self.props.decorations == Decorations::Server
                     && let Some(w) = cx.winit_window()
                 {
@@ -396,7 +396,7 @@ mod Window {
         }
 
         fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String) {
-            cx.config_cx(|cx| self.tooltip.inner.set_string(cx, text));
+            self.tooltip.inner.set_string(cx, text);
             self.tooltip.open(cx, &(), id, false);
         }
 

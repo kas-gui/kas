@@ -422,10 +422,8 @@ mod ScrollRegion {
             if offset != initial_offset {
                 self.horiz_bar.set_value(cx, offset.0);
                 self.vert_bar.set_value(cx, offset.1);
-                cx.config_cx(|cx| {
-                    self.inner
-                        .update_offset(cx, data, self.inner.rect(), offset)
-                });
+                self.inner
+                    .update_offset(cx, data, self.inner.rect(), offset);
             }
 
             is_used
@@ -451,10 +449,8 @@ mod ScrollRegion {
 
             let action = self.scroll.set_offset(offset);
             cx.action_moved(action);
-            cx.config_cx(|cx| {
-                self.inner
-                    .update_offset(cx, data, self.inner.rect(), offset)
-            });
+            self.inner
+                .update_offset(cx, data, self.inner.rect(), offset);
         }
 
         fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
@@ -471,10 +467,8 @@ mod ScrollRegion {
             let offset = self.scroll.offset();
             self.horiz_bar.set_value(cx, offset.0);
             self.vert_bar.set_value(cx, offset.1);
-            cx.config_cx(|cx| {
-                self.inner
-                    .update_offset(cx, data, self.inner.rect(), offset)
-            });
+            self.inner
+                .update_offset(cx, data, self.inner.rect(), offset);
         }
     }
 }

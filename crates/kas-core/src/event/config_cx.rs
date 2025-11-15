@@ -50,12 +50,6 @@ impl<'a> ConfigCx<'a> {
         SizeCx::new(self.state, self.theme)
     }
 
-    /// Access [`EventState`]
-    #[inline]
-    pub fn ev_state(&mut self) -> &mut EventState {
-        self.state
-    }
-
     /// Configure a widget
     ///
     /// All widgets must be configured after construction; see

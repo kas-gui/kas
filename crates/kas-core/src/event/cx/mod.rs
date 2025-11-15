@@ -374,12 +374,6 @@ impl<'a> DerefMut for EventCx<'a> {
 }
 
 impl<'a> EventCx<'a> {
-    /// Access a [`ConfigCx`]
-    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
-        let result = f(self);
-        result
-    }
-
     /// Get a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         self.runner.draw_shared()

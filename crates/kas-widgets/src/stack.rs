@@ -220,7 +220,7 @@ mod Stack {
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if let Some(kas::messages::SetIndex(index)) = cx.try_pop() {
-                cx.config_cx(|cx| self.set_active(cx, data, index));
+                self.set_active(cx, data, index);
             }
         }
     }

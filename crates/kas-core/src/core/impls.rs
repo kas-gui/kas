@@ -96,7 +96,7 @@ pub fn _send<W: Events>(
 
             if *cx.resize {
                 debug_assert!(widget.status().is_sized());
-                cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
+                cx.resize = widget.handle_resize(cx, data);
             }
 
             if let Some(scroll) = cx.post_send(index) {
@@ -143,7 +143,7 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
         }
 
         if *cx.resize && widget.status().is_sized() {
-            cx.resize = cx.config_cx(|cx| widget.handle_resize(cx, data));
+            cx.resize = widget.handle_resize(cx, data);
         }
 
         if let Some(scroll) = cx.post_send(index) {

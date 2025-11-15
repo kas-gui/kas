@@ -130,7 +130,7 @@ mod ComboBox {
                                 Command::End => last,
                                 _ => return Unused,
                             };
-                            cx.config_cx(|cx| self.set_active(cx, index));
+                            self.set_active(cx, index);
                         }
                     }
                     Used
@@ -144,7 +144,7 @@ mod ComboBox {
                                 .saturating_add((-y) as usize)
                                 .min(self.len().saturating_sub(1))
                         };
-                        cx.config_cx(|cx| self.set_active(cx, index));
+                        self.set_active(cx, index);
                         Used
                     } else {
                         Unused
@@ -198,7 +198,7 @@ mod ComboBox {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(SetIndex(index)) = cx.try_pop() {
-                cx.config_cx(|cx| self.set_active(cx, index));
+                self.set_active(cx, index);
                 self.popup.close(cx);
                 if let Some(ref f) = self.on_select {
                     if let Some(msg) = cx.try_pop() {
