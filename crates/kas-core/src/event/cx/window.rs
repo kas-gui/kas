@@ -9,6 +9,7 @@ use super::{EventCx, EventState, PopupState};
 use crate::cast::Cast;
 use crate::event::{Event, FocusSource};
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
+use crate::theme::ThemeSize;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
@@ -59,6 +60,7 @@ impl EventState {
     pub(crate) fn flush_pending<'a>(
         &'a mut self,
         runner: &'a mut dyn RunnerT,
+        theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         mut node: Node,
     ) -> WindowAction {
@@ -66,7 +68,7 @@ impl EventState {
             runner.set_send_targets(&mut self.pending_send_targets);
         }
 
-        self.with(runner, window, |cx| {
+        self.with(runner, theme, window, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
                 cx.send_event(node.re(), id, Event::PopupClosed(wid));
             }

@@ -185,12 +185,14 @@ impl EventState {
     pub(crate) fn with<'a, F: FnOnce(&mut EventCx)>(
         &'a mut self,
         runner: &'a mut dyn RunnerT,
+        theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         f: F,
     ) {
         let mut cx = EventCx {
             state: self,
             runner,
+            theme,
             window,
             target_is_disabled: false,
             last_child: None,
@@ -356,6 +358,7 @@ impl EventState {
 pub struct EventCx<'a> {
     state: &'a mut EventState,
     runner: &'a mut dyn RunnerT,
+    theme: &'a dyn ThemeSize,
     window: &'a dyn WindowDataErased,
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
@@ -406,13 +409,12 @@ impl<'a> EventCx<'a> {
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Events::configure`].
     pub fn size_cx(&mut self) -> SizeCx<'_> {
-        SizeCx::new(self.state, self.window.theme_size())
+        SizeCx::new(self.state, self.theme)
     }
 
     /// Access a [`ConfigCx`]
     pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
-        let size = self.window.theme_size();
-        let mut cx = ConfigCx::new(size, self.state);
+        let mut cx = ConfigCx::new(self.theme, self.state);
         let result = f(&mut cx);
         self.resize |= cx.resize;
         self.redraw |= cx.redraw;
