@@ -354,8 +354,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                         .is_err()
                 };
 
-                let resize = self.ev_state.action.contains(WindowAction::RESIZE);
-                (apply || resize, resize, false)
+                (apply, false, false)
             }
             WindowEvent::RedrawRequested => return self.do_draw(shared, data).is_err(),
             event => {
@@ -366,7 +365,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             }
         };
         if apply_size {
-            self.ev_state.action.remove(WindowAction::RESIZE);
             self.apply_size(data, false, resize);
         }
         poll
@@ -385,8 +383,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let (resize, action) =
             self.ev_state
                 .flush_pending(shared, theme.size(), window, self.widget.as_node(data));
-
-        if *resize || action.contains(WindowAction::RESIZE) {
+        if *resize {
             self.apply_size(data, false, true);
         }
 
@@ -440,7 +437,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state.update_config(window.scale_factor() as f32);
         }
 
-        let mut resize = if action.contains(ConfigAction::THEME_SWITCH) {
+        let resize = if action.contains(ConfigAction::THEME_SWITCH) {
             let config = self.ev_state.config();
             *theme = shared.theme.new_window(config);
             true
@@ -451,10 +448,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             false
         };
 
-        resize |= self.ev_state.action.contains(WindowAction::RESIZE);
         self.reconfigure(data);
         if resize {
-            self.ev_state.action.remove(WindowAction::RESIZE);
             self.apply_size(data, false, true);
         }
     }

@@ -114,12 +114,6 @@ bitflags! {
         ///
         /// See also [`EventState::redraw`].
         const REDRAW = 1 << 0;
-        /// Resize all widgets in the window
-        ///
-        /// Solves for size rules, applies, and updates bounds on window size.
-        ///
-        /// See also [`EventState::resize`].
-        const RESIZE = 1 << 9;
         /// The current window should be closed
         ///
         /// See also [`EventState::exit`] which closes the UI (all windows).
