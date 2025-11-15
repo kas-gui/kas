@@ -299,7 +299,7 @@ impl<'a> EventCx<'a> {
     pub(super) fn poll_futures(&mut self) {
         let mut i = 0;
         while i < self.state.fut_messages.len() {
-            let (_, fut) = &mut self.state.fut_messages[i];
+            let (_, fut) = &mut self.cx.state.fut_messages[i];
             let mut cx = std::task::Context::from_waker(self.runner.waker());
             match fut.as_mut().poll(&mut cx) {
                 Poll::Pending => {

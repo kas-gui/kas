@@ -21,9 +21,9 @@ use crate::draw::DrawShared;
 use crate::geom::{Offset, Rect, Vec2};
 use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
-use crate::theme::{SizeCx, ThemeSize};
+use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{ActionMoved, ActionResize, ConfigAction, HasId, Id, Node, WindowAction};
+use crate::{ActionMoved, ConfigAction, HasId, Id, Node, WindowAction};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
@@ -190,15 +190,12 @@ impl EventState {
         f: F,
     ) {
         let mut cx = EventCx {
-            state: self,
             runner,
-            theme,
             window,
+            cx: ConfigCx::new(theme, self),
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
-            resize: ActionResize(false),
-            redraw: false,
         };
         f(&mut cx);
         if *cx.resize {
@@ -356,68 +353,30 @@ impl EventState {
 /// event management and event-handling state querying operations.
 #[must_use]
 pub struct EventCx<'a> {
-    state: &'a mut EventState,
     runner: &'a mut dyn RunnerT,
-    theme: &'a dyn ThemeSize,
     window: &'a dyn WindowDataErased,
+    cx: ConfigCx<'a>,
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
-    pub(crate) resize: ActionResize,
-    redraw: bool,
 }
 
 impl<'a> Deref for EventCx<'a> {
-    type Target = EventState;
+    type Target = ConfigCx<'a>;
     fn deref(&self) -> &Self::Target {
-        self.state
+        &self.cx
     }
 }
 impl<'a> DerefMut for EventCx<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.state
+        &mut self.cx
     }
 }
 
 impl<'a> EventCx<'a> {
-    /// Configure a widget
-    ///
-    /// All widgets must be configured after construction; see
-    /// [widget lifecycle](crate::Widget#widget-lifecycle) and
-    /// [configuration](Events#configuration).
-    /// Widgets must always be sized after configuration.
-    ///
-    /// This is a shortcut to [`ConfigCx::configure`].
-    #[inline]
-    pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
-        self.config_cx(|cx| widget._configure(cx, id));
-    }
-
-    /// Update a widget
-    ///
-    /// All widgets must be updated after input data changes; see
-    /// [update](Events#update).
-    #[inline]
-    pub fn update(&mut self, mut widget: Node<'_>) {
-        self.config_cx(|cx| widget._update(cx));
-    }
-
-    /// Get a [`SizeCx`]
-    ///
-    /// Warning: sizes are calculated using the window's current scale factor.
-    /// This may change, even without user action, since some platforms
-    /// always initialize windows with scale factor 1.
-    /// See also notes on [`Events::configure`].
-    pub fn size_cx(&mut self) -> SizeCx<'_> {
-        SizeCx::new(self.state, self.theme)
-    }
-
     /// Access a [`ConfigCx`]
     pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
-        let mut cx = ConfigCx::new(self.theme, self.state);
-        let result = f(&mut cx);
-        self.resize |= cx.resize;
-        self.redraw |= cx.redraw;
+        let result = f(self);
         result
     }
 
@@ -441,26 +400,6 @@ impl<'a> EventCx<'a> {
         if !action.is_empty() {
             self.runner.config_update(action);
         }
-    }
-
-    /// Notify that a widget must be redrawn
-    ///
-    /// "The current widget" is inferred from the widget tree traversal through
-    /// which the `EventCx` is made accessible. The resize is handled locally
-    /// during the traversal unwind if possible.
-    #[inline]
-    pub fn redraw(&mut self) {
-        self.redraw = true;
-    }
-
-    /// Require that the current widget (and its descendants) be resized
-    ///
-    /// "The current widget" is inferred from the widget tree traversal through
-    /// which the `EventCx` is made accessible. The resize is handled locally
-    /// during the traversal unwind if possible.
-    #[inline]
-    pub fn resize(&mut self) {
-        self.resize = ActionResize(true);
     }
 
     /// Terminate the GUI
