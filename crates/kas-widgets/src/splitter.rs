@@ -305,7 +305,7 @@ mod Splitter {
                             }
                             grip.set_offset(cx, offset);
                         }
-                        cx.config_cx(|cx| self.adjust_size(cx, n));
+                        self.adjust_size(cx, n);
                     }
                 }
             }

@@ -181,7 +181,7 @@ impl<'a> EventCx<'a> {
     ) -> Option<Id> {
         log::trace!(target: "kas_core::event", "nav_next: focus={focus:?}, advance={advance:?}");
 
-        self.config_cx(|cx| tile._nav_next(cx, focus, advance))
+        tile._nav_next(self, focus, advance)
     }
 
     pub(super) fn handle_pending_nav_focus(&mut self, widget: Node<'_>) {

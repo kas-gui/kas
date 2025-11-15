@@ -5,11 +5,11 @@
 
 //! Widget and Events traits
 
-#[allow(unused)] use super::Layout;
 use super::{Tile, Widget};
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::{ActionResize, ChildIndices};
 use crate::{Id, geom::Coord};
+#[allow(unused)] use crate::{Layout, event::EventState};
 #[allow(unused)] use kas_macros as macros;
 
 /// Widget event-handling
@@ -34,7 +34,7 @@ use crate::{Id, geom::Coord};
 /// ### Configuration
 ///
 /// It is required that widgets are configured before other methods are called.
-/// This is invoked by calling [`ConfigCx::configure`] or [`EventCx::configure`]
+/// This is invoked by calling [`ConfigCx::configure`]
 /// and involves the following operations:
 ///
 /// 1.  Set the widget [`Id`], as returned by [`Tile::id`]
@@ -63,7 +63,7 @@ use crate::{Id, geom::Coord};
 /// data-change-detection has false positives). Note that custom widgets with
 /// state must explicitly update affected children when their state changes.
 ///
-/// An update is invoked by calling [`ConfigCx::update`] or [`EventCx::update`],
+/// An update is invoked by calling [`ConfigCx::update`],
 /// resulting in the following operations:
 ///
 /// 1.  Call [`Events::update`]
@@ -152,7 +152,7 @@ pub trait Events: Widget + Sized {
     /// This method is called *before* children are assigned identifiers; see
     /// also [`post_configure`](Self::post_configure).
     ///
-    /// Invoke by calling [`ConfigCx::configure`] or [`EventCx::configure`].
+    /// Invoke by calling [`ConfigCx::configure`].
     ///
     /// # Implementation
     ///
@@ -184,7 +184,7 @@ pub trait Events: Widget + Sized {
     /// This method is called as part of [configuration](Self#configuration)
     /// and [update](Self#update).
     ///
-    /// Invoke by calling [`ConfigCx::update`] or [`EventCx::update`].
+    /// Invoke by calling [`ConfigCx::update`].
     ///
     /// # Implementation
     ///
@@ -282,14 +282,17 @@ pub trait Events: Widget + Sized {
     /// This method may only be called after the widget is configured. The
     /// widget may or may not be sized.
     ///
+    /// # Implementation
+    ///
     /// It is implied that the stack contains at least one message.
-    /// Use [`EventCx::try_pop`] and/or [`EventCx::try_peek`].
+    /// Use [`EventCx::try_pop`] and/or [`EventCx::try_peek`] to handle known
+    /// messages. It is sufficient to handle a single message excepting where a
+    /// sender pushes multiple messages at once using [`EventCx::push`]. (Note
+    /// that messages sent using [`EventState::send`] are sent individually.)
     ///
     /// [`EventCx::last_child`] may be called to find the message's sender.
     /// This may return [`None`] (if no child was visited, which implies that
     /// the message was sent by `self`).
-    ///
-    /// # Implementation
     ///
     /// The default implementation does nothing.
     #[inline]
@@ -304,7 +307,7 @@ pub trait Events: Widget + Sized {
     /// This method may only be called after the widget is sized.
     ///
     /// This method is called during [event handling](crate::event) whenever a
-    /// resize action is required (see [`ConfigCx::resize`], [`EventCx::resize`]).
+    /// resize action is required (see [`ConfigCx::resize`]).
     ///
     /// # Implementation
     ///

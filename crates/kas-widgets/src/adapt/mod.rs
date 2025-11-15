@@ -37,11 +37,11 @@ mod WithStretch {
         pub inner: W,
         /// Horizontal stretch
         ///
-        /// Use [`ConfigCx::resize`] or [`EventCx::resize`] to apply changes.
+        /// Use [`ConfigCx::resize`] to apply changes.
         pub horiz: Option<Stretch>,
         /// Vertical stretch
         ///
-        /// Use [`ConfigCx::resize`] or [`EventCx::resize`] to apply changes.
+        /// Use [`ConfigCx::resize`] to apply changes.
         pub vert: Option<Stretch>,
     }
 

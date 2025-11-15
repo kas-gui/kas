@@ -389,10 +389,10 @@ mod List {
         ///                     } else {
         ///                         Button::label_msg("Remove", Msg::Remove)
         ///                     };
-        ///                     cx.config_cx(|cx| row.push(cx, data, button));
+        ///                     row.push(cx, data, button);
         ///                 }
         ///                 Msg::Remove => {
-        ///                     let _ = cx.config_cx(|cx| row.pop(cx));
+        ///                     let _ = row.pop(cx);
         ///                 }
         ///             }
         ///         }

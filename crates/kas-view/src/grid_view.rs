@@ -265,8 +265,7 @@ mod GridView {
         /// Access the data clerk (mutably)
         ///
         /// Changes to the clerk must be notified with an update to the
-        /// `GridView`, for example using [`ConfigCx::update`] or
-        /// [`EventCx::update`].
+        /// `GridView`, for example using [`ConfigCx::update`].
         pub fn clerk_mut(&mut self) -> &mut C {
             &mut self.clerk
         }
@@ -969,7 +968,7 @@ mod GridView {
                     }
                 }
                 Event::Timer(TIMER_UPDATE_WIDGETS) => {
-                    cx.config_cx(|cx| self.post_scroll(cx, data));
+                    self.post_scroll(cx, data);
                     Used
                 }
                 event => match self.click.handle(cx, self.id(), event) {
@@ -1055,7 +1054,7 @@ mod GridView {
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
             if changes != Changes::None {
-                cx.config_cx(|cx| self.handle_update(cx, data, changes));
+                self.handle_update(cx, data, changes);
             }
         }
 
