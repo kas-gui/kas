@@ -22,8 +22,8 @@ use std::ops::{Deref, DerefMut};
 /// ([`Self::size_cx`]).
 #[must_use]
 pub struct ConfigCx<'a> {
-    sh: &'a dyn ThemeSize,
-    pub(crate) ev: &'a mut EventState,
+    pub(super) theme: &'a dyn ThemeSize,
+    pub(crate) state: &'a mut EventState,
     pub(crate) resize: ActionResize,
     pub(crate) redraw: bool,
 }
@@ -34,8 +34,8 @@ impl<'a> ConfigCx<'a> {
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ev: &'a mut EventState) -> Self {
         ConfigCx {
-            sh,
-            ev,
+            theme: sh,
+            state: ev,
             resize: ActionResize(false),
             redraw: false,
         }
@@ -47,13 +47,13 @@ impl<'a> ConfigCx<'a> {
     where
         'a: 'b,
     {
-        SizeCx::new(self.ev, self.sh)
+        SizeCx::new(self.state, self.theme)
     }
 
     /// Access [`EventState`]
     #[inline]
     pub fn ev_state(&mut self) -> &mut EventState {
-        self.ev
+        self.state
     }
 
     /// Configure a widget
@@ -87,7 +87,7 @@ impl<'a> ConfigCx<'a> {
     #[inline]
     pub fn text_configure<T: FormattableText>(&self, text: &mut Text<T>) {
         let class = text.class();
-        self.sh.text_configure(text, class);
+        self.theme.text_configure(text, class);
     }
 
     /// Set a target for messages of a specific type when sent to `Id::default()`
@@ -123,11 +123,11 @@ impl<'a> ConfigCx<'a> {
 impl<'a> Deref for ConfigCx<'a> {
     type Target = EventState;
     fn deref(&self) -> &EventState {
-        self.ev
+        self.state
     }
 }
 impl<'a> DerefMut for ConfigCx<'a> {
     fn deref_mut(&mut self) -> &mut EventState {
-        self.ev
+        self.state
     }
 }
