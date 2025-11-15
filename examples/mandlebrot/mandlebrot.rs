@@ -439,8 +439,8 @@ mod Mandlebrot {
 mod MandlebrotUI {
     #[widget]
     #[layout(grid! {
-        (1, 0) => self.label,
-        (2, 0) => self.title,
+        (1, 0) => self.label.with_stretch(Stretch::High, Stretch::Filler),
+        (2, 0) => self.title.with_stretch(Stretch::High, Stretch::Filler),
         (3, 0) => self.buttons,
         (0, 1) => self.iters_label.align(AlignHints::CENTER),
         (0, 2) => self.slider,
