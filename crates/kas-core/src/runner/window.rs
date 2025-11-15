@@ -463,7 +463,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         data: &A,
         event: accesskit_winit::WindowEvent,
     ) {
-        let Some(ref mut window) = self.window else {
+        let Some((ref theme, ref mut window)) = self.theme_and_window else {
             return;
         };
 
@@ -473,7 +473,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 .accesskit
                 .update_if_active(|| self.ev_state.accesskit_tree_update(&self.widget)),
             WE::ActionRequested(request) => {
-                self.ev_state.with(shared, window, |cx| {
+                self.ev_state.with(shared, theme.size(), window, |cx| {
                     cx.handle_accesskit_action(self.widget.as_node(data), request);
                 });
             }
