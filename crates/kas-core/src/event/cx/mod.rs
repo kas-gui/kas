@@ -24,7 +24,7 @@ use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{ActionMoved, ConfigAction, HasId, Id, Node, WindowAction};
+use crate::{ActionMoved, ActionResize, ConfigAction, HasId, Id, Node, WindowAction};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
@@ -162,7 +162,7 @@ impl EventState {
     /// [`Id`] identifiers and call widgets' [`Events::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub(crate) fn full_configure(&mut self, sizer: &dyn ThemeSize, node: Node) {
+    pub(crate) fn full_configure(&mut self, sizer: &dyn ThemeSize, node: Node) -> ActionResize {
         let id = Id::ROOT.make_child(self.window_id.get().cast());
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
@@ -172,11 +172,10 @@ impl EventState {
 
         let mut cx = ConfigCx::new(sizer, self);
         cx.configure(node, id);
-        if *cx.resize {
-            self.action |= WindowAction::RESIZE;
-        }
+        let resize = cx.resize;
         // Ignore cx.redraw: we can assume a redraw will happen
         self.action_moved = ActionMoved(true);
+        resize
     }
 
     /// Construct a [`EventCx`] referring to this state
@@ -189,7 +188,7 @@ impl EventState {
         theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         f: F,
-    ) {
+    ) -> ActionResize {
         let mut cx = EventCx {
             runner,
             window,
@@ -197,13 +196,14 @@ impl EventState {
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
+            resize_window: ActionResize::default(),
         };
         f(&mut cx);
-        if *cx.resize {
-            self.action |= WindowAction::RESIZE;
-        } else if cx.redraw {
+        let resize = cx.resize | cx.resize_window;
+        if cx.redraw {
             self.action |= WindowAction::REDRAW;
         }
+        resize
     }
 
     /// Clear all focus and grabs on `target`
@@ -360,6 +360,7 @@ pub struct EventCx<'a> {
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
+    resize_window: ActionResize,
 }
 
 impl<'a> Deref for EventCx<'a> {
@@ -414,9 +415,7 @@ impl<'a> EventCx<'a> {
     fn post_recursion(&mut self) {
         self.last_child = None;
         self.scroll = Scroll::None;
-        if *self.resize {
-            self.action |= WindowAction::RESIZE;
-            self.resize.clear();
-        }
+        self.resize_window |= self.resize;
+        self.resize.clear();
     }
 }
