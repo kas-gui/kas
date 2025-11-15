@@ -1086,7 +1086,7 @@ fn widget_nav_next() -> Toks {
     quote! {
         fn _nav_next(
             &self,
-            cx: &mut ::kas::event::ConfigCx,
+            cx: &::kas::event::EventState,
             focus: Option<&::kas::Id>,
             advance: ::kas::event::NavAdvance,
         ) -> Option<::kas::Id> {

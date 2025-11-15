@@ -238,8 +238,7 @@ impl<'a> EventCx<'a> {
             let event = Event::Scroll(*msg.downcast().unwrap());
             self.send_event(widget, id, event);
         } else {
-            debug_assert!(self.scroll == Scroll::None);
-            debug_assert!(self.last_child.is_none());
+            self.pre_recursion();
             self.runner.message_stack_mut().set_base();
             log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
@@ -247,8 +246,7 @@ impl<'a> EventCx<'a> {
             msg.set_sent();
             self.push_erased(msg);
             widget._replay(self, id);
-            self.last_child = None;
-            self.scroll = Scroll::None;
+            self.post_recursion();
         }
     }
 
@@ -256,21 +254,18 @@ impl<'a> EventCx<'a> {
     #[cfg(feature = "accesskit")]
     pub(super) fn replay_scroll(&mut self, mut widget: Node<'_>, id: Id, scroll: Scroll) {
         log::trace!(target: "kas_core::event", "replay_scroll: id={id}: {scroll:?}");
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
+        self.pre_recursion();
         self.scroll = scroll;
         self.runner.message_stack_mut().set_base();
 
         self.target_is_disabled = false;
         widget._replay(self, id);
-        self.last_child = None;
-        self.scroll = Scroll::None;
+        self.post_recursion();
     }
 
     // Call Widget::_send; returns true when event is used
     pub(super) fn send_event(&mut self, mut widget: Node<'_>, mut id: Id, event: Event) -> bool {
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
+        self.pre_recursion();
         self.runner.message_stack_mut().set_base();
         log::trace!(target: "kas_core::event", "send_event: id={id}: {event:?}");
 
@@ -291,8 +286,7 @@ impl<'a> EventCx<'a> {
 
         let used = widget._send(self, id, event) == Used;
 
-        self.last_child = None;
-        self.scroll = Scroll::None;
+        self.post_recursion();
         used
     }
 

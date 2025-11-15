@@ -77,7 +77,9 @@ impl EventState {
             cx.touch_handle_pending(node.re());
 
             if let Some(id) = cx.pending_update.take() {
+                cx.pre_recursion();
                 node.find_node(&id, |node| cx.update(node));
+                cx.post_recursion();
             }
 
             if cx.pending_nav_focus.is_some() {

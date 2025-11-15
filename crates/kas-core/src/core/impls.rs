@@ -5,7 +5,9 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, NavAdvance, Scroll, Unused};
+use crate::event::{
+    ConfigCx, Event, EventCx, EventState, FocusSource, IsUsed, NavAdvance, Scroll, Unused,
+};
 use crate::{Events, Id, Tile, Widget};
 
 /// Generic implementation of [`Widget::_configure`]
@@ -167,7 +169,7 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
 #[inline(always)]
 pub fn _nav_next<W: Events>(
     widget: &W,
-    cx: &mut ConfigCx,
+    cx: &EventState,
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
@@ -177,15 +179,13 @@ pub fn _nav_next<W: Events>(
         nav_next_nav(widget.as_tile(), cx, focus, advance)
     };
 
-    debug_assert!(!*cx.resize);
-
     result
 }
 
 // Monomorphize nav_next here, not in _nav_next (which would push monomorphization up to the caller)
 fn nav_next_non_nav(
     tile: &dyn Tile,
-    cx: &mut ConfigCx,
+    cx: &EventState,
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
@@ -194,7 +194,7 @@ fn nav_next_non_nav(
 
 fn nav_next_nav(
     tile: &dyn Tile,
-    cx: &mut ConfigCx,
+    cx: &EventState,
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
@@ -203,7 +203,7 @@ fn nav_next_nav(
 
 fn nav_next<const NAVIGABLE: bool>(
     tile: &dyn Tile,
-    cx: &mut ConfigCx,
+    cx: &EventState,
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {

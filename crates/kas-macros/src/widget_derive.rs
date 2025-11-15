@@ -317,7 +317,7 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
     let fn_nav_next = quote! {
         fn _nav_next(
             &self,
-            cx: &mut ::kas::event::ConfigCx,
+            cx: &::kas::event::EventState,
             focus: Option<&::kas::Id>,
             advance: ::kas::event::NavAdvance,
         ) -> Option<::kas::Id> {

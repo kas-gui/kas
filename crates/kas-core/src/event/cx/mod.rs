@@ -402,4 +402,21 @@ impl<'a> EventCx<'a> {
     pub fn exit(&mut self) {
         self.runner.exit();
     }
+
+    /// Check for clean flags pre-recursion
+    fn pre_recursion(&self) {
+        debug_assert!(!*self.resize);
+        debug_assert!(self.scroll == Scroll::None);
+        debug_assert!(self.last_child.is_none());
+    }
+
+    /// Clean up post-recursion
+    fn post_recursion(&mut self) {
+        self.last_child = None;
+        self.scroll = Scroll::None;
+        if *self.resize {
+            self.action |= WindowAction::RESIZE;
+            self.resize.clear();
+        }
+    }
 }

@@ -48,6 +48,13 @@ impl Deref for ActionMoved {
 #[derive(Copy, Clone, Debug, Default)]
 pub struct ActionResize(pub bool);
 
+impl ActionResize {
+    #[inline]
+    pub(crate) fn clear(&mut self) {
+        self.0 = false;
+    }
+}
+
 impl BitOr for ActionResize {
     type Output = Self;
     #[inline]
