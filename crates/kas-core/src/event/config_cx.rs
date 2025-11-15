@@ -60,7 +60,11 @@ impl<'a> ConfigCx<'a> {
     /// constructed with [`Events::make_child_id`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
+        // This recurses; avoid passing existing state in
+        // (Except redraw: this doesn't matter.)
+        let start_resize = std::mem::take(&mut self.resize);
         widget._configure(self, id);
+        self.resize |= start_resize;
     }
 
     /// Update a widget
@@ -69,7 +73,11 @@ impl<'a> ConfigCx<'a> {
     /// [update](Events#update).
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
+        // This recurses; avoid passing existing state in
+        // (Except redraw: this doesn't matter.)
+        let start_resize = std::mem::take(&mut self.resize);
         widget._update(self);
+        self.resize |= start_resize;
     }
 
     /// Configure a text object
