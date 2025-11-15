@@ -21,6 +21,7 @@ use crate::draw::DrawShared;
 use crate::geom::{Offset, Rect, Vec2};
 use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
+#[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, WindowId};
 use crate::{ActionMoved, ConfigAction, HasId, Id, Node, WindowAction};
@@ -349,8 +350,8 @@ impl EventState {
 
 /// Event handling context
 ///
-/// `EventCx` and [`EventState`] (available via [`Deref`]) support various
-/// event management and event-handling state querying operations.
+/// This type supports access to [`ConfigCx`] and [`EventState`] via (recursive)
+/// [`Deref`] / [`DerefMut`] and to [`SizeCx`] via [`ConfigCx::size_cx`].
 #[must_use]
 pub struct EventCx<'a> {
     runner: &'a mut dyn RunnerT,

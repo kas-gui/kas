@@ -17,11 +17,9 @@ use std::ops::{Deref, DerefMut};
 #[allow(unused)]
 use crate::{event::ConfigCx, layout::Stretch, theme::DrawCx};
 
-/// Size and scale interface
+/// Size and scaling interface
 ///
-/// This interface is provided to widgets in [`crate::Layout::size_rules`].
-/// It may also be accessed through [`crate::event::EventCx::size_cx`],
-/// [`DrawCx::size_cx`].
+/// This context provides scaled sizing information from the theme.
 ///
 /// Most methods get or calculate the size of some feature. These same features
 /// may be drawn through [`DrawCx`].

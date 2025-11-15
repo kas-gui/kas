@@ -17,9 +17,8 @@ use std::ops::{Deref, DerefMut};
 
 /// Widget configuration and update context
 ///
-/// This type supports easy access to [`EventState`] (via [`Deref`],
-/// [`DerefMut`] and [`Self::ev_state`]) as well as [`SizeCx`]
-/// ([`Self::size_cx`]).
+/// This type supports access to [`EventState`] via [`Deref`] / [`DerefMut`]
+/// and to [`SizeCx`] via [`Self::size_cx`].
 #[must_use]
 pub struct ConfigCx<'a> {
     pub(super) theme: &'a dyn ThemeSize,
