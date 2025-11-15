@@ -13,7 +13,7 @@ use crate::theme::ThemeSize;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
-use crate::{Id, Node, WindowAction};
+use crate::{ActionResize, Id, Node, WindowAction};
 use winit::window::ResizeDirection;
 
 impl EventState {
@@ -63,12 +63,12 @@ impl EventState {
         theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         mut node: Node,
-    ) -> WindowAction {
+    ) -> (ActionResize, WindowAction) {
         if !self.pending_send_targets.is_empty() {
             runner.set_send_targets(&mut self.pending_send_targets);
         }
 
-        self.with(runner, theme, window, |cx| {
+        let resize = self.with(runner, theme, window, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
                 cx.send_event(node.re(), id, Event::PopupClosed(wid));
             }
@@ -125,7 +125,7 @@ impl EventState {
             window.set_cursor_icon(icon);
         }
 
-        std::mem::take(&mut self.action)
+        (resize, std::mem::take(&mut self.action))
     }
 
     /// Window has been closed: clean up state
