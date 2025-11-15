@@ -5,11 +5,11 @@
 
 //! Widget and Events traits
 
-#[allow(unused)] use super::Layout;
 use super::{Tile, Widget};
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::{ActionResize, ChildIndices};
 use crate::{Id, geom::Coord};
+#[allow(unused)] use crate::{Layout, event::EventState};
 #[allow(unused)] use kas_macros as macros;
 
 /// Widget event-handling
@@ -282,14 +282,17 @@ pub trait Events: Widget + Sized {
     /// This method may only be called after the widget is configured. The
     /// widget may or may not be sized.
     ///
+    /// # Implementation
+    ///
     /// It is implied that the stack contains at least one message.
-    /// Use [`EventCx::try_pop`] and/or [`EventCx::try_peek`].
+    /// Use [`EventCx::try_pop`] and/or [`EventCx::try_peek`] to handle known
+    /// messages. It is sufficient to handle a single message excepting where a
+    /// sender pushes multiple messages at once using [`EventCx::push`]. (Note
+    /// that messages sent using [`EventState::send`] are sent individually.)
     ///
     /// [`EventCx::last_child`] may be called to find the message's sender.
     /// This may return [`None`] (if no child was visited, which implies that
     /// the message was sent by `self`).
-    ///
-    /// # Implementation
     ///
     /// The default implementation does nothing.
     #[inline]
