@@ -25,7 +25,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::runner::{self, Result};
+use kas::runner::{self, RunError};
 use wgpu::rwh;
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
@@ -64,7 +64,10 @@ impl<CB: CustomPipeBuilder> runner::GraphicsInstance for Instance<CB> {
 
     type Surface<'a> = surface::Surface<'a, CB::Pipe>;
 
-    fn new_shared(&mut self, surface: Option<&Self::Surface<'_>>) -> Result<Self::Shared> {
+    fn new_shared(
+        &mut self,
+        surface: Option<&Self::Surface<'_>>,
+    ) -> Result<Self::Shared, RunError> {
         DrawPipe::new(
             &self.instance,
             &mut self.custom,
@@ -77,7 +80,7 @@ impl<CB: CustomPipeBuilder> runner::GraphicsInstance for Instance<CB> {
         &mut self,
         window: W,
         transparent: bool,
-    ) -> Result<Self::Surface<'window>>
+    ) -> Result<Self::Surface<'window>, RunError>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized,

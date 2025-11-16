@@ -13,16 +13,9 @@ use std::time::Instant;
 use thiserror::Error;
 
 /// Possible launch failures
-///
-/// Some variants are undocumented. Users should not match these variants since
-/// they are not considered part of the public API.
 #[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum Error {
-    /// Failure from the graphics sub-system
-    #[error("error from graphics sub-system")]
-    Graphics(Box<dyn std::error::Error + 'static>),
-
     /// Config load/save error
     #[error("config load/save error")]
     Config(#[from] kas::config::Error),
@@ -32,14 +25,21 @@ pub enum Error {
     EventLoop(#[from] winit::error::EventLoopError),
 }
 
-impl From<winit::error::OsError> for Error {
-    fn from(error: winit::error::OsError) -> Self {
-        Error::EventLoop(winit::error::EventLoopError::Os(error))
-    }
-}
-
 /// A `Result` type representing `T` or [`enum@Error`]
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Possible run-time errors
+#[non_exhaustive]
+#[derive(Error, Debug)]
+pub enum RunError {
+    /// Failure from the graphics sub-system
+    #[error("error from graphics sub-system")]
+    Graphics(Box<dyn std::error::Error + 'static>),
+
+    /// The OS cannot perform the operation.
+    #[error("operation is not supported by the OS")]
+    Os(#[from] winit::error::OsError),
+}
 
 /// Enumeration of platforms
 ///
@@ -179,7 +179,10 @@ pub trait GraphicsInstance {
     ///
     /// Providing a `surface` may aid construction of a graphics adapter
     /// (see [`compatible_surface`](https://docs.rs/wgpu/latest/wgpu/type.RequestAdapterOptions.html#structfield.compatible_surface)).
-    fn new_shared(&mut self, surface: Option<&Self::Surface<'_>>) -> Result<Self::Shared>;
+    fn new_shared(
+        &mut self,
+        surface: Option<&Self::Surface<'_>>,
+    ) -> std::result::Result<Self::Shared, RunError>;
 
     /// Construct a window surface
     ///
@@ -188,7 +191,7 @@ pub trait GraphicsInstance {
         &mut self,
         window: W,
         transparent: bool,
-    ) -> Result<Self::Surface<'window>>
+    ) -> std::result::Result<Self::Surface<'window>, RunError>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized;

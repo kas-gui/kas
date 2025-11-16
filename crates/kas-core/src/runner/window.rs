@@ -5,7 +5,7 @@
 
 //! Window types
 
-use super::common::WindowSurface;
+use super::common::{RunError, WindowSurface};
 use super::shared::Shared;
 use super::{AppData, GraphicsInstance, Platform};
 use crate::cast::{Cast, CastApprox};
@@ -95,7 +95,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         data: &A,
         el: &ActiveEventLoop,
         #[allow(unused)] modal_parent: Option<&winit::window::Window>,
-    ) -> super::Result<winit::window::WindowId> {
+    ) -> Result<winit::window::WindowId, RunError> {
         let time = Instant::now();
 
         // We use the logical size and scale factor of the largest monitor as
