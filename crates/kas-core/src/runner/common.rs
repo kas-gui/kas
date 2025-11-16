@@ -19,10 +19,6 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum Error {
-    /// Window-handle error
-    #[error(transparent)]
-    Handle(#[from] rwh::HandleError),
-
     /// Failure from the graphics sub-system
     #[error("error from graphics sub-system")]
     Graphics(Box<dyn std::error::Error + 'static>),
