@@ -601,9 +601,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         // Update window size restrictions: the new width may have changed height requirements
         let (restrict_min, restrict_max) = self.widget.properties().restrictions();
-        let min_size = restrict_min
-            .then(|| window.solve_cache.min(true).as_physical())
-            .unwrap_or(PhysicalSize::new(1, 1));
+        let min_size = if restrict_min {
+            window.solve_cache.min(true).as_physical()
+        } else {
+            PhysicalSize::new(1, 1)
+        };
         window.set_min_surface_size(Some(min_size.into()));
         window.set_max_surface_size(
             restrict_max.then(|| window.solve_cache.ideal(true).as_physical().into()),

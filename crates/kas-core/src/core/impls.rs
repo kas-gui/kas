@@ -173,13 +173,11 @@ pub fn _nav_next<W: Events>(
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
-    let result = if !widget.navigable() {
+    if !widget.navigable() {
         nav_next_non_nav(widget.as_tile(), cx, focus, advance)
     } else {
         nav_next_nav(widget.as_tile(), cx, focus, advance)
-    };
-
-    result
+    }
 }
 
 // Monomorphize nav_next here, not in _nav_next (which would push monomorphization up to the caller)

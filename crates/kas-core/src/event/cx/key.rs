@@ -388,8 +388,8 @@ impl<'a> EventCx<'a> {
                 }
             }
             Ime::DeleteSurrounding {
-                before_bytes,
-                after_bytes,
+                before_bytes: _,
+                after_bytes: _,
             } => {
                 // TODO
             }

@@ -168,7 +168,7 @@ fn create_waker(el: &EventLoop) -> std::task::Waker {
 
     fn wake_async(proxy: &EventLoopProxy) {
         // ignore error: if the loop closed the future has been dropped
-        let _ = proxy.wake_up();
+        proxy.wake_up();
     }
 
     const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
