@@ -5,7 +5,7 @@
 
 //! Shared state
 
-use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform};
+use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform, RunError};
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
@@ -121,7 +121,7 @@ where
         self.messages.clear();
     }
 
-    pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), Error> {
+    pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), RunError> {
         if self.draw.is_none() {
             let mut draw_shared = self.instance.new_shared(Some(surface))?;
             draw_shared.set_raster_config(self.config.borrow().font.raster());

@@ -17,7 +17,7 @@ use kas::config::RasterConfig;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Size, Vec2};
-use kas::runner::Error;
+use kas::runner::RunError;
 use kas::text::{Effect, TextDisplay};
 
 impl<C: CustomPipe> DrawPipe<C> {
@@ -27,13 +27,13 @@ impl<C: CustomPipe> DrawPipe<C> {
         custom: &mut CB,
         options: &Options,
         surface: Option<&wgpu::Surface>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, RunError> {
         let mut adapter_options = options.adapter_options();
         adapter_options.compatible_surface = surface;
         let req = instance.request_adapter(&adapter_options);
         let adapter = match block_on(req) {
             Ok(a) => a,
-            Err(e) => return Err(Error::Graphics(Box::new(e))),
+            Err(e) => return Err(RunError::Graphics(Box::new(e))),
         };
         log::info!("Using graphics adapter: {}", adapter.get_info().name);
 
@@ -42,7 +42,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         desc.required_limits = desc.required_limits.using_resolution(adapter.limits());
 
         let req = adapter.request_device(&desc);
-        let (device, queue) = block_on(req).map_err(|e| Error::Graphics(Box::new(e)))?;
+        let (device, queue) = block_on(req).map_err(|e| RunError::Graphics(Box::new(e)))?;
 
         let shaders = ShaderManager::new(&device);
 

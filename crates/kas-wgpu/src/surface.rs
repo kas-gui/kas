@@ -10,7 +10,7 @@ use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use kas::geom::Size;
-use kas::runner::{Error, WindowSurface, raw_window_handle as rwh};
+use kas::runner::{RunError, WindowSurface, raw_window_handle as rwh};
 use std::time::Instant;
 use wgpu::PresentMode;
 
@@ -23,14 +23,14 @@ pub struct Surface<'a, C: CustomPipe> {
 }
 
 impl<'a, C: CustomPipe> Surface<'a, C> {
-    pub fn new<W>(instance: &wgpu::Instance, window: W, transparent: bool) -> Result<Self, Error>
+    pub fn new<W>(instance: &wgpu::Instance, window: W, transparent: bool) -> Result<Self, RunError>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'a,
         Self: Sized,
     {
         let surface = instance
             .create_surface(window)
-            .map_err(|e| Error::Graphics(Box::new(e)))?;
+            .map_err(|e| RunError::Graphics(Box::new(e)))?;
 
         Ok(Surface {
             surface,
