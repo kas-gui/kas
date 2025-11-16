@@ -171,3 +171,7 @@ members = [
 [patch.crates-io.kas-text]
 git = "https://github.com/kas-gui/kas-text.git"
 rev = "554b38c8"
+
+[patch.crates-io.rfd]
+git = "https://github.com/PolyMeilex/rfd.git"
+rev = "cbabff1c26e35d0b47ebed348905104f3500e9e9"
