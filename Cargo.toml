@@ -34,7 +34,7 @@ minimal = ["wayland", "vulkan", "dx12", "metal"]
 # Minimal + strongly recommended features
 default = ["minimal", "clipboard", "shaping"]
 # All standard test target features
-stable = ["default", "view", "image-default-formats", "canvas", "svg", "markdown", "spawn", "accesskit", "x11", "toml", "yaml", "json", "ron", "macros_log"]
+stable = ["default", "view", "image-default-formats", "canvas", "svg", "markdown", "spawn", "x11", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics", "kas-core/nightly"]
 # Additional, less recommendation-worthy features
