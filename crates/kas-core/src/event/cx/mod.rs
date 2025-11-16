@@ -81,6 +81,7 @@ pub struct EventState {
     /// Rect is cursor area in sel_focus's coordinate space if size != ZERO
     ime_cursor_area: Rect,
     last_ime_rect: Rect,
+    has_reported_ime_not_supported: bool,
     sel_focus: Option<Id>,
     nav_focus: Option<Id>,
     nav_fallback: Option<Id>,
@@ -125,6 +126,7 @@ impl EventState {
             old_ime_target: None,
             ime_cursor_area: Rect::ZERO,
             last_ime_rect: Rect::ZERO,
+            has_reported_ime_not_supported: false,
             sel_focus: None,
             nav_focus: None,
             nav_fallback: None,

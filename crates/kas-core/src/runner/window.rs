@@ -29,7 +29,7 @@ use std::time::{Duration, Instant};
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
-use winit::window::{ImePurpose, WindowAttributes};
+use winit::window::{ImeRequest, ImeRequestError, WindowAttributes};
 
 /// Window fields requiring a frame or surface
 #[crate::autoimpl(Deref, DerefMut using self.window)]
@@ -720,8 +720,8 @@ pub(crate) trait WindowDataErased {
     /// Set the mouse cursor
     fn set_cursor_icon(&self, icon: CursorIcon);
 
-    /// Enable / disable IME and set purpose
-    fn set_ime_allowed(&self, purpose: Option<ImePurpose>);
+    /// Enable / update / disable the Input Method Editor
+    fn ime_request(&self, request: ImeRequest) -> Result<(), ImeRequestError>;
 
     /// Set IME cursor area
     fn set_ime_cursor_area(&self, rect: Rect);
@@ -747,11 +747,8 @@ impl<G: GraphicsInstance> WindowDataErased for WindowData<G> {
         self.window.set_cursor(icon.into());
     }
 
-    fn set_ime_allowed(&self, purpose: Option<ImePurpose>) {
-        self.window.set_ime_allowed(purpose.is_some());
-        if let Some(purpose) = purpose {
-            self.window.set_ime_purpose(purpose);
-        }
+    fn ime_request(&self, request: ImeRequest) -> Result<(), ImeRequestError> {
+        self.window.request_ime_update(request)
     }
 
     fn set_ime_cursor_area(&self, rect: Rect) {

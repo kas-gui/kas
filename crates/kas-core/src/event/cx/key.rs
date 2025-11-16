@@ -13,7 +13,10 @@ use crate::util::WidgetHierarchy;
 use crate::{Id, Node, geom::Rect, runner::WindowDataErased};
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
-use winit::window::ImePurpose;
+use winit::window::{
+    ImeCapabilities, ImeEnableRequest, ImeHint, ImePurpose, ImeRequest, ImeRequestData,
+    ImeRequestError,
+};
 
 #[derive(Debug)]
 pub(super) struct PendingSelFocus {
@@ -424,7 +427,7 @@ impl<'a> EventCx<'a> {
 
         if let Some(id) = self.sel_focus.clone() {
             if self.ime.is_some() && (ime.is_none() || target_is_new) {
-                window.set_ime_allowed(None);
+                window.ime_request(ImeRequest::Disable).unwrap();
                 self.old_ime_target = Some(id.clone());
                 self.ime = None;
                 self.ime_cursor_area = Rect::ZERO;
@@ -453,9 +456,24 @@ impl<'a> EventCx<'a> {
                 self.send_event(widget.re(), id.clone(), Event::KeyFocus);
             }
 
-            if ime.is_some() && (ime != self.ime || target_is_new) {
-                window.set_ime_allowed(ime);
-                self.ime = ime;
+            if let Some(purpose) = ime
+                && (Some(purpose) != self.ime || target_is_new)
+            {
+                let capabilities = ImeCapabilities::new().with_hint_and_purpose();
+                let hint = ImeHint::empty(); // TODO
+                let data = ImeRequestData::default().with_hint_and_purpose(hint, purpose);
+                let req = ImeEnableRequest::new(capabilities, data).unwrap();
+                match window.ime_request(ImeRequest::Enable(req)) {
+                    Ok(()) => (),
+                    Err(ImeRequestError::NotSupported) => {
+                        if !self.has_reported_ime_not_supported {
+                            log::error!("Failed to start Input Method Editor: not supported");
+                            self.has_reported_ime_not_supported = true;
+                        }
+                    }
+                    Err(e) => log::warn!("Unexpected IME error: {e}"),
+                }
+                self.ime = Some(purpose);
             }
         }
 
