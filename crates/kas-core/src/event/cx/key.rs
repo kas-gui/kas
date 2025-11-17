@@ -11,6 +11,7 @@ use crate::HasId;
 use crate::event::{Command, Event, FocusSource};
 use crate::util::WidgetHierarchy;
 use crate::{Id, Node, geom::Rect, runner::WindowDataErased};
+use winit::dpi::{LogicalPosition, LogicalSize};
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
 use winit::window::{
@@ -459,9 +460,21 @@ impl<'a> EventCx<'a> {
             if let Some(purpose) = ime
                 && self.ime.is_none()
             {
-                let capabilities = ImeCapabilities::new().with_hint_and_purpose();
+                let capabilities = ImeCapabilities::new()
+                    .with_hint_and_purpose()
+                    .with_cursor_area();
+
                 let hint = ImeHint::empty(); // TODO
-                let data = ImeRequestData::default().with_hint_and_purpose(hint, purpose);
+
+                // NOTE: we provide bogus cursor area and update in `frame_update`;
+                // the API does not allow to only provide this later.
+                let position = LogicalPosition::new(0, 0);
+                let size = LogicalSize::new(0, 0);
+
+                let data = ImeRequestData::default()
+                    .with_hint_and_purpose(hint, purpose)
+                    .with_cursor_area(position.into(), size.into());
+
                 let req = ImeEnableRequest::new(capabilities, data.clone()).unwrap();
                 match window.ime_request(ImeRequest::Enable(req)) {
                     Ok(()) => {
