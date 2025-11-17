@@ -163,18 +163,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if restrict_max {
             attrs.max_surface_size = Some(ideal.into());
         }
+        let window = el.create_window(attrs)?;
+        // TODO: handle modal windows on all platforms: skip taskbar and set owner (not parent) window.
         #[cfg(windows_platform)]
         if let Some(handle) = modal_parent.and_then(|p| p.window_handle().ok()) {
-            use winit::platform::windows::WindowAttributesExtWindows;
-            attrs = attrs.with_skip_taskbar(true);
-            match handle.as_raw() {
-                raw_window_handle::RawWindowHandle::Win32(h) => {
-                    attrs = attrs.with_owner_window(h.hwnd.get());
-                }
-                _ => (),
-            }
+            use winit::platform::windows::WindowExtWindows;
+            window.set_skip_taskbar(true);
         }
-        let window = el.create_window(attrs)?;
 
         // Now that we have a scale factor, we may need to resize:
         let new_factor = window.scale_factor();
