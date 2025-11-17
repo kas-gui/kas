@@ -723,9 +723,6 @@ pub(crate) trait WindowDataErased {
     /// Enable / update / disable the Input Method Editor
     fn ime_request(&self, request: ImeRequest) -> Result<(), ImeRequestError>;
 
-    /// Set IME cursor area
-    fn set_ime_cursor_area(&self, rect: Rect);
-
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
@@ -749,13 +746,6 @@ impl<G: GraphicsInstance> WindowDataErased for WindowData<G> {
 
     fn ime_request(&self, request: ImeRequest) -> Result<(), ImeRequestError> {
         self.window.request_ime_update(request)
-    }
-
-    fn set_ime_cursor_area(&self, rect: Rect) {
-        self.window.set_ime_cursor_area(
-            rect.pos.as_physical().into(),
-            rect.size.as_physical().into(),
-        );
     }
 
     #[inline]

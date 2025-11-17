@@ -457,14 +457,16 @@ impl<'a> EventCx<'a> {
             }
 
             if let Some(purpose) = ime
-                && (Some(purpose) != self.ime || target_is_new)
+                && self.ime.is_none()
             {
                 let capabilities = ImeCapabilities::new().with_hint_and_purpose();
                 let hint = ImeHint::empty(); // TODO
                 let data = ImeRequestData::default().with_hint_and_purpose(hint, purpose);
-                let req = ImeEnableRequest::new(capabilities, data).unwrap();
+                let req = ImeEnableRequest::new(capabilities, data.clone()).unwrap();
                 match window.ime_request(ImeRequest::Enable(req)) {
-                    Ok(()) => (),
+                    Ok(()) => {
+                        self.ime = Some(data);
+                    }
                     Err(ImeRequestError::NotSupported) => {
                         if !self.has_reported_ime_not_supported {
                             log::error!("Failed to start Input Method Editor: not supported");
@@ -473,7 +475,6 @@ impl<'a> EventCx<'a> {
                     }
                     Err(e) => log::warn!("Unexpected IME error: {e}"),
                 }
-                self.ime = Some(purpose);
             }
         }
 
