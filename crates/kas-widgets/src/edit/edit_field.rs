@@ -1002,9 +1002,18 @@ impl<G: EditGuard> EditField<G> {
             _ => return Ok(Unused),
         };
 
-        if !self.has_key_focus {
-            // This can happen if we still had selection focus, then received
-            // e.g. Command::Copy.
+        // We can receive some commands without key focus as a result of
+        // selection focus. Request focus on edit actions (like Command::Cut).
+        if !self.has_key_focus
+            && matches!(
+                action,
+                Action::Activate
+                    | Action::Edit
+                    | Action::Insert(_, _)
+                    | Action::Delete(_)
+                    | Action::Move(_, _)
+            )
+        {
             let ime = Some(ImePurpose::Normal);
             cx.request_key_focus(self.id(), ime, FocusSource::Synthetic);
         }
