@@ -14,7 +14,8 @@ pub(crate) use popup::POPUP_INNER_INDEX;
 #[doc(inline)] pub use popup::Popup;
 #[doc(inline)] pub(crate) use popup::PopupDescriptor;
 pub use window::*;
-pub use winit::window::{Icon, ResizeDirection};
+pub use winit::icon;
+pub use winit::window::ResizeDirection;
 
 use std::num::NonZeroU32;
 

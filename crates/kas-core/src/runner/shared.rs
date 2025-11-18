@@ -5,7 +5,9 @@
 
 //! Shared state
 
-use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform, RunError};
+use super::{
+    AppData, Error, GraphicsInstance, MessageStack, Pending, Platform, ProxyAction, RunError,
+};
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
@@ -18,6 +20,7 @@ use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
+use std::sync::mpsc;
 use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
@@ -37,8 +40,7 @@ pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>
     pub(super) send_queue: VecDeque<(Id, Erased)>,
     send_targets: HashMap<TypeId, Id>,
     pub(super) waker: Waker,
-    #[cfg(feature = "accesskit")]
-    pub(super) proxy: super::Proxy,
+    pub(super) proxy_rx: mpsc::Receiver<ProxyAction>,
     window_id_factory: WindowIdFactory,
 }
 
@@ -54,7 +56,7 @@ where
         config: Rc<RefCell<Config>>,
         config_writer: Option<Box<dyn FnMut(&Config)>>,
         waker: Waker,
-        #[cfg(feature = "accesskit")] proxy: super::Proxy,
+        proxy_rx: mpsc::Receiver<ProxyAction>,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
@@ -80,8 +82,7 @@ where
             send_queue: Default::default(),
             send_targets: Default::default(),
             waker,
-            #[cfg(feature = "accesskit")]
-            proxy,
+            proxy_rx,
             window_id_factory,
         })
     }
@@ -121,7 +122,7 @@ where
         self.messages.clear();
     }
 
-    pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), RunError> {
+    pub(crate) fn create_draw_shared(&mut self, surface: &G::Surface<'_>) -> Result<(), RunError> {
         if self.draw.is_none() {
             let mut draw_shared = self.instance.new_shared(Some(surface))?;
             draw_shared.set_raster_config(self.config.borrow().font.raster());

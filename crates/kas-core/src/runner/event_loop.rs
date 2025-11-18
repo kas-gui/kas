@@ -36,13 +36,13 @@ where
     resumes: Vec<(Instant, WindowId)>,
 }
 
-impl<A: AppData, G, T> ApplicationHandler<ProxyAction> for Loop<A, G, T>
+impl<A: AppData, G, T> ApplicationHandler for Loop<A, G, T>
 where
     G: GraphicsInstance,
     T: Theme<G::Shared>,
     T::Window: kas::theme::Window,
 {
-    fn new_events(&mut self, el: &ActiveEventLoop, cause: StartCause) {
+    fn new_events(&mut self, el: &dyn ActiveEventLoop, cause: StartCause) {
         el.set_control_flow(ControlFlow::Wait);
 
         match cause {
@@ -66,55 +66,62 @@ where
         }
     }
 
-    fn user_event(&mut self, _: &ActiveEventLoop, event: ProxyAction) {
-        match event {
-            ProxyAction::Close(id) => {
-                if let Some(window) = self.windows.get_mut(&id) {
-                    window.send_close(id);
+    fn proxy_wake_up(&mut self, _: &dyn ActiveEventLoop) {
+        while let Ok(event) = self.shared.proxy_rx.try_recv() {
+            match event {
+                ProxyAction::Close(id) => {
+                    if let Some(window) = self.windows.get_mut(&id) {
+                        window.send_close(id);
+                    }
                 }
-            }
-            ProxyAction::CloseAll => {
-                for (id, window) in self.windows.iter_mut() {
-                    window.send_close(*id);
+                ProxyAction::CloseAll => {
+                    for (id, window) in self.windows.iter_mut() {
+                        window.send_close(*id);
+                    }
                 }
-            }
-            ProxyAction::Message(msg) => {
-                // Message is pushed in self.about_to_wait()
-                self.shared.messages.push_erased(msg.into_erased());
-            }
-            ProxyAction::WakeAsync => {
-                // We don't need to do anything here since about_to_wait will poll all futures.
-            }
-            #[cfg(feature = "accesskit")]
-            ProxyAction::AccessKit(window_id, event) => {
-                if let Some(id) = self.id_map.get(&window_id)
-                    && let Some(window) = self.windows.get_mut(id)
-                {
-                    window.accesskit_event(&mut self.shared, &self.data, event);
+                ProxyAction::Message(msg) => {
+                    // Message is pushed in self.about_to_wait()
+                    self.shared.messages.push_erased(msg.into_erased());
+                }
+                #[cfg(feature = "accesskit")]
+                ProxyAction::AccessKit(window_id, event) => {
+                    if let Some(id) = self.id_map.get(&window_id)
+                        && let Some(window) = self.windows.get_mut(id)
+                    {
+                        window.accesskit_event(&mut self.shared, &self.data, event);
+                    }
                 }
             }
         }
     }
 
-    fn resumed(&mut self, el: &ActiveEventLoop) {
+    fn resumed(&mut self, _: &dyn ActiveEventLoop) {
         if self.suspended {
-            for window in self.windows.values_mut() {
-                match window.resume(&mut self.shared, &self.data, el, None) {
-                    Ok(winit_id) => {
-                        self.id_map.insert(winit_id, window.window_id());
-                    }
-                    Err(e) => {
-                        log::error!("Unable to create window: {e}");
-                    }
+            self.data.resumed();
+            self.suspended = false;
+        }
+    }
+
+    fn can_create_surfaces(&mut self, el: &dyn ActiveEventLoop) {
+        if self.suspended {
+            self.resumed(el);
+        }
+
+        for window in self.windows.values_mut() {
+            match window.create_surfaces(&mut self.shared, &self.data, el, None) {
+                Ok(winit_id) => {
+                    self.id_map.insert(winit_id, window.window_id());
+                }
+                Err(e) => {
+                    log::error!("Unable to create window: {e}");
                 }
             }
-            self.suspended = false;
         }
     }
 
     fn window_event(
         &mut self,
-        el: &ActiveEventLoop,
+        el: &dyn ActiveEventLoop,
         window_id: ww::WindowId,
         event: winit::event::WindowEvent,
     ) {
@@ -126,7 +133,7 @@ where
         }
     }
 
-    fn about_to_wait(&mut self, el: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, el: &dyn ActiveEventLoop) {
         self.flush_pending(el);
         self.shared.handle_messages(&mut self.data);
 
@@ -148,6 +155,9 @@ where
         self.resumes.sort_by_key(|item| item.0);
 
         if self.windows.is_empty() {
+            if !self.suspended {
+                self.destroy_surfaces(el);
+            }
             el.exit();
         } else if matches!(el.control_flow(), ControlFlow::Poll) {
         } else if let Some((instant, _)) = self.resumes.first() {
@@ -157,7 +167,7 @@ where
         };
     }
 
-    fn suspended(&mut self, _: &ActiveEventLoop) {
+    fn suspended(&mut self, _: &dyn ActiveEventLoop) {
         if !self.suspended {
             self.windows
                 .retain(|_, window| window.suspend(&mut self.shared, &self.data));
@@ -167,8 +177,18 @@ where
         }
     }
 
-    fn exiting(&mut self, el: &ActiveEventLoop) {
-        self.suspended(el);
+    fn destroy_surfaces(&mut self, el: &dyn ActiveEventLoop) {
+        if !self.suspended {
+            self.suspended(el);
+        }
+
+        for window in self.windows.values_mut() {
+            window.destroy_surfaces();
+        }
+    }
+
+    fn memory_warning(&mut self, _: &dyn ActiveEventLoop) {
+        self.data.memory_warning();
     }
 }
 
@@ -192,7 +212,7 @@ where
         }
     }
 
-    fn flush_pending(&mut self, el: &ActiveEventLoop) {
+    fn flush_pending(&mut self, el: &dyn ActiveEventLoop) {
         let mut close_all = false;
         while let Some(pending) = self.shared.pending.pop_front() {
             match pending {
@@ -239,7 +259,8 @@ where
                         {
                             modal_parent = window.winit_window();
                         }
-                        match window.resume(&mut self.shared, &self.data, el, modal_parent) {
+                        match window.create_surfaces(&mut self.shared, &self.data, el, modal_parent)
+                        {
                             Ok(winit_id) => {
                                 self.id_map.insert(winit_id, id);
                             }

@@ -201,7 +201,7 @@ impl Runner<()> {
     }
 }
 
-impl<Data: AppData, G: GraphicsInstance, T> Runner<Data, T, G>
+impl<Data: AppData, G: GraphicsInstance + 'static, T> Runner<Data, T, G>
 where
     T: Theme<G::Shared> + 'static,
 {

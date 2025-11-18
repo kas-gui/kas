@@ -12,6 +12,7 @@ use crate::theme::Theme;
 use crate::window::{WindowId, WindowIdFactory};
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::mpsc;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
 /// State used to launch the UI
@@ -23,8 +24,10 @@ use winit::event_loop::{EventLoop, EventLoopProxy};
 pub struct PreLaunchState {
     config: Rc<RefCell<Config>>,
     config_writer: Option<Box<dyn FnMut(&Config)>>,
-    el: EventLoop<ProxyAction>,
+    el: EventLoop,
     platform: Platform,
+    proxy_tx: mpsc::SyncSender<ProxyAction>,
+    proxy_rx: mpsc::Receiver<ProxyAction>,
     window_id_factory: WindowIdFactory,
 }
 
@@ -35,13 +38,18 @@ impl PreLaunchState {
         let config = cf.read_config()?;
         config.borrow_mut().init();
 
-        let el = EventLoop::with_user_event().build()?;
+        let el = EventLoop::new()?;
         let platform = Platform::new(&el);
+
+        let (proxy_tx, proxy_rx) = mpsc::sync_channel(16);
+
         Ok(PreLaunchState {
             config,
             config_writer: cf.writer(),
             el,
             platform,
+            proxy_tx,
+            proxy_rx,
             window_id_factory: Default::default(),
         })
     }
@@ -66,11 +74,11 @@ impl PreLaunchState {
 
     /// Create a proxy which can be used to update the UI from another thread
     pub fn create_proxy(&self) -> Proxy {
-        Proxy(self.el.create_proxy())
+        Proxy::new(self.proxy_tx.clone(), self.el.create_proxy())
     }
 
     /// Run the main loop
-    pub fn run<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>>(
+    pub fn run<Data: AppData, G: GraphicsInstance + 'static, T: Theme<G::Shared> + 'static>(
         self,
         data: Data,
         graphical: G,
@@ -84,13 +92,12 @@ impl PreLaunchState {
             self.config,
             self.config_writer,
             create_waker(&self.el),
-            #[cfg(feature = "accesskit")]
-            Proxy(self.el.create_proxy()),
+            self.proxy_rx,
             self.window_id_factory,
         )?;
 
-        let mut l = super::Loop::new(windows, shared, data);
-        self.el.run_app(&mut l)?;
+        let l = super::Loop::new(windows, shared, data);
+        self.el.run_app(l)?;
         Ok(())
     }
 }
@@ -98,7 +105,7 @@ impl PreLaunchState {
 impl Platform {
     /// Get platform
     #[allow(clippy::needless_return)]
-    fn new(_el: &EventLoop<ProxyAction>) -> Platform {
+    fn new(_el: &EventLoop) -> Platform {
         // Logic copied from winit::platform_impl module.
 
         #[cfg(target_os = "windows")]
@@ -150,26 +157,25 @@ impl Platform {
 ///
 /// This waker may be used by a [`Future`](std::future::Future) to revive
 /// event handling.
-fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
+fn create_waker(el: &EventLoop) -> std::task::Waker {
     use std::sync::Arc;
     use std::task::{RawWaker, RawWakerVTable, Waker};
 
     // We wrap with Arc which is a Sync type supporting Clone and into_raw.
-    type Data = EventLoopProxy<ProxyAction>;
     let proxy = el.create_proxy();
-    let a: Arc<Data> = Arc::new(proxy);
+    let a: Arc<EventLoopProxy> = Arc::new(proxy);
     let data = Arc::into_raw(a);
 
-    fn wake_async(proxy: &Data) {
+    fn wake_async(proxy: &EventLoopProxy) {
         // ignore error: if the loop closed the future has been dropped
-        let _ = proxy.send_event(ProxyAction::WakeAsync);
+        proxy.wake_up();
     }
 
     const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
 
     unsafe fn clone(data: *const ()) -> RawWaker {
         unsafe {
-            let a = Arc::from_raw(data as *const Data);
+            let a = Arc::from_raw(data as *const EventLoopProxy);
             let c = Arc::into_raw(a.clone());
             let _do_not_drop = Arc::into_raw(a);
             RawWaker::new(c as *const (), &VTABLE)
@@ -177,20 +183,20 @@ fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
     }
     unsafe fn wake(data: *const ()) {
         unsafe {
-            let a = Arc::from_raw(data as *const Data);
+            let a = Arc::from_raw(data as *const EventLoopProxy);
             wake_async(&a);
         }
     }
     unsafe fn wake_by_ref(data: *const ()) {
         unsafe {
-            let a = Arc::from_raw(data as *const Data);
+            let a = Arc::from_raw(data as *const EventLoopProxy);
             wake_async(&a);
             let _do_not_drop = Arc::into_raw(a);
         }
     }
     unsafe fn drop(data: *const ()) {
         unsafe {
-            let _ = Arc::from_raw(data as *const Data);
+            let _ = Arc::from_raw(data as *const EventLoopProxy);
         }
     }
 
@@ -202,7 +208,10 @@ fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
 ///
 /// Created by [`Runner::create_proxy`](https://docs.rs/kas/latest/kas/runner/struct.Runner.html#method.create_proxy).
 #[derive(Clone)]
-pub struct Proxy(pub(super) EventLoopProxy<ProxyAction>);
+pub struct Proxy {
+    tx: mpsc::SyncSender<ProxyAction>,
+    waker: EventLoopProxy,
+}
 
 /// Error type returned by [`Proxy`] functions.
 ///
@@ -210,18 +219,31 @@ pub struct Proxy(pub(super) EventLoopProxy<ProxyAction>);
 pub struct ClosedError;
 
 impl Proxy {
+    #[inline]
+    fn new(tx: mpsc::SyncSender<ProxyAction>, waker: EventLoopProxy) -> Self {
+        Proxy { tx, waker }
+    }
+
     /// Close a specific window.
+    ///
+    /// Fails if the application has exited.
     pub fn close(&self, id: WindowId) -> std::result::Result<(), ClosedError> {
-        self.0
-            .send_event(ProxyAction::Close(id))
-            .map_err(|_| ClosedError)
+        self.tx
+            .send(ProxyAction::Close(id))
+            .map_err(|_| ClosedError)?;
+        self.waker.wake_up();
+        Ok(())
     }
 
     /// Close all windows and terminate the UI.
+    ///
+    /// Fails if the application has exited.
     pub fn close_all(&self) -> std::result::Result<(), ClosedError> {
-        self.0
-            .send_event(ProxyAction::CloseAll)
-            .map_err(|_| ClosedError)
+        self.tx
+            .send(ProxyAction::CloseAll)
+            .map_err(|_| ClosedError)?;
+        self.waker.wake_up();
+        Ok(())
     }
 
     /// Send a message to [`AppData`] or a set recipient
@@ -229,12 +251,16 @@ impl Proxy {
     /// This is similar to [`EventCx::push`](crate::event::EventCx::push),
     /// but can only be handled by top-level [`AppData`] or a recipient set
     /// using [`ConfigCx::set_send_target_for`].
+    ///
+    /// Fails if the application has exited.
     pub fn push<M: std::fmt::Debug + Send + 'static>(
         &mut self,
         msg: M,
     ) -> std::result::Result<(), ClosedError> {
-        self.0
-            .send_event(ProxyAction::Message(kas::messages::SendErased::new(msg)))
-            .map_err(|_| ClosedError)
+        self.tx
+            .send(ProxyAction::Message(kas::messages::SendErased::new(msg)))
+            .map_err(|_| ClosedError)?;
+        self.waker.wake_up();
+        Ok(())
     }
 }

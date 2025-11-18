@@ -121,8 +121,8 @@ impl<'a> EventCx<'a> {
         }
 
         // Set IME cursor area, if moved.
-        if self.ime.is_some()
-            && let Some(target) = self.sel_focus.as_ref()
+        if let Some(ref data) = self.ime
+            && let Some(ref target) = self.sel_focus
             && let Some((mut rect, translation)) = widget.as_tile().find_tile_rect(target)
         {
             if self.ime_cursor_area.size != Size::ZERO {
@@ -130,8 +130,19 @@ impl<'a> EventCx<'a> {
             }
             rect += translation;
             if rect != self.last_ime_rect {
-                self.window.set_ime_cursor_area(rect);
+                let mut data = data.clone();
+                data.cursor_area = Some((
+                    rect.pos.as_physical().into(),
+                    rect.size.as_physical().into(),
+                ));
+                let req = winit::window::ImeRequest::Update(data);
+                match self.window.ime_request(req) {
+                    Ok(()) => (),
+                    Err(e) => log::warn!("Unexpected IME error: {e}"),
+                }
                 self.last_ime_rect = rect;
+                // NOTE: we don't update self.ime because we never read the cursor area
+                // self.ime = Some(data);
             }
         }
     }

@@ -36,9 +36,9 @@ pub enum RunError {
     #[error("error from graphics sub-system")]
     Graphics(Box<dyn std::error::Error + 'static>),
 
-    /// The OS cannot perform the operation.
-    #[error("operation is not supported by the OS")]
-    Os(#[from] winit::error::OsError),
+    /// A general error that may occur during a request to the windowing system.
+    #[error("operation failed")]
+    RequestError(#[from] winit::error::RequestError),
 }
 
 /// Enumeration of platforms

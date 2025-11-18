@@ -11,9 +11,13 @@ use crate::HasId;
 use crate::event::{Command, Event, FocusSource};
 use crate::util::WidgetHierarchy;
 use crate::{Id, Node, geom::Rect, runner::WindowDataErased};
+use winit::dpi::{LogicalPosition, LogicalSize};
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
-use winit::window::ImePurpose;
+use winit::window::{
+    ImeCapabilities, ImeEnableRequest, ImeHint, ImePurpose, ImeRequest, ImeRequestData,
+    ImeRequestError,
+};
 
 #[derive(Debug)]
 pub(super) struct PendingSelFocus {
@@ -358,7 +362,7 @@ impl<'a> EventCx<'a> {
 
     pub(super) fn ime_event(&mut self, widget: Node<'_>, ime: Ime) {
         match ime {
-            winit::event::Ime::Enabled => {
+            Ime::Enabled => {
                 // We expect self.ime.is_some(), but it's possible that the request is outdated
                 if self.ime.is_some()
                     && let Some(id) = self.sel_focus.clone()
@@ -366,7 +370,7 @@ impl<'a> EventCx<'a> {
                     self.send_event(widget, id, Event::ImeFocus);
                 }
             }
-            winit::event::Ime::Disabled => {
+            Ime::Disabled => {
                 // We can only assume that this is received due to us disabling
                 // IME if self.old_ime_target is set, and is otherwise due to an
                 // external cause.
@@ -380,14 +384,20 @@ impl<'a> EventCx<'a> {
                     self.send_event(widget, id, Event::LostImeFocus);
                 }
             }
-            winit::event::Ime::Preedit(text, cursor) => {
+            Ime::Preedit(text, cursor) => {
                 if self.ime.is_some()
                     && let Some(id) = self.sel_focus.clone()
                 {
                     self.send_event(widget, id, Event::ImePreedit(&text, cursor));
                 }
             }
-            winit::event::Ime::Commit(text) => {
+            Ime::DeleteSurrounding {
+                before_bytes: _,
+                after_bytes: _,
+            } => {
+                // TODO
+            }
+            Ime::Commit(text) => {
                 if self.ime.is_some()
                     && let Some(id) = self.sel_focus.clone()
                 {
@@ -418,7 +428,7 @@ impl<'a> EventCx<'a> {
 
         if let Some(id) = self.sel_focus.clone() {
             if self.ime.is_some() && (ime.is_none() || target_is_new) {
-                window.set_ime_allowed(None);
+                window.ime_request(ImeRequest::Disable).unwrap();
                 self.old_ime_target = Some(id.clone());
                 self.ime = None;
                 self.ime_cursor_area = Rect::ZERO;
@@ -447,9 +457,37 @@ impl<'a> EventCx<'a> {
                 self.send_event(widget.re(), id.clone(), Event::KeyFocus);
             }
 
-            if ime.is_some() && (ime != self.ime || target_is_new) {
-                window.set_ime_allowed(ime);
-                self.ime = ime;
+            if let Some(purpose) = ime
+                && self.ime.is_none()
+            {
+                let capabilities = ImeCapabilities::new()
+                    .with_hint_and_purpose()
+                    .with_cursor_area();
+
+                let hint = ImeHint::empty(); // TODO
+
+                // NOTE: we provide bogus cursor area and update in `frame_update`;
+                // the API does not allow to only provide this later.
+                let position = LogicalPosition::new(0, 0);
+                let size = LogicalSize::new(0, 0);
+
+                let data = ImeRequestData::default()
+                    .with_hint_and_purpose(hint, purpose)
+                    .with_cursor_area(position.into(), size.into());
+
+                let req = ImeEnableRequest::new(capabilities, data.clone()).unwrap();
+                match window.ime_request(ImeRequest::Enable(req)) {
+                    Ok(()) => {
+                        self.ime = Some(data);
+                    }
+                    Err(ImeRequestError::NotSupported) => {
+                        if !self.has_reported_ime_not_supported {
+                            log::error!("Failed to start Input Method Editor: not supported");
+                            self.has_reported_ime_not_supported = true;
+                        }
+                    }
+                    Err(e) => log::warn!("Unexpected IME error: {e}"),
+                }
             }
         }
 

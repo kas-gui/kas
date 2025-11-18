@@ -9,17 +9,16 @@ mod mouse;
 mod touch;
 pub(crate) mod velocity;
 
-use std::mem::transmute;
-
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
 use super::{EventCx, IsUsed};
 #[allow(unused)] use crate::Events; // for doc-links
 use crate::Id;
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
 use crate::geom::{Coord, DVec2, Offset, Vec2};
-use cast::{CastApprox, Conv};
+use cast::{Cast, CastApprox, Conv};
 pub(crate) use mouse::Mouse;
 pub(crate) use touch::Touch;
+use winit::event::FingerId;
 
 /// Controls the types of events delivered by [`PressStart::grab`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -65,9 +64,9 @@ impl GrabMode {
 
 /// Source of a [`Press`] event
 ///
-/// This identifies the source of a click, touch or similar event, including
-/// which mouse button is pressed and whether this is a double-click (see
-/// [`Self::repetitions`]).
+/// This identifies the source of a click, touch or pointer motion. It
+/// identifies which mouse button is pressed (if any) and whether this is a
+/// double-click (see [`Self::repetitions`]).
 ///
 /// This may be used to track a click/touch, but note that identifiers may be
 /// re-used after the event completes, thus an [`Event::PressStart`] with
@@ -81,15 +80,17 @@ impl PressSource {
     const FLAG_TOUCH: u64 = 1 << 63;
 
     /// Construct a mouse source
-    pub(crate) fn mouse(button: MouseButton, repetitions: u32) -> Self {
+    pub(crate) fn mouse(button: Option<MouseButton>, repetitions: u32) -> Self {
         let r = (repetitions as u64) << 32;
         debug_assert!(r & Self::FLAG_TOUCH == 0);
-        let b: u32 = unsafe { transmute(button) };
+        // Note: MouseButton::try_from_u8 returns None on u8::MAX
+        let b = button.map(|b| b as u8).unwrap_or(u8::MAX);
         Self(r | b as u64)
     }
 
     /// Construct a touch source
-    pub(crate) fn touch(id: u64) -> Self {
+    pub(crate) fn touch(finger_id: FingerId) -> Self {
+        let id = u64::conv(finger_id.into_raw());
         // Investigation shows that almost all sources use a 32-bit identifier.
         // The only exceptional winit backend is iOS, which uses a pointer.
         assert!(id & Self::FLAG_TOUCH == 0);
@@ -108,10 +109,11 @@ impl PressSource {
         self.0 & Self::FLAG_TOUCH != 0
     }
 
-    /// Returns the touch identifier if this represents a touch event
-    fn touch_id(self) -> Option<u64> {
+    /// Returns the finger identifier if this represents a touch event
+    fn finger_id(self) -> Option<FingerId> {
         if self.is_touch() {
-            Some(self.0 & !Self::FLAG_TOUCH)
+            let id = self.0 & !Self::FLAG_TOUCH;
+            Some(FingerId::from_raw(id.cast()))
         } else {
             None
         }
@@ -119,12 +121,12 @@ impl PressSource {
 
     /// Identify the mouse button used
     ///
-    /// This always returns `Some(_)` for mouse events and `None` for touch
-    /// events.
+    /// This returns `Some(button)` for mouse events with a button. It returns
+    /// `None` for touch events and mouse events without a button (e.g. motion).
     pub fn mouse_button(self) -> Option<MouseButton> {
         if self.is_mouse() {
-            let b = self.0 as u32;
-            Some(unsafe { transmute::<u32, MouseButton>(b) })
+            let b = self.0 as u8;
+            MouseButton::try_from_u8(b)
         } else {
             None
         }
@@ -133,29 +135,19 @@ impl PressSource {
     /// Returns true if this represents the left mouse button or a touch event
     #[inline]
     pub fn is_primary(self) -> bool {
-        match self.mouse_button() {
-            None => true,
-            Some(MouseButton::Left) => true,
-            Some(_) => false,
-        }
+        self.is_touch() || self.mouse_button() == Some(MouseButton::Left)
     }
 
     /// Returns true if this represents the right mouse button
     #[inline]
     pub fn is_secondary(self) -> bool {
-        match self.mouse_button() {
-            Some(MouseButton::Right) => true,
-            None | Some(_) => false,
-        }
+        self.mouse_button() == Some(MouseButton::Right)
     }
 
     /// Returns true if this represents the middle mouse button
     #[inline]
     pub fn is_tertiary(self) -> bool {
-        match self.mouse_button() {
-            Some(MouseButton::Middle) => true,
-            None | Some(_) => false,
-        }
+        self.mouse_button() == Some(MouseButton::Middle)
     }
 
     /// The `repetitions` value
@@ -321,10 +313,10 @@ impl GrabBuilder {
                 mode,
                 cursor.unwrap_or_default(),
             )
-        } else if let Some(touch_id) = source.touch_id() {
-            cx.touch.start_grab(touch_id, id.clone(), position, mode)
+        } else if let Some(finger_id) = source.finger_id() {
+            cx.touch.start_grab(finger_id, id.clone(), position, mode)
         } else {
-            unreachable!()
+            false
         };
 
         if success {
@@ -413,8 +405,8 @@ impl EventState {
                 old = grab.depress.take();
                 grab.depress = target.clone();
             }
-        } else if let Some(id) = source.touch_id() {
-            if let Some(grab) = self.touch.get_touch(id) {
+        } else if let Some(finger_id) = source.finger_id() {
+            if let Some(grab) = self.touch.get_touch(finger_id) {
                 redraw = grab.depress != target;
                 old = grab.depress.take();
                 grab.depress = target.clone();
@@ -458,8 +450,8 @@ impl EventState {
         let evc = self.config().event();
         if source.is_mouse() {
             Some(self.mouse.samples.velocity(evc.kinetic_timeout()))
-        } else if let Some(id) = source.touch_id() {
-            self.touch.velocity(id, evc)
+        } else if let Some(finger_id) = source.finger_id() {
+            self.touch.velocity(finger_id, evc)
         } else {
             unreachable!()
         }
