@@ -595,6 +595,7 @@ impl Command {
                 NamedKey::Exit => Command::Exit,
                 _ => return None,
             }),
+            Key::Character(s) if s == " " => Some(Command::Space),
             _ => None,
         }
     }
