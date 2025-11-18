@@ -37,6 +37,7 @@ mod send;
 mod timer;
 mod window;
 
+pub use key::ImeInitialState;
 pub use nav::NavAdvance;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource, PressStart};
 pub(crate) use press::{Mouse, Touch};

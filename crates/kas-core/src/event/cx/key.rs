@@ -5,7 +5,7 @@
 
 //! Event context: key handling and selection focus
 
-use super::{EventCx, EventState, NavAdvance};
+use super::*;
 #[allow(unused)] use crate::Events;
 use crate::HasId;
 use crate::event::{Command, Event, FocusSource};
@@ -15,15 +15,24 @@ use winit::dpi::{LogicalPosition, LogicalSize};
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
 use winit::window::{
-    ImeCapabilities, ImeEnableRequest, ImeHint, ImePurpose, ImeRequest, ImeRequestData,
-    ImeRequestError,
+    ImeCapabilities, ImeEnableRequest, ImeRequest, ImeRequestData, ImeRequestError,
 };
+
+/// Data required to enable IME
+///
+/// This may be provided to [`EventState::request_key_focus`].
+#[derive(Debug, Default)]
+pub struct ImeInitialState {
+    pub hint: ImeHint,
+    pub purpose: ImePurpose,
+    pub surrounding_text: Option<ImeSurroundingText>,
+}
 
 #[derive(Debug)]
 pub(super) struct PendingSelFocus {
     target: Option<Id>,
     key_focus: bool,
-    ime: Option<ImePurpose>,
+    ime: Option<ImeInitialState>,
     source: FocusSource,
 }
 
@@ -114,16 +123,20 @@ impl EventState {
     /// translation of key events to [`Event::Command`] while key focus is
     /// active.
     ///
-    /// Providing an [`ImePurpose`] enables Input Method Editor events
-    /// (see [`Event::ImeFocus`]). TODO: this feature is incomplete; winit does
-    /// not currently support setting surrounding text.
+    /// Providing an [`ImeInitialState`] enables Input Method Editor events
+    /// (see [`Event::Ime`]).
     ///
     /// The `source` parameter is used by [`Event::SelFocus`].
     ///
     /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
     /// navigation focus.
     #[inline]
-    pub fn request_key_focus(&mut self, target: Id, ime: Option<ImePurpose>, source: FocusSource) {
+    pub fn request_key_focus(
+        &mut self,
+        target: Id,
+        ime: Option<ImeInitialState>,
+        source: FocusSource,
+    ) {
         if self.nav_focus.as_ref() != Some(&target) {
             self.set_nav_focus(target.clone(), source);
         }
@@ -444,23 +457,27 @@ impl<'a> EventCx<'a> {
                 self.send_event(widget.re(), id.clone(), Event::KeyFocus);
             }
 
-            if let Some(purpose) = ime
+            if let Some(mut initial) = ime
                 && self.ime.is_none()
             {
-                let capabilities = ImeCapabilities::new()
+                let mut capabilities = ImeCapabilities::new()
                     .with_hint_and_purpose()
                     .with_cursor_area();
-
-                let hint = ImeHint::empty(); // TODO
+                if initial.surrounding_text.is_some() {
+                    capabilities = capabilities.with_surrounding_text();
+                }
 
                 // NOTE: we provide bogus cursor area and update in `frame_update`;
                 // the API does not allow to only provide this later.
                 let position = LogicalPosition::new(0, 0);
                 let size = LogicalSize::new(0, 0);
 
-                let data = ImeRequestData::default()
-                    .with_hint_and_purpose(hint, purpose)
+                let mut data = ImeRequestData::default()
+                    .with_hint_and_purpose(initial.hint, initial.purpose)
                     .with_cursor_area(position.into(), size.into());
+                if let Some(surrounding) = initial.surrounding_text.take() {
+                    data = data.with_surrounding_text(surrounding);
+                }
 
                 let req = ImeEnableRequest::new(capabilities, data.clone()).unwrap();
                 match window.ime_request(ImeRequest::Enable(req)) {

@@ -7,7 +7,8 @@
 
 use super::*;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{CursorIcon, ElementState, FocusSource, Ime, ImePurpose, PhysicalKey, Scroll};
+use kas::event::{CursorIcon, ElementState, FocusSource, PhysicalKey, Scroll};
+use kas::event::{Ime, ImeInitialState, ImePurpose};
 use kas::geom::Vec2;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
@@ -700,7 +701,11 @@ impl<G: EditGuard> EditField<G> {
 
     /// Call only on !self.has_key_focus
     fn request_ime_focus(&self, cx: &mut EventState, source: FocusSource) {
-        let ime = Some(ImePurpose::Normal);
+        let ime = Some(ImeInitialState {
+            hint: Default::default(),
+            purpose: ImePurpose::Normal,
+            surrounding_text: None,
+        });
         cx.request_key_focus(self.id(), ime, source);
     }
 
