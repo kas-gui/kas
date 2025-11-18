@@ -199,8 +199,7 @@ mod EditField {
             match event {
                 Event::NavFocus(source) if source == FocusSource::Key => {
                     if !self.has_key_focus && !self.input_handler.is_selecting() {
-                        let ime = Some(ImePurpose::Normal);
-                        cx.request_key_focus(self.id(), ime, source);
+                        self.request_ime_focus(cx, source);
                     }
                     Used
                 }
@@ -341,8 +340,7 @@ mod EditField {
                         G::edit(self, cx, data);
                     }
 
-                    let ime = Some(ImePurpose::Normal);
-                    cx.request_key_focus(self.id(), ime, FocusSource::Pointer);
+                    self.request_ime_focus(cx, FocusSource::Pointer);
                     Used
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
@@ -377,8 +375,7 @@ mod EditField {
                     }
                     TextInputAction::CursorEnd { .. } => {
                         self.set_primary(cx);
-                        let ime = Some(ImePurpose::Normal);
-                        cx.request_key_focus(self.id(), ime, FocusSource::Pointer);
+                        self.request_ime_focus(cx, FocusSource::Pointer);
                         Used
                     }
                 },
@@ -701,6 +698,12 @@ impl<G: EditGuard> EditField<G> {
         cx.redraw(self);
     }
 
+    /// Call only on !self.has_key_focus
+    fn request_ime_focus(&self, cx: &mut EventState, source: FocusSource) {
+        let ime = Some(ImePurpose::Normal);
+        cx.request_key_focus(self.id(), ime, source);
+    }
+
     fn save_undo_state(&mut self, edit: LastEdit) {
         if self.last_edit == edit {
             return;
@@ -1014,8 +1017,7 @@ impl<G: EditGuard> EditField<G> {
                     | Action::Move(_, _)
             )
         {
-            let ime = Some(ImePurpose::Normal);
-            cx.request_key_focus(self.id(), ime, FocusSource::Synthetic);
+            self.request_ime_focus(cx, FocusSource::Synthetic);
         }
 
         if !matches!(action, Action::None) {
