@@ -37,19 +37,24 @@ enum CurrentAction {
     None,
     ImeStart,
     ImeEdit,
+    Selection,
 }
 
 impl CurrentAction {
+    fn is_none(self) -> bool {
+        self == CurrentAction::None
+    }
+
     fn is_ime(self) -> bool {
         matches!(self, CurrentAction::ImeStart | CurrentAction::ImeEdit)
     }
 
     fn is_active_ime(self) -> bool {
-        false // FIXME?
+        self == CurrentAction::ImeEdit
     }
 
     fn clear_active(&mut self) {
-        if matches!(self, CurrentAction::ImeEdit) {
+        if matches!(self, CurrentAction::ImeEdit | CurrentAction::Selection) {
             *self = CurrentAction::None;
         }
     }

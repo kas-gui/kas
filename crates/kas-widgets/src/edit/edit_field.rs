@@ -8,7 +8,7 @@
 use super::*;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{CursorIcon, ElementState, FocusSource, PhysicalKey, Scroll};
-use kas::event::{Ime, ImeInitialState, ImePurpose};
+use kas::event::{Ime, ImePurpose};
 use kas::geom::Vec2;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
@@ -200,7 +200,7 @@ mod EditField {
             match event {
                 Event::NavFocus(source) if source == FocusSource::Key => {
                     if !self.has_key_focus && !self.input_handler.is_selecting() {
-                        self.request_ime_focus(cx, source);
+                        cx.request_key_focus(self.id(), source);
                     }
                     Used
                 }
@@ -219,6 +219,12 @@ mod EditField {
                     self.has_key_focus = true;
                     self.set_view_offset_from_cursor(cx);
                     G::focus_gained(self, cx, data);
+                    if self.current.is_none() {
+                        let hint = Default::default();
+                        let purpose = ImePurpose::Normal;
+                        let surrounding_text = None;
+                        cx.request_ime_focus(self.id(), hint, purpose, surrounding_text);
+                    }
                     Used
                 }
                 Event::LostKeyFocus => {
@@ -314,9 +320,7 @@ mod EditField {
                     Ime::DeleteSurrounding {
                         before_bytes,
                         after_bytes,
-                    } => {
-                        Used
-                    }
+                    } => Used,
                 },
                 Event::PressStart(press) if press.is_tertiary() => {
                     press.grab_click(self.id()).complete(cx)
@@ -341,7 +345,7 @@ mod EditField {
                         G::edit(self, cx, data);
                     }
 
-                    self.request_ime_focus(cx, FocusSource::Pointer);
+                    cx.request_key_focus(self.id(), FocusSource::Pointer);
                     Used
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
@@ -353,8 +357,10 @@ mod EditField {
                         repeats,
                     } => {
                         if self.current.is_ime() {
-                            cx.cancel_ime_focus(self.id());
+                            cx.cancel_ime_focus(self.id_ref());
                         }
+                        self.current = CurrentAction::Selection;
+
                         self.set_cursor_from_coord(cx, coord);
                         self.selection.set_anchor(clear);
                         if repeats > 1 {
@@ -362,7 +368,7 @@ mod EditField {
                         }
 
                         if !self.has_key_focus {
-                            cx.request_key_focus(self.id(), None, FocusSource::Pointer);
+                            cx.request_key_focus(self.id(), FocusSource::Pointer);
                         }
                         Used
                     }
@@ -376,7 +382,8 @@ mod EditField {
                     }
                     TextInputAction::CursorEnd { .. } => {
                         self.set_primary(cx);
-                        self.request_ime_focus(cx, FocusSource::Pointer);
+                        self.current = CurrentAction::None;
+                        cx.request_key_focus(self.id(), FocusSource::Pointer);
                         Used
                     }
                 },
@@ -699,16 +706,6 @@ impl<G: EditGuard> EditField<G> {
         cx.redraw(self);
     }
 
-    /// Call only on !self.has_key_focus
-    fn request_ime_focus(&self, cx: &mut EventState, source: FocusSource) {
-        let ime = Some(ImeInitialState {
-            hint: Default::default(),
-            purpose: ImePurpose::Normal,
-            surrounding_text: None,
-        });
-        cx.request_key_focus(self.id(), ime, source);
-    }
-
     fn save_undo_state(&mut self, edit: LastEdit) {
         if self.last_edit == edit {
             return;
@@ -1022,7 +1019,7 @@ impl<G: EditGuard> EditField<G> {
                     | Action::Move(_, _)
             )
         {
-            self.request_ime_focus(cx, FocusSource::Synthetic);
+            cx.request_key_focus(self.id(), FocusSource::Synthetic);
         }
 
         if !matches!(action, Action::None) {
