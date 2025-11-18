@@ -7,7 +7,7 @@
 
 use super::*;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{CursorIcon, ElementState, FocusSource, ImePurpose, PhysicalKey, Scroll};
+use kas::event::{CursorIcon, ElementState, FocusSource, Ime, ImePurpose, PhysicalKey, Scroll};
 use kas::geom::Vec2;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
@@ -221,18 +221,6 @@ mod EditField {
                     G::focus_gained(self, cx, data);
                     Used
                 }
-                Event::ImeFocus => {
-                    self.input_handler.stop_selecting();
-                    self.current = CurrentAction::ImeStart;
-                    self.set_ime_cursor_area(cx);
-                    Used
-                }
-                Event::LostImeFocus => {
-                    if self.current.is_ime() {
-                        self.current = CurrentAction::None;
-                    }
-                    Used
-                }
                 Event::LostKeyFocus => {
                     self.has_key_focus = false;
                     cx.redraw();
@@ -271,45 +259,65 @@ mod EditField {
                         }
                     }
                 }
-                Event::ImePreedit(text, cursor) => {
-                    if self.current != CurrentAction::ImeEdit {
-                        if cursor.is_some() {
-                            self.selection.set_anchor_to_range_start();
-                            self.current = CurrentAction::ImeEdit;
-                        } else {
-                            return Used;
+                Event::Ime(ime) => match ime {
+                    Ime::Enabled => {
+                        self.input_handler.stop_selecting();
+                        self.current = CurrentAction::ImeStart;
+                        self.set_ime_cursor_area(cx);
+                        Used
+                    }
+                    Ime::Disabled => {
+                        if self.current.is_ime() {
+                            self.current = CurrentAction::None;
                         }
+                        Used
                     }
-                    self.input_handler.stop_selecting();
+                    Ime::Preedit { text, cursor } => {
+                        if self.current != CurrentAction::ImeEdit {
+                            if cursor.is_some() {
+                                self.selection.set_anchor_to_range_start();
+                                self.current = CurrentAction::ImeEdit;
+                            } else {
+                                return Used;
+                            }
+                        }
+                        self.input_handler.stop_selecting();
 
-                    let range = self.selection.anchor_to_edit_range();
-                    self.text.replace_range(range.clone(), text);
+                        let range = self.selection.anchor_to_edit_range();
+                        self.text.replace_range(range.clone(), &text);
 
-                    if let Some((start, end)) = cursor {
-                        self.selection.set_sel_index_only(range.start + start);
-                        self.selection.set_edit_index(range.start + end);
-                    } else {
+                        if let Some((start, end)) = cursor {
+                            self.selection.set_sel_index_only(range.start + start);
+                            self.selection.set_edit_index(range.start + end);
+                        } else {
+                            self.selection.set_all(range.start + text.len());
+                        }
+                        self.edit_x_coord = None;
+                        self.prepare_text(cx, false);
+                        Used
+                    }
+                    Ime::Commit { text } => {
+                        if self.current != CurrentAction::ImeEdit {
+                            self.selection.set_anchor_to_range_start();
+                        }
+                        self.current = CurrentAction::None;
+                        self.input_handler.stop_selecting();
+
+                        let range = self.selection.anchor_to_edit_range();
+                        self.text.replace_range(range.clone(), &text);
+
                         self.selection.set_all(range.start + text.len());
+                        self.edit_x_coord = None;
+                        self.prepare_text(cx, false);
+                        Used
                     }
-                    self.edit_x_coord = None;
-                    self.prepare_text(cx, false);
-                    Used
-                }
-                Event::ImeCommit(text) => {
-                    if self.current != CurrentAction::ImeEdit {
-                        self.selection.set_anchor_to_range_start();
+                    Ime::DeleteSurrounding {
+                        before_bytes,
+                        after_bytes,
+                    } => {
+                        Used
                     }
-                    self.current = CurrentAction::None;
-                    self.input_handler.stop_selecting();
-
-                    let range = self.selection.anchor_to_edit_range();
-                    self.text.replace_range(range.clone(), text);
-
-                    self.selection.set_all(range.start + text.len());
-                    self.edit_x_coord = None;
-                    self.prepare_text(cx, false);
-                    Used
-                }
+                },
                 Event::PressStart(press) if press.is_tertiary() => {
                     press.grab_click(self.id()).complete(cx)
                 }

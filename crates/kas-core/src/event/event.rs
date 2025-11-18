@@ -16,6 +16,63 @@ use crate::geom::{Affine, Offset, Vec2};
 #[allow(unused)] use crate::{Events, window::Popup};
 use crate::{Id, dir::Direction, window::WindowId};
 
+/// Input Method Editor events
+///
+/// This enum describes [input method](https://en.wikipedia.org/wiki/Input_method) events.
+///
+/// This `enum` closely follows the specification of [`winit::event::Ime`],
+/// hence its documentation may prove useful.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Ime<'a> {
+    /// Notifies when the IME was enabled.
+    ///
+    /// The widget should call [`EventState::set_ime_cursor_area`] immediately
+    /// and each time the area changes (relative to the widget's coordinate
+    /// space), until [`Ime::Disabled`] is received. Failure to do so will
+    /// result in the widget's entire `rect` being used as the IME cursor area.
+    Enabled,
+
+    /// Notifies when the IME was disabled.
+    ///
+    /// Any pending (uncommitted) pre-edit should be cleared (cancelled).
+    Disabled,
+
+    /// Notifies when a new composing text should be set at the cursor position.
+    ///
+    /// When `text.is_empty()` the pre-edit was cleared. Synthetic events with
+    /// empty text and `cursor: None` are generated immediately before an
+    /// [`Ime::Commit`] event.
+    ///
+    /// `cursor` represents the selection-start and cursor indices within
+    /// `text`. If `cursor.is_none()` then no cursor should be shown.
+    Preedit {
+        text: &'a str,
+        cursor: Option<(usize, usize)>,
+    },
+
+    /// Notifies when text should be inserted into the editor widget.
+    ///
+    /// Right before this event winit will send empty [`Self::Preedit`] event.
+    Commit { text: &'a str },
+
+    /// Delete text surrounding the cursor or selection.
+    ///
+    /// This event does not affect the pre-edit string.
+    DeleteSurrounding {
+        /// Bytes to remove before the selection
+        ///
+        /// Assuming the selection starts at `s` (or the cursor is at `s` with
+        /// an empty selection), bytes in the range `s - before_bytes .. s`
+        /// should be deleted.
+        before_bytes: usize,
+        /// Bytes to remove after the selection
+        ///
+        /// Assuming the selection ends at `c`, bytes in the range
+        /// `c .. c + after_bytes` should be deleted.
+        after_bytes: usize,
+    },
+}
+
 /// Events addressed to a widget
 ///
 /// Note that a few events are received by disabled widgets; see
@@ -61,22 +118,18 @@ pub enum Event<'a> {
     /// <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Super</kbd> modifier keys are
     /// pressed. This is subject to change.
     Key(&'a KeyEvent, bool),
-    /// Input Method Editor: composed text changed
+    /// An Input Method Editor event
     ///
-    /// Parameters are `text, cursor`.
-    ///
-    /// This is only received after
+    /// IME events are only received after
     /// [requesting key focus](EventState::request_key_focus) with some `ime`
     /// purpose.
-    ImePreedit(&'a str, Option<(usize, usize)>),
-    /// Input Method Editor: composed text committed
     ///
-    /// Parameters are `text`.
-    ///
-    /// This is only received after
-    /// [requesting key focus](EventState::request_key_focus) with some `ime`
-    /// purpose.
-    ImeCommit(&'a str),
+    /// On [`Ime::Enabled`],
+    /// the widget should call [`EventState::set_ime_cursor_area`] immediately
+    /// and each time the area changes (relative to the widget's coordinate
+    /// space), until [`Ime::Disabled`] is received. Failure to do so will
+    /// result in the widget's entire `rect` being used as the IME cursor area.
+    Ime(Ime<'a>),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
@@ -184,15 +237,6 @@ pub enum Event<'a> {
     KeyFocus,
     /// Notification that a widget has lost keyboard input focus
     LostKeyFocus,
-    /// Notification that a widget has gained IME focus
-    ///
-    /// The widget should call [`EventState::set_ime_cursor_area`] immediately
-    /// and each time the area changes (relative to the widget's coordinate
-    /// space), until [`Event::LostImeFocus`] is received. Failure to do so will
-    /// result in the widget's entire `rect` being used as the IME cursor area.
-    ImeFocus,
-    /// Notification that a widget has lost IME focus
-    LostImeFocus,
     /// Notification that the mouse moves over or leaves a widget
     ///
     /// The state is `true` on mouse over, `false` when the mouse leaves.
@@ -275,12 +319,14 @@ impl<'a> Event<'a> {
         use Event::*;
         match self {
             Command(_, _) => false,
-            Key(_, _) | ImePreedit(_, _) | ImeCommit(_) | Scroll(_) => false,
+            Key(_, _) | Scroll(_) => false,
             CursorMove { .. } | PressStart(_) => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
-            NavFocus { .. } | SelFocus(_) | KeyFocus | ImeFocus | MouseOver(true) => false,
-            LostNavFocus | LostKeyFocus | LostSelFocus | LostImeFocus | MouseOver(false) => true,
+            NavFocus { .. } | SelFocus(_) | KeyFocus | MouseOver(true) => false,
+            LostNavFocus | LostKeyFocus | LostSelFocus | MouseOver(false) => true,
+            Ime(super::Ime::Disabled) => true,
+            Ime(_) => false,
         }
     }
 
@@ -310,7 +356,7 @@ impl<'a> Event<'a> {
             CursorMove { .. } | PressStart(_) => true,
 
             // Events sent to requester
-            Key(_, _) | ImePreedit(_, _) | ImeCommit(_) => false,
+            Key(_, _) | Ime(_) => false,
             PressMove { .. } | PressEnd { .. } => false,
             Timer(_) => false,
 
@@ -319,7 +365,6 @@ impl<'a> Event<'a> {
             NavFocus { .. } | LostNavFocus => false,
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,
-            ImeFocus | LostImeFocus => false,
             MouseOver(_) => false,
         }
     }

@@ -361,49 +361,36 @@ impl<'a> EventCx<'a> {
     }
 
     pub(super) fn ime_event(&mut self, widget: Node<'_>, ime: Ime) {
-        match ime {
-            Ime::Enabled => {
-                // We expect self.ime.is_some(), but it's possible that the request is outdated
-                if self.ime.is_some()
-                    && let Some(id) = self.sel_focus.clone()
-                {
-                    self.send_event(widget, id, Event::ImeFocus);
-                }
+        let is_enabled = self.ime.is_some();
+
+        if ime == Ime::Disabled {
+            // We can only assume that this is received due to us disabling
+            // IME if self.old_ime_target is set, and is otherwise due to an
+            // external cause.
+            let mut target = self.old_ime_target.take();
+            if target.is_none() && self.ime.is_some() {
+                target = self.sel_focus.clone();
+                self.ime = None;
+                self.ime_cursor_area = Rect::ZERO;
             }
-            Ime::Disabled => {
-                // We can only assume that this is received due to us disabling
-                // IME if self.old_ime_target is set, and is otherwise due to an
-                // external cause.
-                let mut target = self.old_ime_target.take();
-                if target.is_none() && self.ime.is_some() {
-                    target = self.sel_focus.clone();
-                    self.ime = None;
-                    self.ime_cursor_area = Rect::ZERO;
-                }
-                if let Some(id) = target {
-                    self.send_event(widget, id, Event::LostImeFocus);
-                }
-            }
-            Ime::Preedit(text, cursor) => {
-                if self.ime.is_some()
-                    && let Some(id) = self.sel_focus.clone()
-                {
-                    self.send_event(widget, id, Event::ImePreedit(&text, cursor));
-                }
-            }
-            Ime::DeleteSurrounding {
-                before_bytes: _,
-                after_bytes: _,
-            } => {
-                // TODO
-            }
-            Ime::Commit(text) => {
-                if self.ime.is_some()
-                    && let Some(id) = self.sel_focus.clone()
-                {
-                    self.send_event(widget, id, Event::ImeCommit(&text));
-                }
-            }
+        }
+
+        if is_enabled && let Some(id) = self.sel_focus.clone() {
+            let event = match ime {
+                Ime::Enabled => super::Ime::Enabled,
+                Ime::Preedit(ref text, cursor) => super::Ime::Preedit { text, cursor },
+                Ime::Commit(ref text) => super::Ime::Commit { text },
+                Ime::DeleteSurrounding {
+                    before_bytes,
+                    after_bytes,
+                } => super::Ime::DeleteSurrounding {
+                    before_bytes,
+                    after_bytes,
+                },
+                Ime::Disabled => super::Ime::Disabled,
+            };
+
+            self.send_event(widget, id, Event::Ime(event));
         }
     }
 
