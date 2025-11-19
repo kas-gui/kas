@@ -14,6 +14,7 @@ pub use edit_field::EditField;
 pub use guard::*;
 
 use std::fmt::Debug;
+use std::ops::Range;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 enum LastEdit {
@@ -31,30 +32,40 @@ enum EditAction {
 }
 
 /// Used to track ongoing incompatible actions
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 enum CurrentAction {
     #[default]
     None,
     ImeStart,
-    ImeEdit,
+    /// We have a pre-edit text
+    ImePreedit {
+        /// Range of the pre-edit text
+        edit_range: Range<u32>,
+    },
     Selection,
 }
 
 impl CurrentAction {
-    fn is_none(self) -> bool {
-        self == CurrentAction::None
+    fn is_none(&self) -> bool {
+        *self == CurrentAction::None
     }
 
-    fn is_ime(self) -> bool {
-        matches!(self, CurrentAction::ImeStart | CurrentAction::ImeEdit)
+    fn is_ime(&self) -> bool {
+        matches!(
+            self,
+            CurrentAction::ImeStart | CurrentAction::ImePreedit { .. }
+        )
     }
 
-    fn is_active_ime(self) -> bool {
-        self == CurrentAction::ImeEdit
+    fn is_active_ime(&self) -> bool {
+        matches!(self, CurrentAction::ImePreedit { .. })
     }
 
     fn clear_active(&mut self) {
-        if matches!(self, CurrentAction::ImeEdit | CurrentAction::Selection) {
+        if matches!(
+            self,
+            CurrentAction::ImePreedit { .. } | CurrentAction::Selection
+        ) {
             *self = CurrentAction::None;
         }
     }

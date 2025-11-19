@@ -279,40 +279,42 @@ mod EditField {
                         Used
                     }
                     Ime::Preedit { text, cursor } => {
-                        if self.current != CurrentAction::ImeEdit {
-                            if cursor.is_some() {
-                                self.selection.set_anchor_to_range_start();
-                                self.current = CurrentAction::ImeEdit;
-                            } else {
-                                return Used;
-                            }
-                        }
+                        let mut edit_range = match self.current.clone() {
+                            CurrentAction::ImeStart if cursor.is_some() => self.selection.range(),
+                            CurrentAction::ImeStart => return Used,
+                            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                            _ => return Used,
+                        };
                         self.input_handler.stop_selecting();
 
-                        let range = self.selection.anchor_to_edit_range();
-                        self.text.replace_range(range.clone(), &text);
-
+                        self.text.replace_range(edit_range.clone(), &text);
+                        edit_range.end = edit_range.start + text.len();
                         if let Some((start, end)) = cursor {
-                            self.selection.set_sel_index_only(range.start + start);
-                            self.selection.set_edit_index(range.start + end);
+                            self.selection.set_sel_index_only(edit_range.start + start);
+                            self.selection.set_edit_index(edit_range.start + end);
                         } else {
-                            self.selection.set_all(range.start + text.len());
+                            self.selection.set_all(edit_range.start + text.len());
                         }
+
+                        self.current = CurrentAction::ImePreedit {
+                            edit_range: edit_range.cast(),
+                        };
                         self.edit_x_coord = None;
                         self.prepare_text(cx, false);
                         Used
                     }
                     Ime::Commit { text } => {
-                        if self.current != CurrentAction::ImeEdit {
-                            self.selection.set_anchor_to_range_start();
-                        }
+                        let edit_range = match self.current.clone() {
+                            CurrentAction::ImeStart => self.selection.range(),
+                            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                            _ => return Used,
+                        };
+
+                        self.text.replace_range(edit_range.clone(), &text);
+                        self.selection.set_all(edit_range.start + text.len());
+
                         self.current = CurrentAction::None;
                         self.input_handler.stop_selecting();
-
-                        let range = self.selection.anchor_to_edit_range();
-                        self.text.replace_range(range.clone(), &text);
-
-                        self.selection.set_all(range.start + text.len());
                         self.edit_x_coord = None;
                         self.prepare_text(cx, false);
                         Used
