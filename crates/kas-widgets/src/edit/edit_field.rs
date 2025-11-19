@@ -8,7 +8,7 @@
 use super::*;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{CursorIcon, ElementState, FocusSource, PhysicalKey, Scroll};
-use kas::event::{Ime, ImePurpose};
+use kas::event::{Ime, ImePurpose, ImeSurroundingText};
 use kas::geom::Vec2;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
@@ -219,10 +219,12 @@ mod EditField {
                     self.has_key_focus = true;
                     self.set_view_offset_from_cursor(cx);
                     G::focus_gained(self, cx, data);
+
                     if self.current.is_none() {
                         let hint = Default::default();
                         let purpose = ImePurpose::Normal;
-                        let surrounding_text = None;
+
+                        let surrounding_text = self.ime_surrounding_text();
                         cx.request_ime_focus(self.id(), hint, purpose, surrounding_text);
                     }
                     Used
@@ -500,6 +502,55 @@ mod EditField {
                     self.text.replace_range(edit_range.cast(), "");
                 }
             }
+        }
+
+        fn ime_surrounding_text(&self) -> Option<ImeSurroundingText> {
+            const MAX_TEXT_BYTES: usize = ImeSurroundingText::MAX_TEXT_BYTES;
+
+            let edit_range = match self.current.clone() {
+                CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                _ => {
+                    let i = self.selection.edit_index();
+                    i..i
+                }
+            };
+            let mut range = edit_range.clone();
+
+            if let Ok(Some((_, line_range))) = self.text.find_line(edit_range.start) {
+                range.start = line_range.start;
+            }
+            if let Ok(Some((_, line_range))) = self.text.find_line(edit_range.end) {
+                range.end = line_range.end;
+            }
+
+            if range.len() - edit_range.len() > MAX_TEXT_BYTES {
+                range.end = range.end.min(edit_range.end + MAX_TEXT_BYTES / 2);
+                while !self.as_str().is_char_boundary(range.end) {
+                    range.end -= 1;
+                }
+
+                if range.len() - edit_range.len() > MAX_TEXT_BYTES {
+                    range.start = range.start.max(edit_range.start - MAX_TEXT_BYTES / 2);
+                    while !self.as_str().is_char_boundary(range.start) {
+                        range.start += 1;
+                    }
+                }
+            }
+
+            let mut text = String::with_capacity(range.len() - edit_range.len());
+            text.push_str(&self.as_str()[range.start..edit_range.start]);
+            text.push_str(&self.as_str()[edit_range.end..range.end]);
+
+            let cursor = self.selection.edit_index() - range.start;
+            // Terminology difference: our sel_index is called 'anchor'
+            // SelectionHelper::anchor is not the same thing.
+            let sel_index = self.selection.sel_index() - range.start;
+            ImeSurroundingText::new(text, cursor, sel_index)
+                .inspect_err(|err| {
+                    // TODO: use Display for err not Debug
+                    log::warn!("EditField::ime_surrounding_text failed: {err:?}")
+                })
+                .ok()
         }
 
         // Call only if self.ime_focus
