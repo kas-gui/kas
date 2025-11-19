@@ -82,6 +82,7 @@ impl EventState {
         }
     }
 
+    /// Clear sel, key and ime focus on target
     pub(super) fn clear_sel_socus_on(&mut self, target: &Id) {
         if let Some(id) = self.sel_focus.as_ref()
             && target.is_ancestor_of(id)
@@ -283,7 +284,7 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    fn clear_ime_focus(&mut self) {
+    pub(super) fn clear_ime_focus(&mut self) {
         if let Some(id) = self.sel_focus.clone() {
             self.old_ime_target = Some(id.clone());
             self.window.ime_request(ImeRequest::Disable).unwrap();
