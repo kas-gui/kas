@@ -348,6 +348,10 @@ mod EditField {
                             }
                         }
 
+                        if let Some(text) = self.ime_surrounding_text() {
+                            cx.update_ime_surrounding_text(self.id_ref(), text);
+                        }
+
                         Used
                     }
                 },

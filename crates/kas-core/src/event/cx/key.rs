@@ -275,6 +275,20 @@ impl<'a> EventCx<'a> {
         }
     }
 
+    /// Update surrounding text used by Input Method Editor
+    pub fn update_ime_surrounding_text(&self, target: &Id, surrounding_text: ImeSurroundingText) {
+        if !self.ime_is_enabled || self.sel_focus.as_ref() != Some(target) {
+            return;
+        }
+
+        let data = ImeRequestData::default().with_surrounding_text(surrounding_text);
+        let req = ImeRequest::Update(data);
+        match self.window.ime_request(req) {
+            Ok(()) => (),
+            Err(e) => log::warn!("Unexpected IME error: {e}"),
+        }
+    }
+
     /// Explicitly clear Input Method Editor focus on `target`
     ///
     /// This method may be used to disable IME focus while retaining selection
