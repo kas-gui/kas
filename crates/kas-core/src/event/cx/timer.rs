@@ -5,6 +5,8 @@
 
 //! Event context: timers
 
+use winit::window::ImeRequestData;
+
 use super::{EventCx, EventState};
 use crate::{Id, Node, TileExt, event::Event, geom::Size};
 use std::time::{Duration, Instant};
@@ -121,7 +123,7 @@ impl<'a> EventCx<'a> {
         }
 
         // Set IME cursor area, if moved.
-        if let Some(ref data) = self.ime
+        if self.ime_is_enabled
             && let Some(ref target) = self.sel_focus
             && let Some((mut rect, translation)) = widget.as_tile().find_tile_rect(target)
         {
@@ -130,11 +132,10 @@ impl<'a> EventCx<'a> {
             }
             rect += translation;
             if rect != self.last_ime_rect {
-                let mut data = data.clone();
-                data.cursor_area = Some((
+                let data = ImeRequestData::default().with_cursor_area(
                     rect.pos.as_physical().into(),
                     rect.size.as_physical().into(),
-                ));
+                );
                 let req = winit::window::ImeRequest::Update(data);
                 match self.window.ime_request(req) {
                     Ok(()) => (),

@@ -204,7 +204,7 @@ impl EventState {
     /// This does nothing if `target` does not have IME-enabled input focus.
     #[inline]
     pub fn set_ime_cursor_area(&mut self, target: &Id, rect: Rect) {
-        if self.ime.is_some() && self.sel_focus.as_ref() == Some(target) {
+        if self.ime_is_enabled && self.sel_focus.as_ref() == Some(target) {
             self.ime_cursor_area = rect;
         }
     }
@@ -235,7 +235,7 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if self.ime.is_some() {
+        if self.ime_is_enabled {
             self.clear_ime_focus();
         }
 
@@ -258,10 +258,12 @@ impl<'a> EventCx<'a> {
             data = data.with_surrounding_text(surrounding);
         }
 
-        let req = ImeEnableRequest::new(capabilities, data.clone()).unwrap();
+        let req = ImeEnableRequest::new(capabilities, data).unwrap();
         match self.window.ime_request(ImeRequest::Enable(req)) {
             Ok(()) => {
-                self.ime = Some(data);
+                // NOTE: we could store (a clone of) data here, but we don't
+                // need to: we only need to pass changed properties on update.
+                self.ime_is_enabled = true;
             }
             Err(ImeRequestError::NotSupported) => {
                 if !self.has_reported_ime_not_supported {
@@ -279,7 +281,7 @@ impl<'a> EventCx<'a> {
     /// focus. IME focus is lost automatically when selection focus is lost.
     #[inline]
     pub fn cancel_ime_focus(&mut self, target: &Id) {
-        if self.ime.is_some() && self.sel_focus.as_ref() == Some(target) {
+        if self.ime_is_enabled && self.sel_focus.as_ref() == Some(target) {
             self.clear_ime_focus();
         }
     }
@@ -288,7 +290,7 @@ impl<'a> EventCx<'a> {
         if let Some(id) = self.sel_focus.clone() {
             self.old_ime_target = Some(id.clone());
             self.window.ime_request(ImeRequest::Disable).unwrap();
-            self.ime = None;
+            self.ime_is_enabled = false;
             self.ime_cursor_area = Rect::ZERO;
         }
     }
@@ -417,8 +419,6 @@ impl<'a> EventCx<'a> {
     }
 
     pub(super) fn ime_event(&mut self, widget: Node<'_>, ime: Ime) {
-        let is_enabled = self.ime.is_some();
-
         if ime == Ime::Disabled
             && let Some(target) = self.old_ime_target.take()
         {
@@ -427,7 +427,9 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if is_enabled && let Some(id) = self.sel_focus.clone() {
+        if self.ime_is_enabled
+            && let Some(id) = self.sel_focus.clone()
+        {
             let event = match ime {
                 Ime::Enabled => super::Ime::Enabled,
                 Ime::Preedit(ref text, cursor) => super::Ime::Preedit { text, cursor },
@@ -441,7 +443,7 @@ impl<'a> EventCx<'a> {
                 },
                 Ime::Disabled => {
                     // IME disabled by external cause
-                    self.ime = None;
+                    self.ime_is_enabled = false;
                     self.ime_cursor_area = Rect::ZERO;
 
                     super::Ime::Disabled

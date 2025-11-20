@@ -13,7 +13,6 @@ use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::time::Instant;
-use winit::window::ImeRequestData;
 
 use super::*;
 use crate::cast::{Cast, Conv};
@@ -77,7 +76,7 @@ pub struct EventState {
     modifiers: ModifiersState,
     /// Key (and IME) focus is on same widget as sel_focus; otherwise its value is ignored
     key_focus: bool,
-    ime: Option<ImeRequestData>,
+    ime_is_enabled: bool,
     old_ime_target: Option<Id>,
     /// Rect is cursor area in sel_focus's coordinate space if size != ZERO
     ime_cursor_area: Rect,
@@ -123,7 +122,7 @@ impl EventState {
             accesskit_is_enabled: false,
             modifiers: ModifiersState::empty(),
             key_focus: false,
-            ime: None,
+            ime_is_enabled: false,
             old_ime_target: None,
             ime_cursor_area: Rect::ZERO,
             last_ime_rect: Rect::ZERO,
