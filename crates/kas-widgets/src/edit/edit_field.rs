@@ -321,7 +321,35 @@ mod EditField {
                     Ime::DeleteSurrounding {
                         before_bytes,
                         after_bytes,
-                    } => Used,
+                    } => {
+                        let edit_range = match self.current.clone() {
+                            CurrentAction::ImeStart => self.selection.range(),
+                            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                            _ => return Used,
+                        };
+
+                        if before_bytes > 0 {
+                            let end = edit_range.start;
+                            let start = end - before_bytes;
+                            if self.as_str().is_char_boundary(start) {
+                                self.text.replace_range(start..end, "");
+                            } else {
+                                log::warn!("buggy IME tried to delete range not at char boundary");
+                            }
+                        }
+
+                        if after_bytes > 0 {
+                            let start = edit_range.end;
+                            let end = start + after_bytes;
+                            if self.as_str().is_char_boundary(end) {
+                                self.text.replace_range(start..end, "");
+                            } else {
+                                log::warn!("buggy IME tried to delete range not at char boundary");
+                            }
+                        }
+
+                        Used
+                    }
                 },
                 Event::PressStart(press) if press.is_tertiary() => {
                     press.grab_click(self.id()).complete(cx)
