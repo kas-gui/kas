@@ -268,14 +268,13 @@ mod EditField {
                 Event::Ime(ime) => match ime {
                     Ime::Enabled => {
                         self.input_handler.stop_selecting();
+                        self.selection.set_empty();
                         self.current = CurrentAction::ImeStart;
                         self.set_ime_cursor_area(cx);
                         Used
                     }
                     Ime::Disabled => {
-                        if self.current.is_ime() {
-                            self.current = CurrentAction::None;
-                        }
+                        self.clear_ime();
                         Used
                     }
                     Ime::Preedit { text, cursor } => {
@@ -285,7 +284,6 @@ mod EditField {
                             CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                             _ => return Used,
                         };
-                        self.input_handler.stop_selecting();
 
                         self.text.replace_range(edit_range.clone(), &text);
                         edit_range.end = edit_range.start + text.len();
@@ -314,7 +312,6 @@ mod EditField {
                         self.selection.set_all(edit_range.start + text.len());
 
                         self.current = CurrentAction::None;
-                        self.input_handler.stop_selecting();
                         self.edit_x_coord = None;
                         self.prepare_text(cx, false);
                         Used
@@ -359,6 +356,7 @@ mod EditField {
                         repeats,
                     } => {
                         if self.current.is_ime() {
+                            self.clear_ime();
                             cx.cancel_ime_focus(self.id_ref());
                         }
                         self.current = CurrentAction::Selection;
@@ -492,6 +490,16 @@ mod EditField {
         /// This method does not call action handlers on the [`EditGuard`].
         pub fn replace_selection(&mut self, cx: &mut EventCx, text: &str) {
             self.received_text(cx, text);
+        }
+
+        fn clear_ime(&mut self) {
+            if self.current.is_ime() {
+                let action = std::mem::replace(&mut self.current, CurrentAction::None);
+                if let CurrentAction::ImePreedit { edit_range } = action {
+                    self.selection.set_all(edit_range.start.cast());
+                    self.text.replace_range(edit_range.cast(), "");
+                }
+            }
         }
 
         // Call only if self.ime_focus
