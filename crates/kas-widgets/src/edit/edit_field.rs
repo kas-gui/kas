@@ -303,7 +303,7 @@ mod EditField {
                             _ => return Used,
                         };
 
-                        self.text.replace_range(edit_range.clone(), &text);
+                        self.text.replace_range(edit_range.clone(), text);
                         edit_range.end = edit_range.start + text.len();
                         if let Some((start, end)) = cursor {
                             self.selection.set_sel_index_only(edit_range.start + start);
@@ -326,7 +326,7 @@ mod EditField {
                             _ => return Used,
                         };
 
-                        self.text.replace_range(edit_range.clone(), &text);
+                        self.text.replace_range(edit_range.clone(), text);
                         self.selection.set_all(edit_range.start + text.len());
 
                         self.current = CurrentAction::ImePreedit {

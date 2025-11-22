@@ -146,7 +146,7 @@ mod Image {
                 cx.send_spawn(self.id(), async {
                     let result = ImageReader::open(&path)
                         .and_then(|reader| reader.with_guessed_format())
-                        .map_err(|err| ImageError::IoError(err))
+                        .map_err(ImageError::IoError)
                         .and_then(|reader| reader.decode())
                         .map(|image| image.into_rgba8())
                         .inspect_err(|err| warn_about_error("Failed to read image", err))
