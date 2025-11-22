@@ -645,11 +645,40 @@ mod EditField {
 
         // Call only if self.ime_focus
         fn set_ime_cursor_area(&self, cx: &mut EventState) {
-            if let Ok(display) = self.text.display() {
-                if let Some(mut rect) = self.selection.cursor_rect(display) {
-                    rect.pos += Offset::conv(self.rect().pos);
-                    cx.set_ime_cursor_area(self.id_ref(), rect);
+            if let Ok(text) = self.text.display() {
+                let range = match self.current.clone() {
+                    CurrentAction::ImeStart => self.selection.range(),
+                    CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                    _ => return,
+                };
+
+                let (m1, m2);
+                if range.is_empty() {
+                    let mut iter = text.text_glyph_pos(range.start);
+                    m1 = iter.next();
+                    m2 = iter.next();
+                } else {
+                    m1 = text.text_glyph_pos(range.start).next_back();
+                    m2 = text.text_glyph_pos(range.end).next();
                 }
+
+                let rect = if let Some((c1, c2)) = m1.zip(m2) {
+                    let left = c1.pos.0.min(c2.pos.0);
+                    let right = c1.pos.0.max(c2.pos.0);
+                    let top = (c1.pos.1 - c1.ascent).min(c2.pos.1 - c2.ascent);
+                    let bottom = (c1.pos.1 - c1.descent).max(c2.pos.1 - c2.ascent);
+                    let p1 = Vec2(left, top).cast_floor();
+                    let p2 = Vec2(right, bottom).cast_ceil();
+                    Rect::from_coords(p1, p2)
+                } else if let Some(c) = m1.or(m2) {
+                    let p1 = Vec2(c.pos.0, c.pos.1 - c.ascent).cast_floor();
+                    let p2 = Vec2(c.pos.0, c.pos.1 - c.descent).cast_ceil();
+                    Rect::from_coords(p1, p2)
+                } else {
+                    return;
+                };
+
+                cx.set_ime_cursor_area(self.id_ref(), rect + Offset::conv(self.rect().pos));
             }
         }
     }
