@@ -312,6 +312,7 @@ mod EditField {
                         };
                         self.edit_x_coord = None;
                         self.prepare_text(cx, false);
+                        G::edit(self, cx, data);
                         Used
                     }
                     Ime::DeleteSurrounding {
