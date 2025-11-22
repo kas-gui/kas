@@ -410,7 +410,7 @@ mod EditField {
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::Used => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::CursorStart {
+                    TextInputAction::PressStart {
                         coord,
                         clear,
                         repeats,
@@ -432,7 +432,7 @@ mod EditField {
                         }
                         Used
                     }
-                    TextInputAction::CursorMove { coord, repeats } => {
+                    TextInputAction::PressMove { coord, repeats } => {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
                             self.selection.expand(&self.text, repeats >= 3);
@@ -440,7 +440,7 @@ mod EditField {
 
                         Used
                     }
-                    TextInputAction::CursorEnd { coord } => {
+                    TextInputAction::PressEnd { coord } => {
                         if self.current.is_ime() {
                             self.clear_ime();
                             cx.cancel_ime_focus(self.id_ref());
