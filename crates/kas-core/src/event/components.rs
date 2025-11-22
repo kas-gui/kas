@@ -430,7 +430,8 @@ pub enum TextInputAction {
     /// Set the text cursor near to `coord`
     ///
     /// This corresponds to a mouse click or touch action. It may be followed by
-    /// [`Self::CursorMove`] and will be concluded by [`Self::CursorEnd`].
+    /// [`Self::CursorMove`] and will be concluded by [`Self::CursorEnd`] unless
+    /// cancelled by calling [`TextInput::stop_selecting`].
     CursorStart {
         /// The click coordinate
         coord: Coord,

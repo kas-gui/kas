@@ -302,6 +302,7 @@ impl<'a> EventCx<'a> {
 
     pub(super) fn clear_ime_focus(&mut self) {
         if let Some(id) = self.sel_focus.clone() {
+            // NOTE: we assume that winit will send us Ime::Disabled
             self.old_ime_target = Some(id.clone());
             self.window.ime_request(ImeRequest::Disable).unwrap();
             self.ime_is_enabled = false;

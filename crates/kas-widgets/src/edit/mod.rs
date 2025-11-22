@@ -56,17 +56,4 @@ impl CurrentAction {
             CurrentAction::ImeStart | CurrentAction::ImePreedit { .. }
         )
     }
-
-    fn is_active_ime(&self) -> bool {
-        matches!(self, CurrentAction::ImePreedit { .. })
-    }
-
-    fn clear_active(&mut self) {
-        if matches!(
-            self,
-            CurrentAction::ImePreedit { .. } | CurrentAction::Selection
-        ) {
-            *self = CurrentAction::None;
-        }
-    }
 }
