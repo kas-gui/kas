@@ -9,7 +9,7 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 use crate::{ActionMoved, Id};
-use kas_macros::impl_default;
+use kas_macros::{autoimpl, impl_default};
 use std::time::Instant;
 
 const TIMER_SELECT: TimerHandle = TimerHandle::new(1 << 60, true);
@@ -406,7 +406,7 @@ impl ScrollComponent {
 }
 
 #[impl_default(TextPhase::None)]
-#[derive(Clone, Debug, PartialEq)]
+#[autoimpl(Clone, Debug, PartialEq)]
 enum TextPhase {
     None,
     PressStart(PressSource, Coord), // source, coord
@@ -421,7 +421,7 @@ pub struct TextInput {
 }
 
 /// Result of [`TextInput::handle`]
-#[derive(Clone, Debug)]
+#[autoimpl(Clone, Debug)]
 pub enum TextInputAction {
     /// Event is used, no action
     Used,
@@ -562,7 +562,7 @@ impl TextInput {
 }
 
 #[impl_default(ClickPhase::None)]
-#[derive(Clone, Debug, PartialEq)]
+#[autoimpl(Clone, Debug, PartialEq)]
 enum ClickPhase {
     None,
     PressStart(PressSource, Coord), // source, coord
@@ -576,7 +576,7 @@ pub struct ClickInput {
 }
 
 /// Result of [`ClickInput::handle`]
-#[derive(Clone, Debug)]
+#[autoimpl(Clone, Debug)]
 pub enum ClickInputAction {
     /// Event is used, no action
     Used,
