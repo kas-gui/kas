@@ -222,7 +222,7 @@ impl PressStart {
             source: self.source,
             position: self.position,
             mode,
-            cursor: None,
+            icon: None,
         }
     }
 
@@ -262,20 +262,20 @@ pub struct GrabBuilder {
     source: PressSource,
     position: DVec2,
     mode: GrabMode,
-    cursor: Option<CursorIcon>,
+    icon: Option<CursorIcon>,
 }
 
 impl GrabBuilder {
-    /// Set cursor icon (default: do not set)
+    /// Set pointer icon (default: do not set)
     #[inline]
     pub fn with_icon(self, icon: CursorIcon) -> Self {
         self.with_opt_icon(Some(icon))
     }
 
-    /// Optionally set cursor icon (default: do not set)
+    /// Optionally set pointer icon (default: do not set)
     #[inline]
     pub fn with_opt_icon(mut self, icon: Option<CursorIcon>) -> Self {
-        self.cursor = icon;
+        self.icon = icon;
         self
     }
 
@@ -301,7 +301,7 @@ impl GrabBuilder {
             source,
             position,
             mode,
-            cursor,
+            icon,
         } = self;
         log::trace!(target: "kas_core::event", "grab_press: start_id={id}, source={source:?}");
         let success = if let Some(button) = source.mouse_button() {
@@ -311,7 +311,7 @@ impl GrabBuilder {
                 id.clone(),
                 position,
                 mode,
-                cursor.unwrap_or_default(),
+                icon.unwrap_or_default(),
             )
         } else if let Some(finger_id) = source.finger_id() {
             cx.touch.start_grab(finger_id, id.clone(), position, mode)
@@ -359,19 +359,19 @@ impl EventState {
         false
     }
 
-    /// Get whether the widget is under the mouse cursor
+    /// Get whether the widget is under the mouse pointer
     #[inline]
     pub fn is_under_mouse(&self, w_id: &Id) -> bool {
         self.mouse.grab.is_none() && *w_id == self.mouse.over
     }
 
-    /// Set the cursor icon
+    /// Set the pointer icon
     ///
     /// This is normally called from [`Events::handle_mouse_over`]. In other
-    /// cases, calling this method may be ineffective. The cursor is
+    /// cases, calling this method may be ineffective. The icon is
     /// automatically "unset" when the widget is no longer under the mouse.
     ///
-    /// See also [`EventCx::set_grab_cursor`]: if a mouse grab
+    /// See also [`EventCx::set_grab_icon`]: if a mouse grab
     /// ([`PressStart::grab`]) is active, its icon takes precedence.
     pub fn set_mouse_over_icon(&mut self, icon: CursorIcon) {
         // Note: this is acted on by EventState::update
@@ -437,7 +437,7 @@ impl EventState {
         self.touch.touch_grab.iter().any(|grab| grab.start_id == id)
     }
 
-    /// Get velocity of the mouse cursor or a touch
+    /// Get velocity of the mouse pointer or a touch
     ///
     /// The velocity is calculated at the time this method is called using
     /// existing samples of motion.
@@ -459,12 +459,12 @@ impl EventState {
 }
 
 impl<'a> EventCx<'a> {
-    /// Update the mouse cursor used during a grab
+    /// Update the mouse pointer icon used during a grab
     ///
     /// This only succeeds if widget `id` has an active mouse-grab (see
-    /// [`PressStart::grab`]). The cursor will be reset when the mouse-grab
+    /// [`PressStart::grab`]). The icon will be reset when the mouse-grab
     /// ends.
-    pub fn set_grab_cursor(&mut self, id: &Id, icon: CursorIcon) {
+    pub fn set_grab_icon(&mut self, id: &Id, icon: CursorIcon) {
         if let Some(grab) = self.mouse.grab.as_mut()
             && grab.start_id == *id
         {

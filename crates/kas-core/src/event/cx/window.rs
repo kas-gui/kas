@@ -122,8 +122,8 @@ impl EventState {
             }
         });
 
-        if let Some(icon) = self.mouse.update_cursor_icon() {
-            window.set_cursor_icon(icon);
+        if let Some(icon) = self.mouse.update_pointer_icon() {
+            window.set_pointer_icon(icon);
         }
 
         (resize, std::mem::take(&mut self.action))
@@ -425,7 +425,7 @@ impl<'a> EventCx<'a> {
             PointerMoved {
                 position, source, ..
             } => match source {
-                PointerSource::Mouse => self.handle_cursor_moved(win, data, position.into()),
+                PointerSource::Mouse => self.handle_pointer_moved(win, data, position.into()),
                 PointerSource::Touch { finger_id, .. } => {
                     self.handle_touch_moved(win.as_node(data), finger_id, position.into())
                 }
@@ -433,12 +433,12 @@ impl<'a> EventCx<'a> {
             },
             PointerEntered { kind, .. } => {
                 if kind == PointerKind::Mouse {
-                    self.handle_cursor_entered()
+                    self.handle_pointer_entered()
                 }
             }
             PointerLeft { kind, .. } => {
                 if kind == PointerKind::Mouse {
-                    self.handle_cursor_left(win.as_node(data))
+                    self.handle_pointer_left(win.as_node(data))
                 }
             }
             MouseWheel { delta, .. } => self.handle_mouse_wheel(win.as_node(data), delta),

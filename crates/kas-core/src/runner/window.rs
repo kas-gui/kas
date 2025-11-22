@@ -712,8 +712,8 @@ pub(crate) trait WindowDataErased {
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     fn wayland_clipboard(&self) -> Option<&smithay_clipboard::Clipboard>;
 
-    /// Set the mouse cursor
-    fn set_cursor_icon(&self, icon: CursorIcon);
+    /// Set the mouse pointer icon
+    fn set_pointer_icon(&self, icon: CursorIcon);
 
     /// Enable / update / disable the Input Method Editor
     fn ime_request(&self, request: ImeRequest) -> Result<(), ImeRequestError>;
@@ -735,7 +735,7 @@ impl<G: GraphicsInstance> WindowDataErased for WindowData<G> {
     }
 
     #[inline]
-    fn set_cursor_icon(&self, icon: CursorIcon) {
+    fn set_pointer_icon(&self, icon: CursorIcon) {
         self.window.set_cursor(icon.into());
     }
 
