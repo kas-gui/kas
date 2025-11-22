@@ -5,10 +5,8 @@
 
 //! Tools for text selection
 
-use crate::geom::{Rect, Vec2};
 use crate::theme::Text;
-use cast::CastFloat;
-use kas_text::{TextDisplay, format::FormattableText};
+use kas_text::format::FormattableText;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -191,37 +189,5 @@ impl SelectionHelper {
         }
         self.sel = start;
         self.edit = end;
-    }
-
-    /// Return a [`Rect`] encompassing the cursor(s) and selection
-    pub fn cursor_rect(&self, text: &TextDisplay) -> Option<Rect> {
-        let (m1, m2);
-        if self.sel == self.edit {
-            let mut iter = text.text_glyph_pos(self.edit);
-            m1 = iter.next();
-            m2 = iter.next();
-        } else if self.sel < self.edit {
-            m1 = text.text_glyph_pos(self.sel).next_back();
-            m2 = text.text_glyph_pos(self.edit).next();
-        } else {
-            m1 = text.text_glyph_pos(self.edit).next_back();
-            m2 = text.text_glyph_pos(self.sel).next();
-        }
-
-        if let Some((c1, c2)) = m1.zip(m2) {
-            let left = c1.pos.0.min(c2.pos.0);
-            let right = c1.pos.0.max(c2.pos.0);
-            let top = (c1.pos.1 - c1.ascent).min(c2.pos.1 - c2.ascent);
-            let bottom = (c1.pos.1 - c1.descent).max(c2.pos.1 - c2.ascent);
-            let p1 = Vec2(left, top).cast_floor();
-            let p2 = Vec2(right, bottom).cast_ceil();
-            Some(Rect::from_coords(p1, p2))
-        } else if let Some(c) = m1.or(m2) {
-            let p1 = Vec2(c.pos.0, c.pos.1 - c.ascent).cast_floor();
-            let p2 = Vec2(c.pos.0, c.pos.1 - c.descent).cast_ceil();
-            Some(Rect::from_coords(p1, p2))
-        } else {
-            None
-        }
     }
 }

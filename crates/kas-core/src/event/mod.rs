@@ -63,7 +63,7 @@ pub use smol_str::SmolStr;
 pub use winit::cursor::CursorIcon;
 pub use winit::event::{ElementState, KeyEvent, MouseButton};
 pub use winit::keyboard::{Key, ModifiersState, NamedKey, PhysicalKey};
-pub use winit::window::ImePurpose; // used by Key
+pub use winit::window::{ImeHint, ImePurpose, ImeSurroundingText};
 
 #[allow(unused)]
 use crate::{Events, Widget, runner::AppData};

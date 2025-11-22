@@ -5,25 +5,23 @@
 
 //! Event context: key handling and selection focus
 
-use super::{EventCx, EventState, NavAdvance};
+use super::*;
 #[allow(unused)] use crate::Events;
 use crate::HasId;
 use crate::event::{Command, Event, FocusSource};
 use crate::util::WidgetHierarchy;
-use crate::{Id, Node, geom::Rect, runner::WindowDataErased};
+use crate::{Id, Node, geom::Rect};
 use winit::dpi::{LogicalPosition, LogicalSize};
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
 use winit::window::{
-    ImeCapabilities, ImeEnableRequest, ImeHint, ImePurpose, ImeRequest, ImeRequestData,
-    ImeRequestError,
+    ImeCapabilities, ImeEnableRequest, ImeRequest, ImeRequestData, ImeRequestError,
 };
 
 #[derive(Debug)]
 pub(super) struct PendingSelFocus {
     target: Option<Id>,
     key_focus: bool,
-    ime: Option<ImePurpose>,
     source: FocusSource,
 }
 
@@ -78,13 +76,13 @@ impl EventState {
                 self.pending_sel_focus = Some(PendingSelFocus {
                     target: None,
                     key_focus: false,
-                    ime: None,
                     source: FocusSource::Synthetic,
                 });
             }
         }
     }
 
+    /// Clear sel, key and ime focus on target
     pub(super) fn clear_sel_socus_on(&mut self, target: &Id) {
         if let Some(id) = self.sel_focus.as_ref()
             && target.is_ancestor_of(id)
@@ -100,7 +98,6 @@ impl EventState {
                 self.pending_sel_focus = Some(PendingSelFocus {
                     target: None,
                     key_focus: false,
-                    ime: None,
                     source: FocusSource::Synthetic,
                 });
             }
@@ -114,16 +111,12 @@ impl EventState {
     /// translation of key events to [`Event::Command`] while key focus is
     /// active.
     ///
-    /// Providing an [`ImePurpose`] enables Input Method Editor events
-    /// (see [`Event::ImeFocus`]). TODO: this feature is incomplete; winit does
-    /// not currently support setting surrounding text.
-    ///
     /// The `source` parameter is used by [`Event::SelFocus`].
     ///
     /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
-    /// navigation focus.
+    /// navigation focus but not IME focus (see [`EventCx::request_ime_focus`]).
     #[inline]
-    pub fn request_key_focus(&mut self, target: Id, ime: Option<ImePurpose>, source: FocusSource) {
+    pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
         if self.nav_focus.as_ref() != Some(&target) {
             self.set_nav_focus(target.clone(), source);
         }
@@ -131,7 +124,6 @@ impl EventState {
         self.pending_sel_focus = Some(PendingSelFocus {
             target: Some(target),
             key_focus: true,
-            ime,
             source,
         });
     }
@@ -164,7 +156,6 @@ impl EventState {
         self.pending_sel_focus = Some(PendingSelFocus {
             target: Some(target),
             key_focus: false,
-            ime: None,
             source,
         });
     }
@@ -201,28 +192,13 @@ impl EventState {
         }
     }
 
-    /// End Input Method Editor focus on `target`, if present
-    #[inline]
-    pub fn cancel_ime_focus(&mut self, target: Id) {
-        if let Some(pending) = self.pending_sel_focus.as_mut() {
-            if pending.target.as_ref() == Some(&target) {
-                pending.ime = None;
-            }
-        } else if self.ime.is_some() && self.sel_focus.as_ref() == Some(&target) {
-            self.pending_sel_focus = Some(PendingSelFocus {
-                target: Some(target),
-                key_focus: self.key_focus,
-                ime: None,
-                source: FocusSource::Synthetic,
-            });
-        }
-    }
-
     /// Set IME cursor area
     ///
-    /// This should be called after receiving [`Event::ImeFocus`], and any time
-    /// that the `rect` parameter changes, until [`Event::LostImeFocus`] is
-    /// received.
+    /// This should be called after receiving
+    /// <code>[Event::Ime][]([Ime::Enabled][crate::event::Ime::Enabled])</code>,
+    /// and any time that the `rect` parameter changes, until
+    /// <code>[Event::Ime][]([Ime::Disabled][crate::event::Ime::Disabled])</code>
+    /// is received.
     ///
     /// This sets the text cursor's area, `rect`, relative to the widget's own
     /// coordinate space. If never called, then the widget's whole rect is used.
@@ -230,13 +206,112 @@ impl EventState {
     /// This does nothing if `target` does not have IME-enabled input focus.
     #[inline]
     pub fn set_ime_cursor_area(&mut self, target: &Id, rect: Rect) {
-        if self.ime.is_some() && self.sel_focus.as_ref() == Some(target) {
+        if self.ime_is_enabled && self.sel_focus.as_ref() == Some(target) {
             self.ime_cursor_area = rect;
         }
     }
 }
 
 impl<'a> EventCx<'a> {
+    /// Request IME focus
+    ///
+    /// IME focus requires selection focus (see
+    /// [`EventState::request_key_focus`], [`EventState::request_sel_focus`]).
+    /// The request fails if this has not already been obtained (wait for
+    /// [`Event::SelFocus`] or [`Event::KeyFocus`] before calling this method).
+    ///
+    /// To support Input Method Editors, call this method after receiving
+    /// selection focus and handle [`Event::Ime`] events.
+    ///
+    /// If `target` does not have selection focus this request will be ignored.
+    /// If `target` already has IME focus, it will be replaced (using the new
+    /// parameters provided).
+    pub fn request_ime_focus(
+        &mut self,
+        target: Id,
+        hint: ImeHint,
+        purpose: ImePurpose,
+        mut surrounding_text: Option<ImeSurroundingText>,
+    ) {
+        if self.sel_focus.as_ref() != Some(&target) {
+            return;
+        }
+
+        if self.ime_is_enabled {
+            self.clear_ime_focus();
+        }
+
+        let mut capabilities = ImeCapabilities::new()
+            .with_hint_and_purpose()
+            .with_cursor_area();
+        if surrounding_text.is_some() {
+            capabilities = capabilities.with_surrounding_text();
+        }
+
+        // NOTE: we provide bogus cursor area and update in `frame_update`;
+        // the API does not allow to only provide this later.
+        let position = LogicalPosition::new(0, 0);
+        let size = LogicalSize::new(0, 0);
+
+        let mut data = ImeRequestData::default()
+            .with_hint_and_purpose(hint, purpose)
+            .with_cursor_area(position.into(), size.into());
+        if let Some(surrounding) = surrounding_text.take() {
+            data = data.with_surrounding_text(surrounding);
+        }
+
+        let req = ImeEnableRequest::new(capabilities, data).unwrap();
+        match self.window.ime_request(ImeRequest::Enable(req)) {
+            Ok(()) => {
+                // NOTE: we could store (a clone of) data here, but we don't
+                // need to: we only need to pass changed properties on update.
+                self.ime_is_enabled = true;
+            }
+            Err(ImeRequestError::NotSupported) => {
+                if !self.has_reported_ime_not_supported {
+                    log::error!("Failed to start Input Method Editor: not supported");
+                    self.has_reported_ime_not_supported = true;
+                }
+            }
+            Err(e) => log::warn!("Unexpected IME error: {e}"),
+        }
+    }
+
+    /// Update surrounding text used by Input Method Editor
+    pub fn update_ime_surrounding_text(&self, target: &Id, surrounding_text: ImeSurroundingText) {
+        if !self.ime_is_enabled || self.sel_focus.as_ref() != Some(target) {
+            return;
+        }
+
+        let data = ImeRequestData::default().with_surrounding_text(surrounding_text);
+        let req = ImeRequest::Update(data);
+        match self.window.ime_request(req) {
+            Ok(()) => (),
+            Err(e) => log::warn!("Unexpected IME error: {e}"),
+        }
+    }
+
+    /// Explicitly clear Input Method Editor focus on `target`
+    ///
+    /// This method may be used to disable IME focus while retaining selection
+    /// focus. IME focus is lost automatically when selection focus is lost.
+    #[inline]
+    pub fn cancel_ime_focus(&mut self, target: &Id) {
+        if self.ime_is_enabled && self.sel_focus.as_ref() == Some(target) {
+            self.clear_ime_focus();
+        }
+    }
+
+    pub(super) fn clear_ime_focus(&mut self) {
+        if let Some(id) = self.sel_focus.clone() {
+            // NOTE: we assume that winit will send us Ime::Disabled
+            self.old_ime_target = Some(id.clone());
+            self.window.ime_request(ImeRequest::Disable).unwrap();
+            self.ime_is_enabled = false;
+            self.ime_cursor_area = Rect::ZERO;
+        }
+    }
+
     pub(super) fn keyboard_input(
         &mut self,
         mut widget: Node<'_>,
@@ -361,63 +436,46 @@ impl<'a> EventCx<'a> {
     }
 
     pub(super) fn ime_event(&mut self, widget: Node<'_>, ime: Ime) {
-        match ime {
-            Ime::Enabled => {
-                // We expect self.ime.is_some(), but it's possible that the request is outdated
-                if self.ime.is_some()
-                    && let Some(id) = self.sel_focus.clone()
-                {
-                    self.send_event(widget, id, Event::ImeFocus);
-                }
-            }
-            Ime::Disabled => {
-                // We can only assume that this is received due to us disabling
-                // IME if self.old_ime_target is set, and is otherwise due to an
-                // external cause.
-                let mut target = self.old_ime_target.take();
-                if target.is_none() && self.ime.is_some() {
-                    target = self.sel_focus.clone();
-                    self.ime = None;
+        if ime == Ime::Disabled
+            && let Some(target) = self.old_ime_target.take()
+        {
+            // Assume that we disabled IME when old_ime_target is set
+            self.send_event(widget, target, Event::Ime(super::Ime::Disabled));
+            return;
+        }
+
+        if self.ime_is_enabled
+            && let Some(id) = self.sel_focus.clone()
+        {
+            let event = match ime {
+                Ime::Enabled => super::Ime::Enabled,
+                Ime::Preedit(ref text, cursor) => super::Ime::Preedit { text, cursor },
+                Ime::Commit(ref text) => super::Ime::Commit { text },
+                Ime::DeleteSurrounding {
+                    before_bytes,
+                    after_bytes,
+                } => super::Ime::DeleteSurrounding {
+                    before_bytes,
+                    after_bytes,
+                },
+                Ime::Disabled => {
+                    // IME disabled by external cause
+                    self.ime_is_enabled = false;
                     self.ime_cursor_area = Rect::ZERO;
+
+                    super::Ime::Disabled
                 }
-                if let Some(id) = target {
-                    self.send_event(widget, id, Event::LostImeFocus);
-                }
-            }
-            Ime::Preedit(text, cursor) => {
-                if self.ime.is_some()
-                    && let Some(id) = self.sel_focus.clone()
-                {
-                    self.send_event(widget, id, Event::ImePreedit(&text, cursor));
-                }
-            }
-            Ime::DeleteSurrounding {
-                before_bytes: _,
-                after_bytes: _,
-            } => {
-                // TODO
-            }
-            Ime::Commit(text) => {
-                if self.ime.is_some()
-                    && let Some(id) = self.sel_focus.clone()
-                {
-                    self.send_event(widget, id, Event::ImeCommit(&text));
-                }
-            }
+            };
+
+            self.send_event(widget, id, Event::Ime(event));
         }
     }
 
     // Set selection focus to `wid` immediately; if `key_focus` also set that
-    pub(super) fn set_sel_focus(
-        &mut self,
-        window: &dyn WindowDataErased,
-        mut widget: Node<'_>,
-        pending: PendingSelFocus,
-    ) {
+    pub(super) fn set_sel_focus(&mut self, mut widget: Node<'_>, pending: PendingSelFocus) {
         let PendingSelFocus {
             target,
             key_focus,
-            ime,
             source,
         } = pending;
         let target_is_new = target != self.sel_focus;
@@ -427,11 +485,8 @@ impl<'a> EventCx<'a> {
         log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
 
         if let Some(id) = self.sel_focus.clone() {
-            if self.ime.is_some() && (ime.is_none() || target_is_new) {
-                window.ime_request(ImeRequest::Disable).unwrap();
-                self.old_ime_target = Some(id.clone());
-                self.ime = None;
-                self.ime_cursor_area = Rect::ZERO;
+            if target_is_new {
+                self.clear_ime_focus();
             }
 
             if old_key_focus && (!key_focus || target_is_new) {
@@ -455,39 +510,6 @@ impl<'a> EventCx<'a> {
 
             if key_focus && (!old_key_focus || target_is_new) {
                 self.send_event(widget.re(), id.clone(), Event::KeyFocus);
-            }
-
-            if let Some(purpose) = ime
-                && self.ime.is_none()
-            {
-                let capabilities = ImeCapabilities::new()
-                    .with_hint_and_purpose()
-                    .with_cursor_area();
-
-                let hint = ImeHint::empty(); // TODO
-
-                // NOTE: we provide bogus cursor area and update in `frame_update`;
-                // the API does not allow to only provide this later.
-                let position = LogicalPosition::new(0, 0);
-                let size = LogicalSize::new(0, 0);
-
-                let data = ImeRequestData::default()
-                    .with_hint_and_purpose(hint, purpose)
-                    .with_cursor_area(position.into(), size.into());
-
-                let req = ImeEnableRequest::new(capabilities, data.clone()).unwrap();
-                match window.ime_request(ImeRequest::Enable(req)) {
-                    Ok(()) => {
-                        self.ime = Some(data);
-                    }
-                    Err(ImeRequestError::NotSupported) => {
-                        if !self.has_reported_ime_not_supported {
-                            log::error!("Failed to start Input Method Editor: not supported");
-                            self.has_reported_ime_not_supported = true;
-                        }
-                    }
-                    Err(e) => log::warn!("Unexpected IME error: {e}"),
-                }
             }
         }
 

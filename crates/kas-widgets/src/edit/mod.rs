@@ -14,6 +14,7 @@ pub use edit_field::EditField;
 pub use guard::*;
 
 use std::fmt::Debug;
+use std::ops::Range;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 enum LastEdit {
@@ -31,26 +32,33 @@ enum EditAction {
 }
 
 /// Used to track ongoing incompatible actions
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 enum CurrentAction {
+    /// No current action
     #[default]
     None,
+    /// IME is enabled but no input has yet been given. This is special in that
+    /// a selection may exist (which would get replaced by the pre-edit text).
     ImeStart,
-    ImeEdit,
+    /// We have some pre-edit text within the given range (if non-empty).
+    ///
+    /// This text should be deleted if IME is cancelled.
+    ImePreedit {
+        /// Range of the pre-edit text
+        edit_range: Range<u32>,
+    },
+    Selection,
 }
 
 impl CurrentAction {
-    fn is_ime(self) -> bool {
-        matches!(self, CurrentAction::ImeStart | CurrentAction::ImeEdit)
+    fn is_none(&self) -> bool {
+        *self == CurrentAction::None
     }
 
-    fn is_active_ime(self) -> bool {
-        false // FIXME?
-    }
-
-    fn clear_active(&mut self) {
-        if matches!(self, CurrentAction::ImeEdit) {
-            *self = CurrentAction::None;
-        }
+    fn is_ime(&self) -> bool {
+        matches!(
+            self,
+            CurrentAction::ImeStart | CurrentAction::ImePreedit { .. }
+        )
     }
 }

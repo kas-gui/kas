@@ -89,7 +89,7 @@ impl EventState {
 
             // Update sel focus after nav focus:
             if let Some(pending) = cx.pending_sel_focus.take() {
-                cx.set_sel_focus(cx.window, node.re(), pending);
+                cx.set_sel_focus(node.re(), pending);
             }
 
             // Poll futures; these may push messages to cx.send_queue.

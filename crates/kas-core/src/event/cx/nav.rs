@@ -209,7 +209,10 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        self.clear_key_focus();
+        if self.sel_focus.is_some() {
+            self.clear_key_focus();
+            self.clear_ime_focus();
+        }
 
         if let Some(old) = self.nav_focus.take() {
             self.redraw();
