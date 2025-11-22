@@ -382,7 +382,7 @@ impl<'a> EventCx<'a> {
                 id,
                 coord,
             };
-            let event = Event::CursorMove { press };
+            let event = Event::PointerMove { press };
             self.send_event(window, popup_id, event);
         } else {
             // We don't forward move events without a grab

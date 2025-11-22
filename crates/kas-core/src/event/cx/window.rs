@@ -172,7 +172,7 @@ impl<'a> EventCx<'a> {
     /// drawn in an existing window.
     ///
     /// The popup automatically receives mouse-motion events
-    /// ([`Event::CursorMove`]) which may be used to navigate menus.
+    /// ([`Event::PointerMove`]) which may be used to navigate menus.
     /// The parent automatically receives the "depressed" visual state.
     ///
     /// It is recommended to call [`EventState::set_nav_focus`] or

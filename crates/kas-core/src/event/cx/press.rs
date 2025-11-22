@@ -153,7 +153,7 @@ impl PressSource {
     /// The `repetitions` value
     ///
     /// This is 1 for a single-click and all touch events, 2 for a double-click,
-    /// 3 for a triple-click, etc. For `CursorMove` without a grab this is 0.
+    /// 3 for a triple-click, etc. For [`Event::PointerMove`] without a grab this is 0.
     #[inline]
     pub fn repetitions(self) -> u32 {
         if self.is_mouse() {

@@ -141,17 +141,17 @@ pub enum Event<'a> {
     /// optionally also generate rotation and scaling components, depending on
     /// the [`GrabMode`].
     Pan(Affine),
-    /// Movement of mouse cursor without press
+    /// Movement of mouse pointer without press
     ///
     /// This event is only sent one case: when the mouse is moved while a
     /// [`Popup`] is open and there is not an active [`PressStart::grab`] on the
-    /// mouse cursor.
+    /// mouse pointer.
     ///
     /// This event may be sent 10+ times per frame, thus it is important that
     /// the handler be fast. It may be useful to schedule a pre-draw update
     /// with [`EventState::request_frame_timer`] to handle any post-move
     /// updates.
-    CursorMove { press: Press },
+    PointerMove { press: Press },
     /// A mouse button was pressed or touch event started
     ///
     /// Call [`PressStart::grab`] in order to "grab" corresponding motion
@@ -256,7 +256,7 @@ impl<'a> std::ops::Add<Offset> for Event<'a> {
 impl<'a> std::ops::AddAssign<Offset> for Event<'a> {
     fn add_assign(&mut self, offset: Offset) {
         match self {
-            Event::CursorMove { press } => {
+            Event::PointerMove { press } => {
                 press.coord += offset;
             }
             Event::PressStart(press) => {
@@ -320,7 +320,7 @@ impl<'a> Event<'a> {
         match self {
             Command(_, _) => false,
             Key(_, _) | Scroll(_) => false,
-            CursorMove { .. } | PressStart(_) => false,
+            PointerMove { .. } | PressStart(_) => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
             NavFocus { .. } | SelFocus(_) | KeyFocus | MouseOver(true) => false,
@@ -353,7 +353,7 @@ impl<'a> Event<'a> {
 
             // Events sent to mouse focus
             Scroll(_) | Pan { .. } => true,
-            CursorMove { .. } | PressStart(_) => true,
+            PointerMove { .. } | PressStart(_) => true,
 
             // Events sent to requester
             Key(_, _) | Ime(_) => false,
