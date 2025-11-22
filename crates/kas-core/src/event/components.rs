@@ -516,7 +516,8 @@ impl TextInput {
                 _ => Action::Used,
             },
             Event::PressEnd { press, .. } => match std::mem::take(&mut self.phase) {
-                TextPhase::None | TextPhase::PressStart(_, _) => Action::Used,
+                TextPhase::None => Action::Used,
+                TextPhase::PressStart(_, coord) => Action::CursorEnd { coord },
                 TextPhase::Pan(source) => {
                     if *press == source
                         && let Some(vel) = cx.press_velocity(source)

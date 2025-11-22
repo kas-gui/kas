@@ -440,13 +440,20 @@ mod EditField {
 
                         Used
                     }
-                    TextInputAction::CursorEnd { .. } => {
-                        self.set_primary(cx);
-                        if self.current == CurrentAction::Selection {
-                            self.current = CurrentAction::None;
-                            cx.request_key_focus(self.id(), FocusSource::Pointer);
-                            self.enable_ime(cx);
+                    TextInputAction::CursorEnd { coord } => {
+                        if self.current.is_ime() {
+                            self.clear_ime();
+                            cx.cancel_ime_focus(self.id_ref());
                         }
+                        if self.current != CurrentAction::Selection {
+                            self.set_cursor_from_coord(cx, coord);
+                            self.selection.set_empty();
+                        }
+                        self.current = CurrentAction::None;
+
+                        self.set_primary(cx);
+                        cx.request_key_focus(self.id(), FocusSource::Pointer);
+                        self.enable_ime(cx);
                         Used
                     }
                 },
