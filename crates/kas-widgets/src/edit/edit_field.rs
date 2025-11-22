@@ -219,14 +219,7 @@ mod EditField {
                     self.has_key_focus = true;
                     self.set_view_offset_from_cursor(cx);
                     G::focus_gained(self, cx, data);
-
-                    if self.current.is_none() {
-                        let hint = Default::default();
-                        let purpose = ImePurpose::Normal;
-
-                        let surrounding_text = self.ime_surrounding_text();
-                        cx.request_ime_focus(self.id(), hint, purpose, surrounding_text);
-                    }
+                    self.enable_ime(cx);
                     Used
                 }
                 Event::LostKeyFocus => {
@@ -416,8 +409,11 @@ mod EditField {
                     }
                     TextInputAction::CursorEnd { .. } => {
                         self.set_primary(cx);
-                        self.current = CurrentAction::None;
-                        cx.request_key_focus(self.id(), FocusSource::Pointer);
+                        if self.current == CurrentAction::Selection {
+                            self.current = CurrentAction::None;
+                            cx.request_key_focus(self.id(), FocusSource::Pointer);
+                            self.enable_ime(cx);
+                        }
                         Used
                     }
                 },
@@ -524,6 +520,16 @@ mod EditField {
         /// This method does not call action handlers on the [`EditGuard`].
         pub fn replace_selection(&mut self, cx: &mut EventCx, text: &str) {
             self.received_text(cx, text);
+        }
+
+        /// Enable IME if not already enabled
+        fn enable_ime(&mut self, cx: &mut EventCx) {
+            if self.current.is_none() {
+                let hint = Default::default();
+                let purpose = ImePurpose::Normal;
+                let surrounding_text = self.ime_surrounding_text();
+                cx.request_ime_focus(self.id(), hint, purpose, surrounding_text);
+            }
         }
 
         fn clear_ime(&mut self) {
