@@ -286,7 +286,6 @@ mod EditField {
                 Event::Ime(ime) => match ime {
                     Ime::Enabled => {
                         self.input_handler.stop_selecting();
-                        self.selection.set_empty();
                         self.current = CurrentAction::ImeStart;
                         self.set_ime_cursor_area(cx);
                         Used
