@@ -306,7 +306,9 @@ mod EditField {
                         self.text.replace_range(edit_range.clone(), &text);
                         self.selection.set_all(edit_range.start + text.len());
 
-                        self.current = CurrentAction::None;
+                        self.current = CurrentAction::ImePreedit {
+                            edit_range: self.selection.range().cast(),
+                        };
                         self.edit_x_coord = None;
                         self.prepare_text(cx, false);
                         Used
