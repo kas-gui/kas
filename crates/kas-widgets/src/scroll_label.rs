@@ -261,7 +261,7 @@ mod SelectableText {
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::Used => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::CursorStart {
+                    TextInputAction::PressStart {
                         coord,
                         clear,
                         repeats,
@@ -277,14 +277,14 @@ mod SelectableText {
                         }
                         Used
                     }
-                    TextInputAction::CursorMove { coord, repeats } => {
+                    TextInputAction::PressMove { coord, repeats } => {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
                             self.selection.expand(&self.text, repeats >= 3);
                         }
                         Used
                     }
-                    TextInputAction::CursorEnd { .. } => {
+                    TextInputAction::PressEnd { .. } => {
                         if self.has_sel_focus {
                             self.set_primary(cx);
                         }

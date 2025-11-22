@@ -286,7 +286,6 @@ mod EditField {
                 Event::Ime(ime) => match ime {
                     Ime::Enabled => {
                         self.input_handler.stop_selecting();
-                        self.selection.set_empty();
                         self.current = CurrentAction::ImeStart;
                         self.set_ime_cursor_area(cx);
                         Used
@@ -411,7 +410,7 @@ mod EditField {
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::Used => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::CursorStart {
+                    TextInputAction::PressStart {
                         coord,
                         clear,
                         repeats,
@@ -433,7 +432,7 @@ mod EditField {
                         }
                         Used
                     }
-                    TextInputAction::CursorMove { coord, repeats } => {
+                    TextInputAction::PressMove { coord, repeats } => {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
                             self.selection.expand(&self.text, repeats >= 3);
@@ -441,13 +440,20 @@ mod EditField {
 
                         Used
                     }
-                    TextInputAction::CursorEnd { .. } => {
-                        self.set_primary(cx);
-                        if self.current == CurrentAction::Selection {
-                            self.current = CurrentAction::None;
-                            cx.request_key_focus(self.id(), FocusSource::Pointer);
-                            self.enable_ime(cx);
+                    TextInputAction::PressEnd { coord } => {
+                        if self.current.is_ime() {
+                            self.clear_ime();
+                            cx.cancel_ime_focus(self.id_ref());
                         }
+                        if self.current != CurrentAction::Selection {
+                            self.set_cursor_from_coord(cx, coord);
+                            self.selection.set_empty();
+                        }
+                        self.current = CurrentAction::None;
+
+                        self.set_primary(cx);
+                        cx.request_key_focus(self.id(), FocusSource::Pointer);
+                        self.enable_ime(cx);
                         Used
                     }
                 },
@@ -597,44 +603,49 @@ mod EditField {
         fn ime_surrounding_text(&self) -> Option<ImeSurroundingText> {
             const MAX_TEXT_BYTES: usize = ImeSurroundingText::MAX_TEXT_BYTES;
 
+            let sel_range = self.selection.range();
             let edit_range = match self.current.clone() {
-                CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                _ => {
-                    let i = self.selection.edit_index();
-                    i..i
-                }
+                CurrentAction::ImePreedit { edit_range } => Some(edit_range.cast()),
+                _ => None,
             };
-            let mut range = edit_range.clone();
+            let mut range = edit_range.clone().unwrap_or(sel_range);
+            let initial_range = range.clone();
+            let edit_len = edit_range.clone().map(|r| r.len()).unwrap_or(0);
 
-            if let Ok(Some((_, line_range))) = self.text.find_line(edit_range.start) {
+            if let Ok(Some((_, line_range))) = self.text.find_line(range.start) {
                 range.start = line_range.start;
             }
-            if let Ok(Some((_, line_range))) = self.text.find_line(edit_range.end) {
+            if let Ok(Some((_, line_range))) = self.text.find_line(range.end) {
                 range.end = line_range.end;
             }
 
-            if range.len() - edit_range.len() > MAX_TEXT_BYTES {
-                range.end = range.end.min(edit_range.end + MAX_TEXT_BYTES / 2);
+            if range.len() - edit_len > MAX_TEXT_BYTES {
+                range.end = range.end.min(initial_range.end + MAX_TEXT_BYTES / 2);
                 while !self.as_str().is_char_boundary(range.end) {
                     range.end -= 1;
                 }
 
-                if range.len() - edit_range.len() > MAX_TEXT_BYTES {
-                    range.start = range.start.max(edit_range.start - MAX_TEXT_BYTES / 2);
+                if range.len() - edit_len > MAX_TEXT_BYTES {
+                    range.start = range.start.max(initial_range.start - MAX_TEXT_BYTES / 2);
                     while !self.as_str().is_char_boundary(range.start) {
                         range.start += 1;
                     }
                 }
             }
 
-            let mut text = String::with_capacity(range.len() - edit_range.len());
-            text.push_str(&self.as_str()[range.start..edit_range.start]);
-            text.push_str(&self.as_str()[edit_range.end..range.end]);
+            let start = range.start;
+            let mut text = String::with_capacity(range.len() - edit_len);
+            if let Some(er) = edit_range {
+                text.push_str(&self.as_str()[range.start..er.start]);
+                text.push_str(&self.as_str()[er.end..range.end]);
+            } else {
+                text = self.as_str()[range].to_string();
+            }
 
-            let cursor = self.selection.edit_index() - range.start;
+            let cursor = self.selection.edit_index().saturating_sub(start);
             // Terminology difference: our sel_index is called 'anchor'
             // SelectionHelper::anchor is not the same thing.
-            let sel_index = self.selection.sel_index() - range.start;
+            let sel_index = self.selection.sel_index().saturating_sub(start);
             ImeSurroundingText::new(text, cursor, sel_index)
                 .inspect_err(|err| {
                     // TODO: use Display for err not Debug

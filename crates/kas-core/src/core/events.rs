@@ -83,7 +83,7 @@ pub trait Events: Widget + Sized {
     /// start animations.)
     const REDRAW_ON_MOUSE_OVER: bool = false;
 
-    /// The mouse cursor icon to use on mouse over
+    /// The mouse pointer icon to use on mouse over
     ///
     /// Defaults to `None`.
     #[inline]

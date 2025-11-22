@@ -175,7 +175,7 @@ mod MenuBar {
                         Unused
                     }
                 }
-                Event::CursorMove { press } | Event::PressMove { press, .. } => {
+                Event::PointerMove { press } | Event::PressMove { press, .. } => {
                     cx.set_grab_depress(*press, press.id.clone());
 
                     let id = match press.id {

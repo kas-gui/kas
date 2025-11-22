@@ -9,7 +9,7 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 use crate::{ActionMoved, Id};
-use kas_macros::impl_default;
+use kas_macros::{autoimpl, impl_default};
 use std::time::Instant;
 
 const TIMER_SELECT: TimerHandle = TimerHandle::new(1 << 60, true);
@@ -406,7 +406,7 @@ impl ScrollComponent {
 }
 
 #[impl_default(TextPhase::None)]
-#[derive(Clone, Debug, PartialEq)]
+#[autoimpl(Clone, Debug, PartialEq)]
 enum TextPhase {
     None,
     PressStart(PressSource, Coord), // source, coord
@@ -421,18 +421,21 @@ pub struct TextInput {
 }
 
 /// Result of [`TextInput::handle`]
-#[derive(Clone, Debug)]
+#[autoimpl(Clone, Debug)]
 pub enum TextInputAction {
     /// Event is used, no action
     Used,
     /// Event not used
     Unused,
-    /// Set the text cursor near to `coord`
+    /// Start of click or selection
     ///
-    /// This corresponds to a mouse click or touch action. It may be followed by
-    /// [`Self::CursorMove`] and will be concluded by [`Self::CursorEnd`] unless
+    /// The text cursor and selection anchors should be placed at the closest
+    /// position to `coord`.
+    ///
+    /// This corresponds to a mouse click (down). It may be followed by
+    /// [`Self::PressMove`] and will be concluded by [`Self::PressMove`] unless
     /// cancelled by calling [`TextInput::stop_selecting`].
-    CursorStart {
+    PressStart {
         /// The click coordinate
         coord: Coord,
         /// Whether to clear any prior selection (true unless Shift is held)
@@ -440,17 +443,37 @@ pub enum TextInputAction {
         /// Number of clicks in sequence (e.g. 2 for double-click)
         repeats: u32,
     },
-    /// Drag-select text
-    CursorMove {
+    /// Drag-motion of pointer
+    ///
+    /// This is always preceeded by [`Self::PressStart`].
+    ///
+    /// The text cursor should be placed at the closest position to `coord`,
+    /// creating a selection from the anchor placed by [`Self::PressStart`].
+    ///
+    /// If `repeats > 1` then the selection may be expanded (e.g. to word or
+    /// line mode).
+    PressMove {
         coord: Coord,
         /// Number of clicks in sequence (e.g. 2 for double-click)
         repeats: u32,
     },
-    /// End of text cursor placement or text positioning
+    /// Release of click or touch event
     ///
-    /// The widget may wish to request keyboard focus in case it does not yet
-    /// have it. The widget should set the primary buffer (Unix).
-    CursorEnd { coord: Coord },
+    /// This may or may not be preceeded by [`Self::PressStart`]: touch events
+    /// without motion or sufficient delay to enter selection mode will yield
+    /// this variant without a preceeding [`Self::PressStart`].
+    ///
+    /// This may or may not be preceeded by [`Self::PressMove`].
+    ///
+    /// Handling should be stateful: if this follows [`Self::PressMove`] then it
+    /// terminates selection mode. If this is not preceeded by
+    /// [`Self::PressStart`] then the cursor should be placed at the closest
+    /// position to `coord`. If this is not preceeded by [`Self::PressMove`]
+    /// then it may be considered a "click" action (e.g. to follow a link).
+    ///
+    /// The widget may wish to request keyboard input focus or IME focus.
+    /// The widget should set the primary buffer (Unix).
+    PressEnd { coord: Coord },
 }
 
 impl TextInput {
@@ -477,7 +500,7 @@ impl TextInput {
                         Some(CursorIcon::Grabbing)
                     } else {
                         self.phase = TextPhase::Cursor(*press, press.coord());
-                        action = Action::CursorStart {
+                        action = Action::PressStart {
                             coord: press.coord(),
                             clear: !cx.modifiers().shift_key(),
                             repeats: press.repetitions(),
@@ -508,7 +531,7 @@ impl TextInput {
                 }
                 TextPhase::Cursor(source, _) if *press == source => {
                     self.phase = TextPhase::Cursor(source, press.coord);
-                    Action::CursorMove {
+                    Action::PressMove {
                         coord: press.coord,
                         repeats: press.repetitions(),
                     }
@@ -516,7 +539,8 @@ impl TextInput {
                 _ => Action::Used,
             },
             Event::PressEnd { press, .. } => match std::mem::take(&mut self.phase) {
-                TextPhase::None | TextPhase::PressStart(_, _) => Action::Used,
+                TextPhase::None => Action::Used,
+                TextPhase::PressStart(_, coord) => Action::PressEnd { coord },
                 TextPhase::Pan(source) => {
                     if *press == source
                         && let Some(vel) = cx.press_velocity(source)
@@ -527,12 +551,12 @@ impl TextInput {
 
                     Action::Used
                 }
-                TextPhase::Cursor(_, coord) => Action::CursorEnd { coord },
+                TextPhase::Cursor(_, coord) => Action::PressEnd { coord },
             },
             Event::Timer(TIMER_SELECT) => match self.phase {
                 TextPhase::PressStart(source, coord) => {
                     self.phase = TextPhase::Cursor(source, coord);
-                    Action::CursorStart {
+                    Action::PressStart {
                         coord,
                         clear: !cx.modifiers().shift_key(),
                         repeats: 1,
@@ -547,7 +571,7 @@ impl TextInput {
     /// Is there an on-going selection action?
     ///
     /// This is true when the last action delivered was
-    /// [`TextInputAction::CursorStart`] or [`TextInputAction::CursorMove`].
+    /// [`TextInputAction::PressStart`] or [`TextInputAction::PressMove`].
     #[inline]
     pub fn is_selecting(&self) -> bool {
         matches!(&self.phase, TextPhase::Cursor(_, _))
@@ -562,7 +586,7 @@ impl TextInput {
 }
 
 #[impl_default(ClickPhase::None)]
-#[derive(Clone, Debug, PartialEq)]
+#[autoimpl(Clone, Debug, PartialEq)]
 enum ClickPhase {
     None,
     PressStart(PressSource, Coord), // source, coord
@@ -576,7 +600,7 @@ pub struct ClickInput {
 }
 
 /// Result of [`ClickInput::handle`]
-#[derive(Clone, Debug)]
+#[autoimpl(Clone, Debug)]
 pub enum ClickInputAction {
     /// Event is used, no action
     Used,

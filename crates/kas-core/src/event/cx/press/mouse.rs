@@ -107,8 +107,8 @@ impl Mouse {
         }
     }
 
-    /// Call on frame to detect change in mouse cursor icon
-    pub(in crate::event::cx) fn update_cursor_icon(&mut self) -> Option<CursorIcon> {
+    /// Call on frame to detect change in mouse pointer icon
+    pub(in crate::event::cx) fn update_pointer_icon(&mut self) -> Option<CursorIcon> {
         let icon = self
             .grab
             .as_ref()
@@ -262,7 +262,7 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    // Clears mouse grab and pan grab, resets cursor and redraws
+    // Clears mouse grab and pan grab, resets icon and redraws
     fn remove_mouse_grab(&mut self, window: Node<'_>, success: bool) {
         let mut to_send = None;
         let last_pin;
@@ -322,8 +322,8 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    /// Handle mouse cursor motion.
-    pub(in crate::event::cx) fn handle_cursor_moved<A>(
+    /// Handle mouse pointer motion.
+    pub(in crate::event::cx) fn handle_pointer_moved<A>(
         &mut self,
         win: &mut dyn WindowWidget<Data = A>,
         data: &A,
@@ -332,10 +332,10 @@ impl<'a> EventCx<'a> {
         let coord = position.cast_nearest();
         let id = win.try_probe(coord);
         self.tooltip_motion(win, &id);
-        self.handle_cursor_moved_(id, win.as_node(data), coord, position);
+        self.handle_pointer_moved_(id, win.as_node(data), coord, position);
     }
 
-    pub(in crate::event::cx) fn handle_cursor_moved_(
+    pub(in crate::event::cx) fn handle_pointer_moved_(
         &mut self,
         id: Option<Id>,
         mut window: Node<'_>,
@@ -382,19 +382,19 @@ impl<'a> EventCx<'a> {
                 id,
                 coord,
             };
-            let event = Event::CursorMove { press };
+            let event = Event::PointerMove { press };
             self.send_event(window, popup_id, event);
         } else {
             // We don't forward move events without a grab
         }
     }
 
-    /// Handle mouse cursor entering the app.
+    /// Handle mouse pointer entering the app.
     #[inline]
-    pub(in crate::event::cx) fn handle_cursor_entered(&mut self) {}
+    pub(in crate::event::cx) fn handle_pointer_entered(&mut self) {}
 
-    /// Handle mouse cursor leaving the app.
-    pub(in crate::event::cx) fn handle_cursor_left(&mut self, window: Node<'_>) {
+    /// Handle mouse pointer leaving the app.
+    pub(in crate::event::cx) fn handle_pointer_left(&mut self, window: Node<'_>) {
         self.mouse.last_click_button = None;
 
         if self.mouse.grab.is_none() {

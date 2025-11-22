@@ -167,7 +167,7 @@ mod ComboBox {
                         Unused
                     }
                 }
-                Event::CursorMove { press } | Event::PressMove { press, .. } => {
+                Event::PointerMove { press } | Event::PressMove { press, .. } => {
                     self.open_popup(cx, FocusSource::Pointer);
                     let cond = self.popup.rect().contains(press.coord);
                     let target = if cond { press.id } else { None };
