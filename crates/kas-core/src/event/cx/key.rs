@@ -194,9 +194,11 @@ impl EventState {
 
     /// Set IME cursor area
     ///
-    /// This should be called after receiving [`Event::ImeFocus`], and any time
-    /// that the `rect` parameter changes, until [`Event::LostImeFocus`] is
-    /// received.
+    /// This should be called after receiving
+    /// <code>[Event::Ime][]([Ime::Enabled][crate::event::Ime::Enabled])</code>,
+    /// and any time that the `rect` parameter changes, until
+    /// <code>[Event::Ime][]([Ime::Disabled][crate::event::Ime::Disabled])</code>
+    /// is received.
     ///
     /// This sets the text cursor's area, `rect`, relative to the widget's own
     /// coordinate space. If never called, then the widget's whole rect is used.
