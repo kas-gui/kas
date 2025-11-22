@@ -599,10 +599,7 @@ mod EditField {
 
             let edit_range = match self.current.clone() {
                 CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                _ => {
-                    let i = self.selection.edit_index();
-                    i..i
-                }
+                _ => self.selection.range(),
             };
             let mut range = edit_range.clone();
 
@@ -631,10 +628,10 @@ mod EditField {
             text.push_str(&self.as_str()[range.start..edit_range.start]);
             text.push_str(&self.as_str()[edit_range.end..range.end]);
 
-            let cursor = self.selection.edit_index() - range.start;
+            let cursor = self.selection.edit_index().saturating_sub(range.start);
             // Terminology difference: our sel_index is called 'anchor'
             // SelectionHelper::anchor is not the same thing.
-            let sel_index = self.selection.sel_index() - range.start;
+            let sel_index = self.selection.sel_index().saturating_sub(range.start);
             ImeSurroundingText::new(text, cursor, sel_index)
                 .inspect_err(|err| {
                     // TODO: use Display for err not Debug
