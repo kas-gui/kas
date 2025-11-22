@@ -142,8 +142,6 @@ impl<'a> EventCx<'a> {
                     Err(e) => log::warn!("Unexpected IME error: {e}"),
                 }
                 self.last_ime_rect = rect;
-                // NOTE: we don't update self.ime because we never read the cursor area
-                // self.ime = Some(data);
             }
         }
     }
