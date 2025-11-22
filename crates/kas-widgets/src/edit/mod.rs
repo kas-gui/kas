@@ -34,10 +34,15 @@ enum EditAction {
 /// Used to track ongoing incompatible actions
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 enum CurrentAction {
+    /// No current action
     #[default]
     None,
+    /// IME is enabled but no input has yet been given. This is special in that
+    /// a selection may exist (which would get replaced by the pre-edit text).
     ImeStart,
-    /// We have a pre-edit text
+    /// We have some pre-edit text within the given range (if non-empty).
+    ///
+    /// This text should be deleted if IME is cancelled.
     ImePreedit {
         /// Range of the pre-edit text
         edit_range: Range<u32>,
