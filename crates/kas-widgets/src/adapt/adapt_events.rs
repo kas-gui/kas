@@ -41,7 +41,11 @@ mod AdaptEvents {
             }
         }
 
-        /// Call the given closure on [`Events::configure`]
+        /// Call the given closure on [configuration]
+        ///
+        /// Specifically, the closure is called after [`Events::post_configure`].
+        ///
+        /// [configuration]: Events#configuration
         #[must_use]
         pub fn on_configure<F>(mut self, f: F) -> Self
         where
@@ -51,7 +55,13 @@ mod AdaptEvents {
             self
         }
 
-        /// Call the given closure on [`Events::update`]
+        /// Call the given closure on [update]
+        ///
+        /// The closure is called after the [`Self::on_configure`] handler
+        /// during [configuration] and after [`Events::update`] during [update].
+        ///
+        /// [configuration]: Events#configuration
+        /// [update]: Events#update
         #[must_use]
         pub fn on_update<F>(mut self, f: F) -> Self
         where
@@ -135,6 +145,9 @@ mod AdaptEvents {
         fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>> {
             self.inner.child_node(data, index)
         }
+
+        // NOTE: internal widget methods are used here to call additional event
+        // handlers. This is not otherwise supported by #[derive_widget].
 
         fn _configure(&mut self, cx: &mut ConfigCx, data: &Self::Data, id: Id) {
             self.inner._configure(cx, data, id);
