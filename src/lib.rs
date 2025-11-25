@@ -23,6 +23,8 @@
 //! -   [Examples](https://github.com/kas-gui/kas/tree/master/examples)
 //! -   [Discuss](https://github.com/kas-gui/kas/discussions)
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 /// KAS prelude
 ///
 /// This module allows convenient importation of common unabiguous items:

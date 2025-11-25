@@ -44,7 +44,8 @@ fn counter() -> impl Widget<Data = ()> {
 }
 ```
 
-Concerning making complex things possible, the Kas widget library is built using the same custom widget functionality as is available to Kas users with few exceptions. Check the [`Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html) API docs or browse the [widget library](https://docs.rs/kas/latest/kas/widgets/index.html) and click the "Source" link.
+On the more complex end, custom widgets can be fairly complex; check the Kas
+widget library (including source code) for examples.
 
 ### Capabilities
 
@@ -56,13 +57,27 @@ Concerning making complex things possible, the Kas widget library is built using
 - [x] Automatic margins and layout with pixel-perfect scaling
 - [x] Support for custom themes including theme-driven animations and sizing
 - [x] Virtual scrolling (list or grid), including support for async data access
-- [x] Extremely fast, monolithic Rust binaries
+
+### Goals
+
+Kas is designed to:
+
+-   Support stateful user-defined widgets with high-ish level of code
+-   Support the best user-interaction possible
+-   Support automatic layout and pixel-perfect scaling at any scale factor (i.e. margins and element sizes should be consistent, raster icons should have pixel-perfect rendering; layout is allowed to change as content is scaled).
+-   Support extremely fast, monolithic Rust binaries
+
+### Limitations
 
 Every approach has its limitations. Ours are:
 
--   Custom widgets are stateful, supporting custom caches and minimal state updates but no protection from bad-state bugs.
+-   Stateful widgets imply invalid-state bugs are possible. There are some (dev-mode) guards against bad-initialisation order, but fundamentally this class of bugs cannot be prevented.
 -   Custom widgets have a lot of flexibility over management of child widgets; this comes with some expectations. Violating these expectations will result in a panic in debug builds.
--   Custom widget definitions require the use of macros; the latest versions of these have a low learning curve (except maybe `impl_anon!`) but unfortunately `impl_scope!` does not work with `rustfmt` and `#[impl_self]` causes `rust-analyzer` to inject `use` statements in the wrong location (kas-gui/impl-tools#57).
+-   Custom widget definitions use macro-enhanced Rust (not a custom DSL), allowing the full power of Rust code but running the risk of confusing other tooling (both `rustfmt` and `rust-analyzer` have some issues here).
+
+### Status
+
+In development. Interfaces are not currently stable.
 
 
 Crates and features

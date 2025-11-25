@@ -18,12 +18,6 @@ features = ["kas/wayland"]
 [features]
 default = []
 
-# Enables documentation of APIs for graphics library and platform backends.
-# This API is not intended for use by end-user applications and
-# thus is omitted from built documentation by default.
-# This flag does not change the API, only built documentation.
-internal_doc = []
-
 # WGPU backends
 vulkan = ["wgpu/vulkan"]
 gles = ["wgpu/gles"]
