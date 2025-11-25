@@ -69,7 +69,7 @@ metal = ["wgpu", "kas-wgpu/metal"]
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.
-internal_doc = ["kas-core/internal_doc", "kas-wgpu?/internal_doc"]
+internal_doc = ["kas-core/internal_doc"]
 
 # Enables clipboard read/write
 clipboard = ["kas-core/clipboard"]
