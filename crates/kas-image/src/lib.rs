@@ -11,6 +11,8 @@
 //! [tiny-skia]: https://crates.io/crates/tiny-skia
 //! [resvg]: https://crates.io/crates/resvg
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 pub extern crate tiny_skia;
 
 #[cfg(feature = "canvas")] mod canvas;
