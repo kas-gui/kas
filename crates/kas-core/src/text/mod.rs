@@ -18,8 +18,14 @@ pub use kas_text::{
     OwningVecIter, Status, Text, TextDisplay, Vec2, fonts, format,
 };
 
+pub mod class;
+pub use class::TextClass;
+
 mod selection;
 pub use selection::SelectionHelper;
 
 mod string;
 pub use string::AccessString;
+
+mod parley;
+pub use parley::ParleyText;

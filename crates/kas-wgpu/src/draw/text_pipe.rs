@@ -46,13 +46,37 @@ impl Default for Rasterer {
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct SpriteDescriptor(u64);
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+struct SpriteFaceId(u16);
+
+impl From<FaceId> for SpriteFaceId {
+    #[inline]
+    fn from(face: FaceId) -> Self {
+        let face_id: u16 = face.get().cast();
+        assert!(face_id < 0x8000);
+        SpriteFaceId(face_id)
+    }
+}
+
+impl From<&parley::FontData> for SpriteFaceId {
+    #[inline]
+    fn from(face: &parley::FontData) -> Self {
+        let font_id: u16 = face.data.id().cast();
+        assert!(font_id < 0x1000);
+        assert!(face.index < 0x8);
+        let face_id = 0x8000 + u16::conv(face.index) << 12 + font_id;
+        SpriteFaceId(face_id)
+    }
+}
+
 impl std::fmt::Debug for SpriteDescriptor {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let face = self.0 as u16;
         let dpem_steps = ((self.0 & 0x00FF_FFFF_0000_0000) >> 32) as u32;
         let x_steps = ((self.0 & 0x0F00_0000_0000_0000) >> 56) as u8;
         let y_steps = ((self.0 & 0xF000_0000_0000_0000) >> 60) as u8;
         f.debug_struct("SpriteDescriptor")
-            .field("face", &self.face())
+            .field("face", &face)
             .field("glyph", &self.glyph())
             .field("dpem_steps", &dpem_steps)
             .field("offset_steps", &(x_steps, y_steps))
@@ -72,11 +96,10 @@ impl SpriteDescriptor {
         }
     }
 
-    /// Construct
+    /// Construct for a `kas_text` font
     ///
     /// Most parameters come from [`TextDisplay::glyphs`] output. See also [`raster`].
-    pub fn new(config: &Config, face: FaceId, glyph: Glyph, dpem: f32) -> Self {
-        let face: u16 = face.get().cast();
+    fn new(config: &Config, face_id: SpriteFaceId, glyph: Glyph, dpem: f32) -> Self {
         let glyph_id: u16 = glyph.id.0;
         let steps = Self::sub_pixel_from_dpem(config, dpem);
         let mult = f32::conv(steps);
@@ -84,17 +107,12 @@ impl SpriteDescriptor {
         let x_off = u8::conv_trunc(glyph.position.0.fract() * mult) % steps;
         let y_off = u8::conv_trunc(glyph.position.1.fract() * mult) % steps;
         assert!(dpem & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
-        let packed = face as u64
+        let packed = face_id.0 as u64
             | ((glyph_id as u64) << 16)
             | ((dpem as u64) << 32)
             | ((x_off as u64) << 56)
             | ((y_off as u64) << 60);
         SpriteDescriptor(packed)
-    }
-
-    /// Get `FaceId` descriptor
-    pub fn face(self) -> FaceId {
-        FaceId::from((self.0 & 0x0000_0000_0000_FFFF) as u32)
     }
 
     /// Get `GlyphId` descriptor
@@ -210,7 +228,29 @@ impl Pipeline {
         match self.text.rasterer {
             #[cfg(feature = "ab_glyph")]
             Rasterer::AbGlyph => self.raster_ab_glyph(face_id, dpem, &mut glyphs),
-            Rasterer::Swash => self.raster_swash(face_id, dpem, &mut glyphs),
+            Rasterer::Swash => {
+                let face = fonts::library().get_face_store(face_id);
+                let font = face.swash();
+                let synthesis = face.synthesis();
+
+                let hint = self.text.hint;
+                self.raster_swash(
+                    face_id.into(),
+                    |scale_cx| {
+                        scale_cx
+                            .builder(font)
+                            .size(dpem)
+                            .hint(hint)
+                            .variations(synthesis.variation_settings().iter().map(
+                                |(tag, value)| (swash::tag_from_bytes(&tag.to_be_bytes()), *value),
+                            ))
+                            .build()
+                    },
+                    *synthesis,
+                    dpem,
+                    &mut glyphs,
+                );
+            }
         }
     }
 
@@ -226,7 +266,7 @@ impl Pipeline {
         let face_store = fonts::library().get_face_store(face_id);
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
+            let desc = SpriteDescriptor::new(&self.text.config, face_id.into(), glyph, dpem);
             if self.text.glyphs.contains_key(&desc) {
                 continue;
             }
@@ -288,32 +328,18 @@ impl Pipeline {
     }
 
     // NOTE: using dyn Iterator over impl Iterator is slightly slower but saves 2-4kB
-    fn raster_swash(
-        &mut self,
-        face_id: FaceId,
+    fn raster_swash<'a, 'b: 'a>(
+        &'b mut self,
+        face_id: SpriteFaceId,
+        scaler: impl Fn(&'b mut swash::scale::ScaleContext) -> swash::scale::Scaler<'a>,
+        synthesis: parley::fontique::Synthesis,
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
     ) {
         use swash::scale::{Render, Source, StrikeWith, image::Content};
         use swash::zeno::{Angle, Format, Transform};
 
-        let face = fonts::library().get_face_store(face_id);
-        let font = face.swash();
-        let synthesis = face.synthesis();
-
-        let mut scaler = self
-            .text
-            .scale_cx
-            .builder(font)
-            .size(dpem)
-            .hint(self.text.hint)
-            .variations(
-                synthesis
-                    .variation_settings()
-                    .iter()
-                    .map(|(tag, value)| (swash::tag_from_bytes(&tag.to_be_bytes()), *value)),
-            )
-            .build();
+        let mut scaler = scaler(&mut self.text.scale_cx);
 
         let sources = &[
             // TODO: Support coloured rendering? These can replace Source::Bitmap
@@ -331,7 +357,7 @@ impl Pipeline {
         let embolden = if synthesis.embolden() { dpem * 0.02 } else { 0.0 };
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
+            let desc = SpriteDescriptor::new(&self.text.config, face_id.into(), glyph, dpem);
             if self.text.glyphs.contains_key(&desc) {
                 continue;
             }
@@ -409,6 +435,128 @@ impl Pipeline {
 }
 
 impl Window {
+    #[cfg(feature = "parley")]
+    #[inline(never)]
+    fn raster_glyph_run<'a>(
+        &mut self,
+        pipe: &mut Pipeline,
+        glyph_run: &'a parley::layout::GlyphRun<'a, kas::theme::TextBrush>,
+    ) {
+        let mut run_x = glyph_run.offset();
+        let run_y = glyph_run.baseline();
+
+        let font = glyph_run.run().font();
+        let dpem = glyph_run.run().font_size();
+        let normalized_coords = glyph_run.run().normalized_coords();
+
+        // TODO: this creates a new CacheKey. Does that matter? It seems we never use this, so maybe not?
+        let font_ref = swash::FontRef::from_index(font.data.as_ref(), font.index as usize).unwrap();
+
+        pipe.raster_swash(
+            font.into(),
+            |scale_cx| {
+                scale_cx
+                    .builder(font_ref)
+                    .size(dpem)
+                    .hint(true)
+                    .normalized_coords(normalized_coords)
+                    .build()
+            },
+            glyph_run.run().synthesis(),
+            dpem,
+            &mut glyph_run.glyphs().map(move |glyph| {
+                let position = kas_text::Vec2(run_x + glyph.x, run_y - glyph.y);
+                run_x += glyph.advance;
+                Glyph {
+                    index: 0, // not used
+                    id: GlyphId(glyph.id.cast()),
+                    position,
+                }
+            }),
+        );
+    }
+
+    /// Render a [`parley::layout::GlyphRun`] with the given `color`
+    #[cfg(feature = "parley")]
+    pub fn parley_run(
+        &mut self,
+        pipe: &mut Pipeline,
+        pass: PassId,
+        rect: Quad,
+        color: Rgba,
+        glyph_run: &parley::layout::GlyphRun<'_, kas::theme::TextBrush>,
+        mut draw_quad: impl FnMut(Quad),
+    ) {
+        let mut run_x = glyph_run.offset();
+        let run_y = glyph_run.baseline();
+        // NOTE: can we assume this? If so we can simplify below.
+        // NOTE: yes, provided that quantize == true?
+        // debug_assert!(run_x.fract() == 0.0 && run_y.fract() == 0.0);
+        let col = color;
+
+        let font = glyph_run.run().font();
+        let dpem = glyph_run.run().font_size();
+
+        let mut rastered = false;
+
+        // Iterates over the glyphs in the GlyphRun
+        for glyph in glyph_run.glyphs() {
+            let position = kas_text::Vec2(run_x + glyph.x, run_y - glyph.y);
+            run_x += glyph.advance;
+
+            let glyph = Glyph {
+                index: 0, // not used
+                id: GlyphId(glyph.id.cast()),
+                position,
+            };
+            let desc = SpriteDescriptor::new(&pipe.text.config, font.into(), glyph, dpem);
+            let sprite = if let Some(sprite) = pipe.text.glyphs.get(&desc).cloned() {
+                sprite
+            } else if !rastered {
+                // NOTE: this branch is *rare*. We push rastering to another
+                // function to optimise for the common case.
+                self.raster_glyph_run(pipe, glyph_run);
+                rastered = true;
+
+                // Try again:
+                pipe.text.glyphs.get(&desc).cloned().unwrap_or_default()
+            } else {
+                Sprite::default()
+            };
+
+            if sprite.is_valid() {
+                let a = rect.a + Vec2::from(position).floor() + sprite.offset;
+                let b = a + sprite.size;
+                let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
+                let instance = InstanceA { a, b, ta, tb, col };
+                self.atlas_a.rect(pass, sprite.atlas, instance);
+            }
+        }
+
+        // Draw decorations: underline & strikethrough
+        let metrics = glyph_run.run().metrics();
+        if let Some(decoration) = glyph_run.style().underline.as_ref() {
+            let offset = decoration.offset.unwrap_or(metrics.underline_offset);
+            let size = decoration.size.unwrap_or(metrics.underline_size);
+
+            let y0 = glyph_run.baseline() - offset;
+            let x0 = glyph_run.offset();
+            let a = Vec2(x0, y0);
+            let b = Vec2(x0 + glyph_run.advance(), y0 + size);
+            draw_quad(Quad::from_coords(a, b));
+        }
+        if let Some(decoration) = glyph_run.style().strikethrough.as_ref() {
+            let offset = decoration.offset.unwrap_or(metrics.strikethrough_offset);
+            let size = decoration.size.unwrap_or(metrics.strikethrough_size);
+
+            let y0 = glyph_run.baseline() - offset;
+            let x0 = glyph_run.offset();
+            let a = Vec2(x0, y0);
+            let b = Vec2(x0 + glyph_run.advance(), y0 + size);
+            draw_quad(Quad::from_coords(a, b));
+        }
+    }
+
     fn push_sprite(
         &mut self,
         pass: PassId,
@@ -469,7 +617,7 @@ impl Window {
             let face = run.face_id();
             let dpem = run.dpem();
             for glyph in run.glyphs() {
-                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
+                let desc = SpriteDescriptor::new(&pipe.text.config, face.into(), glyph, dpem);
                 let sprite = match pipe.text.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
@@ -513,7 +661,7 @@ impl Window {
             let face = run.face_id();
             let dpem = run.dpem();
             let for_glyph = |glyph: Glyph, e: u16| {
-                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
+                let desc = SpriteDescriptor::new(&pipe.text.config, face.into(), glyph, dpem);
                 let sprite = match pipe.text.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {

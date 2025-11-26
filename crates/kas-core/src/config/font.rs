@@ -7,7 +7,9 @@
 
 use crate::ConfigAction;
 use crate::text::fonts::FontSelector;
+use crate::text::class;
 use crate::theme::TextClass;
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 /// A message which may be used to update [`FontConfig`]
@@ -31,8 +33,14 @@ pub struct FontConfig {
     /// Standard fonts
     ///
     /// TODO: read/write support.
-    #[cfg_attr(feature = "serde", serde(skip, default))]
+    #[cfg_attr(feature = "serde", serde(skip, default = "defaults::fonts"))]
     pub fonts: BTreeMap<TextClass, FontSelector>,
+
+    /// Standard font for each text class
+    ///
+    /// Accepts a font family specifier in CSS format for each text class key.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub class_fonts: BTreeMap<class::Key, Cow<'static, str>>,
 
     /// Text glyph rastering settings
     #[cfg_attr(feature = "serde", serde(default))]
@@ -172,12 +180,26 @@ mod defaults {
     }
 
     pub fn fonts() -> BTreeMap<TextClass, FontSelector> {
+        let sans_serifrif = FamilySelector::SANS_SERIF;
         let serif = FamilySelector::SERIF;
         let list = [
+            (TextClass::Label(false), sans_serif.into()),
+            (TextClass::Label(true), sans_serif.into()),
+            (TextClass::LabelScroll, sans_serif.into()),
             (TextClass::Edit(false), serif.into()),
             (TextClass::Edit(true), serif.into()),
         ];
-        list.iter().cloned().collect()
+        list.into_iter().collect()
+    }
+
+    pub fn class_fonts() -> BTreeMap<class::Key, Cow<'static, str>> {
+        let ui = "system-ui, ui-sans-serif, sans-serif";
+        let serif = "ui-serif, serif";
+        let list = [
+            (<class::Label as class::TextClass>::KEY, ui.into()),
+            (<class::EditField as class::TextClass>::KEY, serif.into()),
+        ];
+        list.into_iter().collect()
     }
 
     pub fn mode() -> u8 {

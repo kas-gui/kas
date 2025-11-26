@@ -123,8 +123,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut theme = shared.theme.new_window(config);
 
         let mut node = self.widget.as_node(data);
-        let _: ActionResize = self.ev_state.full_configure(theme.size(), node.re());
+        let _: ActionResize = self.ev_state.full_configure(theme.size(), node.re(),
+            &mut shared.parley);
 
+        
         let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
         let mut solve_cache = SolveCache::default();
         solve_cache.find_constraints(node, &mut cx);
@@ -526,7 +528,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         self.widget.add_popup(&mut cx, data, id, popup);
     }
 
-    pub(super) fn send_close(&mut self, id: WindowId) {
+    pub(super) fn send_close(&mut self, shared: &mut Shared<A, G, T>, id: WindowId) {
         if id == self.ev_state.window_id {
             self.ev_state.close_own_window();
         } else if let Some((ref theme, _)) = self.theme_and_window {
@@ -555,14 +557,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 
-    pub(super) fn update(&mut self, data: &A) {
+    pub(super) fn update(&mut self, shared: &mut Shared<A, G, T>, data: &A) {
         let time = Instant::now();
         let Some((ref theme, ref mut window)) = self.theme_and_window else {
             return;
         };
 
         let size = theme.size();
-        let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+        let mut cx = ConfigCx::new(&mut self.ev_state, &mut shared.parley, size);
         cx.update(self.widget.as_node(data));
         if *cx.resize {
             self.apply_size(data, false, true);

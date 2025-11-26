@@ -15,10 +15,10 @@ use crate::ConfigAction;
 use crate::messages::Erased;
 use crate::window::{BoxedWindow, PopupDescriptor, WindowId};
 use event_loop::Loop;
-pub(crate) use shared::RunnerT;
 use shared::Shared;
 use std::fmt::Debug;
 pub use window::Window;
+pub(crate) use shared::{ParleyContext, RunnerT};
 pub(crate) use window::WindowDataErased;
 
 pub use common::{Error, Platform, Result};

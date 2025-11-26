@@ -116,7 +116,7 @@ macro_rules! impl_via_to_string {
     ($t:ty) => {
         impl<Key> Driver<Key, $t> for View {
             const TAB_NAVIGABLE: bool = false;
-            type Widget = Text<$t, String>;
+            type Widget = Text<$t>;
 
             fn make(&mut self, _: &Key) -> Self::Widget {
                 Text::new_gen(|_, data: &$t| data.to_string())

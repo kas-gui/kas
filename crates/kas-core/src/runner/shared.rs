@@ -11,7 +11,7 @@ use super::{
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
-use crate::theme::Theme;
+use crate::theme::{TextBrush, Theme};
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
@@ -25,6 +25,12 @@ use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
+#[derive(Default)]
+pub(crate) struct ParleyContext {
+    pub(crate) fcx: parley::FontContext,
+    pub(crate) lcx: parley::LayoutContext<TextBrush>,
+}
+
 /// Runner state shared by all windows and used by [`RunnerT`]
 pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
@@ -35,6 +41,7 @@ pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>
     pub(super) instance: G,
     pub(super) draw: Option<SharedState<G::Shared>>,
     pub(super) theme: T,
+    pub(super) parley: ParleyContext,
     pub(super) messages: MessageStack,
     pub(super) pending: VecDeque<Pending<Data>>,
     pub(super) send_queue: VecDeque<(Id, Erased)>,
@@ -77,6 +84,7 @@ where
             instance,
             draw: None,
             theme,
+                parley: ParleyContext::default(),
             messages: MessageStack::new(),
             pending: Default::default(),
             send_queue: Default::default(),
@@ -238,6 +246,9 @@ pub(crate) trait RunnerT {
     /// Access the [`DrawShared`] object
     fn draw_shared(&mut self) -> &mut dyn DrawShared;
 
+    /// Access the [`ParleyContext`]
+    fn parley_context(&mut self) -> &mut ParleyContext;
+
     /// Access a Waker
     fn waker(&self) -> &std::task::Waker;
 }
@@ -382,6 +393,10 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
     fn draw_shared(&mut self) -> &mut dyn DrawShared {
         // We can expect draw to be initialized from any context where this trait is used
         self.draw.as_mut().unwrap()
+    }
+
+    fn parley_context(&mut self) -> &mut ParleyContext {
+        &mut self.parley
     }
 
     #[inline]

@@ -344,6 +344,7 @@ where
         rect: Rect,
         text: &TextDisplay,
         effects: &[Effect],
+        is_access_key: bool,
     ) {
         let bb = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
@@ -439,6 +440,24 @@ where
             }
             // hack to make secondary marker grey:
             col = col.average();
+        }
+    }
+
+    #[cfg(feature = "parley")]
+    fn parley(&mut self, id: &Id, rect: Rect, layout: &parley::Layout<super::TextBrush>) {
+        let rect = Quad::conv(rect);
+        let is_disabled = self.ev.is_disabled(id);
+
+        for line in layout.lines() {
+            for item in line.items() {
+                match item {
+                    parley::PositionedLayoutItem::GlyphRun(run) => {
+                        let color = run.style().brush.resolve(&self.cols, is_disabled);
+                        self.draw.parley_run(rect, color, &run);
+                    }
+                    parley::PositionedLayoutItem::InlineBox(_) => todo!(),
+                }
+            }
         }
     }
 

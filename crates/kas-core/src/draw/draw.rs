@@ -202,6 +202,15 @@ pub trait Draw {
     /// Draw the image in the given `rect`
     fn image(&mut self, id: ImageId, rect: Quad);
 
+    /// Draw Parley text
+    #[cfg(feature = "parley")]
+    fn parley_run(
+        &mut self,
+        rect: Quad,
+        col: Rgba,
+        run: &parley::layout::GlyphRun<'_, crate::theme::TextBrush>,
+    );
+
     /// Draw text with a colour
     ///
     /// Text is drawn from `pos` and clipped to `bounding_box`.
@@ -276,6 +285,18 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
 
     fn image(&mut self, id: ImageId, rect: Quad) {
         self.shared.draw.draw_image(self.draw, self.pass, id, rect);
+    }
+
+    #[cfg(feature = "parley")]
+    fn parley_run(
+        &mut self,
+        rect: Quad,
+        col: Rgba,
+        run: &parley::layout::GlyphRun<'_, crate::theme::TextBrush>,
+    ) {
+        self.shared
+            .draw
+            .parley_run(self.draw, self.pass, rect, col, run);
     }
 
     fn text(&mut self, pos: Vec2, bb: Quad, text: &TextDisplay, col: Rgba) {
