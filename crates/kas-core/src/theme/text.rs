@@ -5,7 +5,6 @@
 
 //! Theme-applied Text element
 
-use super::TextClass;
 #[allow(unused)] use super::{DrawCx, SizeCx};
 use crate::Layout;
 use crate::cast::Cast;
@@ -100,7 +99,7 @@ impl<T: FormattableText> Text<T> {
     ///
     /// This struct must be made ready for usage by calling [`Text::prepare`].
     #[inline]
-    pub fn new(text: T, class: TextClass) -> Self {
+    pub fn new(text: T, class: impl TextClass) -> Self {
         Text {
             rect: Rect::default(),
             font: FontSelector::default(),
