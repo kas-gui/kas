@@ -15,6 +15,9 @@ use std::path::{Path, PathBuf};
 
 type Entry = Result<PathBuf, ()>;
 
+#[derive(Debug)]
+struct ChangeDir(PathBuf);
+
 fn main() -> kas::runner::Result<()> {
     env_logger::Builder::new()
         .filter_level(log::LevelFilter::Warn)
@@ -24,7 +27,9 @@ fn main() -> kas::runner::Result<()> {
         .parse_default_env()
         .init();
 
-    let ui = viewer::viewer().with_state(PathBuf::from("."));
+    let ui = viewer::viewer()
+        .with_state(PathBuf::from("."))
+        .on_message(|_, state, ChangeDir(path)| *state = path);
     let window = Window::new(ui, "File System Explorer").escapable();
 
     kas::runner::Runner::new(())?.with(window).run()

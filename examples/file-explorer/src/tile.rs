@@ -1,4 +1,4 @@
-use crate::{Entry, report_io_error};
+use crate::{ChangeDir, Entry, report_io_error};
 use kas::Tile as _;
 use kas::prelude::*;
 use kas::widgets::{Button, Page, Stack, Text};
@@ -15,21 +15,33 @@ pub enum State {
 }
 
 impl State {
-    fn update(&mut self, entry: &Entry) -> Option<PathBuf> {
+    fn path(&self) -> Option<&PathBuf> {
+        Some(match self {
+            State::Initial | State::Error => return None,
+            State::Unknown(path) => path,
+            State::Directory(path, _) => path,
+        })
+    }
+
+    /// Update, returning `true` on change (or error)
+    fn update(&mut self, entry: &Entry) -> bool {
         log::trace!("State::update: {entry:?}");
         let Ok(path) = entry else {
             *self = State::Error;
-            return None;
+            return true;
         };
 
         if path.as_os_str().is_empty() {
+            if matches!(self, State::Initial) {
+                return false;
+            }
             *self = State::Initial;
-            None
-        } else if !matches!(self, State::Unknown(p) if p == path) {
-            *self = State::Unknown(path.clone());
-            Some(path.clone())
+            true
+        } else if self.path() == Some(&path) {
+            false
         } else {
-            None
+            *self = State::Unknown(path.clone());
+            true
         }
     }
 }
@@ -56,6 +68,11 @@ fn directory() -> impl Widget<Data = State> {
         State::Directory(_, name) => name,
         _ => "<bad state>",
     }))
+    .with(|cx, state: &State| {
+        if let State::Directory(path, _) = state {
+            cx.push(ChangeDir(path.clone()))
+        }
+    })
 }
 
 #[impl_self]
@@ -80,26 +97,32 @@ mod Tile {
         type Data = Entry;
 
         fn update(&mut self, cx: &mut ConfigCx, entry: &Entry) {
-            if let Some(path) = self.state.update(entry) {
-                cx.send_spawn(self.id(), async {
-                    let md = match fs::metadata(&path) {
-                        Ok(md) => md,
-                        Err(err) => {
-                            report_io_error(&path, err);
-                            return State::Error;
-                        }
-                    };
+            if self.state.update(entry) {
+                // Always reset the page to 0 on change
+                self.stack.set_active(cx, &self.state, 0);
 
-                    if md.is_dir() {
-                        let name = path
-                            .file_name()
-                            .map(|os_str| os_str.to_string_lossy().to_string())
-                            .unwrap_or_default();
-                        State::Directory(path, name)
-                    } else {
-                        State::Unknown(path)
-                    }
-                });
+                if let Some(path) = self.state.path() {
+                    let path = path.clone();
+                    cx.send_spawn(self.id(), async {
+                        let md = match fs::metadata(&path) {
+                            Ok(md) => md,
+                            Err(err) => {
+                                report_io_error(&path, err);
+                                return State::Error;
+                            }
+                        };
+
+                        if md.is_dir() {
+                            let name = path
+                                .file_name()
+                                .map(|os_str| os_str.to_string_lossy().to_string())
+                                .unwrap_or_default();
+                            State::Directory(path, name)
+                        } else {
+                            State::Unknown(path)
+                        }
+                    });
+                }
             }
         }
 
