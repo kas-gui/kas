@@ -41,6 +41,7 @@ impl clerk::AsyncClerk<usize> for Clerk {
         if data.path != self.path {
             log::trace!("update: path=\"{}\"", data.path.display());
             self.path = data.path.clone();
+            self.entries.clear();
 
             let path = data.path.clone();
             let filter_hidden = data.filter_hidden;
