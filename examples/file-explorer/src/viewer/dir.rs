@@ -52,6 +52,15 @@ impl clerk::AsyncClerk<usize> for Clerk {
                                 None
                             }
                         })
+                        .filter(|path| {
+                            if let Some(name) = path.file_name()
+                                && name.as_encoded_bytes().get(0) == Some(&b'.')
+                            {
+                                false
+                            } else {
+                                true
+                            }
+                        })
                         .collect(),
                     ),
                     Err(err) => {
