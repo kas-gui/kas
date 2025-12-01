@@ -5,11 +5,15 @@
 
 //! File system explorer
 
+pub mod tile;
 mod viewer;
 
 use kas::prelude::*;
 use kas::window::Window;
+use std::io;
 use std::path::PathBuf;
+
+type Entry = Result<PathBuf, io::Error>;
 
 fn main() -> kas::runner::Result<()> {
     let ui = viewer::viewer().with_state(PathBuf::from("."));

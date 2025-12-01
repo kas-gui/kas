@@ -1,15 +1,9 @@
 //! Main view of a directory
 
+use crate::Entry;
 use kas::prelude::*;
-use kas::view::{ListView, clerk, driver::View};
-use std::io;
+use kas::view::{ListView, clerk};
 use std::{ops::Range, path::PathBuf};
-
-#[derive(Debug)]
-struct Entry {
-    display: String,
-    entry: Result<PathBuf, io::Error>,
-}
 
 #[derive(Debug)]
 struct NewEntries(Vec<Entry>);
@@ -22,7 +16,7 @@ struct Clerk {
 
 impl clerk::Clerk<usize> for Clerk {
     type Data = PathBuf;
-    type Item = String;
+    type Item = Entry;
 
     fn len(&self, _: &Self::Data, _: usize) -> clerk::Len<usize> {
         clerk::Len::Known(self.entries.len())
@@ -45,17 +39,7 @@ impl clerk::AsyncClerk<usize> for Clerk {
             let path = path.clone();
             cx.send_spawn(id, async move {
                 let dirs = std::fs::read_dir(&path).expect("failed to read {path}");
-                NewEntries(
-                    dirs.map(|entry| {
-                        let entry = entry.map(|entry| entry.path());
-                        let display = match &entry {
-                            Ok(path) => format!("{}", path.display()),
-                            Err(err) => format!("Error: {err}"),
-                        };
-                        Entry { display, entry }
-                    })
-                    .collect(),
-                )
+                NewEntries(dirs.map(|entry| entry.map(|entry| entry.path())).collect())
             });
 
             clerk::Changes::Any
@@ -94,13 +78,11 @@ impl clerk::TokenClerk<usize> for Clerk {
         let expected = (index < self.entries.len()).then_some(index);
         clerk::update_token(expected, update_item, token)
     }
-
     fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {
         &self
             .entries
             .get(*token)
             .expect("bad token or missing entry")
-            .display
     }
 }
 
@@ -112,7 +94,7 @@ mod DirView {
     pub struct DirView {
         core: widget_core!(),
         #[widget]
-        list: ListView<Clerk, View, kas::dir::Down>,
+        list: ListView<Clerk, crate::tile::Driver, kas::dir::Down>,
     }
 
     impl Events for Self {
