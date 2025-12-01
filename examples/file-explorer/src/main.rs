@@ -5,15 +5,15 @@
 
 //! File system explorer
 
-use kas::widgets::{Button, column};
+mod viewer;
+
+use kas::prelude::*;
 use kas::window::Window;
+use std::path::PathBuf;
 
 fn main() -> kas::runner::Result<()> {
-    let ui = column![
-        "Hello, world!",
-        Button::label("&Close").with(|cx, _| cx.exit())
-    ];
-    let window = Window::new(ui, "Hello").escapable();
+    let ui = viewer::viewer().with_state(PathBuf::from("."));
+    let window = Window::new(ui, "File System Explorer").escapable();
 
     kas::runner::Runner::new(())?.with(window).run()
 }
