@@ -1,4 +1,5 @@
 use crate::{ChangeDir, Entry};
+use image::ImageFormat;
 use kas::Tile as _;
 use kas::prelude::*;
 use kas::widgets::{Button, Page, Stack, Text};
@@ -11,6 +12,7 @@ pub enum State {
     Error,
     Unknown(PathBuf),
     Directory(PathBuf, String),
+    Image(PathBuf, ImageFormat),
 }
 
 impl State {
@@ -19,6 +21,7 @@ impl State {
             State::Initial | State::Error => return None,
             State::Unknown(path) => path,
             State::Directory(path, _) => path,
+            State::Image(path, _) => path,
         })
     }
 
@@ -48,8 +51,19 @@ impl State {
                 .map(|os_str| os_str.to_string_lossy().to_string())
                 .unwrap_or_default();
             State::Directory(path, name)
+        } else if let Ok(format) = ImageFormat::from_path(&path) {
+            State::Image(path, format)
         } else {
             State::Unknown(path)
+        }
+    }
+
+    /// Get page number for Tile::stack widget
+    fn page(&self) -> usize {
+        match self {
+            Self::Directory(_, _) => 1,
+            Self::Image(_, _) => 2,
+            _ => 0,
         }
     }
 }
@@ -81,6 +95,19 @@ fn directory() -> impl Widget<Data = State> {
             cx.push(ChangeDir(path.clone()))
         }
     })
+}
+
+fn image() -> impl Widget<Data = State> {
+    use kas::image::Image;
+
+    Image::default()
+        .with_logical_size((128.0, 128.0))
+        .map_any()
+        .on_update(|cx, widget, state: &State| {
+            if let State::Image(path, format) = state {
+                widget.set(cx, path);
+            }
+        })
 }
 
 #[impl_self]
@@ -119,10 +146,7 @@ mod Tile {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(state) = cx.try_pop() {
                 self.state = state;
-                let page = match &self.state {
-                    State::Directory(_, _) => 1,
-                    _ => 0,
-                };
+                let page = self.state.page();
                 self.stack.set_active(cx, &self.state, page);
             }
         }
@@ -133,7 +157,11 @@ mod Tile {
             Tile {
                 core: Default::default(),
                 state: State::Initial,
-                stack: Stack::from([Page::new(generic()), Page::new(directory())]),
+                stack: Stack::from([
+                    Page::new(generic()),
+                    Page::new(directory()),
+                    Page::new(image()),
+                ]),
             }
         }
     }
