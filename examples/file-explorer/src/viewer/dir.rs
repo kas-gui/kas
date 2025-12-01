@@ -3,6 +3,7 @@
 use crate::{Data, Entry, report_io_error};
 use kas::prelude::*;
 use kas::view::{ListView, clerk};
+use kas::widgets::ScrollRegion;
 use std::{ops::Range, path::PathBuf};
 
 #[derive(Debug)]
@@ -125,7 +126,7 @@ mod DirView {
     pub struct DirView {
         core: widget_core!(),
         #[widget]
-        list: ListView<Clerk, crate::tile::Driver, kas::dir::Down>,
+        list: ScrollRegion<ListView<Clerk, crate::tile::Driver, kas::dir::Down>>,
     }
 
     impl Events for Self {
