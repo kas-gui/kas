@@ -110,9 +110,11 @@ mod Stack {
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             self.align_hints = hints;
-            if let Some(entry) = self.widgets.get_mut(self.active) {
-                debug_assert!(entry.1 != usize::MAX);
-                entry.0.set_rect(cx, rect, hints);
+
+            for entry in self.widgets.iter_mut() {
+                if entry.1 != usize::MAX {
+                    entry.0.set_rect(cx, rect, hints);
+                }
             }
         }
 
@@ -259,13 +261,15 @@ impl<A> Stack<A> {
         Stack::default()
     }
 
-    /// Limit the number of pages considered and sized
+    /// Limit the number of pages configured and sized
     ///
     /// By default, this is `usize::MAX`: all pages are configured and affect
     /// the stack's size requirements.
     ///
     /// Set this to 0 to avoid configuring all hidden pages.
     /// Set this to `n` to configure the active page *and* the first `n` pages.
+    ///
+    /// This affects configuration, sizing and message handling for inactive pages.
     pub fn set_size_limit(&mut self, limit: usize) {
         self.size_limit = limit;
     }
