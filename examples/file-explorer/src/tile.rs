@@ -1,7 +1,9 @@
-use crate::Entry;
+use crate::{Entry, report_io_error};
+use kas::Tile as _;
 use kas::prelude::*;
-use kas::widgets::{Adapt, Page, Stack, Text};
+use kas::widgets::{Button, Page, Stack, Text};
 use std::borrow::Cow;
+use std::fs;
 use std::path::PathBuf;
 
 #[autoimpl(Debug)]
@@ -9,20 +11,25 @@ pub enum State {
     Initial,
     Error,
     Unknown(PathBuf),
+    Directory(PathBuf, String),
 }
 
 impl State {
-    fn update(&mut self, entry: &Entry) {
+    fn update(&mut self, entry: &Entry) -> Option<PathBuf> {
         log::trace!("State::update: {entry:?}");
         let Ok(path) = entry else {
             *self = State::Error;
-            return;
+            return None;
         };
 
         if path.as_os_str().is_empty() {
             *self = State::Initial;
+            None
         } else if !matches!(self, State::Unknown(p) if p == path) {
             *self = State::Unknown(path.clone());
+            Some(path.clone())
+        } else {
+            None
         }
     }
 }
@@ -33,6 +40,7 @@ fn generic() -> impl Widget<Data = State> {
             State::Initial => Cow::from("loading"),
             State::Error => "<error>".into(),
             State::Unknown(path) => format!("{}", path.display()).into(),
+            _ => "<bad state>".into(),
         };
         if *text != new_text {
             *text = new_text.into_owned();
@@ -43,14 +51,72 @@ fn generic() -> impl Widget<Data = State> {
     })
 }
 
-type Tile = Adapt<Entry, Stack<State>>;
+fn directory() -> impl Widget<Data = State> {
+    Button::new(Text::new_str(|state: &State| match state {
+        State::Directory(_, name) => name,
+        _ => "<bad state>",
+    }))
+}
 
-fn tile() -> Tile {
-    Stack::from([Page::new(generic())])
-        .with_state(State::Initial)
-        .on_update(|_, state, entry| {
-            state.update(entry);
-        })
+#[impl_self]
+mod Tile {
+    #[widget]
+    #[layout(self.stack)]
+    pub struct Tile {
+        core: widget_core!(),
+        state: State,
+        #[widget(&self.state)]
+        stack: Stack<State>,
+    }
+
+    impl Events for Self {
+        type Data = Entry;
+
+        fn update(&mut self, cx: &mut ConfigCx, entry: &Entry) {
+            if let Some(path) = self.state.update(entry) {
+                cx.send_spawn(self.id(), async {
+                    let md = match fs::metadata(&path) {
+                        Ok(md) => md,
+                        Err(err) => {
+                            report_io_error(&path, err);
+                            return State::Error;
+                        }
+                    };
+
+                    if md.is_dir() {
+                        let name = path
+                            .file_name()
+                            .map(|os_str| os_str.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        State::Directory(path, name)
+                    } else {
+                        State::Unknown(path)
+                    }
+                });
+            }
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(state) = cx.try_pop() {
+                self.state = state;
+                let page = match &self.state {
+                    State::Directory(_, _) => 1,
+                    _ => 0,
+                };
+                self.stack.set_active(cx, &self.state, page);
+            }
+        }
+    }
+
+    impl Self {
+        fn new() -> Self {
+            Tile {
+                core: Default::default(),
+                state: State::Initial,
+                stack: Stack::from([Page::new(generic()), Page::new(directory())]),
+            }
+        }
+    }
 }
 
 #[derive(Default)]
@@ -61,7 +127,7 @@ impl kas::view::Driver<usize, Entry> for Driver {
     type Widget = Tile;
 
     fn make(&mut self, _: &usize) -> Tile {
-        tile()
+        Tile::new()
     }
 
     fn navigable(_: &Tile) -> bool {
