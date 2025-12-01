@@ -166,6 +166,7 @@ members = [
     "crates/kas-view",
     "examples/mandlebrot",
     "examples/text-editor",
+    "examples/file-explorer",
 ]
 
 [patch.crates-io.kas-text]
