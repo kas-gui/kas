@@ -19,11 +19,11 @@ impl State {
             return;
         };
 
-        if matches!(self, State::Unknown(p) if p == path) {
-            return;
+        if path.as_os_str().is_empty() {
+            *self = State::Initial;
+        } else if !matches!(self, State::Unknown(p) if p == path) {
+            *self = State::Unknown(path.clone());
         }
-
-        *self = State::Unknown(path.clone());
     }
 }
 
