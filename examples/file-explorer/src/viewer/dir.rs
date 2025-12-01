@@ -1,6 +1,6 @@
 //! Main view of a directory
 
-use crate::Entry;
+use crate::{Entry, report_io_error};
 use kas::prelude::*;
 use kas::view::{ListView, clerk};
 use std::{ops::Range, path::PathBuf};
@@ -21,6 +21,10 @@ impl clerk::Clerk<usize> for Clerk {
     fn len(&self, _: &Self::Data, _: usize) -> clerk::Len<usize> {
         clerk::Len::Known(self.entries.len())
     }
+
+    fn mock_item(&self, _: &Self::Data) -> Option<Entry> {
+        Some(Ok(PathBuf::new()))
+    }
 }
 
 impl clerk::AsyncClerk<usize> for Clerk {
@@ -34,12 +38,27 @@ impl clerk::AsyncClerk<usize> for Clerk {
         path: &Self::Data,
     ) -> clerk::Changes<usize> {
         if *path != self.path {
+            log::trace!("update: path=\"{}\"", path.display());
             self.path = path.clone();
 
             let path = path.clone();
             cx.send_spawn(id, async move {
-                let dirs = std::fs::read_dir(&path).expect("failed to read {path}");
-                NewEntries(dirs.map(|entry| entry.map(|entry| entry.path())).collect())
+                match std::fs::read_dir(&path) {
+                    Ok(dirs) => NewEntries(
+                        dirs.map(|entry| match entry {
+                            Ok(entry) => Ok(entry.path()),
+                            Err(err) => {
+                                report_io_error(&path, err);
+                                Err(())
+                            }
+                        })
+                        .collect(),
+                    ),
+                    Err(err) => {
+                        report_io_error(&path, err);
+                        NewEntries(vec![])
+                    }
+                }
             });
 
             clerk::Changes::Any
@@ -57,6 +76,7 @@ impl clerk::AsyncClerk<usize> for Clerk {
         _: Option<Self::Key>,
     ) -> clerk::Changes<usize> {
         if let Some(NewEntries(entries)) = cx.try_pop() {
+            log::trace!("handle_messages: NewEntries{entries:?}");
             self.entries = entries;
             clerk::Changes::Any
         } else {

@@ -7,14 +7,15 @@ use std::path::PathBuf;
 #[autoimpl(Debug)]
 pub enum State {
     Initial,
-    Error(String),
+    Error,
     Unknown(PathBuf),
 }
 
 impl State {
     fn update(&mut self, entry: &Entry) {
+        log::trace!("State::update: {entry:?}");
         let Ok(path) = entry else {
-            *self = State::Error(format!("Error: {:?}", entry.as_ref().unwrap_err()));
+            *self = State::Error;
             return;
         };
 
@@ -30,7 +31,7 @@ fn generic() -> impl Widget<Data = State> {
     Text::new_update(|_, entry: &State, text: &mut String| {
         let new_text: Cow<str> = match &entry {
             State::Initial => Cow::from("loading"),
-            State::Error(text) => text.into(),
+            State::Error => "<error>".into(),
             State::Unknown(path) => format!("{}", path.display()).into(),
         };
         if *text != new_text {
