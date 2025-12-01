@@ -162,6 +162,8 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
         // unmapped or removed.
         #[cfg(debug_assertions)]
         log::debug!("_replay: {} cannot find path to {id}", widget.identify());
+
+        cx.drop_unsent();
     }
 }
 

@@ -173,8 +173,11 @@ pub trait Widget: Tile {
 
     /// Internal method: replay recursively
     ///
-    /// Traverses the widget tree to `id`, then unwinds.
-    /// It is expected that some message is available on the stack.
+    /// Traverses the widget tree to `id`, then unwinds with standard handling
+    /// of event state.
+    ///
+    /// If a message is being sent, it must already be on the stack. If the
+    /// target is not found, unsent messages are dropped.
     ///
     /// Requires status: configured.
     ///

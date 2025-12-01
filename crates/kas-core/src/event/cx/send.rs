@@ -52,6 +52,13 @@ impl EventState {
     /// If `id` identifies a widget, that widget must be configured but does not
     /// need to be sized.
     ///
+    /// If `id` does not resolve a widget, the message is dropped with only a
+    /// DEBUG log message of the form `_replay: $WIDGET cannot find path to $ID`.
+    /// This is not considered an error since it happens frequently (e.g. any
+    /// widget using asynchronous loading sends itself a message; if the view
+    /// changes before loading completes then that widget may no longer be
+    /// accessible or no longer exist).
+    ///
     /// ### Ordering and failure
     ///
     /// Messages sent via `send` and [`send_erased`](Self::send_erased) should
@@ -203,6 +210,11 @@ impl<'a> EventCx<'a> {
     #[inline]
     pub fn msg_op_count(&self) -> usize {
         self.runner.message_stack().get_op_count()
+    }
+
+    /// Drop messages above the stack base.
+    pub(crate) fn drop_unsent(&mut self) {
+        self.runner.message_stack_mut().drop_unsent();
     }
 
     /// Set a scroll action
