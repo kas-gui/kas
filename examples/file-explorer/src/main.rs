@@ -15,7 +15,7 @@ use kas::window::Window;
 use std::io;
 use std::path::{Path, PathBuf};
 
-type Entry = Result<PathBuf, ()>;
+type Entry = PathBuf;
 
 #[derive(Clone, Debug)]
 struct ChangeDir(PathBuf);

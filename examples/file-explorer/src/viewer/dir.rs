@@ -23,7 +23,7 @@ impl clerk::Clerk<usize> for Clerk {
     }
 
     fn mock_item(&self, _: &Self::Data) -> Option<Entry> {
-        Some(Ok(PathBuf::new()))
+        Some(PathBuf::new())
     }
 }
 
@@ -45,11 +45,11 @@ impl clerk::AsyncClerk<usize> for Clerk {
             cx.send_spawn(id, async move {
                 match std::fs::read_dir(&path) {
                     Ok(dirs) => NewEntries(
-                        dirs.map(|entry| match entry {
-                            Ok(entry) => Ok(entry.path()),
+                        dirs.filter_map(|entry| match entry {
+                            Ok(entry) => Some(entry.path()),
                             Err(err) => {
                                 report_io_error(&path, err);
-                                Err(())
+                                None
                             }
                         })
                         .collect(),

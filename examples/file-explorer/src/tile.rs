@@ -26,21 +26,17 @@ impl State {
     /// Update, returning `true` on change (or error)
     fn update(&mut self, entry: &Entry) -> bool {
         log::trace!("State::update: {entry:?}");
-        let Ok(path) = entry else {
-            *self = State::Error;
-            return true;
-        };
 
-        if path.as_os_str().is_empty() {
+        if entry.as_os_str().is_empty() {
             if matches!(self, State::Initial) {
                 return false;
             }
             *self = State::Initial;
             true
-        } else if self.path() == Some(&path) {
+        } else if self.path() == Some(&entry) {
             false
         } else {
-            *self = State::Unknown(path.clone());
+            *self = State::Unknown(entry.clone());
             true
         }
     }
