@@ -12,3 +12,4 @@ publish = false
 [dependencies.kas]
 version = "0.16.0"
 path = "../.."
+features = ["view", "spawn"]
