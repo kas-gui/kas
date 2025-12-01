@@ -1,9 +1,8 @@
-use crate::{ChangeDir, Entry, report_io_error};
+use crate::{ChangeDir, Entry};
 use kas::Tile as _;
 use kas::prelude::*;
 use kas::widgets::{Button, Page, Stack, Text};
 use std::borrow::Cow;
-use std::fs;
 use std::path::PathBuf;
 
 #[autoimpl(Debug)]
@@ -38,6 +37,19 @@ impl State {
         } else {
             *self = State::Unknown(entry.clone());
             true
+        }
+    }
+
+    /// Detect from `path`
+    fn detect(path: PathBuf) -> Self {
+        if path.is_dir() {
+            let name = path
+                .file_name()
+                .map(|os_str| os_str.to_string_lossy().to_string())
+                .unwrap_or_default();
+            State::Directory(path, name)
+        } else {
+            State::Unknown(path)
         }
     }
 }
@@ -99,25 +111,7 @@ mod Tile {
 
                 if let Some(path) = self.state.path() {
                     let path = path.clone();
-                    cx.send_spawn(self.id(), async {
-                        let md = match fs::metadata(&path) {
-                            Ok(md) => md,
-                            Err(err) => {
-                                report_io_error(&path, err);
-                                return State::Error;
-                            }
-                        };
-
-                        if md.is_dir() {
-                            let name = path
-                                .file_name()
-                                .map(|os_str| os_str.to_string_lossy().to_string())
-                                .unwrap_or_default();
-                            State::Directory(path, name)
-                        } else {
-                            State::Unknown(path)
-                        }
-                    });
+                    cx.send_spawn(self.id(), async { State::detect(path) });
                 }
             }
         }
