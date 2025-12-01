@@ -15,44 +15,46 @@ use kas::window::Window;
 use std::io;
 use std::path::{Path, PathBuf};
 
+pub struct Data {
+    path: PathBuf,
+    filter_hidden: bool,
+}
+
 type Entry = PathBuf;
 
 #[derive(Clone, Debug)]
 struct ChangeDir(PathBuf);
 
-fn trail() -> impl Widget<Data = PathBuf> {
-    Row::<Vec<MapAny<_, Button<Label<String>>>>>::new(vec![]).on_update(
-        |cx, row, path: &PathBuf| {
-            let iter = path.iter().enumerate();
-            let mut path = PathBuf::new();
-            for (i, component) in iter {
-                if path.as_os_str().is_empty() {
-                    path = PathBuf::from(component);
-                } else {
-                    path = path.join(component);
-                }
-
-                let label = component.to_string_lossy();
-                if row
-                    .get(i)
-                    .map(|b| b.inner.inner.as_str() == label)
-                    .unwrap_or(false)
-                {
-                    continue;
-                }
-
-                row.truncate(cx, i);
-
-                row.push(
-                    cx,
-                    &path,
-                    Button::new(Label::new(label.to_string()))
-                        .with_msg(ChangeDir(path.clone()))
-                        .map_any(),
-                );
+fn trail() -> impl Widget<Data = Data> {
+    Row::<Vec<MapAny<_, Button<Label<String>>>>>::new(vec![]).on_update(|cx, row, data: &Data| {
+        let mut path = PathBuf::new();
+        for (i, component) in data.path.iter().enumerate() {
+            if path.as_os_str().is_empty() {
+                path = PathBuf::from(component);
+            } else {
+                path = path.join(component);
             }
-        },
-    )
+
+            let label = component.to_string_lossy();
+            if row
+                .get(i)
+                .map(|b| b.inner.inner.as_str() == label)
+                .unwrap_or(false)
+            {
+                continue;
+            }
+
+            row.truncate(cx, i);
+
+            row.push(
+                cx,
+                &data,
+                Button::new(Label::new(label.to_string()))
+                    .with_msg(ChangeDir(path.clone()))
+                    .map_any(),
+            );
+        }
+    })
 }
 
 fn main() -> kas::runner::Result<()> {
@@ -72,10 +74,14 @@ fn main() -> kas::runner::Result<()> {
             path
         }
     };
+    let data = Data {
+        path,
+        filter_hidden: true,
+    };
 
     let ui = column![trail(), viewer::viewer()]
-        .with_state(path)
-        .on_message(|_, state, ChangeDir(path)| *state = path);
+        .with_state(data)
+        .on_message(|_, state, ChangeDir(path)| state.path = path);
     let window = Window::new(ui, "File System Explorer").escapable();
 
     kas::runner::Runner::new(())?.with(window).run()

@@ -1,6 +1,6 @@
 //! Main view of a directory
 
-use crate::{Entry, report_io_error};
+use crate::{Data, Entry, report_io_error};
 use kas::prelude::*;
 use kas::view::{ListView, clerk};
 use std::{ops::Range, path::PathBuf};
@@ -15,7 +15,7 @@ struct Clerk {
 }
 
 impl clerk::Clerk<usize> for Clerk {
-    type Data = PathBuf;
+    type Data = Data;
     type Item = Entry;
 
     fn len(&self, _: &Self::Data, _: usize) -> clerk::Len<usize> {
@@ -35,13 +35,14 @@ impl clerk::AsyncClerk<usize> for Clerk {
         cx: &mut ConfigCx<'_>,
         id: Id,
         _: Range<usize>,
-        path: &Self::Data,
+        data: &Data,
     ) -> clerk::Changes<usize> {
-        if *path != self.path {
-            log::trace!("update: path=\"{}\"", path.display());
-            self.path = path.clone();
+        if data.path != self.path {
+            log::trace!("update: path=\"{}\"", data.path.display());
+            self.path = data.path.clone();
 
-            let path = path.clone();
+            let path = data.path.clone();
+            let filter_hidden = data.filter_hidden;
             cx.send_spawn(id, async move {
                 match std::fs::read_dir(&path) {
                     Ok(dirs) => NewEntries(
@@ -53,7 +54,8 @@ impl clerk::AsyncClerk<usize> for Clerk {
                             }
                         })
                         .filter(|path| {
-                            if let Some(name) = path.file_name()
+                            if filter_hidden
+                                && let Some(name) = path.file_name()
                                 && name.as_encoded_bytes().get(0) == Some(&b'.')
                             {
                                 false
@@ -127,6 +129,6 @@ mod DirView {
     }
 
     impl Events for Self {
-        type Data = PathBuf;
+        type Data = Data;
     }
 }

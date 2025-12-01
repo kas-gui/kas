@@ -3,8 +3,7 @@
 mod dir;
 
 use kas::prelude::*;
-use std::path::PathBuf;
 
-pub fn viewer() -> impl Widget<Data = PathBuf> {
+pub fn viewer() -> impl Widget<Data = crate::Data> {
     dir::DirView::default()
 }
