@@ -17,13 +17,21 @@ use std::path::{Path, PathBuf};
 
 type Entry = Result<PathBuf, ()>;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct ChangeDir(PathBuf);
 
 fn trail() -> impl Widget<Data = PathBuf> {
     Row::<Vec<MapAny<_, Button<Label<String>>>>>::new(vec![]).on_update(
         |cx, row, path: &PathBuf| {
-            for (i, component) in path.iter().enumerate() {
+            let iter = path.iter().enumerate();
+            let mut path = PathBuf::new();
+            for (i, component) in iter {
+                if path.as_os_str().is_empty() {
+                    path = PathBuf::from(component);
+                } else {
+                    path = path.join(component);
+                }
+
                 let label = component.to_string_lossy();
                 if row
                     .get(i)
@@ -38,7 +46,9 @@ fn trail() -> impl Widget<Data = PathBuf> {
                 row.push(
                     cx,
                     &path,
-                    Button::new(Label::new(label.to_string())).map_any(),
+                    Button::new(Label::new(label.to_string()))
+                        .with_msg(ChangeDir(path.clone()))
+                        .map_any(),
                 );
             }
         },
