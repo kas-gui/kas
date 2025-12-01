@@ -9,6 +9,8 @@ pub mod tile;
 mod viewer;
 
 use kas::prelude::*;
+use kas::widgets::adapt::MapAny;
+use kas::widgets::{Button, Label, Row, column};
 use kas::window::Window;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -17,6 +19,31 @@ type Entry = Result<PathBuf, ()>;
 
 #[derive(Debug)]
 struct ChangeDir(PathBuf);
+
+fn trail() -> impl Widget<Data = PathBuf> {
+    Row::<Vec<MapAny<_, Button<Label<String>>>>>::new(vec![]).on_update(
+        |cx, row, path: &PathBuf| {
+            for (i, component) in path.iter().enumerate() {
+                let label = component.to_string_lossy();
+                if row
+                    .get(i)
+                    .map(|b| b.inner.inner.as_str() == label)
+                    .unwrap_or(false)
+                {
+                    continue;
+                }
+
+                row.truncate(cx, i);
+
+                row.push(
+                    cx,
+                    &path,
+                    Button::new(Label::new(label.to_string())).map_any(),
+                );
+            }
+        },
+    )
+}
 
 fn main() -> kas::runner::Result<()> {
     env_logger::Builder::new()
@@ -27,8 +54,17 @@ fn main() -> kas::runner::Result<()> {
         .parse_default_env()
         .init();
 
-    let ui = viewer::viewer()
-        .with_state(PathBuf::from("."))
+    let path = match std::env::current_dir() {
+        Ok(path) => path,
+        Err(err) => {
+            let path = PathBuf::from(".");
+            report_io_error(&path, err);
+            path
+        }
+    };
+
+    let ui = column![trail(), viewer::viewer()]
+        .with_state(path)
         .on_message(|_, state, ChangeDir(path)| *state = path);
     let window = Window::new(ui, "File System Explorer").escapable();
 
