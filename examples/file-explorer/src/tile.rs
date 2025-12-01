@@ -69,6 +69,13 @@ mod Tile {
         stack: Stack<State>,
     }
 
+    impl Layout for Self {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let rules = cx.logical(128.0, 128.0).with_margin(16.0).build(axis);
+            self.stack.size_rules(cx, axis).max(rules)
+        }
+    }
+
     impl Events for Self {
         type Data = Entry;
 
