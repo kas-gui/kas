@@ -17,7 +17,7 @@ use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::time::Instant;
 
-pub use draw::Shared;
+pub use draw::{Draw, Shared};
 use kas::cast::Cast;
 use kas::draw::{DrawImpl, DrawSharedImpl, SharedState, WindowCommon, color};
 use kas::geom::Size;
@@ -38,6 +38,7 @@ pub struct Surface {
     size: Size,
     surface:
         softbuffer::Surface<Arc<dyn HasDisplayAndWindowHandle>, Arc<dyn HasDisplayAndWindowHandle>>,
+    draw: Draw,
 }
 
 impl WindowSurface for Surface {
@@ -65,11 +66,11 @@ impl WindowSurface for Surface {
         &'iface mut self,
         shared: &'iface mut SharedState<Shared>,
     ) -> kas::draw::DrawIface<'iface, Shared> {
-        todo!()
+        kas::draw::DrawIface::new(&mut self.draw, shared)
     }
 
     fn common_mut(&mut self) -> &mut WindowCommon {
-        todo!()
+        &mut self.draw.common
     }
 
     fn present(&mut self, shared: &mut Shared, clear_color: color::Rgba) -> Instant {
@@ -104,6 +105,7 @@ impl GraphicsInstance for Instance {
         Ok(Surface {
             size: Size::ZERO,
             surface,
+            draw: Draw::default(),
         })
     }
 }

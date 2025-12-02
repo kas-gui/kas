@@ -19,11 +19,14 @@ use kas::runner::{self, RunError};
 use kas::text;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
-pub struct Draw;
+#[derive(Default)]
+pub struct Draw {
+    pub(crate) common: WindowCommon,
+}
 
 impl DrawImpl for Draw {
     fn common_mut(&mut self) -> &mut WindowCommon {
-        todo!()
+        &mut self.common
     }
 
     fn new_pass(
