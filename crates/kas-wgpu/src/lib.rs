@@ -25,8 +25,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::runner::{self, RunError};
-use wgpu::rwh;
+use kas::runner::{self, HasDisplayAndWindowHandle, RunError};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
@@ -76,13 +75,12 @@ impl<CB: CustomPipeBuilder> runner::GraphicsInstance for Instance<CB> {
         )
     }
 
-    fn new_surface<'window, W>(
+    fn new_surface<'window>(
         &mut self,
-        window: W,
+        window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
         transparent: bool,
-    ) -> Result<Self::Surface<'window>, RunError>
+    ) -> std::result::Result<Self::Surface<'window>, RunError>
     where
-        W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized,
     {
         surface::Surface::new(&self.instance, window, transparent)

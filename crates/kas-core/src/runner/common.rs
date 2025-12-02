@@ -5,10 +5,10 @@
 
 //! Public items common to all backends
 
+use super::HasDisplayAndWindowHandle;
 use crate::draw::color::Rgba;
 use crate::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use crate::geom::Size;
-use raw_window_handle as rwh;
 use std::time::Instant;
 use thiserror::Error;
 
@@ -187,13 +187,12 @@ pub trait GraphicsInstance {
     /// Construct a window surface
     ///
     /// It is required to call [`WindowSurface::configure`] after this.
-    fn new_surface<'window, W>(
+    fn new_surface<'window>(
         &mut self,
-        window: W,
+        window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
         transparent: bool,
     ) -> std::result::Result<Self::Surface<'window>, RunError>
     where
-        W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized;
 }
 

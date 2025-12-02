@@ -13,12 +13,13 @@
 
 mod draw;
 
+use std::sync::Arc;
 use std::time::Instant;
 
 pub use draw::Shared;
 use kas::draw::{DrawImpl, DrawSharedImpl, SharedState, WindowCommon, color};
 use kas::geom::Size;
-use kas::runner::{GraphicsInstance, RunError, WindowSurface};
+use kas::runner::{GraphicsInstance, HasDisplayAndWindowHandle, RunError, WindowSurface};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 /// Graphics context
@@ -31,7 +32,10 @@ impl Instance {
     }
 }
 
-pub struct Surface {}
+pub struct Surface {
+    surface:
+        softbuffer::Surface<Arc<dyn HasDisplayAndWindowHandle>, Arc<dyn HasDisplayAndWindowHandle>>,
+}
 
 impl WindowSurface for Surface {
     type Shared = Shared;
@@ -69,11 +73,21 @@ impl GraphicsInstance for Instance {
         Ok(Shared {})
     }
 
-    fn new_surface<'window, W>(&mut self, window: W, transparent: bool) -> Result<Surface, RunError>
+    fn new_surface<'window>(
+        &mut self,
+        window: Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
+        transparent: bool,
+    ) -> std::result::Result<Self::Surface<'window>, RunError>
     where
-        W: HasWindowHandle + HasDisplayHandle + Send + Sync + 'window,
         Self: Sized,
     {
-        Ok(Surface {})
+        let h = window as Arc<dyn HasDisplayAndWindowHandle>;
+
+        let context =
+            softbuffer::Context::new(h.clone()).map_err(|err| RunError::Graphics(Box::new(err)))?;
+        let surface = softbuffer::Surface::new(&context, h)
+            .map_err(|err| RunError::Graphics(Box::new(err)))?;
+
+        Ok(Surface { surface })
     }
 }
