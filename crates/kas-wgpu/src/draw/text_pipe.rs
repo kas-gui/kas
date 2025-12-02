@@ -5,11 +5,10 @@
 
 //! Text drawing pipeline
 
-use super::atlases::Allocator;
 use super::images::{Images as Pipeline, InstanceA, InstanceRgba, Window};
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
-use kas::draw::{PassId, color::Rgba};
+use kas::draw::{Allocator, PassId, color::Rgba};
 use kas::geom::{Quad, Vec2};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};

@@ -9,10 +9,9 @@ use kas::draw::color::Rgba;
 use std::collections::HashMap;
 use std::mem::size_of;
 
-use super::atlases::{self, Allocation, Allocator};
-use super::{ShaderManager, text_pipe};
+use super::{ShaderManager, atlases, text_pipe};
 use kas::cast::Conv;
-use kas::draw::{AllocError, ImageFormat, ImageId, PassId};
+use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
 
 #[derive(Debug)]

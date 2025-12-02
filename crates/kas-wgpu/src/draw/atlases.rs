@@ -12,32 +12,11 @@ use std::ops::Range;
 
 use kas::autoimpl;
 use kas::cast::{Cast, Conv};
-use kas::draw::{AllocError, PassId};
+use kas::draw::{AllocError, Allocation, Allocator, PassId};
 use kas::geom::{Quad, Size, Vec2};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
-}
-
-/// An allocation within a texture
-#[derive(Debug)]
-pub struct Allocation {
-    /// Atlas (texture) number
-    pub atlas: u32,
-    /// Allocation identifier within the atlas
-    pub alloc: AllocId,
-    /// Origin within the texture
-    ///
-    /// (Integer coordinates, for use when uploading.)
-    pub origin: (u32, u32),
-    /// Texture coordinates (for drawing)
-    pub tex_quad: Quad,
-}
-
-/// Support allocation of sprites within a texture
-pub trait Allocator {
-    fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
-    fn deallocate(&mut self, atlas: u32, alloc: AllocId);
 }
 
 pub struct Atlas {
@@ -301,17 +280,17 @@ impl<I: bytemuck::Pod> Allocator for Pipeline<I> {
 
         Ok(Allocation {
             atlas,
-            alloc: alloc.id,
+            alloc: alloc.id.serialize(),
             origin,
             tex_quad,
         })
     }
 
     /// Free an allocation
-    fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
+    fn deallocate(&mut self, atlas: u32, alloc: u32) {
         let index = usize::conv(atlas);
         if let Some(data) = self.atlases.get_mut(index) {
-            data.alloc.deallocate(alloc);
+            data.alloc.deallocate(AllocId::deserialize(alloc));
         }
 
         // Do not remove empty atlases since we use the index as a key.
