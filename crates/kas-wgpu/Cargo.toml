@@ -24,8 +24,6 @@ gles = ["wgpu/gles"]
 dx12 = ["wgpu/dx12"]
 metal = ["wgpu/metal"]
 
-shaping = ["kas-text/shaping"]
-
 [dependencies]
 bytemuck = "1.7.0"
 futures-lite = "2.0"
@@ -38,9 +36,6 @@ guillotiere = "0.6.0"
 version = "0.16.0"
 package = "kas-core"
 path = "../kas-core"
-
-[dependencies.kas-text]
-version = "0.8.0"
 
 [dependencies.wgpu]
 version = "27.0.1"

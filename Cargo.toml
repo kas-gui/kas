@@ -81,7 +81,7 @@ accesskit = ["kas-core/accesskit"]
 markdown = ["kas-core/markdown"]
 
 # Enable text shaping
-shaping = ["kas-wgpu/shaping"]
+shaping = ["kas-core/shaping"]
 
 # Enable serde support (mainly config read/write)
 serde = ["kas-core/serde"]
