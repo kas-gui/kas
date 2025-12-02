@@ -37,11 +37,17 @@ impl Default for ClipRegion {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+struct PassData {
+    rects: Vec<(Quad, color::Rgba)>,
+}
+
 kas::impl_scope! {
     #[impl_default]
     pub struct Draw {
         pub(crate) common: WindowCommon,
         clip_regions: Vec<ClipRegion> = vec![Default::default()],
+        passes: Vec<PassData>,
     }
 }
 
@@ -88,7 +94,18 @@ impl DrawImpl for Draw {
     }
 
     fn rect(&mut self, pass: PassId, rect: Quad, col: color::Rgba) {
-        todo!()
+        if !(rect.a < rect.b) {
+            // zero / negative size: nothing to draw
+            return;
+        }
+
+        let pass = pass.pass();
+        if self.passes.len() <= pass {
+            // We only need one more, but no harm in adding extra
+            self.passes.resize(pass + 8, Default::default());
+        }
+
+        self.passes[pass].rects.push((rect, col));
     }
 
     fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: color::Rgba) {
