@@ -20,6 +20,7 @@ fn to_vec2(p: guillotiere::Point) -> Vec2 {
 }
 
 /// An allocation within a texture
+#[derive(Debug)]
 pub struct Allocation {
     /// Atlas (texture) number
     pub atlas: u32,

@@ -5,23 +5,20 @@
 
 //! Images pipeline
 
-use guillotiere::AllocId;
 use kas::draw::color::Rgba;
 use std::collections::HashMap;
 use std::mem::size_of;
 
-use super::{ShaderManager, atlases, atlases::Allocator, text_pipe};
+use super::atlases::{self, Allocation, Allocator};
+use super::{ShaderManager, text_pipe};
 use kas::cast::Conv;
 use kas::draw::{AllocError, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
 
 #[derive(Debug)]
 struct Image {
-    atlas: u32,
-    alloc: AllocId,
     size: (u32, u32),
-    origin: (u32, u32),
-    tex_quad: Quad,
+    alloc: Allocation,
 }
 
 impl Image {
@@ -37,11 +34,11 @@ impl Image {
         assert_eq!(data.len(), 4 * usize::conv(size.0) * usize::conv(size.1));
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
-                texture: atlas_rgba.get_texture(self.atlas),
+                texture: atlas_rgba.get_texture(self.alloc.atlas),
                 mip_level: 0,
                 origin: wgpu::Origin3d {
-                    x: self.origin.0,
-                    y: self.origin.1,
+                    x: self.alloc.origin.0,
+                    y: self.alloc.origin.1,
                     z: 0,
                 },
                 aspect: wgpu::TextureAspect::All,
@@ -189,13 +186,7 @@ impl Images {
     pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
         let alloc = self.atlas_rgba.allocate(size)?;
-        let image = Image {
-            atlas: alloc.atlas,
-            alloc: alloc.alloc,
-            size,
-            origin: alloc.origin,
-            tex_quad: alloc.tex_quad,
-        };
+        let image = Image { size, alloc };
         self.images.insert(id, image);
         Ok(id)
     }
@@ -224,7 +215,7 @@ impl Images {
     /// Free an image allocation
     pub fn free(&mut self, id: ImageId) {
         if let Some(im) = self.images.remove(&id) {
-            self.atlas_rgba.deallocate(im.atlas, im.alloc);
+            self.atlas_rgba.deallocate(im.alloc.atlas, im.alloc.alloc);
         }
     }
 
@@ -291,7 +282,9 @@ impl Images {
 
     /// Get atlas and texture coordinates for an image
     pub fn get_im_atlas_coords(&self, id: ImageId) -> Option<(u32, Quad)> {
-        self.images.get(&id).map(|im| (im.atlas, im.tex_quad))
+        self.images
+            .get(&id)
+            .map(|im| (im.alloc.atlas, im.alloc.tex_quad))
     }
 
     /// Enqueue render commands
