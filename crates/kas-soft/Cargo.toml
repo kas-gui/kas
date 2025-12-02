@@ -32,6 +32,7 @@ log = "0.4"
 thiserror = "2.0.3"
 guillotiere = "0.6.0"
 softbuffer = { version = "0.4.6", default-features = false }
+raw-window-handle = "0.6.2"
 
 [dependencies.kas]
 # Rename package purely for convenience:
