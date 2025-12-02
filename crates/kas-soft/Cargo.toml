@@ -1,0 +1,40 @@
+[package]
+name = "kas-soft"
+version = "0.16.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "KAS GUI / softbuffer front-end"
+keywords = ["gui", "softbuffer"]
+categories = ["gui"]
+repository.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+documentation = "https://docs.rs/kas-soft/"
+
+[package.metadata.docs.rs]
+features = ["kas/wayland"]
+
+[features]
+# Enable DRM/KMS backend
+kms = ["softbuffer/kms"]
+
+# Enable Wayland backend
+wayland = ["softbuffer/wayland", "softbuffer/wayland-dlopen"]
+
+# Enable X11 backend
+x11 = ["softbuffer/x11", "softbuffer/x11-dlopen"]
+
+[dependencies]
+bytemuck = "1.7.0"
+futures-lite = "2.0"
+log = "0.4"
+thiserror = "2.0.3"
+guillotiere = "0.6.0"
+softbuffer = { version = "0.4.6", default-features = false }
+
+[dependencies.kas]
+# Rename package purely for convenience:
+version = "0.16.0"
+package = "kas-core"
+path = "../kas-core"

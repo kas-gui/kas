@@ -56,7 +56,7 @@ spec = ["kas-core/spec"]
 # Enable view widgets
 view = ["dep:kas-view"]
 
-#Enable WGPU backend:
+# Enable WGPU backend:
 wgpu = ["dep:kas-wgpu"]
 
 # WGPU backends
@@ -64,6 +64,9 @@ vulkan = ["wgpu", "kas-wgpu/vulkan"]
 gles = ["wgpu", "kas-wgpu/gles"]
 dx12 = ["wgpu", "kas-wgpu/dx12"]
 metal = ["wgpu", "kas-wgpu/metal"]
+
+# Enable software rendering backend:
+soft = ["dep:kas-soft"]
 
 # Enables documentation of APIs for graphics library and platform backends.
 # This API is not intended for use by end-user applications and
@@ -128,10 +131,10 @@ spawn = ["kas-core/spawn"]
 macros_log = ["kas-core/macros_log"]
 
 # Support Wayland
-wayland = ["kas-core/wayland"]
+wayland = ["kas-core/wayland", "kas-soft?/wayland"]
 
 # Support X11
-x11 = ["kas-core/x11"]
+x11 = ["kas-core/x11", "kas-soft?/wayland"]
 
 # Optimize Node using unsafe code
 unsafe_node = ["kas-core/unsafe_node"]
@@ -142,6 +145,7 @@ kas-dylib = { version = "0.16.0", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.16.1", path = "crates/kas-widgets" }
 kas-view = { version = "0.16.0", path = "crates/kas-view", optional = true }
 kas-image = { version = "0.16.0", path = "crates/kas-image", optional = true }
+kas-soft = { version = "0.16.0", path = "crates/kas-soft", optional = true }
 
 [dependencies.kas-wgpu]
 version = "0.16.0"
@@ -161,6 +165,7 @@ members = [
     "crates/kas-dylib",
     "crates/kas-macros",
     "crates/kas-image",
+    "crates/kas-soft",
     "crates/kas-wgpu",
     "crates/kas-widgets",
     "crates/kas-view",
