@@ -5,7 +5,7 @@
 
 //! Images pipeline
 
-use guillotiere::{AllocId, Allocation, AtlasAllocator};
+use guillotiere::{AllocId, AtlasAllocator};
 use std::mem::size_of;
 use std::num::NonZeroU64;
 use std::ops::Range;
@@ -17,6 +17,20 @@ use kas::geom::{Quad, Size, Vec2};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
+}
+
+/// An allocation within a texture
+pub struct Allocation {
+    /// Atlas (texture) number
+    pub atlas: u32,
+    /// Allocation identifier within the atlas
+    pub alloc: AllocId,
+    /// Origin within the texture
+    ///
+    /// (Integer coordinates, for use when uploading.)
+    pub origin: (u32, u32),
+    /// Texture coordinates (for drawing)
+    pub tex_quad: Quad,
 }
 
 pub struct Atlas {
@@ -176,7 +190,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     fn allocate_space(
         &mut self,
         size: (i32, i32),
-    ) -> Result<(u32, Allocation, (i32, i32)), AllocError> {
+    ) -> Result<(u32, guillotiere::Allocation, (i32, i32)), AllocError> {
         let mut tex_size = (self.tex_size, self.tex_size);
         let size2d = size.into();
         let mut atlas = 0;
@@ -215,17 +229,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     /// Allocate space within a texture atlas
     ///
     /// Fails if `size` is zero in any dimension.
-    ///
-    /// On success, returns:
-    ///
-    /// -   `atlas` number
-    /// -   allocation identifier within the atlas
-    /// -   `origin` within texture (integer coordinates, for use when uploading)
-    /// -   texture coordinates (for use when drawing)
-    pub fn allocate(
-        &mut self,
-        size: (u32, u32),
-    ) -> Result<(u32, AllocId, (u32, u32), Quad), AllocError> {
+    pub fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
         if size.0 == 0 || size.1 == 0 {
             return Err(AllocError);
         }
@@ -240,7 +244,12 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         debug_assert!(Vec2::ZERO <= a && a <= b && b <= Vec2::splat(1.0));
         let tex_quad = Quad { a, b };
 
-        Ok((atlas, alloc.id, origin, tex_quad))
+        Ok(Allocation {
+            atlas,
+            alloc: alloc.id,
+            origin,
+            tex_quad,
+        })
     }
 
     pub fn deallocate(&mut self, atlas: u32, alloc: AllocId) {

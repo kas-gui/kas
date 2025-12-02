@@ -188,13 +188,13 @@ impl Images {
     /// Allocate an image
     pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
-        let (atlas, alloc, origin, tex_quad) = self.atlas_rgba.allocate(size)?;
+        let alloc = self.atlas_rgba.allocate(size)?;
         let image = Image {
-            atlas,
-            alloc,
+            atlas: alloc.atlas,
+            alloc: alloc.alloc,
             size,
-            origin,
-            tex_quad,
+            origin: alloc.origin,
+            tex_quad: alloc.tex_quad,
         };
         self.images.insert(id, image);
         Ok(id)

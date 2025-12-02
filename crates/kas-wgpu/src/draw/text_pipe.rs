@@ -268,21 +268,23 @@ impl Pipeline {
                 data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
             });
 
-            let Ok((atlas, _, origin, tex_quad)) = self.atlas_a.allocate(size) else {
+            let Ok(alloc) = self.atlas_a.allocate(size) else {
                 log::warn!("raster_glyphs failed: unable to allocate");
                 self.text.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
-            self.text.prepare.push((atlas, false, origin, size, data));
+            self.text
+                .prepare
+                .push((alloc.atlas, false, alloc.origin, size, data));
 
             self.text.glyphs.insert(desc, Sprite {
-                atlas,
+                atlas: alloc.atlas,
                 color: false,
                 valid: true,
                 size: Vec2(size.0.cast(), size.1.cast()),
                 offset: Vec2(offset.0.cast(), offset.1.cast()),
-                tex_quad,
+                tex_quad: alloc.tex_quad,
             });
         }
     }
@@ -358,7 +360,7 @@ impl Pipeline {
 
             let sprite = match image.content {
                 Content::Mask => {
-                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_a.allocate(size) else {
+                    let Ok(alloc) = self.atlas_a.allocate(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
                         self.text.glyphs.insert(desc, Sprite::default());
                         continue;
@@ -366,31 +368,31 @@ impl Pipeline {
 
                     self.text
                         .prepare
-                        .push((atlas, false, origin, size, image.data));
+                        .push((alloc.atlas, false, alloc.origin, size, image.data));
 
                     Sprite {
-                        atlas,
+                        atlas: alloc.atlas,
                         color: false,
                         valid: true,
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
-                        tex_quad,
+                        tex_quad: alloc.tex_quad,
                     }
                 }
                 Content::SubpixelMask => unimplemented!(),
                 Content::Color => {
-                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_rgba.allocate(size) else {
+                    let Ok(alloc) = self.atlas_rgba.allocate(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
                         self.text.glyphs.insert(desc, Sprite::default());
                         continue;
                     };
 
-                    assert!(atlas & 0x8000_0000 == 0);
-                    let atlas = atlas | 0x8000_0000;
+                    assert!(alloc.atlas & 0x8000_0000 == 0);
+                    let atlas = alloc.atlas | 0x8000_0000;
 
                     self.text
                         .prepare
-                        .push((atlas, true, origin, size, image.data));
+                        .push((atlas, true, alloc.origin, size, image.data));
 
                     Sprite {
                         atlas,
@@ -398,7 +400,7 @@ impl Pipeline {
                         valid: true,
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
-                        tex_quad,
+                        tex_quad: alloc.tex_quad,
                     }
                 }
             };
