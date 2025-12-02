@@ -13,10 +13,12 @@
 
 mod draw;
 
+use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::time::Instant;
 
 pub use draw::Shared;
+use kas::cast::Cast;
 use kas::draw::{DrawImpl, DrawSharedImpl, SharedState, WindowCommon, color};
 use kas::geom::Size;
 use kas::runner::{GraphicsInstance, HasDisplayAndWindowHandle, RunError, WindowSurface};
@@ -33,6 +35,7 @@ impl Instance {
 }
 
 pub struct Surface {
+    size: Size,
     surface:
         softbuffer::Surface<Arc<dyn HasDisplayAndWindowHandle>, Arc<dyn HasDisplayAndWindowHandle>>,
 }
@@ -41,11 +44,21 @@ impl WindowSurface for Surface {
     type Shared = Shared;
 
     fn size(&self) -> Size {
-        todo!()
+        self.size
     }
 
     fn configure(&mut self, shared: &mut Shared, size: Size) -> bool {
-        todo!()
+        if size == self.size() {
+            return false;
+        }
+
+        self.size = size;
+        let width = NonZeroU32::new(size.0.cast()).expect("zero-sized surface");
+        let height = NonZeroU32::new(size.1.cast()).expect("zero-sized surface");
+        self.surface
+            .resize(width, height)
+            .expect("surface resize failed");
+        true
     }
 
     fn draw_iface<'iface>(
@@ -88,6 +101,9 @@ impl GraphicsInstance for Instance {
         let surface = softbuffer::Surface::new(&context, h)
             .map_err(|err| RunError::Graphics(Box::new(err)))?;
 
-        Ok(Surface { surface })
+        Ok(Surface {
+            size: Size::ZERO,
+            surface,
+        })
     }
 }
