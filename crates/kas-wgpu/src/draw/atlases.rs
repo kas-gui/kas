@@ -245,17 +245,13 @@ impl<I: bytemuck::Pod> Pipeline<I> {
 
     pub fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
         let index = usize::conv(atlas);
-        let mut is_empty = false;
         if let Some(data) = self.atlases.get_mut(index) {
             data.alloc.deallocate(alloc);
-            is_empty = data.alloc.is_empty();
         }
 
-        // Removing empty atlases is optional. We mostly do it because some are
-        // special size allocations that may never be reused.
-        if is_empty {
-            self.atlases.remove(index);
-        }
+        // Do not remove empty atlases since we use the index as a key.
+        // TODO(opt): free unused memory at some point. Maybe also reset/resize
+        // special-sized allocations.
     }
 
     /// Prepare textures

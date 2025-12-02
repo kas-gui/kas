@@ -304,8 +304,9 @@ mod ScrollRegion {
             self.inner.set_rect(cx, child_rect, hints);
 
             let _ = self.scroll.set_sizes(child_size, content_size);
+            let offset = self.scroll.offset();
             let max_scroll_offset = self.scroll.max_offset();
-            self.inner.set_offset(cx, child_rect, self.scroll.offset());
+            self.inner.set_offset(cx, child_rect, offset);
 
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
@@ -314,6 +315,7 @@ mod ScrollRegion {
                     .set_rect(cx, Rect { pos, size }, AlignHints::NONE);
                 self.horiz_bar
                     .set_limits(cx, max_scroll_offset.0, rect.size.0);
+                self.horiz_bar.set_value(cx, offset.0);
             } else {
                 self.horiz_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
             }
@@ -325,6 +327,7 @@ mod ScrollRegion {
                     .set_rect(cx, Rect { pos, size }, AlignHints::NONE);
                 self.vert_bar
                     .set_limits(cx, max_scroll_offset.1, rect.size.1);
+                self.vert_bar.set_value(cx, offset.1);
             } else {
                 self.vert_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
             }

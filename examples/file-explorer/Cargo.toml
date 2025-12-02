@@ -1,0 +1,20 @@
+[package]
+name = "kas-file-explorer"
+version = "0.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "KAS GUI / file system explorer"
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+env_logger = "0.11.8"
+log = "0.4.28"
+image = "0.25.8"
+
+[dependencies.kas]
+version = "0.16.0"
+path = "../.."
+features = ["image", "view", "spawn"]
