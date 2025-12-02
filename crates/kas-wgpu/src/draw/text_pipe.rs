@@ -5,6 +5,7 @@
 
 //! Text drawing pipeline
 
+use super::atlases::Allocator;
 use super::images::{Images as Pipeline, InstanceA, InstanceRgba, Window};
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
@@ -193,26 +194,6 @@ impl State {
         // NOTE: possibly this should force re-drawing of all glyphs, but for
         // now that is out of scope
     }
-}
-
-impl Pipeline {
-    /// Raster a sequence of glyphs
-    #[inline]
-    fn raster_glyphs(
-        &mut self,
-        face_id: FaceId,
-        dpem: f32,
-        mut glyphs: impl Iterator<Item = Glyph>,
-    ) {
-        // NOTE: we only need the allocation and coordinates now; the
-        // rendering could be offloaded (though this may not be useful).
-
-        match self.text.rasterer {
-            #[cfg(feature = "ab_glyph")]
-            Rasterer::AbGlyph => self.raster_ab_glyph(face_id, dpem, &mut glyphs),
-            Rasterer::Swash => self.raster_swash(face_id, dpem, &mut glyphs),
-        }
-    }
 
     #[cfg(feature = "ab_glyph")]
     fn raster_ab_glyph(
@@ -220,21 +201,20 @@ impl Pipeline {
         face_id: FaceId,
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
+        allocator_alpha: &mut dyn Allocator,
     ) {
         use ab_glyph::Font;
 
         let face_store = fonts::library().get_face_store(face_id);
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
-            if self.text.glyphs.contains_key(&desc) {
+            let desc = SpriteDescriptor::new(&self.config, face_id, glyph, dpem);
+            if self.glyphs.contains_key(&desc) {
                 continue;
             }
 
-            let (mut x, y) = desc.fractional_position(&self.text.config);
-            if self.text.sb_align
-                && desc.dpem(&self.text.config) >= self.text.config.subpixel_threshold
-            {
+            let (mut x, y) = desc.fractional_position(&self.config);
+            if self.sb_align && desc.dpem(&self.config) >= self.config.subpixel_threshold {
                 let sf = face_store.face_ref().scale_by_dpem(dpem);
                 x -= sf.h_side_bearing(glyph.id);
             }
@@ -248,7 +228,7 @@ impl Pipeline {
             };
             let Some(outline) = font.outline_glyph(glyph) else {
                 log::warn!("raster_glyphs failed: unable to outline glyph");
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
@@ -258,7 +238,7 @@ impl Pipeline {
             let size = (u32::conv_trunc(size.x), u32::conv_trunc(size.y));
             if size.0 == 0 || size.1 == 0 {
                 // Ignore this common error
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             }
 
@@ -268,17 +248,16 @@ impl Pipeline {
                 data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
             });
 
-            let Ok(alloc) = self.atlas_a.allocate(size) else {
+            let Ok(alloc) = allocator_alpha.allocate(size) else {
                 log::warn!("raster_glyphs failed: unable to allocate");
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
-            self.text
-                .prepare
+            self.prepare
                 .push((alloc.atlas, false, alloc.origin, size, data));
 
-            self.text.glyphs.insert(desc, Sprite {
+            self.glyphs.insert(desc, Sprite {
                 atlas: alloc.atlas,
                 color: false,
                 valid: true,
@@ -295,6 +274,8 @@ impl Pipeline {
         face_id: FaceId,
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
+        allocator_alpha: &mut dyn Allocator,
+        allocator_rgba: &mut dyn Allocator,
     ) {
         use swash::scale::{Render, Source, StrikeWith, image::Content};
         use swash::zeno::{Angle, Format, Transform};
@@ -304,11 +285,10 @@ impl Pipeline {
         let synthesis = face.synthesis();
 
         let mut scaler = self
-            .text
             .scale_cx
             .builder(font)
             .size(dpem)
-            .hint(self.text.hint)
+            .hint(self.hint)
             .variations(
                 synthesis
                     .variation_settings()
@@ -333,20 +313,20 @@ impl Pipeline {
         let embolden = if synthesis.embolden() { dpem * 0.02 } else { 0.0 };
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
-            if self.text.glyphs.contains_key(&desc) {
+            let desc = SpriteDescriptor::new(&self.config, face_id, glyph, dpem);
+            if self.glyphs.contains_key(&desc) {
                 continue;
             }
 
             let Some(image) = Render::new(sources)
                 .format(Format::Alpha)
-                .offset(desc.fractional_position(&self.text.config).into())
+                .offset(desc.fractional_position(&self.config).into())
                 .transform(transform)
                 .embolden(embolden)
                 .render(&mut scaler, desc.glyph().0)
             else {
                 log::warn!("raster_glyphs failed: unable to construct renderer");
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
@@ -354,20 +334,19 @@ impl Pipeline {
             let size = (image.placement.width, image.placement.height);
             if size.0 == 0 || size.1 == 0 {
                 // Ignore this common error
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             }
 
             let sprite = match image.content {
                 Content::Mask => {
-                    let Ok(alloc) = self.atlas_a.allocate(size) else {
+                    let Ok(alloc) = allocator_alpha.allocate(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
-                        self.text.glyphs.insert(desc, Sprite::default());
+                        self.glyphs.insert(desc, Sprite::default());
                         continue;
                     };
 
-                    self.text
-                        .prepare
+                    self.prepare
                         .push((alloc.atlas, false, alloc.origin, size, image.data));
 
                     Sprite {
@@ -381,17 +360,16 @@ impl Pipeline {
                 }
                 Content::SubpixelMask => unimplemented!(),
                 Content::Color => {
-                    let Ok(alloc) = self.atlas_rgba.allocate(size) else {
+                    let Ok(alloc) = allocator_rgba.allocate(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
-                        self.text.glyphs.insert(desc, Sprite::default());
+                        self.glyphs.insert(desc, Sprite::default());
                         continue;
                     };
 
                     assert!(alloc.atlas & 0x8000_0000 == 0);
                     let atlas = alloc.atlas | 0x8000_0000;
 
-                    self.text
-                        .prepare
+                    self.prepare
                         .push((atlas, true, alloc.origin, size, image.data));
 
                     Sprite {
@@ -405,7 +383,36 @@ impl Pipeline {
                 }
             };
 
-            self.text.glyphs.insert(desc, sprite);
+            self.glyphs.insert(desc, sprite);
+        }
+    }
+}
+
+impl Pipeline {
+    /// Raster a sequence of glyphs
+    #[inline]
+    fn raster_glyphs(
+        &mut self,
+        face_id: FaceId,
+        dpem: f32,
+        mut glyphs: impl Iterator<Item = Glyph>,
+    ) {
+        // NOTE: we only need the allocation and coordinates now; the
+        // rendering could be offloaded (though this may not be useful).
+
+        match self.text.rasterer {
+            #[cfg(feature = "ab_glyph")]
+            Rasterer::AbGlyph => {
+                self.text
+                    .raster_ab_glyph(face_id, dpem, &mut glyphs, &mut self.atlas_a)
+            }
+            Rasterer::Swash => self.text.raster_swash(
+                face_id,
+                dpem,
+                &mut glyphs,
+                &mut self.atlas_a,
+                &mut self.atlas_rgba,
+            ),
         }
     }
 }

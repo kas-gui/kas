@@ -33,6 +33,12 @@ pub struct Allocation {
     pub tex_quad: Quad,
 }
 
+/// Support allocation of sprites within a texture
+pub trait Allocator {
+    fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+    fn deallocate(&mut self, atlas: u32, alloc: AllocId);
+}
+
 pub struct Atlas {
     alloc: AtlasAllocator,
     tex: wgpu::Texture,
@@ -226,43 +232,6 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         }
     }
 
-    /// Allocate space within a texture atlas
-    ///
-    /// Fails if `size` is zero in any dimension.
-    pub fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        if size.0 == 0 || size.1 == 0 {
-            return Err(AllocError);
-        }
-
-        let (atlas, alloc, tex_size) = self.allocate_space((size.0.cast(), size.1.cast()))?;
-
-        let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
-
-        let tex_size = Vec2::conv(Size::from(tex_size));
-        let a = to_vec2(alloc.rectangle.min) / tex_size;
-        let b = to_vec2(alloc.rectangle.max) / tex_size;
-        debug_assert!(Vec2::ZERO <= a && a <= b && b <= Vec2::splat(1.0));
-        let tex_quad = Quad { a, b };
-
-        Ok(Allocation {
-            atlas,
-            alloc: alloc.id,
-            origin,
-            tex_quad,
-        })
-    }
-
-    pub fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
-        let index = usize::conv(atlas);
-        if let Some(data) = self.atlases.get_mut(index) {
-            data.alloc.deallocate(alloc);
-        }
-
-        // Do not remove empty atlases since we use the index as a key.
-        // TODO(opt): free unused memory at some point. Maybe also reset/resize
-        // special-sized allocations.
-    }
-
     /// Prepare textures
     pub fn prepare(&mut self, device: &wgpu::Device) {
         for alloc in self.new_aa.drain(..) {
@@ -307,6 +276,46 @@ impl<I: bytemuck::Pod> Pipeline<I> {
                 }
             }
         }
+    }
+}
+
+impl<I: bytemuck::Pod> Allocator for Pipeline<I> {
+    /// Allocate space within a texture atlas
+    ///
+    /// Fails if `size` is zero in any dimension.
+    fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        if size.0 == 0 || size.1 == 0 {
+            return Err(AllocError);
+        }
+
+        let (atlas, alloc, tex_size) = self.allocate_space((size.0.cast(), size.1.cast()))?;
+
+        let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
+
+        let tex_size = Vec2::conv(Size::from(tex_size));
+        let a = to_vec2(alloc.rectangle.min) / tex_size;
+        let b = to_vec2(alloc.rectangle.max) / tex_size;
+        debug_assert!(Vec2::ZERO <= a && a <= b && b <= Vec2::splat(1.0));
+        let tex_quad = Quad { a, b };
+
+        Ok(Allocation {
+            atlas,
+            alloc: alloc.id,
+            origin,
+            tex_quad,
+        })
+    }
+
+    /// Free an allocation
+    fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
+        let index = usize::conv(atlas);
+        if let Some(data) = self.atlases.get_mut(index) {
+            data.alloc.deallocate(alloc);
+        }
+
+        // Do not remove empty atlases since we use the index as a key.
+        // TODO(opt): free unused memory at some point. Maybe also reset/resize
+        // special-sized allocations.
     }
 }
 
