@@ -11,6 +11,7 @@
 //!
 //! [softbuffer]: https://github.com/rust-windowing/softbuffer
 
+use kas::cast::Cast;
 use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
 use kas::draw::{ImageFormat, ImageId, color};
 use kas::geom::{Quad, Vec2};
@@ -19,9 +20,29 @@ use kas::runner::{self, RunError};
 use kas::text;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
-#[derive(Default)]
-pub struct Draw {
-    pub(crate) common: WindowCommon,
+#[derive(Debug)]
+struct ClipRegion {
+    rect: Rect,
+    offset: Offset,
+    order: u64,
+}
+
+impl Default for ClipRegion {
+    fn default() -> Self {
+        ClipRegion {
+            rect: Rect::ZERO,
+            offset: Offset::ZERO,
+            order: 1,
+        }
+    }
+}
+
+kas::impl_scope! {
+    #[impl_default]
+    pub struct Draw {
+        pub(crate) common: WindowCommon,
+        clip_regions: Vec<ClipRegion> = vec![Default::default()],
+    }
 }
 
 impl DrawImpl for Draw {
@@ -36,11 +57,34 @@ impl DrawImpl for Draw {
         offset: Offset,
         class: PassType,
     ) -> PassId {
-        todo!()
+        let parent = match class {
+            PassType::Clip => &self.clip_regions[parent_pass.pass()],
+            PassType::Overlay => {
+                // NOTE: parent_pass.pass() is always zero in this case since
+                // this is only invoked from the Window (root).
+                &self.clip_regions[0]
+            }
+        };
+        let order = match class {
+            PassType::Clip => (parent.order << 4) + 1,
+            PassType::Overlay => (parent.order << 16) + 1,
+        };
+        let rect = rect - parent.offset;
+        let offset = offset + parent.offset;
+        let rect = rect.intersection(&parent.rect).unwrap_or(Rect::ZERO);
+        let pass = self.clip_regions.len().cast();
+        self.clip_regions.push(ClipRegion {
+            rect,
+            offset,
+            order,
+        });
+        PassId::new(pass)
     }
 
+    #[inline]
     fn get_clip_rect(&self, pass: PassId) -> Rect {
-        todo!()
+        let region = &self.clip_regions[pass.pass()];
+        region.rect + region.offset
     }
 
     fn rect(&mut self, pass: PassId, rect: Quad, col: color::Rgba) {
