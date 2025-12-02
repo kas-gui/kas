@@ -9,10 +9,11 @@ use kas::draw::color::Rgba;
 use std::collections::HashMap;
 use std::mem::size_of;
 
-use super::{ShaderManager, atlases, text_pipe};
+use super::{ShaderManager, atlases};
 use kas::cast::Conv;
 use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
+use kas::text::raster::UnpreparedSprite;
 
 #[derive(Debug)]
 struct Image {
@@ -85,7 +86,7 @@ unsafe impl bytemuck::Pod for InstanceA {}
 
 /// Image loader and storage
 pub struct Images {
-    pub(super) text: text_pipe::State,
+    pub(super) text: kas::text::raster::State,
     pub(super) atlas_rgba: atlases::Pipeline<InstanceRgba>,
     pub(super) atlas_a: atlases::Pipeline<InstanceA>,
     last_image_n: u32,
@@ -167,7 +168,7 @@ impl Images {
         );
 
         Images {
-            text: text_pipe::State::new(),
+            text: kas::text::raster::State::new(),
             atlas_rgba,
             atlas_a,
             last_image_n: 0,
@@ -234,10 +235,18 @@ impl Images {
     ) {
         self.atlas_a.prepare(device);
 
-        if !self.text.prepare.is_empty() {
-            log::trace!("prepare: uploading {} sprites", self.text.prepare.len());
+        let unprepared = self.text.unprepared_sprites();
+        if !unprepared.is_empty() {
+            log::trace!("prepare: uploading {} sprites", unprepared.len());
         }
-        for (atlas, color, origin, size, data) in self.text.prepare.drain(..) {
+        for UnpreparedSprite {
+            atlas,
+            color,
+            origin,
+            size,
+            data,
+        } in unprepared.drain(..)
+        {
             let (texture, texel_layout);
             if !color {
                 texture = self.atlas_a.get_texture(atlas);
