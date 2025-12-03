@@ -112,7 +112,36 @@ impl DrawImpl for Draw {
     }
 
     fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: color::Rgba) {
-        todo!()
+        let aa = outer.a;
+        let bb = outer.b;
+        let mut cc = inner.a;
+        let mut dd = inner.b;
+
+        if !(aa < bb) {
+            // zero / negative size: nothing to draw
+            return;
+        }
+        if !(aa <= cc) || !(cc <= bb) {
+            cc = aa;
+        }
+        if !(aa <= dd) || !(dd <= bb) {
+            dd = bb;
+        }
+        if !(cc <= dd) {
+            dd = cc;
+        }
+
+        let ac = Vec2(aa.0, cc.1);
+        let ad = Vec2(aa.0, dd.1);
+        let bc = Vec2(bb.0, cc.1);
+        let bd = Vec2(bb.0, dd.1);
+        let cd = Vec2(cc.0, dd.1);
+        let dc = Vec2(dd.0, cc.1);
+
+        self.rect(pass, Quad::from_coords(aa, bc), col);
+        self.rect(pass, Quad::from_coords(ad, bb), col);
+        self.rect(pass, Quad::from_coords(ac, cd), col);
+        self.rect(pass, Quad::from_coords(dc, bd), col);
     }
 
     fn line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, _: f32, col: color::Rgba) {
