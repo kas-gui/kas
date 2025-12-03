@@ -54,10 +54,10 @@ nightly-diagnostics-pedantic = ["nightly-diagnostics", "kas-core/nightly-diagnos
 spec = ["kas-core/spec"]
 
 # Enable view widgets
-view = ["dep:kas-view"]
+view = ["dep:kas-view", "kas-dylib?/view"]
 
 # Enable WGPU backend:
-wgpu = ["dep:kas-wgpu"]
+wgpu = ["dep:kas-wgpu", "kas-dylib?/wgpu"]
 
 # WGPU backends
 vulkan = ["wgpu", "kas-wgpu/vulkan"]
@@ -66,7 +66,7 @@ dx12 = ["wgpu", "kas-wgpu/dx12"]
 metal = ["wgpu", "kas-wgpu/metal"]
 
 # Enable software rendering backend:
-soft = ["dep:kas-soft"]
+soft = ["dep:kas-soft", "kas-dylib?/soft"]
 
 # Enables documentation of APIs for graphics library and platform backends.
 # This API is not intended for use by end-user applications and
@@ -102,7 +102,7 @@ ron = ["serde", "kas-core/ron"]
 toml = ["serde", "kas-core/toml"]
 
 # Support raster image loading and decoding (does not imply any formats)
-image = ["dep:kas-image", "kas-image/image"]
+image = ["dep:kas-image", "kas-image/image", "kas-dylib?/image"]
 # Enable all default formats of the image crate
 image-default-formats = ["image", "kas-image/image-default-formats"]
 # Selected image formats
@@ -114,7 +114,7 @@ webp = ["image", "kas-image/webp"]
 # Enable Svg widget
 svg = ["dep:kas-image", "kas-image/svg", "kas-dylib?/image"]
 # Enable Canvas widget
-canvas = ["dep:kas-image", "kas-image/canvas"]
+canvas = ["dep:kas-image", "kas-image/canvas", "kas-dylib?/image"]
 
 # Automatically detect usage of dark theme
 #
