@@ -401,14 +401,14 @@ impl<I: bytemuck::Pod> Window<I> {
         let pass = pass.pass();
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, Default::default());
+            self.passes.resize_with(pass + 8, Default::default);
         }
         let pass = &mut self.passes[pass];
 
         let atlas = usize::conv(atlas);
         if pass.atlases.len() <= atlas {
             // Warning: length must not excced number of atlases
-            pass.atlases.resize(atlas + 1, Default::default());
+            pass.atlases.resize_with(atlas + 1, Default::default);
         }
 
         pass.atlases[atlas].instances.push(instance);
