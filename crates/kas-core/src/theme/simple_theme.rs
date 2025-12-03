@@ -244,15 +244,16 @@ where
 
     fn event_state_overlay(&mut self) {
         if let Some((coord, used)) = self.ev.mouse_pin() {
-            // let r = self.w.dims.scale * 6.0;
-            // let inner = if used { 0.0 } else { 0.6 };
-            let (r, inner) = match used {
-                false => (self.w.dims.scale * 3.6, 0.0),
-                true => (self.w.dims.scale * 6.0, 0.6),
-            };
+            let center = coord.round().cast_approx();
             let c = self.cols.accent;
-            self.draw
-                .circle(Quad::from_center(coord.cast_approx(), r), inner, c);
+            if !used {
+                let outer = Quad::from_center(center, self.w.dims.scale * 3.6);
+                self.draw.rect(outer, c);
+            } else {
+                let outer = Quad::from_center(center, self.w.dims.scale * 6.0);
+                let inner = outer.shrink(self.w.dims.scale * 1.2);
+                self.draw.frame(outer, inner, c);
+            }
         }
     }
 
