@@ -15,7 +15,7 @@ use super::color_to_u32;
 use kas::cast::{Cast, CastFloat, Conv};
 use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
 use kas::draw::{ImageFormat, ImageId, color};
-use kas::geom::{Quad, Vec2};
+use kas::geom::{Quad, Size, Vec2};
 use kas::prelude::{Offset, Rect};
 use kas::runner::{self, RunError};
 use kas::text;
@@ -156,6 +156,10 @@ impl DrawImpl for Draw {
 }
 
 impl Draw {
+    pub fn resize(&mut self, size: Size) {
+        self.clip_regions[0].rect.size = size;
+    }
+
     pub fn render(&mut self, buffer: &mut [u32], size: (usize, usize)) {
         // Order passes to ensure overlays are drawn after other content
         let mut passes: Vec<_> = self

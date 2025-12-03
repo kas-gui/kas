@@ -143,7 +143,7 @@ impl WindowCommon {
 /// Draw pass identifier
 ///
 /// This is a numerical identifier for the draw pass (see [`DrawIface::new_pass`]).
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PassId(u32);
 
 impl PassId {

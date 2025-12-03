@@ -61,6 +61,8 @@ impl WindowSurface for Surface {
         }
 
         self.size = size;
+        self.draw.resize(size);
+
         let width = NonZeroU32::new(size.0.cast()).expect("zero-sized surface");
         let height = NonZeroU32::new(size.1.cast()).expect("zero-sized surface");
         self.surface
