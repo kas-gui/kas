@@ -186,20 +186,20 @@ where
                     p3 = Vec2(q.b.0, y1);
                 };
 
-                let f = 0.5 * self.w.dims.mark_line;
-                self.draw.rounded_line(p1, p2, f, col);
-                self.draw.rounded_line(p2, p3, f, col);
+                let f = self.w.dims.mark_line;
+                self.draw.line(p1, p2, f, col);
+                self.draw.line(p2, p3, f, col);
             }
             MarkStyle::X => {
                 let size = Size::splat(self.w.dims.mark);
                 let offset = Offset::conv((rect.size - size) / 2);
                 let q = Quad::conv(Rect::new(rect.pos + offset, size));
 
-                let f = 0.5 * self.w.dims.mark_line;
-                self.draw.rounded_line(q.a, q.b, f, col);
+                let f = self.w.dims.mark_line;
+                self.draw.line(q.a, q.b, f, col);
                 let c = Vec2(q.a.0, q.b.1);
                 let d = Vec2(q.b.0, q.a.1);
-                self.draw.rounded_line(c, d, f, col);
+                self.draw.line(c, d, f, col);
             }
         }
     }

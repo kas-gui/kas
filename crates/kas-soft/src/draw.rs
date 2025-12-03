@@ -12,7 +12,7 @@
 //! [softbuffer]: https://github.com/rust-windowing/softbuffer
 
 use super::color_to_u32;
-use kas::cast::{Cast, CastFloat};
+use kas::cast::{Cast, CastFloat, Conv};
 use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
 use kas::draw::{ImageFormat, ImageId, color};
 use kas::geom::{Quad, Vec2};
@@ -42,6 +42,7 @@ impl Default for ClipRegion {
 #[derive(Clone, Debug, Default)]
 struct PassData {
     rects: Vec<(Quad, color::Rgba)>,
+    lines: Vec<(Vec2, Vec2, color::Rgba)>,
 }
 
 kas::impl_scope! {
@@ -113,6 +114,16 @@ impl DrawImpl for Draw {
     fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: color::Rgba) {
         todo!()
     }
+
+    fn line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, _: f32, col: color::Rgba) {
+        let pass = pass.pass();
+        if self.passes.len() <= pass {
+            // We only need one more, but no harm in adding extra
+            self.passes.resize(pass + 8, Default::default());
+        }
+
+        self.passes[pass].lines.push((p1, p2, col));
+    }
 }
 
 impl Draw {
@@ -129,20 +140,57 @@ impl Draw {
 
         for (pass, _) in passes.drain(..) {
             if let Some(pass) = self.passes.get_mut(pass) {
-                for rect in pass.rects.drain(..) {
-                    let x0: usize = rect.0.a.0.cast_nearest();
-                    let x1: usize = rect.0.b.0.cast_nearest();
+                for (rect, col) in pass.rects.drain(..) {
+                    let x0: usize = rect.a.0.cast_nearest();
+                    let x1: usize = rect.b.0.cast_nearest();
                     let x1 = x1.min(size.0);
 
-                    let y0: usize = rect.0.a.1.cast_nearest();
-                    let y1: usize = rect.0.b.1.cast_nearest();
+                    let y0: usize = rect.a.1.cast_nearest();
+                    let y1: usize = rect.b.1.cast_nearest();
                     let y1 = y1.min(size.1);
 
-                    let c = color_to_u32(rect.1);
+                    let c = color_to_u32(col);
 
                     for y in y0..y1 {
                         let offset = y * size.0;
                         buffer[offset + x0..offset + x1].fill(c);
+                    }
+                }
+
+                for (mut p1, mut p2, col) in pass.lines.drain(..) {
+                    let c = color_to_u32(col);
+                    if (p2.0 - p1.0).abs() >= (p2.1 - p1.1).abs() {
+                        if p2.0 < p1.0 {
+                            std::mem::swap(&mut p1, &mut p2);
+                        }
+
+                        let x0: usize = p1.0.cast_nearest();
+                        let x1: usize = p2.0.cast_nearest();
+                        let x1 = x1.min(size.0);
+                        let xdi = 1.0 / (p2.0 - p1.0);
+                        let yd = p2.1 - p1.1;
+
+                        for x in x0..x1 {
+                            let l = (f32::conv(x) - p1.0) * xdi;
+                            let y: usize = (p1.1 + l * yd).cast_nearest();
+                            buffer[y * size.0 + x] = c;
+                        }
+                    } else {
+                        if p2.1 < p1.1 {
+                            std::mem::swap(&mut p1, &mut p2);
+                        }
+
+                        let y0: usize = p1.1.cast_nearest();
+                        let y1: usize = p2.1.cast_nearest();
+                        let y1 = y1.min(size.1);
+                        let ydi = 1.0 / (p2.1 - p1.1);
+                        let xd = p2.0 - p1.0;
+
+                        for y in y0..y1 {
+                            let l = (f32::conv(y) - p1.1) * ydi;
+                            let x: usize = (p1.0 + l * xd).cast_nearest();
+                            buffer[y * size.0 + x] = c;
+                        }
                     }
                 }
             }

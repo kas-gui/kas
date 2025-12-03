@@ -443,6 +443,11 @@ impl<CW: CustomWindow> DrawImpl for DrawWindow<CW> {
     fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: Rgba) {
         self.shaded_square.frame(pass, outer, inner, col);
     }
+
+    #[inline]
+    fn line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, width: f32, col: Rgba) {
+        self.flat_round.line(pass, p1, p2, 0.5 * width, col);
+    }
 }
 
 impl<CW: CustomWindow> DrawRoundedImpl for DrawWindow<CW> {
