@@ -14,11 +14,21 @@ use crate::theme::Theme;
 use crate::window::{Window, WindowId};
 pub use kas_core::runner::{AppData, ClosedError, Error, Platform, Proxy, ReadMessage, Result};
 use kas_core::runner::{GraphicsInstance, PreLaunchState};
-use kas_core::theme::FlatTheme;
+#[allow(unused)]
+use kas_core::theme::{FlatTheme, SimpleTheme};
+#[cfg(feature = "wgpu")]
 use kas_wgpu::draw::CustomPipeBuilder;
 use std::cell::{Ref, RefMut};
 
-/// Builder for a [`Runner`]'s graphics instance
+#[cfg(not(any(feature = "wgpu", feature = "soft")))]
+compile_error!("At least one of the following features must be enabled: wgpu, soft");
+
+#[cfg(feature = "wgpu")]
+type DefaultTheme = FlatTheme;
+#[cfg(all(not(feature = "wgpu"), feature = "soft"))]
+type DefaultTheme = SimpleTheme;
+
+/// Builder for a WGPU [`Runner`]'s graphics instance
 #[cfg(feature = "wgpu")]
 pub struct WgpuBuilder<CB: CustomPipeBuilder> {
     custom: CB,
@@ -84,10 +94,40 @@ impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
     }
 }
 
+/// Builder for a softbuffer [`Runner`]'s graphics instance
+#[cfg(feature = "soft")]
+pub struct SoftBuilder;
+
+#[cfg(feature = "soft")]
+impl SoftBuilder {
+    /// Use a selected theme
+    #[inline]
+    pub fn with_default_theme(self) -> Builder<SimpleTheme, kas_soft::Instance> {
+        self.with_theme(SimpleTheme::new())
+    }
+
+    /// Use a specified theme
+    #[inline]
+    pub fn with_theme<T>(self, theme: T) -> Builder<T, kas_soft::Instance>
+    where
+        T: Theme<<kas_soft::Instance as GraphicsInstance>::Shared>,
+    {
+        Builder {
+            graphics: kas_soft::Instance::new(),
+            theme,
+            config: AutoFactory::default(),
+        }
+    }
+}
+
 /// Builder for a [`Runner`]
 #[derive(Default)]
-pub struct Builder<T = FlatTheme, G = kas_wgpu::Instance<()>, C = AutoFactory>
-where
+pub struct Builder<
+    T = DefaultTheme,
+    #[cfg(feature = "wgpu")] G = kas_wgpu::Instance<()>,
+    #[cfg(all(not(feature = "wgpu"), feature = "soft"))] G = kas_soft::Instance,
+    C = AutoFactory,
+> where
     T: Theme<G::Shared> + 'static,
     G: GraphicsInstance,
     C: ConfigFactory,
@@ -139,8 +179,9 @@ impl<T: Theme<G::Shared>, G: GraphicsInstance, C: ConfigFactory> Builder<T, G, C
 /// -   `custom_wgpu_pipe` is a custom WGPU graphics pipeline
 pub struct Runner<
     Data: AppData,
-    T: Theme<G::Shared> = FlatTheme,
-    G: GraphicsInstance = kas_wgpu::Instance<()>,
+    T: Theme<G::Shared> = DefaultTheme,
+    #[cfg(feature = "wgpu")] G: GraphicsInstance = kas_wgpu::Instance<()>,
+    #[cfg(all(not(feature = "wgpu"), feature = "soft"))] G: GraphicsInstance = kas_soft::Instance,
 > {
     data: Data,
     graphics: G,
@@ -173,12 +214,21 @@ impl<Data: AppData> Runner<Data> {
     /// Configuration is supplied by [`AutoFactory`].
     #[inline]
     pub fn new(data: Data) -> Result<Self> {
-        WgpuBuilder::new(())
-            .with_theme(Default::default())
-            .build(data)
+        #[cfg(feature = "wgpu")]
+        {
+            WgpuBuilder::new(())
+                .with_theme(Default::default())
+                .build(data)
+        }
+
+        #[cfg(all(not(feature = "wgpu"), feature = "soft"))]
+        {
+            SoftBuilder.with_theme(Default::default()).build(data)
+        }
     }
 }
 
+#[cfg(feature = "wgpu")]
 impl<T: Theme<kas_wgpu::draw::DrawPipe<()>>> Runner<(), T> {
     /// Construct a builder with the given `theme`
     #[inline]
@@ -187,11 +237,28 @@ impl<T: Theme<kas_wgpu::draw::DrawPipe<()>>> Runner<(), T> {
     }
 }
 
+#[cfg(all(not(feature = "wgpu"), feature = "soft"))]
+impl<T: Theme<kas_soft::Shared>> Runner<(), T> {
+    /// Construct a builder with the given `theme`
+    #[inline]
+    pub fn with_theme(theme: T) -> Builder<T> {
+        SoftBuilder.with_theme(theme)
+    }
+}
+
 impl Runner<()> {
     /// Construct a builder with the default theme
     #[inline]
     pub fn with_default_theme() -> Builder {
-        WgpuBuilder::new(()).with_theme(Default::default())
+        #[cfg(feature = "wgpu")]
+        {
+            WgpuBuilder::new(()).with_theme(Default::default())
+        }
+
+        #[cfg(all(not(feature = "wgpu"), feature = "soft"))]
+        {
+            SoftBuilder.with_theme(Default::default())
+        }
     }
 
     /// Build with a custom WGPU pipe
