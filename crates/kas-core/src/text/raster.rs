@@ -187,6 +187,7 @@ pub struct UnpreparedSprite {
 }
 
 /// A pipeline for rendering text
+#[derive(Default)]
 pub struct State {
     rasterer: Rasterer,
     #[allow(unused)]
@@ -200,19 +201,6 @@ pub struct State {
 }
 
 impl State {
-    /// Construct
-    pub fn new() -> Self {
-        State {
-            rasterer: Default::default(),
-            sb_align: false,
-            hint: false,
-            config: Config::default(),
-            glyphs: Default::default(),
-            prepare: Default::default(),
-            scale_cx: Default::default(),
-        }
-    }
-
     /// Assign raster configuration
     pub fn set_raster_config(&mut self, config: &RasterConfig) {
         match config.mode {

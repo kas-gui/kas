@@ -107,7 +107,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             light_norm_buf,
             bg_common: vec![],
             images,
-            text: kas::text::raster::State::new(),
+            text: kas::text::raster::State::default(),
             shaded_square,
             shaded_round,
             flat_round,

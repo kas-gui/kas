@@ -106,7 +106,7 @@ impl GraphicsInstance for Instance {
     type Surface<'a> = Surface;
 
     fn new_shared(&mut self, surface: Option<&Surface>) -> Result<Shared, RunError> {
-        Ok(Shared {})
+        Ok(Shared::default())
     }
 
     fn new_surface<'window>(

@@ -230,7 +230,10 @@ impl Draw {
     }
 }
 
-pub struct Shared {}
+#[derive(Default)]
+pub struct Shared {
+    text: kas::text::raster::State,
+}
 
 impl DrawSharedImpl for Shared {
     type Draw = Draw;
@@ -240,7 +243,7 @@ impl DrawSharedImpl for Shared {
     }
 
     fn set_raster_config(&mut self, config: &kas::config::RasterConfig) {
-        todo!()
+        self.text.set_raster_config(config);
     }
 
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
