@@ -245,7 +245,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         passes.sort_by_key(|pass| pass.1);
 
         // We use a separate render pass for each clipped region.
-        for pass in passes.drain(..).map(|pass| pass.0) {
+        for (pass, _) in passes.drain(..) {
             let rect = window.clip_regions[pass].rect;
             if rect.size.0 == 0 || rect.size.1 == 0 {
                 continue;

@@ -326,7 +326,7 @@ impl Add for Rgb {
 /// This is incoded as an array of four bytes: `[r, g, b, a]`.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Rgba8Srgb([u8; 4]);
+pub struct Rgba8Srgb(pub [u8; 4]);
 
 impl Rgba8Srgb {
     /// Transparent black

@@ -41,6 +41,13 @@ pub struct Surface {
     draw: Draw,
 }
 
+/// Convert to softbuffer's color representation
+///
+/// sRGB is assumed.
+fn color_to_u32(c: impl Into<color::Rgba8Srgb>) -> u32 {
+    u32::from_be_bytes(c.into().0) >> 8
+}
+
 impl WindowSurface for Surface {
     type Shared = Shared;
 
@@ -74,7 +81,22 @@ impl WindowSurface for Surface {
     }
 
     fn present(&mut self, shared: &mut Shared, clear_color: color::Rgba) -> Instant {
-        todo!()
+        let mut buffer = self
+            .surface
+            .buffer_mut()
+            .expect("failed to access surface buffer");
+        let width: usize = self.size.0.cast();
+        let height: usize = self.size.1.cast();
+        debug_assert_eq!(width * height, buffer.len());
+
+        let c = color_to_u32(clear_color);
+        buffer.fill(c);
+
+        self.draw.render(&mut buffer, (width, height));
+
+        let pre_present = Instant::now();
+        buffer.present().expect("failed to present buffer");
+        pre_present
     }
 }
 

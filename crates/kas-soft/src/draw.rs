@@ -11,7 +11,8 @@
 //!
 //! [softbuffer]: https://github.com/rust-windowing/softbuffer
 
-use kas::cast::Cast;
+use super::color_to_u32;
+use kas::cast::{Cast, CastFloat};
 use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
 use kas::draw::{ImageFormat, ImageId, color};
 use kas::geom::{Quad, Vec2};
@@ -19,6 +20,7 @@ use kas::prelude::{Offset, Rect};
 use kas::runner::{self, RunError};
 use kas::text;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+use softbuffer::Buffer;
 
 #[derive(Debug)]
 struct ClipRegion {
@@ -110,6 +112,44 @@ impl DrawImpl for Draw {
 
     fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: color::Rgba) {
         todo!()
+    }
+}
+
+impl Draw {
+    pub fn render(&mut self, buffer: &mut [u32], size: (usize, usize)) {
+        // Order passes to ensure overlays are drawn after other content
+        let mut passes: Vec<_> = self
+            .clip_regions
+            .iter()
+            .map(|pass| pass.order)
+            .enumerate()
+            .collect();
+        // Note that sorting is stable (does not re-order equal elements):
+        passes.sort_by_key(|pass| pass.1);
+
+        for (pass, _) in passes.drain(..) {
+            if let Some(pass) = self.passes.get_mut(pass) {
+                for rect in pass.rects.drain(..) {
+                    let x0: usize = rect.0.a.0.cast_nearest();
+                    let x1: usize = rect.0.b.0.cast_nearest();
+                    let x1 = x1.min(size.0);
+
+                    let y0: usize = rect.0.a.1.cast_nearest();
+                    let y1: usize = rect.0.b.1.cast_nearest();
+                    let y1 = y1.min(size.1);
+
+                    let c = color_to_u32(rect.1);
+
+                    for y in y0..y1 {
+                        let offset = y * size.0;
+                        buffer[offset + x0..offset + x1].fill(c);
+                    }
+                }
+            }
+        }
+
+        // Keep only first clip region (which is the entire window)
+        self.clip_regions.truncate(1);
     }
 }
 
