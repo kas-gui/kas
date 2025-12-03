@@ -11,6 +11,7 @@
 //!
 //! [softbuffer]: https://github.com/rust-windowing/softbuffer
 
+mod atlas;
 mod draw;
 
 use std::num::NonZeroU32;
@@ -94,7 +95,7 @@ impl WindowSurface for Surface {
         let c = color_to_u32(clear_color);
         buffer.fill(c);
 
-        self.draw.render(&mut buffer, (width, height));
+        self.draw.render(shared, &mut buffer, (width, height));
 
         let pre_present = Instant::now();
         buffer.present().expect("failed to present buffer");

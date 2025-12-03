@@ -11,7 +11,7 @@
 //!
 //! [softbuffer]: https://github.com/rust-windowing/softbuffer
 
-use super::color_to_u32;
+use super::{atlas, color_to_u32};
 use kas::cast::{Cast, CastFloat, Conv};
 use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
 use kas::draw::{ImageFormat, ImageId, color};
@@ -49,6 +49,7 @@ kas::impl_scope! {
     #[impl_default]
     pub struct Draw {
         pub(crate) common: WindowCommon,
+        images: atlas::Window,
         clip_regions: Vec<ClipRegion> = vec![Default::default()],
         passes: Vec<PassData>,
     }
@@ -160,7 +161,7 @@ impl Draw {
         self.clip_regions[0].rect.size = size;
     }
 
-    pub fn render(&mut self, buffer: &mut [u32], size: (usize, usize)) {
+    pub fn render(&mut self, shared: &Shared, buffer: &mut [u32], size: (usize, usize)) {
         // Order passes to ensure overlays are drawn after other content
         let mut passes: Vec<_> = self
             .clip_regions
@@ -227,6 +228,8 @@ impl Draw {
                     }
                 }
             }
+
+            self.images.render(&shared.images, pass, buffer, size);
         }
 
         // Keep only first clip region (which is the entire window)
@@ -234,40 +237,57 @@ impl Draw {
     }
 }
 
-#[derive(Default)]
 pub struct Shared {
+    images: atlas::Shared,
     text: kas::text::raster::State,
+}
+
+impl Default for Shared {
+    fn default() -> Self {
+        Shared {
+            images: atlas::Shared::new(),
+            text: Default::default(),
+        }
+    }
 }
 
 impl DrawSharedImpl for Shared {
     type Draw = Draw;
 
+    #[inline]
     fn max_texture_dimension_2d(&self) -> u32 {
-        todo!()
+        atlas::MAX_TEX_SIZE.cast()
     }
 
+    #[inline]
     fn set_raster_config(&mut self, config: &kas::config::RasterConfig) {
         self.text.set_raster_config(config);
     }
 
+    #[inline]
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
-        todo!()
+        self.images.alloc(size)
     }
 
+    #[inline]
     fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
-        todo!()
+        self.images.upload(id, data, format);
     }
 
+    #[inline]
     fn image_free(&mut self, id: ImageId) {
-        todo!()
+        self.images.free(id);
     }
 
+    #[inline]
     fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
-        todo!()
+        self.images.image_size(id)
     }
 
     fn draw_image(&self, draw: &mut Draw, pass: PassId, id: ImageId, rect: Quad) {
-        todo!()
+        if let Some((atlas, tex)) = self.images.get_im_atlas_coords(id) {
+            draw.images.rect(pass, atlas, tex, rect);
+        }
     }
 
     fn draw_text(
