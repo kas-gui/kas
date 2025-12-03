@@ -12,11 +12,24 @@
 
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
-use kas::draw::{Allocator, PassId, color::Rgba};
+use kas::draw::{AllocError, Allocation, PassId, color::Rgba};
 use kas::geom::{Quad, Vec2};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
+
+/// Support allocation of glyph sprites
+///
+/// Allocation failures will result in glyphs not drawing.
+pub trait SpriteAllocator {
+    /// Allocate a single-channel texture sprite
+    fn alloc_a(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+
+    /// Allocate an RGBA texture sprite
+    ///
+    /// This is only used for colored glyphs.
+    fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+}
 
 /// Render queue
 pub trait RenderQueue {
@@ -236,10 +249,10 @@ impl State {
     #[cfg(feature = "ab_glyph")]
     fn raster_ab_glyph(
         &mut self,
+        allocator: &mut dyn SpriteAllocator,
         face_id: FaceId,
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
-        allocator_alpha: &mut dyn Allocator,
     ) {
         use ab_glyph::Font;
 
@@ -286,7 +299,7 @@ impl State {
                 data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
             });
 
-            let Ok(alloc) = allocator_alpha.allocate(size) else {
+            let Ok(alloc) = allocator.alloc_a(size) else {
                 log::warn!("raster_glyphs failed: unable to allocate");
                 self.glyphs.insert(desc, Sprite::default());
                 continue;
@@ -314,11 +327,10 @@ impl State {
     // NOTE: using dyn Iterator over impl Iterator is slightly slower but saves 2-4kB
     fn raster_swash(
         &mut self,
+        allocator: &mut dyn SpriteAllocator,
         face_id: FaceId,
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
-        allocator_alpha: &mut dyn Allocator,
-        allocator_rgba: &mut dyn Allocator,
     ) {
         use swash::scale::{Render, Source, StrikeWith, image::Content};
         use swash::zeno::{Angle, Format, Transform};
@@ -383,7 +395,7 @@ impl State {
 
             let sprite = match image.content {
                 Content::Mask => {
-                    let Ok(alloc) = allocator_alpha.allocate(size) else {
+                    let Ok(alloc) = allocator.alloc_a(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
                         self.glyphs.insert(desc, Sprite::default());
                         continue;
@@ -408,7 +420,7 @@ impl State {
                 }
                 Content::SubpixelMask => unimplemented!(),
                 Content::Color => {
-                    let Ok(alloc) = allocator_rgba.allocate(size) else {
+                    let Ok(alloc) = allocator.alloc_rgba(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
                         self.glyphs.insert(desc, Sprite::default());
                         continue;
@@ -444,27 +456,23 @@ impl State {
     #[inline]
     pub fn raster_glyphs(
         &mut self,
-        allocator_alpha: &mut dyn Allocator,
-        allocator_rgba: &mut dyn Allocator,
+        allocator: &mut dyn SpriteAllocator,
         face_id: FaceId,
         dpem: f32,
         mut glyphs: impl Iterator<Item = Glyph>,
     ) {
         match self.rasterer {
             #[cfg(feature = "ab_glyph")]
-            Rasterer::AbGlyph => self.raster_ab_glyph(face_id, dpem, &mut glyphs, allocator_alpha),
-            Rasterer::Swash => {
-                self.raster_swash(face_id, dpem, &mut glyphs, allocator_alpha, allocator_rgba)
-            }
+            Rasterer::AbGlyph => self.raster_ab_glyph(allocator, face_id, dpem, &mut glyphs),
+            Rasterer::Swash => self.raster_swash(allocator, face_id, dpem, &mut glyphs),
         }
     }
 
     /// Draw text as a sequence of sprites
     pub fn text(
         &mut self,
+        allocator: &mut dyn SpriteAllocator,
         queue: &mut dyn RenderQueue,
-        allocator_alpha: &mut dyn Allocator,
-        allocator_rgba: &mut dyn Allocator,
         pass: PassId,
         pos: Vec2,
         bb: Quad,
@@ -479,13 +487,7 @@ impl State {
                 let sprite = match self.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
-                        self.raster_glyphs(
-                            allocator_alpha,
-                            allocator_rgba,
-                            face,
-                            dpem,
-                            run.glyphs(),
-                        );
+                        self.raster_glyphs(allocator, face, dpem, run.glyphs());
                         match self.glyphs.get(&desc) {
                             Some(sprite) => sprite,
                             None => continue,
@@ -501,9 +503,8 @@ impl State {
     #[allow(clippy::too_many_arguments)]
     pub fn text_effects(
         &mut self,
+        allocator: &mut dyn SpriteAllocator,
         queue: &mut dyn RenderQueue,
-        allocator_alpha: &mut dyn Allocator,
-        allocator_rgba: &mut dyn Allocator,
         pass: PassId,
         pos: Vec2,
         bb: Quad,
@@ -520,16 +521,7 @@ impl State {
                 .unwrap_or(true)
         {
             let col = colors.first().cloned().unwrap_or(Rgba::BLACK);
-            self.text(
-                queue,
-                allocator_alpha,
-                allocator_rgba,
-                pass,
-                pos,
-                bb,
-                text,
-                col,
-            );
+            self.text(allocator, queue, pass, pos, bb, text, col);
             return;
         }
 
@@ -541,13 +533,7 @@ impl State {
                 let sprite = match self.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
-                        self.raster_glyphs(
-                            allocator_alpha,
-                            allocator_rgba,
-                            face,
-                            dpem,
-                            run.glyphs(),
-                        );
+                        self.raster_glyphs(allocator, face, dpem, run.glyphs());
                         match self.glyphs.get(&desc) {
                             Some(sprite) => sprite,
                             None => return,

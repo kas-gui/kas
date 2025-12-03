@@ -13,7 +13,7 @@ use super::{ShaderManager, atlases};
 use kas::cast::Conv;
 use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
-use kas::text::raster::UnpreparedSprite;
+use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, UnpreparedSprite};
 
 #[derive(Debug)]
 struct Image {
@@ -86,7 +86,6 @@ unsafe impl bytemuck::Pod for InstanceA {}
 
 /// Image loader and storage
 pub struct Images {
-    pub(super) text: kas::text::raster::State,
     pub(super) atlas_rgba: atlases::Pipeline<InstanceRgba>,
     pub(super) atlas_a: atlases::Pipeline<InstanceA>,
     last_image_n: u32,
@@ -168,7 +167,6 @@ impl Images {
         );
 
         Images {
-            text: kas::text::raster::State::new(),
             atlas_rgba,
             atlas_a,
             last_image_n: 0,
@@ -232,10 +230,11 @@ impl Images {
         queue: &wgpu::Queue,
         staging_belt: &mut wgpu::util::StagingBelt,
         encoder: &mut wgpu::CommandEncoder,
+        text: &mut kas::text::raster::State,
     ) {
         self.atlas_a.prepare(device);
 
-        let unprepared = self.text.unprepared_sprites();
+        let unprepared = text.unprepared_sprites();
         if !unprepared.is_empty() {
             log::trace!("prepare: uploading {} sprites", unprepared.len());
         }
@@ -309,6 +308,16 @@ impl Images {
     }
 }
 
+impl SpriteAllocator for Images {
+    fn alloc_a(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_a.allocate(size)
+    }
+
+    fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_rgba.allocate(size)
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Window {
     pub(super) atlas_rgba: atlases::Window<InstanceRgba>,
@@ -341,5 +350,54 @@ impl Window {
             tb: tex.b,
         };
         self.atlas_rgba.rect(pass, atlas, instance);
+    }
+}
+
+impl RenderQueue for Window {
+    fn push_sprite(
+        &mut self,
+        pass: PassId,
+        glyph_pos: Vec2,
+        rect: Quad,
+        col: Rgba,
+        sprite: &Sprite,
+    ) {
+        let mut a = glyph_pos.floor() + sprite.offset;
+        let mut b = a + sprite.size;
+
+        if !(sprite.is_valid()
+            && a.0 < rect.b.0
+            && a.1 < rect.b.1
+            && b.0 > rect.a.0
+            && b.1 > rect.a.1)
+        {
+            return;
+        }
+
+        let (mut ta, mut tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
+        if !(a >= rect.a) || !(b <= rect.b) {
+            let size_inv = Vec2::splat(1.0) / (b - a);
+            let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
+            let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
+            let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);
+            let fb1 = 1f32.min((rect.b.1 - a.1) * size_inv.1);
+
+            let ts = tb - ta;
+            tb = ta + ts * Vec2(fb0, fb1);
+            ta += ts * Vec2(fa0, fa1);
+
+            a.0 = a.0.clamp(rect.a.0, rect.b.0);
+            a.1 = a.1.clamp(rect.a.1, rect.b.1);
+            b.0 = b.0.clamp(rect.a.0, rect.b.0);
+            b.1 = b.1.clamp(rect.a.1, rect.b.1);
+        }
+
+        if !sprite.color {
+            let instance = InstanceA { a, b, ta, tb, col };
+            self.atlas_a.rect(pass, sprite.atlas, instance);
+        } else {
+            let instance = InstanceRgba { a, b, ta, tb };
+            self.atlas_rgba.rect(pass, sprite.atlas, instance);
+        }
     }
 }

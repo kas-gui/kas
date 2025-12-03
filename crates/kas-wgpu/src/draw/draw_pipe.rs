@@ -107,6 +107,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             light_norm_buf,
             bg_common: vec![],
             images,
+            text: kas::text::raster::State::new(),
             shaded_square,
             shaded_round,
             flat_round,
@@ -202,6 +203,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             &self.queue,
             &mut self.staging_belt,
             &mut encoder,
+            &mut self.text,
         );
         window
             .shaded_square
@@ -315,7 +317,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     }
 
     fn set_raster_config(&mut self, config: &RasterConfig) {
-        self.images.text.set_raster_config(config);
+        self.text.set_raster_config(config);
     }
 
     #[inline]
@@ -357,7 +359,8 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         col: Rgba,
     ) {
         let time = std::time::Instant::now();
-        draw.images.text(&mut self.images, pass, pos, bb, text, col);
+        self.text
+            .text(&mut self.images, &mut draw.images, pass, pos, bb, text, col);
         draw.common.report_dur_text(time.elapsed());
     }
 
@@ -372,8 +375,9 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         colors: &[Rgba],
     ) {
         let time = std::time::Instant::now();
-        draw.images.text_effects(
+        self.text.text_effects(
             &mut self.images,
+            &mut draw.images,
             pass,
             pos,
             bb,
