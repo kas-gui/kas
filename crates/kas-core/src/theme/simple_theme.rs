@@ -28,7 +28,7 @@ use super::ColorsSrgb;
 /// A simple theme
 ///
 /// This theme is functional, but not pretty. It is intended as a template for
-/// other themes.
+/// other themes and to have the least possible requirements of the backend.
 #[derive(Clone, Debug)]
 pub struct SimpleTheme {
     pub cols: ColorsLinear,
@@ -59,10 +59,7 @@ pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) cols: &'a ColorsLinear,
 }
 
-impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme
-where
-    DS::Draw: DrawRoundedImpl,
-{
+impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme {
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
@@ -108,10 +105,7 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
-where
-    DS::Draw: DrawRoundedImpl,
-{
+impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS> {
     pub fn button_frame(
         &mut self,
         outer: Quad,
@@ -205,10 +199,7 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
-where
-    DS::Draw: DrawRoundedImpl,
-{
+impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
     fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
         (self.w, &mut self.draw, self.ev)
     }
@@ -218,7 +209,7 @@ where
     }
 
     fn draw_rounded(&mut self) -> Option<&mut dyn DrawRounded> {
-        Some(&mut self.draw)
+        None
     }
 
     fn new_pass<'b>(
