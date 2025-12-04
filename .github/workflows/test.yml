@@ -63,6 +63,8 @@ jobs:
         run: cargo test --features nightly,experimental
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml -Zwarnings --config 'build.warnings="deny"'
+      - name: Test examples/text-editor
+        run: cargo test --manifest-path examples/text-editor/Cargo.toml -Zwarnings --config 'build.warnings="deny"'
 
   test:
     name: Test
