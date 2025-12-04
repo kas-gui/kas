@@ -14,6 +14,11 @@ use kas::widgets::{AccessLabel, Adapt, Button, EditBox, column, grid};
 
 type Key = kas::event::Key<kas::event::SmolStr>;
 
+#[cfg(feature = "wgpu")]
+type Theme = kas_wgpu::ShadedTheme;
+#[cfg(not(feature = "wgpu"))]
+type Theme = kas::theme::SimpleTheme;
+
 fn key_button(label: &str) -> Button<AccessLabel> {
     let string = AccessString::from(label);
     let key = string.key().unwrap().0.clone();
@@ -69,7 +74,7 @@ fn calc_ui() -> Window<()> {
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let theme = kas_wgpu::ShadedTheme::new();
+    let theme = Theme::new();
     let mut app = kas::runner::Runner::with_theme(theme).build(())?;
     let _ = app.config_mut().font.set_size(24.0);
     app.with(calc_ui()).run()
