@@ -18,7 +18,7 @@ use kas::draw::{ImageFormat, ImageId, color};
 use kas::geom::{Quad, Size, Vec2};
 use kas::prelude::{Offset, Rect};
 use kas::runner::{self, RunError};
-use kas::text;
+use kas::text::{self, raster};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use softbuffer::Buffer;
 
@@ -161,7 +161,9 @@ impl Draw {
         self.clip_regions[0].rect.size = size;
     }
 
-    pub fn render(&mut self, shared: &Shared, buffer: &mut [u32], size: (usize, usize)) {
+    pub fn render(&mut self, shared: &mut Shared, buffer: &mut [u32], size: (usize, usize)) {
+        shared.images.prepare(&mut shared.text);
+
         // Order passes to ensure overlays are drawn after other content
         let mut passes: Vec<_> = self
             .clip_regions
@@ -290,6 +292,7 @@ impl DrawSharedImpl for Shared {
         }
     }
 
+    #[inline]
     fn draw_text(
         &mut self,
         draw: &mut Draw,
@@ -299,7 +302,10 @@ impl DrawSharedImpl for Shared {
         text: &text::TextDisplay,
         col: color::Rgba,
     ) {
-        todo!()
+        let time = std::time::Instant::now();
+        self.text
+            .text(&mut self.images, &mut draw.images, pass, pos, bb, text, col);
+        draw.common.report_dur_text(time.elapsed());
     }
 
     fn draw_text_effects(

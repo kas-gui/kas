@@ -15,7 +15,7 @@ use kas::autoimpl;
 use kas::cast::{Cast, CastFloat, Conv};
 use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, color};
 use kas::geom::{Quad, Size, Vec2};
-use kas::text::raster::UnpreparedSprite;
+use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, State, UnpreparedSprite};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
@@ -90,22 +90,61 @@ impl<F: Format> Atlases<F> {
         }
     }
 
-    fn upload_rgba8(&mut self, image: &Image, data: &[u8])
+    fn upload_a8(&mut self, atlas: u32, origin: (u32, u32), size: (u32, u32), data: &[u8])
     where
-        F: Format<C = u32>,
+        F: Format<C = u8>,
     {
-        let atlas: usize = image.alloc.atlas.cast();
+        let atlas: usize = atlas.cast();
         let Some(atlas) = self.atlases.get_mut(atlas) else {
             log::warn!(
-                "upload_rgba8: unknown atlas {} of {}",
-                image.alloc.atlas,
+                "upload_rgba8: unknown atlas {atlas} of {}",
                 self.atlases.len()
             );
             return;
         };
 
-        let (tx, ty): (usize, usize) = image.alloc.origin.cast();
-        let (w, h): (usize, usize) = image.size.cast();
+        let (tx, ty): (usize, usize) = origin.cast();
+        let (w, h): (usize, usize) = size.cast();
+        let tex_size = atlas.alloc.size();
+        let (tw, th): (usize, usize) = (tex_size.width.cast(), tex_size.height.cast());
+        assert_eq!(atlas.tex.len(), tw * th);
+        if tx + w > tw || ty + h > th {
+            log::error!(
+                "upload_rgba8: image of size {w}x{h} with origin {tx},{ty} not within bounds of texture {tw}x{th}"
+            );
+            return;
+        }
+
+        if data.len() != w * h {
+            log::error!(
+                "upload_rgba8: bad data length (received {} bytes for image of size {w}x{h})",
+                data.len()
+            );
+            return;
+        }
+
+        for (i, row) in data.chunks_exact(w).enumerate() {
+            let ti = tx + (ty + i) * tw;
+            let dst = &mut atlas.tex[ti..ti + w];
+            dst.copy_from_slice(row);
+        }
+    }
+
+    fn upload_rgba8(&mut self, atlas: u32, origin: (u32, u32), size: (u32, u32), data: &[u8])
+    where
+        F: Format<C = u32>,
+    {
+        let atlas: usize = atlas.cast();
+        let Some(atlas) = self.atlases.get_mut(atlas) else {
+            log::warn!(
+                "upload_rgba8: unknown atlas {atlas} of {}",
+                self.atlases.len()
+            );
+            return;
+        };
+
+        let (tx, ty): (usize, usize) = origin.cast();
+        let (w, h): (usize, usize) = size.cast();
         let tex_size = atlas.alloc.size();
         let (tw, th): (usize, usize) = (tex_size.width.cast(), tex_size.height.cast());
         assert_eq!(atlas.tex.len(), tw * th);
@@ -220,11 +259,11 @@ impl<I: Format> AtlasWindow<I> {
     }
 }
 
-impl AtlasWindow<InstanceRgba> {
+impl<I: Format> AtlasWindow<I> {
     /// Enqueue render commands
     fn render(
         &mut self,
-        atlases: &Atlases<InstanceRgba>,
+        atlases: &Atlases<I>,
         pass: usize,
         buffer: &mut [u32],
         size: (usize, usize),
@@ -260,6 +299,17 @@ struct InstanceRgba {
     b: Vec2,
     ta: Vec2,
     tb: Vec2,
+}
+
+/// Screen and texture coordinates (alpha-only texture)
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+struct InstanceA {
+    a: Vec2,
+    b: Vec2,
+    ta: Vec2,
+    tb: Vec2,
+    col: u32, // 0RGB BE format
 }
 
 trait Format {
@@ -322,10 +372,62 @@ impl Format for InstanceRgba {
     }
 }
 
+impl Format for InstanceA {
+    type C = u8;
+
+    fn render(
+        &self,
+        tex: &[Self::C],
+        tex_size: (usize, usize),
+        buffer: &mut [u32],
+        buf_size: (usize, usize),
+    ) {
+        let x0: usize = self.a.0.cast_nearest();
+        let x1: usize = self.b.0.cast_nearest();
+        let x1 = x1.min(buf_size.0);
+        let xdi = 1.0 / (self.b.0 - self.a.0);
+        let txd = self.tb.0 - self.ta.0;
+
+        let y0: usize = self.a.1.cast_nearest();
+        let y1: usize = self.b.1.cast_nearest();
+        let y1 = y1.min(buf_size.1);
+        let ydi = 1.0 / (self.b.1 - self.a.1);
+        let tyd = self.tb.1 - self.ta.1;
+
+        for y in y0..y1 {
+            let ly = (f32::conv(y) - self.a.1) * ydi;
+            let ty: usize = (self.ta.1 + tyd * ly).cast_nearest();
+
+            for x in x0..x1 {
+                let lx = (f32::conv(x) - self.a.0) * xdi;
+                let tx: usize = (self.ta.0 + txd * lx).cast_nearest();
+
+                let a = tex[ty * tex_size.0 + tx] as u32;
+                let ba = 255 - a;
+
+                let r = a * (self.col >> 16 & 0xFF) / 255;
+                let g = a * (self.col >> 8 & 0xFF) / 255;
+                let b = a * (self.col & 0xFF) / 255;
+
+                let index = y * buf_size.0 + x;
+                let bc = buffer[index];
+                let br = ba * (bc >> 16 & 0xFF) / 255;
+                let bg = ba * (bc >> 8 & 0xFF) / 255;
+                let bb = ba * (bc & 0xFF) / 255;
+
+                let c = r << 16 | g << 8 | b;
+                let ab = br << 16 | bg << 8 | bb;
+                buffer[index] = c + ab;
+            }
+        }
+    }
+}
+
 /// Image loader and storage
 pub struct Shared {
     text: kas::text::raster::State,
     atlas_rgba: Atlases<InstanceRgba>,
+    atlas_a: Atlases<InstanceA>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -336,6 +438,7 @@ impl Shared {
         Shared {
             text: Default::default(),
             atlas_rgba: Atlases::new(2048),
+            atlas_a: Atlases::new(512),
             last_image_n: 0,
             images: Default::default(),
         }
@@ -363,7 +466,10 @@ impl Shared {
         }
 
         if let Some(image) = self.images.get_mut(&id) {
-            self.atlas_rgba.upload_rgba8(&image, data);
+            let atlas = image.alloc.atlas.cast();
+            let origin = image.alloc.origin;
+            self.atlas_rgba
+                .upload_rgba8(atlas, origin, image.size, data);
         }
     }
 
@@ -386,11 +492,44 @@ impl Shared {
             .get(&id)
             .map(|im| (im.alloc.atlas, im.alloc.tex_quad))
     }
+
+    /// Write to textures
+    pub fn prepare(&mut self, text: &mut kas::text::raster::State) {
+        let unprepared = text.unprepared_sprites();
+        if !unprepared.is_empty() {
+            log::trace!("prepare: uploading {} sprites", unprepared.len());
+        }
+        for UnpreparedSprite {
+            atlas,
+            color,
+            origin,
+            size,
+            data,
+        } in unprepared.drain(..)
+        {
+            if !color {
+                self.atlas_a.upload_a8(atlas, origin, size, &data);
+            } else {
+                self.atlas_rgba.upload_rgba8(atlas, origin, size, &data);
+            }
+        }
+    }
+}
+
+impl SpriteAllocator for Shared {
+    fn alloc_a(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_a.allocate(size)
+    }
+
+    fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_rgba.allocate(size)
+    }
 }
 
 #[derive(Debug, Default)]
 pub struct Window {
     atlas_rgba: AtlasWindow<InstanceRgba>,
+    atlas_a: AtlasWindow<InstanceA>,
 }
 
 impl Window {
@@ -410,7 +549,6 @@ impl Window {
         self.atlas_rgba.rect(pass, atlas, instance);
     }
 
-    /// Enqueue render commands
     pub fn render(
         &mut self,
         shared: &Shared,
@@ -420,5 +558,57 @@ impl Window {
     ) {
         self.atlas_rgba
             .render(&shared.atlas_rgba, pass, buffer, size);
+        self.atlas_a.render(&shared.atlas_a, pass, buffer, size);
+    }
+}
+
+impl RenderQueue for Window {
+    fn push_sprite(
+        &mut self,
+        pass: PassId,
+        glyph_pos: Vec2,
+        rect: Quad,
+        col: color::Rgba,
+        sprite: &Sprite,
+    ) {
+        let mut a = glyph_pos.floor() + sprite.offset;
+        let mut b = a + sprite.size;
+
+        if !(sprite.is_valid()
+            && a.0 < rect.b.0
+            && a.1 < rect.b.1
+            && b.0 > rect.a.0
+            && b.1 > rect.a.1)
+        {
+            return;
+        }
+
+        let (mut ta, mut tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
+        if !(a >= rect.a) || !(b <= rect.b) {
+            let size_inv = Vec2::splat(1.0) / (b - a);
+            let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
+            let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
+            let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);
+            let fb1 = 1f32.min((rect.b.1 - a.1) * size_inv.1);
+
+            let ts = tb - ta;
+            tb = ta + ts * Vec2(fb0, fb1);
+            ta += ts * Vec2(fa0, fa1);
+
+            a.0 = a.0.clamp(rect.a.0, rect.b.0);
+            a.1 = a.1.clamp(rect.a.1, rect.b.1);
+            b.0 = b.0.clamp(rect.a.0, rect.b.0);
+            b.1 = b.1.clamp(rect.a.1, rect.b.1);
+        }
+
+        if !sprite.color {
+            let col: color::Rgba8Srgb = col.into();
+            let col = u32::from_le_bytes(col.0).swap_bytes() >> 8;
+            let instance = InstanceA { a, b, ta, tb, col };
+            self.atlas_a.rect(pass, sprite.atlas, instance);
+        } else {
+            let instance = InstanceRgba { a, b, ta, tb };
+            self.atlas_rgba.rect(pass, sprite.atlas, instance);
+        }
     }
 }
