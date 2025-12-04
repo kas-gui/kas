@@ -12,9 +12,9 @@ use std::num::NonZeroU64;
 use std::ops::Range;
 
 use kas::autoimpl;
-use kas::cast::{Cast, CastFloat, Conv};
+use kas::cast::{Cast, CastFloat, Conv, ConvFloat};
 use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, color};
-use kas::geom::{Quad, Size, Vec2};
+use kas::geom::{Coord, Offset, Quad, Rect, Size, Vec2};
 use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, State, UnpreparedSprite};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
@@ -267,6 +267,8 @@ impl<I: Format> AtlasWindow<I> {
         pass: usize,
         buffer: &mut [u32],
         size: (usize, usize),
+        clip_rect: Rect,
+        offset: Offset,
     ) {
         if let Some(pass) = self.passes.get_mut(pass) {
             for (atlas, data) in pass.atlases.iter_mut().enumerate() {
@@ -278,7 +280,7 @@ impl<I: Format> AtlasWindow<I> {
                 let tex_size = (tex_size.width.cast(), tex_size.height.cast());
 
                 for inst in data.instances.drain(..) {
-                    inst.render(tex, tex_size, buffer, size);
+                    inst.render(tex, tex_size, buffer, size, clip_rect, offset);
                 }
             }
         }
@@ -322,6 +324,8 @@ trait Format {
         tex_size: (usize, usize),
         buffer: &mut [u32],
         buf_size: (usize, usize),
+        clip_rect: Rect,
+        offset: Offset,
     );
 }
 
@@ -334,32 +338,31 @@ impl Format for InstanceRgba {
         tex_size: (usize, usize),
         buffer: &mut [u32],
         buf_size: (usize, usize),
+        clip_rect: Rect,
+        offset: Offset,
     ) {
-        let x0: usize = self.a.0.cast_nearest();
-        let x1: usize = self.b.0.cast_nearest();
-        let x1 = x1.min(buf_size.0);
+        let (clip_p, clip_q) = (clip_rect.pos, clip_rect.pos2());
+        let p = (Coord::conv_nearest(self.a) - offset).clamp(clip_p, clip_q);
+        let q = (Coord::conv_nearest(self.b) - offset).clamp(clip_p, clip_q);
+
         let xdi = 1.0 / (self.b.0 - self.a.0);
         let txd = self.tb.0 - self.ta.0;
-
-        let y0: usize = self.a.1.cast_nearest();
-        let y1: usize = self.b.1.cast_nearest();
-        let y1 = y1.min(buf_size.1);
         let ydi = 1.0 / (self.b.1 - self.a.1);
         let tyd = self.tb.1 - self.ta.1;
 
-        for y in y0..y1 {
-            let ly = (f32::conv(y) - self.a.1) * ydi;
+        for y in p.1..q.1 {
+            let ly = (f32::conv(y + offset.1) - self.a.1) * ydi;
             let ty: usize = (self.ta.1 + tyd * ly).cast_nearest();
 
-            for x in x0..x1 {
-                let lx = (f32::conv(x) - self.a.0) * xdi;
+            for x in p.0..q.0 {
+                let lx = (f32::conv(x + offset.0) - self.a.0) * xdi;
                 let tx: usize = (self.ta.0 + txd * lx).cast_nearest();
 
                 let tc = tex[ty * tex_size.0 + tx];
                 let a = tc >> 24;
                 let ba = 255 - a;
 
-                let index = y * buf_size.0 + x;
+                let index = usize::conv(y) * buf_size.0 + usize::conv(x);
                 let bc = buffer[index];
                 let br = ba * (bc >> 16 & 0xFF) / 255;
                 let bg = ba * (bc >> 8 & 0xFF) / 255;
@@ -381,25 +384,24 @@ impl Format for InstanceA {
         tex_size: (usize, usize),
         buffer: &mut [u32],
         buf_size: (usize, usize),
+        clip_rect: Rect,
+        offset: Offset,
     ) {
-        let x0: usize = self.a.0.cast_nearest();
-        let x1: usize = self.b.0.cast_nearest();
-        let x1 = x1.min(buf_size.0);
+        let (clip_p, clip_q) = (clip_rect.pos, clip_rect.pos2());
+        let p = (Coord::conv_nearest(self.a) - offset).clamp(clip_p, clip_q);
+        let q = (Coord::conv_nearest(self.b) - offset).clamp(clip_p, clip_q);
+
         let xdi = 1.0 / (self.b.0 - self.a.0);
         let txd = self.tb.0 - self.ta.0;
-
-        let y0: usize = self.a.1.cast_nearest();
-        let y1: usize = self.b.1.cast_nearest();
-        let y1 = y1.min(buf_size.1);
         let ydi = 1.0 / (self.b.1 - self.a.1);
         let tyd = self.tb.1 - self.ta.1;
 
-        for y in y0..y1 {
-            let ly = (f32::conv(y) - self.a.1) * ydi;
+        for y in p.1..q.1 {
+            let ly = (f32::conv(y + offset.1) - self.a.1) * ydi;
             let ty: usize = (self.ta.1 + tyd * ly).cast_nearest();
 
-            for x in x0..x1 {
-                let lx = (f32::conv(x) - self.a.0) * xdi;
+            for x in p.0..q.0 {
+                let lx = (f32::conv(x + offset.0) - self.a.0) * xdi;
                 let tx: usize = (self.ta.0 + txd * lx).cast_nearest();
 
                 let a = tex[ty * tex_size.0 + tx] as u32;
@@ -409,7 +411,7 @@ impl Format for InstanceA {
                 let g = a * (self.col >> 8 & 0xFF) / 255;
                 let b = a * (self.col & 0xFF) / 255;
 
-                let index = y * buf_size.0 + x;
+                let index = usize::conv(y) * buf_size.0 + usize::conv(x);
                 let bc = buffer[index];
                 let br = ba * (bc >> 16 & 0xFF) / 255;
                 let bg = ba * (bc >> 8 & 0xFF) / 255;
@@ -555,10 +557,13 @@ impl Window {
         pass: usize,
         buffer: &mut [u32],
         size: (usize, usize),
+        clip_rect: Rect,
+        offset: Offset,
     ) {
         self.atlas_rgba
-            .render(&shared.atlas_rgba, pass, buffer, size);
-        self.atlas_a.render(&shared.atlas_a, pass, buffer, size);
+            .render(&shared.atlas_rgba, pass, buffer, size, clip_rect, offset);
+        self.atlas_a
+            .render(&shared.atlas_a, pass, buffer, size, clip_rect, offset);
     }
 }
 

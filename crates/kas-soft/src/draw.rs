@@ -109,18 +109,15 @@ impl Draw {
         shared.images.prepare(&mut shared.text);
 
         // Order passes to ensure overlays are drawn after other content
-        let mut passes: Vec<_> = self
-            .clip_regions
-            .iter()
-            .map(|pass| pass.order)
-            .enumerate()
-            .collect();
+        let mut passes: Vec<_> = self.clip_regions.iter().enumerate().collect();
         // Note that sorting is stable (does not re-order equal elements):
-        passes.sort_by_key(|pass| pass.1);
+        passes.sort_by_key(|pass| pass.1.order);
 
-        for (pass, _) in passes.drain(..) {
-            self.basic.render(pass, buffer, size);
-            self.images.render(&shared.images, pass, buffer, size);
+        for (pass, clip) in passes.drain(..) {
+            self.basic
+                .render(pass, buffer, size, clip.rect, clip.offset);
+            self.images
+                .render(&shared.images, pass, buffer, size, clip.rect, clip.offset);
         }
 
         // Keep only first clip region (which is the entire window)

@@ -6,10 +6,10 @@
 //! Basic shapes
 
 use super::{atlas, color_to_u32};
-use kas::cast::{Cast, CastFloat, Conv};
+use kas::cast::{Cast, CastFloat, Conv, ConvFloat};
 use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
 use kas::draw::{ImageFormat, ImageId, color};
-use kas::geom::{Quad, Size, Vec2};
+use kas::geom::{Coord, Quad, Size, Vec2};
 use kas::prelude::{Offset, Rect};
 use kas::runner::{self, RunError};
 use kas::text::{self, raster};
@@ -89,24 +89,27 @@ impl Draw {
         self.passes[pass].lines.push((p1, p2, col));
     }
 
-    pub fn render(&mut self, pass: usize, buffer: &mut [u32], size: (usize, usize)) {
+    pub fn render(
+        &mut self,
+        pass: usize,
+        buffer: &mut [u32],
+        size: (usize, usize),
+        clip_rect: Rect,
+        offset: Offset,
+    ) {
         let Some(pass) = self.passes.get_mut(pass) else {
             return;
         };
+        let (clip_p, clip_q) = (clip_rect.pos, clip_rect.pos2());
 
         for (rect, col) in pass.rects.drain(..) {
-            let x0: usize = rect.a.0.cast_nearest();
-            let x1: usize = rect.b.0.cast_nearest();
-            let x1 = x1.min(size.0);
-
-            let y0: usize = rect.a.1.cast_nearest();
-            let y1: usize = rect.b.1.cast_nearest();
-            let y1 = y1.min(size.1);
-
+            let p = (Coord::conv_nearest(rect.a) - offset).clamp(clip_p, clip_q);
+            let q = (Coord::conv_nearest(rect.b) - offset).clamp(clip_p, clip_q);
+            let (x0, x1): (usize, usize) = (p.0.cast(), q.0.cast());
             let c = color_to_u32(col);
 
-            for y in y0..y1 {
-                let offset = y * size.0;
+            for y in p.1..q.1 {
+                let offset = usize::conv(y) * size.0;
                 buffer[offset + x0..offset + x1].fill(c);
             }
         }
