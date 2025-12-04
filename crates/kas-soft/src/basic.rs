@@ -19,7 +19,7 @@ use softbuffer::Buffer;
 #[derive(Clone, Debug, Default)]
 struct PassData {
     rects: Vec<(Quad, color::Rgba)>,
-    lines: Vec<(Vec2, Vec2, color::Rgba)>,
+    lines: Vec<(Vec2, Vec2, f32, color::Rgba)>,
 }
 
 #[derive(Debug, Default)]
@@ -77,16 +77,14 @@ impl Draw {
     }
 
     pub fn line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, width: f32, col: color::Rgba) {
-        // TODO: draw correct width
-        let _ = width;
-
         let pass = pass.pass();
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
             self.passes.resize(pass + 8, Default::default());
         }
 
-        self.passes[pass].lines.push((p1, p2, col));
+        let r = 0.5 * width;
+        self.passes[pass].lines.push((p1, p2, r, col));
     }
 
     pub fn render(
@@ -114,39 +112,34 @@ impl Draw {
             }
         }
 
-        for (mut p1, mut p2, col) in pass.lines.drain(..) {
+        for (mut p1, mut p2, r, col) in pass.lines.drain(..) {
             let c = color_to_u32(col);
-            if (p2.0 - p1.0).abs() >= (p2.1 - p1.1).abs() {
-                if p2.0 < p1.0 {
-                    std::mem::swap(&mut p1, &mut p2);
-                }
+            let (dx, dy) = (p2.0 - p1.0, p2.1 - p1.1);
+            let d_inv = 1.0 / (dx * dx + dy * dy).sqrt();
 
-                let x0: usize = p1.0.cast_nearest();
-                let x1: usize = p2.0.cast_nearest();
-                let x1 = x1.min(size.0);
-                let xdi = 1.0 / (p2.0 - p1.0);
-                let yd = p2.1 - p1.1;
+            // Target rect within which the line may be drawn
+            // NOTE: this is inefficient, but we don't draw many lines anyway
+            let (mut a, mut b) = (p1, p2);
+            if a.0 > b.0 {
+                std::mem::swap(&mut a.0, &mut b.0);
+            }
+            if a.1 > b.1 {
+                std::mem::swap(&mut a.1, &mut b.1);
+            }
+            a -= Vec2::splat(r);
+            b += Vec2::splat(r);
+            let mut a = (Coord::conv_nearest(a) - offset).clamp(clip_p, clip_q);
+            let mut b = (Coord::conv_nearest(b) - offset).clamp(clip_p, clip_q);
 
-                for x in x0..x1 {
-                    let l = (f32::conv(x) - p1.0) * xdi;
-                    let y: usize = (p1.1 + l * yd).cast_nearest();
-                    buffer[y * size.0 + x] = c;
-                }
-            } else {
-                if p2.1 < p1.1 {
-                    std::mem::swap(&mut p1, &mut p2);
-                }
+            for y in a.1..b.1 {
+                let d1 = dx * (f32::conv(y + offset.1) - p1.1);
 
-                let y0: usize = p1.1.cast_nearest();
-                let y1: usize = p2.1.cast_nearest();
-                let y1 = y1.min(size.1);
-                let ydi = 1.0 / (p2.1 - p1.1);
-                let xd = p2.0 - p1.0;
-
-                for y in y0..y1 {
-                    let l = (f32::conv(y) - p1.1) * ydi;
-                    let x: usize = (p1.0 + l * xd).cast_nearest();
-                    buffer[y * size.0 + x] = c;
+                for x in a.0..b.0 {
+                    let d2 = dy * (f32::conv(x + offset.0) - p1.0);
+                    let dist = (d1 - d2).abs() * d_inv;
+                    if dist <= r {
+                        buffer[usize::conv(y) * size.0 + usize::conv(x)] = c;
+                    }
                 }
             }
         }
