@@ -12,6 +12,7 @@
 //! [softbuffer]: https://github.com/rust-windowing/softbuffer
 
 mod atlas;
+mod basic;
 mod draw;
 
 use std::num::NonZeroU32;

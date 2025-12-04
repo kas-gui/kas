@@ -3,15 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! KAS graphics backend over [softbuffer]
-//!
-//! This crate implements a KAS's drawing APIs over [softbuffer].
-//!
-//! This crate supports themes via the [`kas::theme`].
-//!
-//! [softbuffer]: https://github.com/rust-windowing/softbuffer
+//! Root drawing implementations
 
-use super::{atlas, color_to_u32};
+use super::{atlas, basic, color_to_u32};
 use kas::cast::{Cast, CastFloat, Conv};
 use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
 use kas::draw::{ImageFormat, ImageId, color};
@@ -39,19 +33,13 @@ impl Default for ClipRegion {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-struct PassData {
-    rects: Vec<(Quad, color::Rgba)>,
-    lines: Vec<(Vec2, Vec2, color::Rgba)>,
-}
-
 kas::impl_scope! {
     #[impl_default]
     pub struct Draw {
         pub(crate) common: WindowCommon,
         images: atlas::Window,
         clip_regions: Vec<ClipRegion> = vec![Default::default()],
-        passes: Vec<PassData>,
+        basic: basic::Draw,
     }
 }
 
@@ -98,61 +86,17 @@ impl DrawImpl for Draw {
     }
 
     fn rect(&mut self, pass: PassId, rect: Quad, col: color::Rgba) {
-        if !(rect.a < rect.b) {
-            // zero / negative size: nothing to draw
-            return;
-        }
-
-        let pass = pass.pass();
-        if self.passes.len() <= pass {
-            // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, Default::default());
-        }
-
-        self.passes[pass].rects.push((rect, col));
+        self.basic.rect(pass, rect, col);
     }
 
+    #[inline]
     fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: color::Rgba) {
-        let aa = outer.a;
-        let bb = outer.b;
-        let mut cc = inner.a;
-        let mut dd = inner.b;
-
-        if !(aa < bb) {
-            // zero / negative size: nothing to draw
-            return;
-        }
-        if !(aa <= cc) || !(cc <= bb) {
-            cc = aa;
-        }
-        if !(aa <= dd) || !(dd <= bb) {
-            dd = bb;
-        }
-        if !(cc <= dd) {
-            dd = cc;
-        }
-
-        let ac = Vec2(aa.0, cc.1);
-        let ad = Vec2(aa.0, dd.1);
-        let bc = Vec2(bb.0, cc.1);
-        let bd = Vec2(bb.0, dd.1);
-        let cd = Vec2(cc.0, dd.1);
-        let dc = Vec2(dd.0, cc.1);
-
-        self.rect(pass, Quad::from_coords(aa, bc), col);
-        self.rect(pass, Quad::from_coords(ad, bb), col);
-        self.rect(pass, Quad::from_coords(ac, cd), col);
-        self.rect(pass, Quad::from_coords(dc, bd), col);
+        self.basic.frame(pass, outer, inner, col);
     }
 
-    fn line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, _: f32, col: color::Rgba) {
-        let pass = pass.pass();
-        if self.passes.len() <= pass {
-            // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, Default::default());
-        }
-
-        self.passes[pass].lines.push((p1, p2, col));
+    #[inline]
+    fn line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, width: f32, col: color::Rgba) {
+        self.basic.line(pass, p1, p2, width, col);
     }
 }
 
@@ -175,62 +119,7 @@ impl Draw {
         passes.sort_by_key(|pass| pass.1);
 
         for (pass, _) in passes.drain(..) {
-            if let Some(pass) = self.passes.get_mut(pass) {
-                for (rect, col) in pass.rects.drain(..) {
-                    let x0: usize = rect.a.0.cast_nearest();
-                    let x1: usize = rect.b.0.cast_nearest();
-                    let x1 = x1.min(size.0);
-
-                    let y0: usize = rect.a.1.cast_nearest();
-                    let y1: usize = rect.b.1.cast_nearest();
-                    let y1 = y1.min(size.1);
-
-                    let c = color_to_u32(col);
-
-                    for y in y0..y1 {
-                        let offset = y * size.0;
-                        buffer[offset + x0..offset + x1].fill(c);
-                    }
-                }
-
-                for (mut p1, mut p2, col) in pass.lines.drain(..) {
-                    let c = color_to_u32(col);
-                    if (p2.0 - p1.0).abs() >= (p2.1 - p1.1).abs() {
-                        if p2.0 < p1.0 {
-                            std::mem::swap(&mut p1, &mut p2);
-                        }
-
-                        let x0: usize = p1.0.cast_nearest();
-                        let x1: usize = p2.0.cast_nearest();
-                        let x1 = x1.min(size.0);
-                        let xdi = 1.0 / (p2.0 - p1.0);
-                        let yd = p2.1 - p1.1;
-
-                        for x in x0..x1 {
-                            let l = (f32::conv(x) - p1.0) * xdi;
-                            let y: usize = (p1.1 + l * yd).cast_nearest();
-                            buffer[y * size.0 + x] = c;
-                        }
-                    } else {
-                        if p2.1 < p1.1 {
-                            std::mem::swap(&mut p1, &mut p2);
-                        }
-
-                        let y0: usize = p1.1.cast_nearest();
-                        let y1: usize = p2.1.cast_nearest();
-                        let y1 = y1.min(size.1);
-                        let ydi = 1.0 / (p2.1 - p1.1);
-                        let xd = p2.0 - p1.0;
-
-                        for y in y0..y1 {
-                            let l = (f32::conv(y) - p1.1) * ydi;
-                            let x: usize = (p1.0 + l * xd).cast_nearest();
-                            buffer[y * size.0 + x] = c;
-                        }
-                    }
-                }
-            }
-
+            self.basic.render(pass, buffer, size);
             self.images.render(&shared.images, pass, buffer, size);
         }
 
@@ -318,6 +207,20 @@ impl DrawSharedImpl for Shared {
         effects: &[text::Effect],
         colors: &[color::Rgba],
     ) {
-        todo!()
+        let time = std::time::Instant::now();
+        self.text.text_effects(
+            &mut self.images,
+            &mut draw.images,
+            pass,
+            pos,
+            bb,
+            text,
+            effects,
+            colors,
+            |quad, col| {
+                draw.basic.rect(pass, quad, col);
+            },
+        );
+        draw.common.report_dur_text(time.elapsed());
     }
 }
