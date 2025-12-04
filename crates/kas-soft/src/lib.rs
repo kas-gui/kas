@@ -30,6 +30,7 @@ pub struct Instance {}
 
 impl Instance {
     /// Construct a new `Instance`
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Instance {}
     }

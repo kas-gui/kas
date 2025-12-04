@@ -39,3 +39,6 @@ raw-window-handle = "0.6.2"
 version = "0.16.0"
 package = "kas-core"
 path = "../kas-core"
+
+[lints.clippy]
+neg_cmp_op_on_partial_ord = "allow"
