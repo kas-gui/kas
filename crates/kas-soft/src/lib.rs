@@ -21,10 +21,9 @@ use std::time::Instant;
 
 pub use draw::{Draw, Shared};
 use kas::cast::Cast;
-use kas::draw::{DrawImpl, DrawSharedImpl, SharedState, WindowCommon, color};
+use kas::draw::{SharedState, WindowCommon, color};
 use kas::geom::Size;
 use kas::runner::{GraphicsInstance, HasDisplayAndWindowHandle, RunError, WindowSurface};
-use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 /// Graphics context
 pub struct Instance {}
@@ -57,7 +56,7 @@ impl WindowSurface for Surface {
         self.size
     }
 
-    fn configure(&mut self, shared: &mut Shared, size: Size) -> bool {
+    fn configure(&mut self, _: &mut Shared, size: Size) -> bool {
         if size == self.size() {
             return false;
         }
@@ -109,14 +108,14 @@ impl GraphicsInstance for Instance {
 
     type Surface<'a> = Surface;
 
-    fn new_shared(&mut self, surface: Option<&Surface>) -> Result<Shared, RunError> {
+    fn new_shared(&mut self, _: Option<&Surface>) -> Result<Shared, RunError> {
         Ok(Shared::default())
     }
 
     fn new_surface<'window>(
         &mut self,
         window: Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
-        transparent: bool,
+        _: bool,
     ) -> std::result::Result<Self::Surface<'window>, RunError>
     where
         Self: Sized,

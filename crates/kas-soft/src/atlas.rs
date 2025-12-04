@@ -7,15 +7,12 @@
 
 use guillotiere::{AllocId, AtlasAllocator};
 use std::collections::HashMap;
-use std::mem::size_of;
-use std::num::NonZeroU64;
-use std::ops::Range;
 
 use kas::autoimpl;
-use kas::cast::{Cast, CastFloat, Conv, ConvFloat};
+use kas::cast::traits::*;
 use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, color};
 use kas::geom::{Coord, Offset, Quad, Rect, Size, Vec2};
-use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, State, UnpreparedSprite};
+use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, UnpreparedSprite};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
@@ -427,7 +424,6 @@ impl Format for InstanceA {
 
 /// Image loader and storage
 pub struct Shared {
-    text: kas::text::raster::State,
     atlas_rgba: Atlases<InstanceRgba>,
     atlas_a: Atlases<InstanceA>,
     last_image_n: u32,
@@ -438,7 +434,6 @@ impl Shared {
     /// Construct
     pub fn new() -> Self {
         Shared {
-            text: Default::default(),
             atlas_rgba: Atlases::new(2048),
             atlas_a: Atlases::new(512),
             last_image_n: 0,

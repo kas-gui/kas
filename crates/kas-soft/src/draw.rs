@@ -5,16 +5,13 @@
 
 //! Root drawing implementations
 
-use super::{atlas, basic, color_to_u32};
-use kas::cast::{Cast, CastFloat, Conv};
+use super::{atlas, basic};
+use kas::cast::Cast;
 use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
 use kas::draw::{ImageFormat, ImageId, color};
 use kas::geom::{Quad, Size, Vec2};
 use kas::prelude::{Offset, Rect};
-use kas::runner::{self, RunError};
-use kas::text::{self, raster};
-use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-use softbuffer::Buffer;
+use kas::text::{self};
 
 #[derive(Debug)]
 struct ClipRegion {

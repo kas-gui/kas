@@ -5,16 +5,12 @@
 
 //! Basic shapes
 
-use super::{atlas, color_to_u32};
-use kas::cast::{Cast, CastFloat, Conv, ConvFloat};
-use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
-use kas::draw::{ImageFormat, ImageId, color};
-use kas::geom::{Coord, Quad, Size, Vec2};
+use super::color_to_u32;
+use kas::cast::traits::*;
+use kas::draw::PassId;
+use kas::draw::color;
+use kas::geom::{Coord, Quad, Vec2};
 use kas::prelude::{Offset, Rect};
-use kas::runner::{self, RunError};
-use kas::text::{self, raster};
-use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-use softbuffer::Buffer;
 
 #[derive(Clone, Debug, Default)]
 struct PassData {
@@ -112,7 +108,7 @@ impl Draw {
             }
         }
 
-        for (mut p1, mut p2, r, col) in pass.lines.drain(..) {
+        for (p1, p2, r, col) in pass.lines.drain(..) {
             let c = color_to_u32(col);
             let (dx, dy) = (p2.0 - p1.0, p2.1 - p1.1);
             let d_inv = 1.0 / (dx * dx + dy * dy).sqrt();
@@ -128,8 +124,8 @@ impl Draw {
             }
             a -= Vec2::splat(r);
             b += Vec2::splat(r);
-            let mut a = (Coord::conv_nearest(a) - offset).clamp(clip_p, clip_q);
-            let mut b = (Coord::conv_nearest(b) - offset).clamp(clip_p, clip_q);
+            let a = (Coord::conv_nearest(a) - offset).clamp(clip_p, clip_q);
+            let b = (Coord::conv_nearest(b) - offset).clamp(clip_p, clip_q);
 
             for y in a.1..b.1 {
                 let d1 = dx * (f32::conv(y + offset.1) - p1.1);
