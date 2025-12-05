@@ -37,7 +37,7 @@ struct WindowData<G: GraphicsInstance> {
     window: Arc<Box<dyn winit::window::Window>>,
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
-    surface: G::Surface<'static>,
+    surface: G::Surface,
     /// Frame rate counter
     frame_count: (Instant, u32),
     #[cfg(feature = "accesskit")]

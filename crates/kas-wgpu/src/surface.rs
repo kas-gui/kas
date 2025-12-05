@@ -15,14 +15,14 @@ use std::time::Instant;
 use wgpu::PresentMode;
 
 /// Per-window data
-pub struct Surface<'a, C: CustomPipe> {
-    pub(super) surface: wgpu::Surface<'a>,
+pub struct Surface<C: CustomPipe> {
+    pub(super) surface: wgpu::Surface<'static>,
     size: Size,
     transparent: bool,
     draw: DrawWindow<C::Window>,
 }
 
-impl<'a, C: CustomPipe> Surface<'a, C> {
+impl<C: CustomPipe> Surface<C> {
     pub fn new(
         instance: &wgpu::Instance,
         window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
@@ -44,7 +44,7 @@ impl<'a, C: CustomPipe> Surface<'a, C> {
     }
 }
 
-impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
+impl<C: CustomPipe> WindowSurface for Surface<C> {
     type Shared = DrawPipe<C>;
 
     fn size(&self) -> Size {

@@ -107,17 +107,17 @@ impl WindowSurface for Surface {
 impl GraphicsInstance for Instance {
     type Shared = Shared;
 
-    type Surface<'a> = Surface;
+    type Surface = Surface;
 
     fn new_shared(&mut self, _: Option<&Surface>) -> Result<Shared, RunError> {
         Ok(Shared::default())
     }
 
-    fn new_surface<'window>(
+    fn new_surface(
         &mut self,
         window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
         _: bool,
-    ) -> std::result::Result<Self::Surface<'window>, RunError>
+    ) -> std::result::Result<Self::Surface, RunError>
     where
         Self: Sized,
     {

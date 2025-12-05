@@ -61,12 +61,9 @@ impl<CB: CustomPipeBuilder> Instance<CB> {
 impl<CB: CustomPipeBuilder> runner::GraphicsInstance for Instance<CB> {
     type Shared = DrawPipe<CB::Pipe>;
 
-    type Surface<'a> = surface::Surface<'a, CB::Pipe>;
+    type Surface = surface::Surface<CB::Pipe>;
 
-    fn new_shared(
-        &mut self,
-        surface: Option<&Self::Surface<'_>>,
-    ) -> Result<Self::Shared, RunError> {
+    fn new_shared(&mut self, surface: Option<&Self::Surface>) -> Result<Self::Shared, RunError> {
         DrawPipe::new(
             &self.instance,
             &mut self.custom,
@@ -75,11 +72,11 @@ impl<CB: CustomPipeBuilder> runner::GraphicsInstance for Instance<CB> {
         )
     }
 
-    fn new_surface<'window>(
+    fn new_surface(
         &mut self,
         window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
         transparent: bool,
-    ) -> std::result::Result<Self::Surface<'window>, RunError>
+    ) -> std::result::Result<Self::Surface, RunError>
     where
         Self: Sized,
     {
