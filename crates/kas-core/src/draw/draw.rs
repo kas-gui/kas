@@ -199,6 +199,18 @@ pub trait Draw {
     /// The frame is defined by the area inside `outer` and not inside `inner`.
     fn frame(&mut self, outer: Quad, inner: Quad, col: Rgba);
 
+    /// Draw a line with uniform colour
+    ///
+    /// This command draws a line segment between the points `p1` and `p2`.
+    ///
+    /// The line will be roughly `width` pixels wide and may exhibit aliasing
+    /// (appearance is implementation-defined). Unless you are targetting only
+    /// the simplest of backends you probably don't want to use this.
+    ///
+    /// Note that for rectangular, axis-aligned lines, [`DrawImpl::rect`] should be
+    /// preferred.
+    fn line(&mut self, p1: Vec2, p2: Vec2, width: f32, col: Rgba);
+
     /// Draw the image in the given `rect`
     fn image(&mut self, id: ImageId, rect: Quad);
 
@@ -272,6 +284,9 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
     }
     fn frame(&mut self, outer: Quad, inner: Quad, col: Rgba) {
         self.draw.frame(self.pass, outer, inner, col);
+    }
+    fn line(&mut self, p1: Vec2, p2: Vec2, width: f32, col: Rgba) {
+        self.draw.line(self.pass, p1, p2, width, col);
     }
 
     fn image(&mut self, id: ImageId, rect: Quad) {
@@ -371,4 +386,7 @@ pub trait DrawImpl: Any {
 
     /// Draw a frame of uniform colour
     fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: Rgba);
+
+    /// Draw a line segment of uniform colour
+    fn line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, width: f32, col: Rgba);
 }

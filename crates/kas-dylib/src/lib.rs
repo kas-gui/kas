@@ -14,5 +14,6 @@
 
 use kas_core;
 #[cfg(feature = "image")] use kas_image;
-use kas_wgpu;
+#[cfg(feature = "soft")] use kas_soft;
+#[cfg(feature = "wgpu")] use kas_wgpu;
 use kas_widgets;

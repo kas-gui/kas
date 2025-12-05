@@ -5,10 +5,10 @@
 
 //! Public items common to all backends
 
+use super::HasDisplayAndWindowHandle;
 use crate::draw::color::Rgba;
 use crate::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use crate::geom::Size;
-use raw_window_handle as rwh;
 use std::time::Instant;
 use thiserror::Error;
 
@@ -173,7 +173,7 @@ pub trait GraphicsInstance {
     type Shared: DrawSharedImpl;
 
     /// Window surface
-    type Surface<'a>: WindowSurface<Shared = Self::Shared>;
+    type Surface: WindowSurface<Shared = Self::Shared>;
 
     /// Construct shared state
     ///
@@ -181,19 +181,18 @@ pub trait GraphicsInstance {
     /// (see [`compatible_surface`](https://docs.rs/wgpu/latest/wgpu/type.RequestAdapterOptions.html#structfield.compatible_surface)).
     fn new_shared(
         &mut self,
-        surface: Option<&Self::Surface<'_>>,
+        surface: Option<&Self::Surface>,
     ) -> std::result::Result<Self::Shared, RunError>;
 
     /// Construct a window surface
     ///
     /// It is required to call [`WindowSurface::configure`] after this.
-    fn new_surface<'window, W>(
+    fn new_surface(
         &mut self,
-        window: W,
+        window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
         transparent: bool,
-    ) -> std::result::Result<Self::Surface<'window>, RunError>
+    ) -> std::result::Result<Self::Surface, RunError>
     where
-        W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized;
 }
 

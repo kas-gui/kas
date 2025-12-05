@@ -48,7 +48,7 @@ fn trail() -> impl Widget<Data = Data> {
 
             row.push(
                 cx,
-                &data,
+                data,
                 Button::new(Label::new(label.to_string()))
                     .with_msg(ChangeDir(path.clone()))
                     .map_any(),

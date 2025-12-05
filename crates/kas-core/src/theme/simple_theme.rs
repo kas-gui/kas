@@ -28,7 +28,7 @@ use super::ColorsSrgb;
 /// A simple theme
 ///
 /// This theme is functional, but not pretty. It is intended as a template for
-/// other themes.
+/// other themes and to have the least possible requirements of the backend.
 #[derive(Clone, Debug)]
 pub struct SimpleTheme {
     pub cols: ColorsLinear,
@@ -59,10 +59,7 @@ pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) cols: &'a ColorsLinear,
 }
 
-impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme
-where
-    DS::Draw: DrawRoundedImpl,
-{
+impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme {
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
@@ -108,10 +105,7 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
-where
-    DS::Draw: DrawRoundedImpl,
-{
+impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS> {
     pub fn button_frame(
         &mut self,
         outer: Quad,
@@ -186,29 +180,26 @@ where
                     p3 = Vec2(q.b.0, y1);
                 };
 
-                let f = 0.5 * self.w.dims.mark_line;
-                self.draw.rounded_line(p1, p2, f, col);
-                self.draw.rounded_line(p2, p3, f, col);
+                let f = self.w.dims.mark_line;
+                self.draw.line(p1, p2, f, col);
+                self.draw.line(p2, p3, f, col);
             }
             MarkStyle::X => {
                 let size = Size::splat(self.w.dims.mark);
                 let offset = Offset::conv((rect.size - size) / 2);
                 let q = Quad::conv(Rect::new(rect.pos + offset, size));
 
-                let f = 0.5 * self.w.dims.mark_line;
-                self.draw.rounded_line(q.a, q.b, f, col);
+                let f = self.w.dims.mark_line;
+                self.draw.line(q.a, q.b, f, col);
                 let c = Vec2(q.a.0, q.b.1);
                 let d = Vec2(q.b.0, q.a.1);
-                self.draw.rounded_line(c, d, f, col);
+                self.draw.line(c, d, f, col);
             }
         }
     }
 }
 
-impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
-where
-    DS::Draw: DrawRoundedImpl,
-{
+impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
     fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
         (self.w, &mut self.draw, self.ev)
     }
@@ -218,7 +209,7 @@ where
     }
 
     fn draw_rounded(&mut self) -> Option<&mut dyn DrawRounded> {
-        Some(&mut self.draw)
+        None
     }
 
     fn new_pass<'b>(
@@ -244,15 +235,16 @@ where
 
     fn event_state_overlay(&mut self) {
         if let Some((coord, used)) = self.ev.mouse_pin() {
-            // let r = self.w.dims.scale * 6.0;
-            // let inner = if used { 0.0 } else { 0.6 };
-            let (r, inner) = match used {
-                false => (self.w.dims.scale * 3.6, 0.0),
-                true => (self.w.dims.scale * 6.0, 0.6),
-            };
+            let center = coord.round().cast_approx();
             let c = self.cols.accent;
-            self.draw
-                .circle(Quad::from_center(coord.cast_approx(), r), inner, c);
+            if !used {
+                let outer = Quad::from_center(center, self.w.dims.scale * 3.6);
+                self.draw.rect(outer, c);
+            } else {
+                let outer = Quad::from_center(center, self.w.dims.scale * 6.0);
+                let inner = outer.shrink(self.w.dims.scale * 1.2);
+                self.draw.frame(outer, inner, c);
+            }
         }
     }
 

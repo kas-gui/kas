@@ -5,14 +5,14 @@
 
 //! Images pipeline
 
-use guillotiere::{AllocId, Allocation, AtlasAllocator};
+use guillotiere::{AllocId, AtlasAllocator};
 use std::mem::size_of;
 use std::num::NonZeroU64;
 use std::ops::Range;
 
 use kas::autoimpl;
 use kas::cast::{Cast, Conv};
-use kas::draw::{AllocError, PassId};
+use kas::draw::{AllocError, Allocation, Allocator, PassId};
 use kas::geom::{Quad, Size, Vec2};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
@@ -176,7 +176,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     fn allocate_space(
         &mut self,
         size: (i32, i32),
-    ) -> Result<(u32, Allocation, (i32, i32)), AllocError> {
+    ) -> Result<(u32, guillotiere::Allocation, (i32, i32)), AllocError> {
         let mut tex_size = (self.tex_size, self.tex_size);
         let size2d = size.into();
         let mut atlas = 0;
@@ -210,48 +210,6 @@ impl<I: bytemuck::Pod> Pipeline<I> {
             Some(alloc) => Ok((atlas.cast(), alloc, tex_size)),
             None => unreachable!(),
         }
-    }
-
-    /// Allocate space within a texture atlas
-    ///
-    /// Fails if `size` is zero in any dimension.
-    ///
-    /// On success, returns:
-    ///
-    /// -   `atlas` number
-    /// -   allocation identifier within the atlas
-    /// -   `origin` within texture (integer coordinates, for use when uploading)
-    /// -   texture coordinates (for use when drawing)
-    pub fn allocate(
-        &mut self,
-        size: (u32, u32),
-    ) -> Result<(u32, AllocId, (u32, u32), Quad), AllocError> {
-        if size.0 == 0 || size.1 == 0 {
-            return Err(AllocError);
-        }
-
-        let (atlas, alloc, tex_size) = self.allocate_space((size.0.cast(), size.1.cast()))?;
-
-        let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
-
-        let tex_size = Vec2::conv(Size::from(tex_size));
-        let a = to_vec2(alloc.rectangle.min) / tex_size;
-        let b = to_vec2(alloc.rectangle.max) / tex_size;
-        debug_assert!(Vec2::ZERO <= a && a <= b && b <= Vec2::splat(1.0));
-        let tex_quad = Quad { a, b };
-
-        Ok((atlas, alloc.id, origin, tex_quad))
-    }
-
-    pub fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
-        let index = usize::conv(atlas);
-        if let Some(data) = self.atlases.get_mut(index) {
-            data.alloc.deallocate(alloc);
-        }
-
-        // Do not remove empty atlases since we use the index as a key.
-        // TODO(opt): free unused memory at some point. Maybe also reset/resize
-        // special-sized allocations.
     }
 
     /// Prepare textures
@@ -298,6 +256,46 @@ impl<I: bytemuck::Pod> Pipeline<I> {
                 }
             }
         }
+    }
+}
+
+impl<I: bytemuck::Pod> Allocator for Pipeline<I> {
+    /// Allocate space within a texture atlas
+    ///
+    /// Fails if `size` is zero in any dimension.
+    fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        if size.0 == 0 || size.1 == 0 {
+            return Err(AllocError);
+        }
+
+        let (atlas, alloc, tex_size) = self.allocate_space((size.0.cast(), size.1.cast()))?;
+
+        let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
+
+        let tex_size = Vec2::conv(Size::from(tex_size));
+        let a = to_vec2(alloc.rectangle.min) / tex_size;
+        let b = to_vec2(alloc.rectangle.max) / tex_size;
+        debug_assert!(Vec2::ZERO <= a && a <= b && b <= Vec2::splat(1.0));
+        let tex_quad = Quad { a, b };
+
+        Ok(Allocation {
+            atlas,
+            alloc: alloc.id.serialize(),
+            origin,
+            tex_quad,
+        })
+    }
+
+    /// Free an allocation
+    fn deallocate(&mut self, atlas: u32, alloc: u32) {
+        let index = usize::conv(atlas);
+        if let Some(data) = self.atlases.get_mut(index) {
+            data.alloc.deallocate(AllocId::deserialize(alloc));
+        }
+
+        // Do not remove empty atlases since we use the index as a key.
+        // TODO(opt): free unused memory at some point. Maybe also reset/resize
+        // special-sized allocations.
     }
 }
 
@@ -403,14 +401,14 @@ impl<I: bytemuck::Pod> Window<I> {
         let pass = pass.pass();
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, Default::default());
+            self.passes.resize_with(pass + 8, Default::default);
         }
         let pass = &mut self.passes[pass];
 
         let atlas = usize::conv(atlas);
         if pass.atlases.len() <= atlas {
             // Warning: length must not excced number of atlases
-            pass.atlases.resize(atlas + 1, Default::default());
+            pass.atlases.resize_with(atlas + 1, Default::default);
         }
 
         pass.atlases[atlas].instances.push(instance);

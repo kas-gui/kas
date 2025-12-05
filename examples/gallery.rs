@@ -736,11 +736,16 @@ KAS_CONFIG_MODE=readwrite
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let theme = kas::theme::MultiTheme::builder()
-        .add("flat", kas::theme::FlatTheme::new())
-        .add("simple", kas::theme::SimpleTheme::new())
-        .add("shaded", kas_wgpu::ShadedTheme::new())
-        .build();
+    #[allow(unused_mut)]
+    let mut builder =
+        kas::theme::MultiTheme::builder().add("simple", kas::theme::SimpleTheme::new());
+    #[cfg(feature = "wgpu")]
+    {
+        builder = builder
+            .add("flat", kas::theme::FlatTheme::new())
+            .add("shaded", kas_wgpu::ShadedTheme::new())
+    }
+    let theme = builder.build();
     let mut runner = kas::runner::Runner::with_theme(theme).build(())?;
 
     // TODO: use as logo of tab

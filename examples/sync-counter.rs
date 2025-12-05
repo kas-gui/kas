@@ -10,6 +10,11 @@
 use kas::widgets::{AdaptWidget, Button, Label, Slider, column, format_data, row};
 use kas::window::Window;
 
+#[cfg(feature = "wgpu")]
+type Theme = kas_wgpu::ShadedTheme;
+#[cfg(not(feature = "wgpu"))]
+type Theme = kas::theme::SimpleTheme;
+
 #[derive(Clone, Debug)]
 struct Increment(i32);
 
@@ -57,7 +62,7 @@ fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let count = Count(0);
-    let theme = kas_wgpu::ShadedTheme::new();
+    let theme = Theme::new();
 
     let mut runner = kas::runner::Runner::with_theme(theme).build(count)?;
     let _ = runner.config_mut().font.set_size(24.0);

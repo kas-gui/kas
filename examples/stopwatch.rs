@@ -11,6 +11,11 @@ use kas::event::TimerHandle;
 use kas::prelude::*;
 use kas::widgets::{Button, format_data, row};
 
+#[cfg(feature = "wgpu")]
+type Theme = kas_wgpu::ShadedTheme;
+#[cfg(not(feature = "wgpu"))]
+type Theme = kas::theme::SimpleTheme;
+
 #[derive(Clone, Debug)]
 struct MsgReset;
 #[derive(Clone, Debug)]
@@ -62,7 +67,7 @@ fn main() -> kas::runner::Result<()> {
         .with_transparent(true)
         .with_restrictions(true, true);
 
-    let theme = kas_wgpu::ShadedTheme::new();
+    let theme = Theme::new();
     let mut app = kas::runner::Runner::with_theme(theme).build(())?;
     let _ = app.config_mut().font.set_size(24.0);
     let _ = app.config_mut().theme.set_active_scheme("dark");

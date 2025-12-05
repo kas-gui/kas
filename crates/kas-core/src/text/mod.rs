@@ -18,6 +18,11 @@ pub use kas_text::{
     OwningVecIter, Status, Text, TextDisplay, Vec2, fonts, format,
 };
 
+/// Glyph rastering
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+pub mod raster;
+
 mod selection;
 pub use selection::SelectionHelper;
 

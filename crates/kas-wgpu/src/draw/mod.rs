@@ -17,7 +17,6 @@ mod round_2col;
 mod shaded_round;
 mod shaded_square;
 mod shaders;
-mod text_pipe;
 
 use kas::draw::WindowCommon;
 use kas::geom::{Offset, Rect};
@@ -61,6 +60,7 @@ pub struct DrawPipe<C> {
     light_norm_buf: wgpu::Buffer,
     bg_common: Vec<(wgpu::Buffer, wgpu::BindGroup)>,
     images: images::Images,
+    text: kas::text::raster::State,
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
     flat_round: flat_round::Pipeline,

@@ -118,7 +118,7 @@ impl<V: bytemuck::Pod> Window<V> {
 
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, Default::default());
+            self.passes.resize_with(pass + 8, Default::default);
         }
 
         self.passes[pass].vertices.extend_from_slice(slice);

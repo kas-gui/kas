@@ -58,7 +58,7 @@ impl clerk::AsyncClerk<usize> for Clerk {
                         .filter(|path| {
                             if filter_hidden
                                 && let Some(name) = path.file_name()
-                                && name.as_encoded_bytes().get(0) == Some(&b'.')
+                                && name.as_encoded_bytes().first() == Some(&b'.')
                             {
                                 false
                             } else {
@@ -112,8 +112,7 @@ impl clerk::TokenClerk<usize> for Clerk {
         clerk::update_token(expected, update_item, token)
     }
     fn item<'r>(&'r self, _: &'r Self::Data, token: &'r Self::Token) -> &'r Self::Item {
-        &self
-            .entries
+        self.entries
             .get(*token)
             .expect("bad token or missing entry")
     }

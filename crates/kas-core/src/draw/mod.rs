@@ -43,6 +43,7 @@ mod draw_rounded;
 mod draw_shared;
 
 use crate::cast::Cast;
+use crate::geom::Quad;
 #[allow(unused)] use crate::theme::DrawCx;
 
 pub use draw::{Draw, DrawIface, DrawImpl};
@@ -50,6 +51,31 @@ pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
 pub use draw_shared::{AllocError, ImageFormat, ImageHandle, ImageId};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
 use std::time::{Duration, Instant};
+
+/// An allocation within a texture
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+#[derive(Debug)]
+pub struct Allocation {
+    /// Atlas (texture) number
+    pub atlas: u32,
+    /// Allocation identifier within the atlas
+    pub alloc: u32,
+    /// Origin within the texture
+    ///
+    /// (Integer coordinates, for use when uploading.)
+    pub origin: (u32, u32),
+    /// Texture coordinates (for drawing)
+    pub tex_quad: Quad,
+}
+
+/// Support allocation of sprites within a texture
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+pub trait Allocator {
+    fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+    fn deallocate(&mut self, atlas: u32, alloc: u32);
+}
 
 /// Animation status
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -117,7 +143,7 @@ impl WindowCommon {
 /// Draw pass identifier
 ///
 /// This is a numerical identifier for the draw pass (see [`DrawIface::new_pass`]).
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PassId(u32);
 
 impl PassId {

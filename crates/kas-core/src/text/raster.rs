@@ -3,16 +3,46 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License in the LICENSE-APACHE file or at:
+//     https://www.apache.org/licenses/LICENSE-2.0
+
 //! Text drawing pipeline
 
-use super::images::{Images as Pipeline, InstanceA, InstanceRgba, Window};
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
-use kas::draw::{PassId, color::Rgba};
+use kas::draw::{AllocError, Allocation, PassId, color::Rgba};
 use kas::geom::{Quad, Vec2};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
+
+/// Support allocation of glyph sprites
+///
+/// Allocation failures will result in glyphs not drawing.
+pub trait SpriteAllocator {
+    /// Allocate a single-channel texture sprite
+    fn alloc_a(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+
+    /// Allocate an RGBA texture sprite
+    ///
+    /// This is only used for colored glyphs.
+    fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+}
+
+/// Render queue
+pub trait RenderQueue {
+    /// Push a sprite to the render queue
+    fn push_sprite(
+        &mut self,
+        pass: PassId,
+        glyph_pos: Vec2,
+        rect: Quad,
+        col: Rgba,
+        sprite: &Sprite,
+    );
+}
 
 kas::impl_scope! {
     /// Raster configuration
@@ -73,8 +103,6 @@ impl SpriteDescriptor {
     }
 
     /// Construct
-    ///
-    /// Most parameters come from [`TextDisplay::glyphs`] output. See also [`raster`].
     pub fn new(config: &Config, face: FaceId, glyph: Glyph, dpem: f32) -> Self {
         let face: u16 = face.get().cast();
         let glyph_id: u16 = glyph.id.0;
@@ -128,25 +156,36 @@ impl SpriteDescriptor {
 /// A "sprite" is a glyph rendered to a texture with fixed properties. This
 /// struct contains everything needed to draw from the sprite.
 #[derive(Clone, Debug, Default)]
-struct Sprite {
-    atlas: u32,
+pub struct Sprite {
+    pub atlas: u32,
     /// If true, use atlas_rgba; if false use atlas_a
-    color: bool,
+    pub color: bool,
     /// If false, this is not drawable (used for zero-sized glyphs)
     valid: bool,
-    size: Vec2,
-    offset: Vec2,
-    tex_quad: Quad,
+    pub size: Vec2,
+    pub offset: Vec2,
+    pub tex_quad: Quad,
 }
 
 impl Sprite {
     /// Is this a valid sprite or a non-renderable placeholder?
-    fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         self.valid
     }
 }
 
+/// A sprite pending upload to the GPU texture
+#[derive(Debug)]
+pub struct UnpreparedSprite {
+    pub atlas: u32,
+    pub color: bool,
+    pub origin: (u32, u32),
+    pub size: (u32, u32),
+    pub data: Vec<u8>,
+}
+
 /// A pipeline for rendering text
+#[derive(Default)]
 pub struct State {
     rasterer: Rasterer,
     #[allow(unused)]
@@ -155,24 +194,12 @@ pub struct State {
     hint: bool,
     config: Config,
     glyphs: HashMap<SpriteDescriptor, Sprite>,
-    #[allow(clippy::type_complexity)]
-    pub(super) prepare: Vec<(u32, bool, (u32, u32), (u32, u32), Vec<u8>)>,
+    prepare: Vec<UnpreparedSprite>,
     scale_cx: swash::scale::ScaleContext,
 }
 
 impl State {
-    pub fn new() -> Self {
-        State {
-            rasterer: Default::default(),
-            sb_align: false,
-            hint: false,
-            config: Config::default(),
-            glyphs: Default::default(),
-            prepare: Default::default(),
-            scale_cx: Default::default(),
-        }
-    }
-
+    /// Assign raster configuration
     pub fn set_raster_config(&mut self, config: &RasterConfig) {
         match config.mode {
             #[cfg(feature = "ab_glyph")]
@@ -193,30 +220,22 @@ impl State {
         // NOTE: possibly this should force re-drawing of all glyphs, but for
         // now that is out of scope
     }
-}
+    /*
+    /// Access configuration data
+    pub fn config(&self) -> &Config {
+        &self.config
+    }*/
 
-impl Pipeline {
-    /// Raster a sequence of glyphs
+    /// Returns access to the queue of unprepared sprites
     #[inline]
-    fn raster_glyphs(
-        &mut self,
-        face_id: FaceId,
-        dpem: f32,
-        mut glyphs: impl Iterator<Item = Glyph>,
-    ) {
-        // NOTE: we only need the allocation and coordinates now; the
-        // rendering could be offloaded (though this may not be useful).
-
-        match self.text.rasterer {
-            #[cfg(feature = "ab_glyph")]
-            Rasterer::AbGlyph => self.raster_ab_glyph(face_id, dpem, &mut glyphs),
-            Rasterer::Swash => self.raster_swash(face_id, dpem, &mut glyphs),
-        }
+    pub fn unprepared_sprites(&mut self) -> &mut Vec<UnpreparedSprite> {
+        &mut self.prepare
     }
 
     #[cfg(feature = "ab_glyph")]
     fn raster_ab_glyph(
         &mut self,
+        allocator: &mut dyn SpriteAllocator,
         face_id: FaceId,
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
@@ -226,15 +245,13 @@ impl Pipeline {
         let face_store = fonts::library().get_face_store(face_id);
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
-            if self.text.glyphs.contains_key(&desc) {
+            let desc = SpriteDescriptor::new(&self.config, face_id, glyph, dpem);
+            if self.glyphs.contains_key(&desc) {
                 continue;
             }
 
-            let (mut x, y) = desc.fractional_position(&self.text.config);
-            if self.text.sb_align
-                && desc.dpem(&self.text.config) >= self.text.config.subpixel_threshold
-            {
+            let (mut x, y) = desc.fractional_position(&self.config);
+            if self.sb_align && desc.dpem(&self.config) >= self.config.subpixel_threshold {
                 let sf = face_store.face_ref().scale_by_dpem(dpem);
                 x -= sf.h_side_bearing(glyph.id);
             }
@@ -248,7 +265,7 @@ impl Pipeline {
             };
             let Some(outline) = font.outline_glyph(glyph) else {
                 log::warn!("raster_glyphs failed: unable to outline glyph");
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
@@ -258,7 +275,7 @@ impl Pipeline {
             let size = (u32::conv_trunc(size.x), u32::conv_trunc(size.y));
             if size.0 == 0 || size.1 == 0 {
                 // Ignore this common error
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             }
 
@@ -268,21 +285,27 @@ impl Pipeline {
                 data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
             });
 
-            let Ok((atlas, _, origin, tex_quad)) = self.atlas_a.allocate(size) else {
+            let Ok(alloc) = allocator.alloc_a(size) else {
                 log::warn!("raster_glyphs failed: unable to allocate");
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
-            self.text.prepare.push((atlas, false, origin, size, data));
+            self.prepare.push(UnpreparedSprite {
+                atlas: alloc.atlas,
+                color: false,
+                origin: alloc.origin,
+                size,
+                data,
+            });
 
-            self.text.glyphs.insert(desc, Sprite {
-                atlas,
+            self.glyphs.insert(desc, Sprite {
+                atlas: alloc.atlas,
                 color: false,
                 valid: true,
                 size: Vec2(size.0.cast(), size.1.cast()),
                 offset: Vec2(offset.0.cast(), offset.1.cast()),
-                tex_quad,
+                tex_quad: alloc.tex_quad,
             });
         }
     }
@@ -290,6 +313,7 @@ impl Pipeline {
     // NOTE: using dyn Iterator over impl Iterator is slightly slower but saves 2-4kB
     fn raster_swash(
         &mut self,
+        allocator: &mut dyn SpriteAllocator,
         face_id: FaceId,
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
@@ -302,11 +326,10 @@ impl Pipeline {
         let synthesis = face.synthesis();
 
         let mut scaler = self
-            .text
             .scale_cx
             .builder(font)
             .size(dpem)
-            .hint(self.text.hint)
+            .hint(self.hint)
             .variations(
                 synthesis
                     .variation_settings()
@@ -331,20 +354,20 @@ impl Pipeline {
         let embolden = if synthesis.embolden() { dpem * 0.02 } else { 0.0 };
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
-            if self.text.glyphs.contains_key(&desc) {
+            let desc = SpriteDescriptor::new(&self.config, face_id, glyph, dpem);
+            if self.glyphs.contains_key(&desc) {
                 continue;
             }
 
             let Some(image) = Render::new(sources)
                 .format(Format::Alpha)
-                .offset(desc.fractional_position(&self.text.config).into())
+                .offset(desc.fractional_position(&self.config).into())
                 .transform(transform)
                 .embolden(embolden)
                 .render(&mut scaler, desc.glyph().0)
             else {
                 log::warn!("raster_glyphs failed: unable to construct renderer");
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
@@ -352,45 +375,53 @@ impl Pipeline {
             let size = (image.placement.width, image.placement.height);
             if size.0 == 0 || size.1 == 0 {
                 // Ignore this common error
-                self.text.glyphs.insert(desc, Sprite::default());
+                self.glyphs.insert(desc, Sprite::default());
                 continue;
             }
 
             let sprite = match image.content {
                 Content::Mask => {
-                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_a.allocate(size) else {
+                    let Ok(alloc) = allocator.alloc_a(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
-                        self.text.glyphs.insert(desc, Sprite::default());
+                        self.glyphs.insert(desc, Sprite::default());
                         continue;
                     };
 
-                    self.text
-                        .prepare
-                        .push((atlas, false, origin, size, image.data));
+                    self.prepare.push(UnpreparedSprite {
+                        atlas: alloc.atlas,
+                        color: false,
+                        origin: alloc.origin,
+                        size,
+                        data: image.data,
+                    });
 
                     Sprite {
-                        atlas,
+                        atlas: alloc.atlas,
                         color: false,
                         valid: true,
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
-                        tex_quad,
+                        tex_quad: alloc.tex_quad,
                     }
                 }
                 Content::SubpixelMask => unimplemented!(),
                 Content::Color => {
-                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_rgba.allocate(size) else {
+                    let Ok(alloc) = allocator.alloc_rgba(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
-                        self.text.glyphs.insert(desc, Sprite::default());
+                        self.glyphs.insert(desc, Sprite::default());
                         continue;
                     };
 
-                    assert!(atlas & 0x8000_0000 == 0);
-                    let atlas = atlas | 0x8000_0000;
+                    assert!(alloc.atlas & 0x8000_0000 == 0);
+                    let atlas = alloc.atlas | 0x8000_0000;
 
-                    self.text
-                        .prepare
-                        .push((atlas, true, origin, size, image.data));
+                    self.prepare.push(UnpreparedSprite {
+                        atlas: alloc.atlas,
+                        color: true,
+                        origin: alloc.origin,
+                        size,
+                        data: image.data,
+                    });
 
                     Sprite {
                         atlas,
@@ -398,67 +429,36 @@ impl Pipeline {
                         valid: true,
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
-                        tex_quad,
+                        tex_quad: alloc.tex_quad,
                     }
                 }
             };
 
-            self.text.glyphs.insert(desc, sprite);
+            self.glyphs.insert(desc, sprite);
         }
     }
-}
 
-impl Window {
-    fn push_sprite(
+    /// Raster a sequence of glyphs
+    #[inline]
+    pub fn raster_glyphs(
         &mut self,
-        pass: PassId,
-        glyph_pos: Vec2,
-        rect: Quad,
-        col: Rgba,
-        sprite: &Sprite,
+        allocator: &mut dyn SpriteAllocator,
+        face_id: FaceId,
+        dpem: f32,
+        mut glyphs: impl Iterator<Item = Glyph>,
     ) {
-        let mut a = glyph_pos.floor() + sprite.offset;
-        let mut b = a + sprite.size;
-
-        if !(sprite.is_valid()
-            && a.0 < rect.b.0
-            && a.1 < rect.b.1
-            && b.0 > rect.a.0
-            && b.1 > rect.a.1)
-        {
-            return;
-        }
-
-        let (mut ta, mut tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
-        if !(a >= rect.a) || !(b <= rect.b) {
-            let size_inv = Vec2::splat(1.0) / (b - a);
-            let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
-            let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
-            let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);
-            let fb1 = 1f32.min((rect.b.1 - a.1) * size_inv.1);
-
-            let ts = tb - ta;
-            tb = ta + ts * Vec2(fb0, fb1);
-            ta += ts * Vec2(fa0, fa1);
-
-            a.0 = a.0.clamp(rect.a.0, rect.b.0);
-            a.1 = a.1.clamp(rect.a.1, rect.b.1);
-            b.0 = b.0.clamp(rect.a.0, rect.b.0);
-            b.1 = b.1.clamp(rect.a.1, rect.b.1);
-        }
-
-        if !sprite.color {
-            let instance = InstanceA { a, b, ta, tb, col };
-            self.atlas_a.rect(pass, sprite.atlas, instance);
-        } else {
-            let instance = InstanceRgba { a, b, ta, tb };
-            self.atlas_rgba.rect(pass, sprite.atlas, instance);
+        match self.rasterer {
+            #[cfg(feature = "ab_glyph")]
+            Rasterer::AbGlyph => self.raster_ab_glyph(allocator, face_id, dpem, &mut glyphs),
+            Rasterer::Swash => self.raster_swash(allocator, face_id, dpem, &mut glyphs),
         }
     }
 
+    /// Draw text as a sequence of sprites
     pub fn text(
         &mut self,
-        pipe: &mut Pipeline,
+        allocator: &mut dyn SpriteAllocator,
+        queue: &mut dyn RenderQueue,
         pass: PassId,
         pos: Vec2,
         bb: Quad,
@@ -469,26 +469,28 @@ impl Window {
             let face = run.face_id();
             let dpem = run.dpem();
             for glyph in run.glyphs() {
-                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
-                let sprite = match pipe.text.glyphs.get(&desc) {
+                let desc = SpriteDescriptor::new(&self.config, face, glyph, dpem);
+                let sprite = match self.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
-                        pipe.raster_glyphs(face, dpem, run.glyphs());
-                        match pipe.text.glyphs.get(&desc) {
+                        self.raster_glyphs(allocator, face, dpem, run.glyphs());
+                        match self.glyphs.get(&desc) {
                             Some(sprite) => sprite,
                             None => continue,
                         }
                     }
                 };
-                self.push_sprite(pass, Vec2::from(glyph.position), bb, col, sprite);
+                queue.push_sprite(pass, Vec2::from(glyph.position), bb, col, sprite);
             }
         }
     }
 
+    /// Draw text with effects as a sequence of sprites
     #[allow(clippy::too_many_arguments)]
     pub fn text_effects(
         &mut self,
-        pipe: &mut Pipeline,
+        allocator: &mut dyn SpriteAllocator,
+        queue: &mut dyn RenderQueue,
         pass: PassId,
         pos: Vec2,
         bb: Quad,
@@ -505,7 +507,7 @@ impl Window {
                 .unwrap_or(true)
         {
             let col = colors.first().cloned().unwrap_or(Rgba::BLACK);
-            self.text(pipe, pass, pos, bb, text, col);
+            self.text(allocator, queue, pass, pos, bb, text, col);
             return;
         }
 
@@ -513,19 +515,19 @@ impl Window {
             let face = run.face_id();
             let dpem = run.dpem();
             let for_glyph = |glyph: Glyph, e: u16| {
-                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
-                let sprite = match pipe.text.glyphs.get(&desc) {
+                let desc = SpriteDescriptor::new(&self.config, face, glyph, dpem);
+                let sprite = match self.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
-                        pipe.raster_glyphs(face, dpem, run.glyphs());
-                        match pipe.text.glyphs.get(&desc) {
+                        self.raster_glyphs(allocator, face, dpem, run.glyphs());
+                        match self.glyphs.get(&desc) {
                             Some(sprite) => sprite,
                             None => return,
                         }
                     }
                 };
                 let col = colors.get(usize::conv(e)).cloned().unwrap_or(Rgba::BLACK);
-                self.push_sprite(pass, glyph.position.into(), bb, col, sprite);
+                queue.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 
             let for_rect = |x1, x2, y: f32, h: f32, e: u16| {

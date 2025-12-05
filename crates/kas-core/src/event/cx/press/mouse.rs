@@ -489,6 +489,7 @@ impl<'a> EventCx<'a> {
             (Some(id), _) => {
                 if let Some(text) = win.as_tile().find_tile(&id).and_then(|tile| tile.tooltip()) {
                     win.show_tooltip(self, id.clone(), text.to_string());
+                    self.post_recursion();
                     self.mouse.tooltip_source = Some(id);
                 } else {
                     win.close_tooltip(self);
@@ -505,6 +506,7 @@ impl<'a> EventCx<'a> {
                     && let Some(text) = win.as_tile().find_tile(id).and_then(|tile| tile.tooltip())
                 {
                     win.show_tooltip(self, id.clone(), text.to_string());
+                    self.post_recursion();
                     self.mouse.tooltip_source = Some(id.clone());
                 }
             }

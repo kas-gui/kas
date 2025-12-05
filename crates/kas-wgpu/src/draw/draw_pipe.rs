@@ -107,6 +107,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             light_norm_buf,
             bg_common: vec![],
             images,
+            text: kas::text::raster::State::default(),
             shaded_square,
             shaded_round,
             flat_round,
@@ -202,6 +203,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             &self.queue,
             &mut self.staging_belt,
             &mut encoder,
+            &mut self.text,
         );
         window
             .shaded_square
@@ -243,7 +245,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         passes.sort_by_key(|pass| pass.1);
 
         // We use a separate render pass for each clipped region.
-        for pass in passes.drain(..).map(|pass| pass.0) {
+        for (pass, _) in passes.drain(..) {
             let rect = window.clip_regions[pass].rect;
             if rect.size.0 == 0 || rect.size.1 == 0 {
                 continue;
@@ -315,7 +317,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     }
 
     fn set_raster_config(&mut self, config: &RasterConfig) {
-        self.images.text.set_raster_config(config);
+        self.text.set_raster_config(config);
     }
 
     #[inline]
@@ -357,7 +359,8 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         col: Rgba,
     ) {
         let time = std::time::Instant::now();
-        draw.images.text(&mut self.images, pass, pos, bb, text, col);
+        self.text
+            .text(&mut self.images, &mut draw.images, pass, pos, bb, text, col);
         draw.common.report_dur_text(time.elapsed());
     }
 
@@ -372,8 +375,9 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         colors: &[Rgba],
     ) {
         let time = std::time::Instant::now();
-        draw.images.text_effects(
+        self.text.text_effects(
             &mut self.images,
+            &mut draw.images,
             pass,
             pos,
             bb,
@@ -438,6 +442,11 @@ impl<CW: CustomWindow> DrawImpl for DrawWindow<CW> {
     #[inline]
     fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: Rgba) {
         self.shaded_square.frame(pass, outer, inner, col);
+    }
+
+    #[inline]
+    fn line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, width: f32, col: Rgba) {
+        self.flat_round.line(pass, p1, p2, 0.5 * width, col);
     }
 }
 

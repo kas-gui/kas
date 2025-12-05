@@ -15,6 +15,7 @@ use crate::ConfigAction;
 use crate::messages::Erased;
 use crate::window::{BoxedWindow, PopupDescriptor, WindowId};
 use event_loop::Loop;
+use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 pub(crate) use shared::RunnerT;
 use shared::Shared;
 use std::fmt::Debug;
@@ -31,6 +32,10 @@ pub use common::{GraphicsInstance, RunError, WindowSurface};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub extern crate raw_window_handle;
+
+/// Any handle supporting both [`HasDisplayHandle`] and [`HasWindowHandle`]
+pub trait HasDisplayAndWindowHandle: HasDisplayHandle + HasWindowHandle + 'static {}
+impl<W: HasDisplayHandle + HasWindowHandle + 'static> HasDisplayAndWindowHandle for W {}
 
 /// A type-erased message stack
 ///
