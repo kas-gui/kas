@@ -35,7 +35,7 @@ impl State {
             }
             *self = State::Initial;
             true
-        } else if self.path() == Some(&entry) {
+        } else if self.path() == Some(entry) {
             false
         } else {
             *self = State::Unknown(entry.clone());
@@ -104,7 +104,8 @@ fn image() -> impl Widget<Data = State> {
         .with_logical_size((128.0, 128.0))
         .map_any()
         .on_update(|cx, widget, state: &State| {
-            if let State::Image(path, format) = state {
+            if let State::Image(path, _format) = state {
+                // TODO: use format parameter?
                 widget.set(cx, path);
             }
         })

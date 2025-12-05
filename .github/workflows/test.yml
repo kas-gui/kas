@@ -116,7 +116,7 @@ jobs:
       # - name: Clippy (stable)
       #   if: matrix.toolchain != 'beta' && matrix.toolchain != 'stable'
       #   run: |
-      #     cargo clippy --workspace -- -D warnings \
+      #     cargo clippy --workspace --features stable,workspace -- -D warnings \
       #     -A clippy::collapsible-if \
       #     -A clippy::collapsible_else_if \
       #     -A clippy::module-inception \
