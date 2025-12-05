@@ -103,8 +103,6 @@ impl SpriteDescriptor {
     }
 
     /// Construct
-    ///
-    /// Most parameters come from [`TextDisplay::glyphs`] output. See also [`raster`].
     pub fn new(config: &Config, face: FaceId, glyph: Glyph, dpem: f32) -> Self {
         let face: u16 = face.get().cast();
         let glyph_id: u16 = glyph.id.0;
