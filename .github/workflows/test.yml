@@ -24,10 +24,10 @@ jobs:
 
       - name: Rustfmt check
         run: |
-          cargo fmt --all -- --check
+          cargo fmt -- --check
       - name: Build docs
         run: |
-          cargo doc --features stable --all --no-deps -Zwarnings --config 'build.warnings="deny"'
+          cargo doc --features stable,wayland --workspace --no-deps -Zwarnings --config 'build.warnings="deny"'
       - name: Test kas-macros
         run: |
           cargo test --manifest-path crates/kas-macros/Cargo.toml
@@ -116,7 +116,7 @@ jobs:
       # - name: Clippy (stable)
       #   if: matrix.toolchain != 'beta' && matrix.toolchain != 'stable'
       #   run: |
-      #     cargo clippy --all -- -D warnings \
+      #     cargo clippy --workspace -- -D warnings \
       #     -A clippy::collapsible-if \
       #     -A clippy::collapsible_else_if \
       #     -A clippy::module-inception \
