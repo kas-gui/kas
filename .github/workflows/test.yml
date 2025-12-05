@@ -54,7 +54,7 @@ jobs:
       - name: Test kas-dylib
         run: |
           cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/wayland
-          cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/x11
+          cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-soft/x11
       - name: Test kas
         run: |
           cargo test --lib --bins --features nightly,nightly-diagnostics-pedantic -Zwarnings --config 'build.warnings="deny"'
@@ -108,11 +108,13 @@ jobs:
       - name: Test kas-wgpu
         run: cargo test --manifest-path crates/kas-wgpu/Cargo.toml --features kas/x11
       - name: Test kas-dylib
-        run: cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/x11
+        run: cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-soft/x11
       - name: Test kas
         run: cargo test --features stable
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
+      - name: Test examples/text-editor
+        run: cargo test --manifest-path examples/text-editor/Cargo.toml
       # - name: Clippy (stable)
       #   if: matrix.toolchain != 'beta' && matrix.toolchain != 'stable'
       #   run: |
