@@ -20,10 +20,10 @@ features = ["kas/wayland"]
 kms = ["softbuffer/kms"]
 
 # Enable Wayland backend
-wayland = ["softbuffer/wayland", "softbuffer/wayland-dlopen"]
+wayland = ["kas/wayland", "softbuffer/wayland", "softbuffer/wayland-dlopen"]
 
 # Enable X11 backend
-x11 = ["softbuffer/x11", "softbuffer/x11-dlopen"]
+x11 = ["kas/x11", "softbuffer/x11", "softbuffer/x11-dlopen"]
 
 [dependencies]
 bytemuck = "1.7.0"
