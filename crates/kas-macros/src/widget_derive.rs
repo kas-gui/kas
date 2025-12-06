@@ -14,7 +14,7 @@ use quote::{ToTokens, quote};
 use syn::ImplItem::Verbatim;
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{MacroDelimiter, Meta, Token, parse_quote, parse2};
+use syn::{MacroDelimiter, Meta, parse_quote, parse2};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -22,22 +22,11 @@ mod kw {
 }
 
 #[derive(Debug, Default)]
-struct DeriveArgs {
-    data_ty: Option<syn::Type>,
-}
+struct DeriveArgs {}
 
 impl Parse for DeriveArgs {
-    fn parse(content: ParseStream) -> Result<Self> {
-        let data_ty = if !content.is_empty() {
-            let _: Token![type] = content.parse()?;
-            let _ = content.parse::<kw::Data>()?;
-            let _: Token![=] = content.parse()?;
-            Some(content.parse()?)
-        } else {
-            None
-        };
-
-        Ok(DeriveArgs { data_ty })
+    fn parse(_: ParseStream) -> Result<Self> {
+        Ok(DeriveArgs {})
     }
 }
 
@@ -62,8 +51,8 @@ impl ScopeAttr for AttrDeriveWidget {
 /// This macro may inject impls and inject items into existing impls.
 /// It may also inject code into existing methods such that the only observable
 /// behaviour is a panic.
-fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result<()> {
-    let mut data_ty = args.data_ty;
+fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()> {
+    let mut data_ty = None;
     let mut data_binding: Option<syn::Expr> = None;
     let mut inner = None;
 

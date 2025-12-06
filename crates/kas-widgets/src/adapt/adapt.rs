@@ -187,7 +187,7 @@ mod Map {
     /// [`Id`]. It supports [`Deref`](std::ops::Deref) and
     /// [`DerefMut`](std::ops::DerefMut) to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
-    #[derive_widget(type Data = A)]
+    #[derive_widget]
     pub struct Map<A, W: Widget, F>
     where
         F: for<'a> Fn(&'a A) -> &'a W::Data,
@@ -197,6 +197,10 @@ mod Map {
         pub inner: W,
         map_fn: F,
         _data: PhantomData<A>,
+    }
+
+    impl Widget for Self {
+        type Data = A;
     }
 
     impl Self {
