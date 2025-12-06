@@ -28,7 +28,7 @@ mod MapAny {
     pub struct MapAny<A, W: Widget<Data = ()>> {
         _a: std::marker::PhantomData<A>,
         /// The inner widget
-        #[widget(&())]
+        #[widget = &()]
         pub inner: W,
     }
 

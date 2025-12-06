@@ -193,7 +193,7 @@ mod Map {
         F: for<'a> Fn(&'a A) -> &'a W::Data,
     {
         /// The inner widget
-        #[widget((self.map_fn)(data))]
+        #[widget = (self.map_fn)(data)]
         pub inner: W,
         map_fn: F,
         _data: PhantomData<A>,

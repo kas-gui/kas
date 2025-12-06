@@ -55,6 +55,7 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
     let mut data_ty = None;
     let mut data_binding: Option<syn::Expr> = None;
     let mut inner = None;
+    let mut inferred_data_ty = None;
 
     scope.expand_impl_self();
     let name = &scope.ident;
@@ -141,13 +142,10 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
                     Meta::Path(_) => {
                         if data_ty.is_none() {
                             let ty = &field.ty;
-                            data_ty = Some(parse_quote! { <#ty as ::kas::Widget>::Data });
+                            inferred_data_ty = Some(parse_quote! { <#ty as ::kas::Widget>::Data });
                         }
                     }
                     Meta::List(list) if matches!(&list.delimiter, MacroDelimiter::Paren(_)) => {
-                        if data_ty.is_none() {
-                            emit_error!(list, "usage requires definition of `type Data`");
-                        }
                         data_binding = Some(parse2(list.tokens)?);
                     }
                     Meta::List(list) => {
@@ -155,8 +153,7 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
                         return Err(Error::new(span, "expected `#[widget]` or `#[widget(..)]`"));
                     }
                     Meta::NameValue(nv) => {
-                        let span = nv.eq_token.span();
-                        return Err(Error::new(span, "unexpected"));
+                        data_binding = Some(nv.value);
                     }
                 };
             } else {
@@ -171,7 +168,24 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
     } else {
         return Err(Error::new(attr_span, "expected `#[widget]` on inner field"));
     };
-    let data_ty = data_ty.expect("widget_derive: have data_ty");
+    if let Some(ref ty) = data_ty
+        && data_binding.is_none()
+    {
+        emit_warning!(
+            ty, "explicit `type Data` without mapping on inner `#[widget]` field";
+            note = "This is either redundant or will cause a type mismatch";
+        );
+    } else if data_ty.is_none()
+        && let Some(ref binding) = data_binding
+    {
+        return Err(Error::new(
+            binding.span(),
+            "Data mapping without specification of type `Widget::Data`",
+        ));
+    }
+    let data_ty = data_ty
+        .or(inferred_data_ty)
+        .expect("widget_derive: have data_ty");
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
