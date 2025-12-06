@@ -185,7 +185,7 @@ mod GripPart {
         /// between [`Offset::ZERO`] and [`Self::max_offset`].
         #[inline]
         pub fn offset(&self) -> Offset {
-            self.rect.pos - self.track.pos
+            (self.rect.pos - self.track.pos).max(Offset::ZERO)
         }
 
         /// Get the maximum allowed offset
@@ -194,7 +194,7 @@ mod GripPart {
         /// track minus the size of the grip.
         #[inline]
         pub fn max_offset(&self) -> Offset {
-            Offset::conv(self.track.size) - Offset::conv(self.rect.size)
+            (Offset::conv(self.track.size) - Offset::conv(self.rect.size)).max(Offset::ZERO)
         }
 
         /// Set a new grip position
