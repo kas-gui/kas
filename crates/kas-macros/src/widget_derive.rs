@@ -433,13 +433,8 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
                 .push(Verbatim(quote! { type Data = #data_ty; }));
         }
 
-        if !has_item("as_node") {
-            widget_impl.items.push(Verbatim(fn_as_node));
-        }
-
-        if !has_item("child_node") {
-            widget_impl.items.push(Verbatim(fn_child_node));
-        }
+        widget_impl.items.push(Verbatim(fn_as_node));
+        widget_impl.items.push(Verbatim(fn_child_node));
 
         if !has_item("_configure") {
             widget_impl.items.push(Verbatim(fn_configure));

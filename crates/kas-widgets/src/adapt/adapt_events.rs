@@ -8,7 +8,7 @@
 use super::{AdaptConfigCx, AdaptEventCx};
 #[allow(unused)] use kas::Events;
 use kas::event::{ConfigCx, Event, EventCx, IsUsed};
-use kas::{Id, Node, Widget};
+use kas::{Id, Widget};
 use kas::{autoimpl, impl_self};
 use std::fmt::Debug;
 
@@ -135,16 +135,6 @@ mod AdaptEvents {
 
     impl<W: Widget> Widget for AdaptEvents<W> {
         type Data = W::Data;
-
-        #[inline]
-        fn as_node<'a>(&'a mut self, data: &'a Self::Data) -> Node<'a> {
-            Node::new(self, data)
-        }
-
-        #[inline]
-        fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>> {
-            self.inner.child_node(data, index)
-        }
 
         // NOTE: internal widget methods are used here to call additional event
         // handlers. This is not otherwise supported by #[derive_widget].
