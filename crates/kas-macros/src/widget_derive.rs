@@ -227,6 +227,11 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
         fn find_child_index(&self, id: &::kas::Id) -> Option<usize> {
             self.#inner.find_child_index(id)
         }
+
+        #[inline]
+        fn translation(&self, index: usize) -> ::kas::geom::Offset {
+            self.#inner.translation(index)
+        }
     };
 
     let fn_rect = quote! {
@@ -253,12 +258,6 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
             hints: ::kas::layout::AlignHints,
         ) {
             self.#inner.set_rect(cx, rect, hints);
-        }
-    };
-    let fn_try_probe = quote! {
-        #[inline]
-        fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            self.#inner.try_probe(coord)
         }
     };
     let fn_draw = quote! {
@@ -299,14 +298,16 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
         });
     }
 
-    let tile_methods = quote! {
+    let fn_navigable = quote! {
         #[inline]
-        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-            self.#inner.nav_next(reverse, from)
+        fn navigable(&self) -> bool {
+            self.#inner.navigable()
         }
+    };
+    let fn_tooltip = quote! {
         #[inline]
-        fn translation(&self, index: usize) -> ::kas::geom::Offset {
-            self.#inner.translation(index)
+        fn tooltip(&self) -> Option<&str> {
+            self.#inner.tooltip()
         }
     };
 
@@ -316,8 +317,27 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
             self.#inner.role(cx)
         }
     };
+    let fn_role_child_properties = quote! {
+        #[inline]
+        fn role_child_properties(&self, cx: &mut dyn ::kas::RoleCx, index: usize) {
+            self.#inner.role_child_properties(cx, index);
+        }
+    };
+
+    let fn_try_probe = quote! {
+        #[inline]
+        fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            self.#inner.try_probe(coord)
+        }
+    };
 
     let fn_nav_next = quote! {
+        #[inline]
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            self.#inner.nav_next(reverse, from)
+        }
+    };
+    let fn_hidden_nav_next = quote! {
         fn _nav_next(
             &self,
             cx: &::kas::event::EventState,
@@ -334,26 +354,44 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
         tile_impl.items.push(Verbatim(required_tile_methods));
-        tile_impl.items.push(Verbatim(tile_methods));
+
+        if !has_item("navigable") {
+            tile_impl.items.push(Verbatim(fn_navigable));
+        }
+
+        if !has_item("tooltip") {
+            tile_impl.items.push(Verbatim(fn_tooltip));
+        }
+
         if !has_item("role") {
             tile_impl.items.push(Verbatim(fn_role));
+        }
+
+        if !has_item("role_child_properties") {
+            tile_impl.items.push(Verbatim(fn_role_child_properties));
         }
 
         if !has_item("try_probe") {
             tile_impl.items.push(Verbatim(fn_try_probe));
         }
 
-        if !has_item("_nav_next") {
+        if !has_item("nav_next") {
             tile_impl.items.push(Verbatim(fn_nav_next));
+        }
+        if !has_item("_nav_next") {
+            tile_impl.items.push(Verbatim(fn_hidden_nav_next));
         }
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
-                #tile_methods
+                #fn_navigable
+                #fn_tooltip
                 #fn_role
+                #fn_role_child_properties
                 #fn_try_probe
                 #fn_nav_next
+                #fn_hidden_nav_next
             }
         });
     }
