@@ -316,7 +316,7 @@ mod List {
         fn make_child_id(&mut self, index: usize) -> Id {
             if let Some(child) = self.widgets.get_tile(index) {
                 // Use the widget's existing identifier, if valid
-                if child.id_ref().is_valid() && self.id_ref().is_ancestor_of(child.id_ref()) {
+                if child.id_ref().is_valid() {
                     if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
                         if let Entry::Vacant(entry) = self.id_map.entry(key) {
                             entry.insert(index);
