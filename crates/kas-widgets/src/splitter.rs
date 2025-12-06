@@ -338,8 +338,8 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
         let dim = self.dim();
         let mut setter =
             layout::RowSetter::<D, Vec<i32>, _>::new_unsolved(self.rect(), dim, &mut self.data);
-        setter.solve_range(&mut self.data, 0..index, width1);
-        setter.solve_range(&mut self.data, (index + 1)..dim.1, width2);
+        setter.solve_range(&mut self.data, 0..index, width1, true);
+        setter.solve_range(&mut self.data, (index + 1)..dim.1, width2, false);
         setter.update_offsets(&mut self.data);
 
         let mut n = 0;
