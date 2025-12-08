@@ -242,6 +242,29 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                             }
                         }
                     }
+
+                    impl ::kas::WidgetCore for #core_type {
+                        #[inline]
+                        fn id_ref(&self) -> &::kas::Id {
+                            &self._id
+                        }
+
+                        fn status(&self) -> ::kas::WidgetStatus {
+                            self.status
+                        }
+                    }
+
+                    impl ::kas::WidgetCoreRect for #core_type {
+                        #[inline]
+                        fn rect(&self) -> ::kas::geom::Rect {
+                            self._rect
+                        }
+
+                        #[inline]
+                        fn set_rect(&mut self, rect: ::kas::geom::Rect) {
+                            self._rect = rect;
+                        }
+                    }
                 });
                 field.ty = Type::Path(syn::TypePath {
                     qself: None,
