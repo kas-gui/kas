@@ -182,7 +182,7 @@ mod Splitter {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             self.align_hints = hints;
             self.size_solved = true;
             if self.widgets.is_empty() {

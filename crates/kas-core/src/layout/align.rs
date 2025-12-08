@@ -19,15 +19,19 @@ pub use crate::text::Align;
 /// The [`AlignHints::complete`] method is provided to conveniently apply
 /// alignment to a widget within [`crate::Layout::set_rect`]:
 /// ```
+/// # use kas_core::{DefaultCoreType, WidgetCoreRect, theme::SizeCx};
 /// # use kas_core::layout::{Align, AlignHints};
 /// # use kas_core::geom::*;
-/// # let align = AlignHints::NONE;
-/// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
-/// let pref_size = Size(30, 20); // usually size comes from SizeCx
-/// let rect = align
-///     .complete(Align::Stretch, Align::Center)
-///     .aligned_rect(pref_size, rect);
-/// // widget_set_rect!(rect);
+/// # struct Thing { core: DefaultCoreType };
+/// # impl Thing {
+/// fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, align: AlignHints) {
+///     let pref_size = Size(30, 20); // usually size comes from SizeCx
+///     let rect = align
+///         .complete(Align::Stretch, Align::Center)
+///         .aligned_rect(pref_size, rect);
+///     self.core.set_rect(rect);
+/// }
+/// # }
 /// ```
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct AlignHints {

@@ -273,7 +273,7 @@ mod Svg {
             let align = hints.complete_default();
             let scale_factor = cx.scale_factor();
             let rect = self.scaling.align(rect, align, scale_factor);
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
 
             let size: (u32, u32) = self.rect().size.cast();
             if let Some(fut) = self.inner.resize(size) {

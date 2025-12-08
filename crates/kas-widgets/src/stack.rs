@@ -108,7 +108,7 @@ mod Stack {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             self.align_hints = hints;
 
             for entry in self.widgets.iter_mut() {

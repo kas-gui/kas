@@ -143,7 +143,7 @@ mod Sprite {
                 let scale_factor = cx.scale_factor();
                 self.scaling.align(rect, align, scale_factor)
             };
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
         }
 
         fn draw(&self, mut draw: DrawCx) {

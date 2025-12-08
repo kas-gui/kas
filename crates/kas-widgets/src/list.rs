@@ -281,7 +281,7 @@ mod List {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             let dim = (self.direction, self.widgets.len());
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout);
 

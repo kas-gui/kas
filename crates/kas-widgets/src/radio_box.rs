@@ -38,7 +38,7 @@ mod RadioBox {
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_center();
             let rect = cx.align_feature(Feature::RadioBox, rect, align);
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
         }
 
         fn draw(&self, mut draw: DrawCx) {

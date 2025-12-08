@@ -337,7 +337,7 @@ mod ScrollText {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, mut rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             self.label.set_rect(cx, rect, hints);
 
             let w = cx.scroll_bar_width().min(rect.size.0);

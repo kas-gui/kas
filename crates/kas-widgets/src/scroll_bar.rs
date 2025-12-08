@@ -328,7 +328,7 @@ mod ScrollBar {
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
             };
             let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, align);
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             self.grip.set_track(rect);
 
             // We call grip.set_rect only for compliance with the widget model:

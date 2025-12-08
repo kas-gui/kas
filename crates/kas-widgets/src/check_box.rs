@@ -38,7 +38,7 @@ mod CheckBox {
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let rect = cx.align_feature(Feature::CheckBox, rect, hints.complete_center());
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
         }
 
         fn draw(&self, mut draw: DrawCx) {

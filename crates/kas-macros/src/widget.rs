@@ -668,7 +668,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
-        let mut fn_rect_is_provided = fn_size_rules.is_some();
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
             if let Some(ref core) = core_data {
@@ -699,7 +698,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
                 let path_rect = quote! { #core_path._rect };
                 widget_set_rect_span = crate::visitors::widget_set_rect(path_rect, &mut f.block);
-                fn_rect_is_provided |= widget_set_rect_span.is_some();
 
                 if let Some(ref core) = core_data {
                     f.block.stmts.insert(0, parse_quote! {
@@ -712,7 +710,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
-            fn_rect_is_provided = true;
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "rect") {
@@ -729,13 +726,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     "definition of `Layout::set_rect` is expected when `fn rect` is defined"
                 );
             }
-        } else if fn_rect_is_provided {
+        } else {
             layout_impl.items.push(Verbatim(fn_rect));
-        } else if let Some(span) = fn_set_rect_span {
-            emit_warning!(
-                span,
-                "cowardly refusing to provide an impl of `fn rect` with custom `fn set_rect` without usage of `widget_set_rect!` and without a property-defined layout"
-            );
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
