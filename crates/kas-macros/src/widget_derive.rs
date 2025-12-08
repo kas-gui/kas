@@ -168,14 +168,7 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
     } else {
         return Err(Error::new(attr_span, "expected `#[widget]` on inner field"));
     };
-    if let Some(ref ty) = data_ty
-        && data_binding.is_none()
-    {
-        emit_warning!(
-            ty, "explicit `type Data` without mapping on inner `#[widget]` field";
-            note = "This is either redundant or will cause a type mismatch";
-        );
-    } else if data_ty.is_none()
+    if data_ty.is_none()
         && let Some(ref binding) = data_binding
     {
         return Err(Error::new(
