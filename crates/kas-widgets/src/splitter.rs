@@ -110,7 +110,7 @@ mod Splitter {
             if !is_grip {
                 if let Some(child) = self.widgets.get_tile(index) {
                     // Use the widget's existing identifier, if valid
-                    if child.id_ref().is_valid() && self.id_ref().is_ancestor_of(child.id_ref()) {
+                    if child.id_ref().is_valid() {
                         if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
                             if let Entry::Vacant(entry) = self.id_map.entry(key) {
                                 entry.insert(child_index);
@@ -122,7 +122,7 @@ mod Splitter {
             } else {
                 if let Some(child) = self.grips.get_tile(index) {
                     // Use the widget's existing identifier, if valid
-                    if child.id_ref().is_valid() && self.id_ref().is_ancestor_of(child.id_ref()) {
+                    if child.id_ref().is_valid() {
                         if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
                             if let Entry::Vacant(entry) = self.id_map.entry(key) {
                                 entry.insert(child_index);
@@ -338,8 +338,8 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
         let dim = self.dim();
         let mut setter =
             layout::RowSetter::<D, Vec<i32>, _>::new_unsolved(self.rect(), dim, &mut self.data);
-        setter.solve_range(&mut self.data, 0..index, width1);
-        setter.solve_range(&mut self.data, (index + 1)..dim.1, width2);
+        setter.solve_range(&mut self.data, 0..index, width1, true);
+        setter.solve_range(&mut self.data, (index + 1)..dim.1, width2, false);
         setter.update_offsets(&mut self.data);
 
         let mut n = 0;

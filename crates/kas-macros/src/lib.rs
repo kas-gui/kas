@@ -418,7 +418,11 @@ pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
 /// and [`impl_anon!`] macros.
 ///
 /// This macro derives a [`Widget`] implementation from the inner field
-/// annotated with `#[widget]`.
+/// annotated with `#[widget]`. The deriving type may (optionally) override:
+///
+/// -   Any [`Layout`] method
+/// -   A subset of [`Tile`] methods: `navigable`, `tooltip`, `role`, `role_child_properties`, `try_probe`, `nav_next`
+/// -   The `Data` type (see [the example below](#example-mapping-data))
 ///
 /// ## Example
 ///
@@ -453,23 +457,26 @@ pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// This macro supports mapping the data passed to the inner widget. The
 /// attribute annotating the inner field specifies the data map. It is required
-/// to specify the data type, either via an explicit `impl` of `Widget` or as
-/// below.
+/// to specify the `Widget::Data` type.
 ///
 /// ```ignore
 /// #[impl_self]
 /// mod Map {
 ///     #[autoimpl(Deref, DerefMut using self.inner)]
 ///     #[autoimpl(Viewport using self.inner where W: trait)]
-///     #[derive_widget(type Data = A)]
+///     #[derive_widget]
 ///     pub struct Map<A, W: Widget, F>
 ///     where
 ///         F: for<'a> Fn(&'a A) -> &'a W::Data,
 ///     {
-///         #[widget((self.map_fn)(data))]
+///         #[widget = (self.map_fn)(data)]
 ///         pub inner: W,
 ///         map_fn: F,
 ///         _data: PhantomData<A>,
+///     }
+///
+///     impl Widget for Self {
+///         type Data = A;
 ///     }
 /// }
 /// ```
@@ -483,6 +490,8 @@ pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
 /// may resolve to `outer.deref().id()` when the trait providing `fn id` is not
 /// in scope, yet is available through a bound on the field).
 ///
+/// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
+/// [`Tile`]: https://docs.rs/kas/latest/kas/trait.Tile.html
 /// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
 /// [`Deref`]: std::ops::Deref
 #[proc_macro_attribute]

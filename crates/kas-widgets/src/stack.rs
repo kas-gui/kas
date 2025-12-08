@@ -147,6 +147,9 @@ mod Stack {
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
+            // NOTE: this approach is O(n) where n = number of pages. Since a
+            // Stack should have a small number of pages this is acceptable.
+
             let key = id.next_key_after(self.id_ref())?;
             for (i, w) in self.widgets.iter().enumerate() {
                 if w.1 == key {

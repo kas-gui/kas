@@ -14,7 +14,7 @@ use quote::{ToTokens, quote};
 use syn::ImplItem::Verbatim;
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{MacroDelimiter, Meta, Token, parse_quote, parse2};
+use syn::{MacroDelimiter, Meta, parse_quote, parse2};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -22,22 +22,11 @@ mod kw {
 }
 
 #[derive(Debug, Default)]
-struct DeriveArgs {
-    data_ty: Option<syn::Type>,
-}
+struct DeriveArgs {}
 
 impl Parse for DeriveArgs {
-    fn parse(content: ParseStream) -> Result<Self> {
-        let data_ty = if !content.is_empty() {
-            let _: Token![type] = content.parse()?;
-            let _ = content.parse::<kw::Data>()?;
-            let _: Token![=] = content.parse()?;
-            Some(content.parse()?)
-        } else {
-            None
-        };
-
-        Ok(DeriveArgs { data_ty })
+    fn parse(_: ParseStream) -> Result<Self> {
+        Ok(DeriveArgs {})
     }
 }
 
@@ -62,10 +51,11 @@ impl ScopeAttr for AttrDeriveWidget {
 /// This macro may inject impls and inject items into existing impls.
 /// It may also inject code into existing methods such that the only observable
 /// behaviour is a panic.
-fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result<()> {
-    let mut data_ty = args.data_ty;
+fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()> {
+    let mut data_ty = None;
     let mut data_binding: Option<syn::Expr> = None;
     let mut inner = None;
+    let mut inferred_data_ty = None;
 
     scope.expand_impl_self();
     let name = &scope.ident;
@@ -152,13 +142,10 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
                     Meta::Path(_) => {
                         if data_ty.is_none() {
                             let ty = &field.ty;
-                            data_ty = Some(parse_quote! { <#ty as ::kas::Widget>::Data });
+                            inferred_data_ty = Some(parse_quote! { <#ty as ::kas::Widget>::Data });
                         }
                     }
                     Meta::List(list) if matches!(&list.delimiter, MacroDelimiter::Paren(_)) => {
-                        if data_ty.is_none() {
-                            emit_error!(list, "usage requires definition of `type Data`");
-                        }
                         data_binding = Some(parse2(list.tokens)?);
                     }
                     Meta::List(list) => {
@@ -166,8 +153,7 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
                         return Err(Error::new(span, "expected `#[widget]` or `#[widget(..)]`"));
                     }
                     Meta::NameValue(nv) => {
-                        let span = nv.eq_token.span();
-                        return Err(Error::new(span, "unexpected"));
+                        data_binding = Some(nv.value);
                     }
                 };
             } else {
@@ -182,7 +168,17 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
     } else {
         return Err(Error::new(attr_span, "expected `#[widget]` on inner field"));
     };
-    let data_ty = data_ty.expect("widget_derive: have data_ty");
+    if data_ty.is_none()
+        && let Some(ref binding) = data_binding
+    {
+        return Err(Error::new(
+            binding.span(),
+            "Data mapping without specification of type `Widget::Data`",
+        ));
+    }
+    let data_ty = data_ty
+        .or(inferred_data_ty)
+        .expect("widget_derive: have data_ty");
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
@@ -224,6 +220,11 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         fn find_child_index(&self, id: &::kas::Id) -> Option<usize> {
             self.#inner.find_child_index(id)
         }
+
+        #[inline]
+        fn translation(&self, index: usize) -> ::kas::geom::Offset {
+            self.#inner.translation(index)
+        }
     };
 
     let fn_rect = quote! {
@@ -250,12 +251,6 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
             hints: ::kas::layout::AlignHints,
         ) {
             self.#inner.set_rect(cx, rect, hints);
-        }
-    };
-    let fn_try_probe = quote! {
-        #[inline]
-        fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            self.#inner.try_probe(coord)
         }
     };
     let fn_draw = quote! {
@@ -296,14 +291,16 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         });
     }
 
-    let tile_methods = quote! {
+    let fn_navigable = quote! {
         #[inline]
-        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-            self.#inner.nav_next(reverse, from)
+        fn navigable(&self) -> bool {
+            self.#inner.navigable()
         }
+    };
+    let fn_tooltip = quote! {
         #[inline]
-        fn translation(&self, index: usize) -> ::kas::geom::Offset {
-            self.#inner.translation(index)
+        fn tooltip(&self) -> Option<&str> {
+            self.#inner.tooltip()
         }
     };
 
@@ -313,8 +310,27 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
             self.#inner.role(cx)
         }
     };
+    let fn_role_child_properties = quote! {
+        #[inline]
+        fn role_child_properties(&self, cx: &mut dyn ::kas::RoleCx, index: usize) {
+            self.#inner.role_child_properties(cx, index);
+        }
+    };
+
+    let fn_try_probe = quote! {
+        #[inline]
+        fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            self.#inner.try_probe(coord)
+        }
+    };
 
     let fn_nav_next = quote! {
+        #[inline]
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            self.#inner.nav_next(reverse, from)
+        }
+    };
+    let fn_hidden_nav_next = quote! {
         fn _nav_next(
             &self,
             cx: &::kas::event::EventState,
@@ -331,26 +347,44 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
         tile_impl.items.push(Verbatim(required_tile_methods));
-        tile_impl.items.push(Verbatim(tile_methods));
+
+        if !has_item("navigable") {
+            tile_impl.items.push(Verbatim(fn_navigable));
+        }
+
+        if !has_item("tooltip") {
+            tile_impl.items.push(Verbatim(fn_tooltip));
+        }
+
         if !has_item("role") {
             tile_impl.items.push(Verbatim(fn_role));
+        }
+
+        if !has_item("role_child_properties") {
+            tile_impl.items.push(Verbatim(fn_role_child_properties));
         }
 
         if !has_item("try_probe") {
             tile_impl.items.push(Verbatim(fn_try_probe));
         }
 
-        if !has_item("_nav_next") {
+        if !has_item("nav_next") {
             tile_impl.items.push(Verbatim(fn_nav_next));
+        }
+        if !has_item("_nav_next") {
+            tile_impl.items.push(Verbatim(fn_hidden_nav_next));
         }
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
-                #tile_methods
+                #fn_navigable
+                #fn_tooltip
                 #fn_role
+                #fn_role_child_properties
                 #fn_try_probe
                 #fn_nav_next
+                #fn_hidden_nav_next
             }
         });
     }
@@ -430,13 +464,8 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
                 .push(Verbatim(quote! { type Data = #data_ty; }));
         }
 
-        if !has_item("as_node") {
-            widget_impl.items.push(Verbatim(fn_as_node));
-        }
-
-        if !has_item("child_node") {
-            widget_impl.items.push(Verbatim(fn_child_node));
-        }
+        widget_impl.items.push(Verbatim(fn_as_node));
+        widget_impl.items.push(Verbatim(fn_child_node));
 
         if !has_item("_configure") {
             widget_impl.items.push(Verbatim(fn_configure));

@@ -83,29 +83,40 @@ In development. Interfaces are not currently stable.
 Crates and features
 -------------------
 
-[kas] is a meta-package serving as the library's public API, but containing no real code. Other crates in this repo:
+Crates in this repository:
 
 -   [kas-core](https://docs.rs/kas-core): the core library
+-   kas-macros: proc-macro crate (see `kas-core` documentation)
 -   [kas-widgets](https://docs.rs/kas-widgets): the main widget library
 -   [kas-view](https://docs.rs/kas-view): view widgets supporting virtual scrolling
 -   [kas-image](https://docs.rs/kas-image): scalable and raster image widgets and utilities
+-   [kas-wgpu](https://docs.rs/kas-wgpu): rendering backend over [wgpu]
+-   [kas-soft](https://docs.rs/kas-soft): basic CPU rendering backend over [softbuffer]
 -   [kas-dylib](https://crates.io/crates/kas-dylib): helper crate to support dynamic linking
--   kas-macros: proc-macro crate
+-   [kas]: a meta-package plus convenient driver covering most of the above
 
 Significant external dependencies:
 
--   [kas-text](https://crates.io/crates/kas-text): complex text support
--   [impl-tools](https://crates.io/crates/impl-tools): `autoimpl` and `impl_scope` (extensible) macros
 -   [winit](https://github.com/rust-windowing/winit): platform window integration
 -   [wgpu](https://github.com/gfx-rs/wgpu): modern accelerated graphics API
+-   [AccessKit](https://accesskit.dev/): Accessibility infrastructure for UI toolkits
+-   [kas-text](https://crates.io/crates/kas-text): complex text support
+-   [rustybuzz](https://crates.io/crates/rustybuzz): a complete harfbuzz's shaping algorithm port to Rust
+-   [fontique](https://crates.io/crates/fontique): Font enumeration and fallback
+-   [resvg](https://crates.io/crates/resvg): an SVG rendering library
+-   [tiny-skia](https://crates.io/crates/tiny-skia): a tiny Skia subset ported to Rust
+-   [Image](https://crates.io/crates/image): An Image Processing Library
+-   [impl-tools](https://crates.io/crates/impl-tools): `autoimpl` and `impl_scope` (extensible) macros
+-   [easy-cast](https://crates.io/crates/easy-cast): Type conversion, success expected
 
 ### Feature flags
 
-The `kas` crate enables most important features by default, excepting those
-requiring nightly `rustc`. Other crates enable fewer features by default.
-See [Cargo.toml](https://github.com/kas-gui/kas/blob/master/Cargo.toml#L29).
+The `kas` crate enables a selection of important features by default while attempting to support most platforms. Other crates do not enable any features by default.
+See [documentation in Cargo.toml](https://github.com/kas-gui/kas/blob/master/Cargo.toml#L29).
 
 [kas]: https://docs.rs/kas
+[wgpu]: https://github.com/gfx-rs/wgpu
+[softbuffer]: https://github.com/rust-windowing/softbuffer
 
 
 Copyright and Licence

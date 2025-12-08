@@ -321,21 +321,21 @@ impl SizeRules {
         self.a = self.a.min(min);
     }
 
-    /// Solve a sequence of rules
+    /// Solve a sequence of rules with even distribution
     ///
     /// Given a sequence of width (or height) `rules` from children and a
     /// `target` size, find an appropriate size for each child.
     /// The method attempts to ensure that:
     ///
     /// -   All widths are at least their minimum size requirement
-    /// -   If all rules use `Stretch::None`, then widths are not increased over
-    ///     their ideal size.
     /// -   The sum of widths plus margins between items equals `target`
     ///     (except as required to meet the above criteria).
-    /// -   All widths are at least their ideal size requirement, if this can be
-    ///     met without decreasing any widths
-    /// -   Excess space is divided evenly among members with the highest
-    ///     stretch priority
+    /// -   When some widgets are below their ideal size, extra space is divided
+    ///     evenly between only these widgets
+    /// -   If all rules use `Stretch::None`, then widths are not increased over
+    ///     their ideal size.
+    /// -   Otherwise, extra space is shared equally between all widgets with
+    ///     the highest stretch priority
     ///
     /// Input requirements: `rules.len() == out.len()`.
     ///
@@ -363,7 +363,6 @@ impl SizeRules {
         clippy::needless_return
     )]
     pub fn solve_seq_total(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
-        type Targets = SmallVec<[i32; 16]>;
         #[allow(non_snake_case)]
         let N = out.len();
         assert_eq!(rules.len(), N);
@@ -397,55 +396,6 @@ impl SizeRules {
             if sum == target {
                 return;
             } else if sum < target {
-                fn increase_targets<F: Fn(usize) -> i32>(
-                    out: &mut [i32],
-                    targets: &mut Targets,
-                    base: F,
-                    mut avail: i32,
-                ) {
-                    if targets.is_empty() {
-                        return;
-                    }
-
-                    // Calculate ceiling above which sizes will not be increased
-                    let mut any_removed = true;
-                    while any_removed {
-                        any_removed = false;
-                        let count = i32::conv(targets.len());
-                        let ceil = (avail + count - 1) / count; // round up
-                        let mut t = 0;
-                        while t < targets.len() {
-                            let i = usize::conv(targets[t]);
-                            if out[i] >= base(i) + ceil {
-                                avail -= out[i] - base(i);
-                                targets.remove(t);
-                                any_removed = true;
-                                continue;
-                            }
-                            t += 1;
-                        }
-                        if targets.is_empty() {
-                            return;
-                        }
-                    }
-
-                    // Since no more are removed by a ceiling, all remaining
-                    // targets will be (approx) equal. Arbitrarily distribute
-                    // rounding errors to the first ones.
-                    let count = i32::conv(targets.len());
-                    let per_elt = avail / count;
-                    let extra = usize::conv(avail - per_elt * count);
-                    assert!(extra < targets.len());
-                    for t in 0..extra {
-                        let i = usize::conv(targets[t]);
-                        out[i] = base(i) + per_elt + 1;
-                    }
-                    for t in extra..targets.len() {
-                        let i = usize::conv(targets[t]);
-                        out[i] = base(i) + per_elt;
-                    }
-                }
-
                 if target - sum >= dist_under_b {
                     // We can increase all sizes to their ideal. Since this may
                     // not be enough, we also count the number with highest
@@ -485,44 +435,6 @@ impl SizeRules {
                 }
             } else {
                 // sum > target: we need to decrease some sizes
-                fn reduce_targets<F: Fn(usize) -> i32>(
-                    out: &mut [i32],
-                    targets: &mut Targets,
-                    base: F,
-                    mut avail: i32,
-                ) {
-                    // We can ignore everything below the floor
-                    let mut any_removed = true;
-                    while any_removed {
-                        any_removed = false;
-                        let floor = avail / i32::conv(targets.len());
-                        let mut t = 0;
-                        while t < targets.len() {
-                            let i = usize::conv(targets[t]);
-                            if out[i] <= base(i) + floor {
-                                avail -= out[i] - base(i);
-                                targets.remove(t);
-                                any_removed = true;
-                                continue;
-                            }
-                            t += 1;
-                        }
-                    }
-
-                    // All targets remaining must be reduced to floor, bar rounding errors
-                    let floor = avail / i32::conv(targets.len());
-                    let extra = usize::conv(avail) - usize::conv(floor) * targets.len();
-                    assert!(extra < targets.len());
-                    for t in 0..extra {
-                        let i = usize::conv(targets[t]);
-                        out[i] = base(i) + floor + 1;
-                    }
-                    for t in extra..targets.len() {
-                        let i = usize::conv(targets[t]);
-                        out[i] = base(i) + floor;
-                    }
-                }
-
                 if dist_over_b > sum - target {
                     // we do not go below ideal, and will keep at least one above
                     // calculate distance over for each stretch priority
@@ -561,6 +473,163 @@ impl SizeRules {
                         reduce_targets(out, &mut targets, |i| rules[i].b, avail);
                     }
                     debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
+                } else {
+                    // No size can exceed the ideal
+                    // First, ensure nothing exceeds the ideal:
+                    let mut targets = Targets::new();
+                    sum = 0;
+                    for i in 0..N {
+                        out[i] = out[i].min(rules[i].b);
+                        sum += out[i];
+                        if out[i] > rules[i].a {
+                            targets.push(i.cast());
+                        }
+                    }
+                    if sum > target {
+                        let avail = target + margin_sum - total.a;
+                        reduce_targets(out, &mut targets, |i| rules[i].a, avail);
+                    }
+                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
+                }
+            }
+        } else {
+            // Below minimum size: ignore target and use minimum sizes.
+            for n in 0..N {
+                out[n] = rules[n].a;
+            }
+        }
+    }
+
+    /// Solve a sequence of rules with priority distribution
+    ///
+    /// Given a sequence of width (or height) `rules` from children and a
+    /// `target` size, find an appropriate size for each child.
+    /// The method attempts to ensure that:
+    ///
+    /// -   All widths are at least their minimum size requirement
+    /// -   The sum of widths plus margins between items equals `target`
+    ///     (except as required to meet the above criteria).
+    /// -   When some widgets are below their ideal size, extra space is divided
+    ///     evenly between only these widgets
+    /// -   If all rules use `Stretch::None`, then widths are not increased over
+    ///     their ideal size.
+    /// -   Otherwise, extra space is allocated to the first (or `last`) widget
+    ///     with the highest stretch priority
+    ///
+    /// Input requirements: `rules.len() == out.len()`.
+    ///
+    /// This method is idempotent: given satisfactory input widths, these will
+    /// be preserved. Moreover, this method attempts to ensure that if target
+    /// is increased, then decreased back to the previous value, this will
+    /// revert to the previous solution. (The reverse may not hold if widths
+    /// had previously been affected by a different agent.)
+    //
+    // TODO: this method shares a lot of code with solve_seq_total; deduplicate
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[allow(clippy::collapsible_if, clippy::needless_return)]
+    pub fn solve_seq_pri(out: &mut [i32], rules: &[Self], target: i32, last: bool) {
+        let total = SizeRules::sum(rules);
+        #[allow(non_snake_case)]
+        let N = out.len();
+        assert_eq!(rules.len(), N);
+        if N == 0 {
+            return;
+        }
+        #[cfg(debug_assertions)]
+        {
+            assert!(out.iter().all(|w| *w >= 0));
+            let mut sum = SizeRules::sum(rules);
+            sum.m = total.m; // external margins are unimportant here
+            assert_eq!(sum, total);
+        }
+
+        if target > total.a {
+            // All minimum sizes can be met.
+            out[0] = out[0].max(rules[0].a);
+            let mut margin_sum = 0;
+            let mut sum = out[0];
+            let mut dist_under_b = (rules[0].b - out[0]).max(0);
+            let mut dist_over_b = (out[0] - rules[0].b).max(0);
+            for i in 1..N {
+                out[i] = out[i].max(rules[i].a);
+                margin_sum += i32::from((rules[i - 1].m.1).max(rules[i].m.0));
+                sum += out[i];
+                dist_under_b += (rules[i].b - out[i]).max(0);
+                dist_over_b += (out[i] - rules[i].b).max(0);
+            }
+            let target = target - margin_sum;
+
+            if sum == target {
+                return;
+            } else if sum < target {
+                if target - sum >= dist_under_b {
+                    // We can increase all sizes to their ideal. Since this may
+                    // not be enough, we also count the number with highest
+                    // stretch factor and how far these are over their ideal.
+                    // If highest stretch is None, do not expand beyond ideal.
+                    let highest_stretch = total.stretch;
+                    let mut pick = None;
+                    let mut sum = 0;
+                    for i in 0..N {
+                        out[i] = out[i].max(rules[i].b);
+                        sum += out[i];
+                        if highest_stretch > Stretch::None && rules[i].stretch == highest_stretch {
+                            if last || pick.is_none() {
+                                pick = Some(i);
+                            }
+                        }
+                    }
+
+                    if let Some(i) = pick {
+                        out[i] += target - sum;
+                    }
+                    eprintln!("increased over ideal: {out:?} for target={target}");
+                    debug_assert!(target >= (0..N).fold(0, |x, i| x + out[i]));
+                } else {
+                    // We cannot increase sizes as far as their ideal: instead
+                    // increase over minimum size and under ideal
+                    let mut targets = Targets::new();
+                    let mut over = 0;
+                    for i in 0..N {
+                        if out[i] < rules[i].b {
+                            over += out[i] - rules[i].a;
+                            targets.push(i.cast());
+                        }
+                    }
+
+                    let avail = target - sum + over;
+                    increase_targets(out, &mut targets, |i| rules[i].a, avail);
+                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
+                }
+            } else {
+                // sum > target: we need to decrease some sizes
+                if dist_over_b > sum - target {
+                    let mut amount = sum - target;
+                    debug_assert!(amount > 0);
+                    // let mut reduce = move |out: &mut [i32], i| {
+                    // };
+                    if !last {
+                        for i in 0..N {
+                            if out[i] > rules[i].b {
+                                let decr = amount.min((out[i] - rules[i].b).max(0));
+                                amount -= decr;
+                                out[i] -= decr;
+                            }
+                            debug_assert!(amount >= 0);
+                        }
+                    } else {
+                        for i in (0..N).rev() {
+                            if out[i] > rules[i].b {
+                                let decr = amount.min((out[i] - rules[i].b).max(0));
+                                amount -= decr;
+                                out[i] -= decr;
+                            }
+                            debug_assert!(amount >= 0);
+                        }
+                    }
+                    eprintln!("reduced over ideal: {out:?} for target={target}; {amount}");
+                    debug_assert_eq!(amount, 0);
                 } else {
                     // No size can exceed the ideal
                     // First, ensure nothing exceeds the ideal:
@@ -677,5 +746,94 @@ impl<'a> Sum<&'a Self> for SizeRules {
         } else {
             SizeRules::EMPTY
         }
+    }
+}
+
+type Targets = SmallVec<[i32; 16]>;
+
+fn increase_targets(
+    out: &mut [i32],
+    targets: &mut Targets,
+    base: impl Fn(usize) -> i32,
+    mut avail: i32,
+) {
+    if targets.is_empty() {
+        return;
+    }
+
+    // Calculate ceiling above which sizes will not be increased
+    let mut any_removed = true;
+    while any_removed {
+        any_removed = false;
+        let count = i32::conv(targets.len());
+        let ceil = (avail + count - 1) / count; // round up
+        let mut t = 0;
+        while t < targets.len() {
+            let i = usize::conv(targets[t]);
+            if out[i] >= base(i) + ceil {
+                avail -= out[i] - base(i);
+                targets.remove(t);
+                any_removed = true;
+                continue;
+            }
+            t += 1;
+        }
+        if targets.is_empty() {
+            return;
+        }
+    }
+
+    // Since no more are removed by a ceiling, all remaining
+    // targets will be (approx) equal. Arbitrarily distribute
+    // rounding errors to the first ones.
+    let count = i32::conv(targets.len());
+    let per_elt = avail / count;
+    let extra = usize::conv(avail - per_elt * count);
+    assert!(extra < targets.len());
+    for t in 0..extra {
+        let i = usize::conv(targets[t]);
+        out[i] = base(i) + per_elt + 1;
+    }
+    for t in extra..targets.len() {
+        let i = usize::conv(targets[t]);
+        out[i] = base(i) + per_elt;
+    }
+}
+
+fn reduce_targets<F: Fn(usize) -> i32>(
+    out: &mut [i32],
+    targets: &mut Targets,
+    base: F,
+    mut avail: i32,
+) {
+    // We can ignore everything below the floor
+    let mut any_removed = true;
+    while any_removed {
+        any_removed = false;
+        let floor = avail / i32::conv(targets.len());
+        let mut t = 0;
+        while t < targets.len() {
+            let i = usize::conv(targets[t]);
+            if out[i] <= base(i) + floor {
+                avail -= out[i] - base(i);
+                targets.remove(t);
+                any_removed = true;
+                continue;
+            }
+            t += 1;
+        }
+    }
+
+    // All targets remaining must be reduced to floor, bar rounding errors
+    let floor = avail / i32::conv(targets.len());
+    let extra = usize::conv(avail) - usize::conv(floor) * targets.len();
+    assert!(extra < targets.len());
+    for t in 0..extra {
+        let i = usize::conv(targets[t]);
+        out[i] = base(i) + floor + 1;
+    }
+    for t in extra..targets.len() {
+        let i = usize::conv(targets[t]);
+        out[i] = base(i) + floor;
     }
 }

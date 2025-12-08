@@ -194,11 +194,15 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
         }
     }
 
-    pub fn solve_range(&mut self, storage: &mut S, range: Range<usize>, width: i32) {
+    /// Solve ranges, with priority space allocation
+    ///
+    /// Excess space is allocated to the first or `last` item with the highest
+    /// stretch priority (above `Stretch::None` only).
+    pub fn solve_range(&mut self, storage: &mut S, range: Range<usize>, width: i32, last: bool) {
         assert!(range.end <= self.offsets.as_mut().len());
 
         let (widths, rules) = storage.widths_and_rules();
-        SizeRules::solve_seq(&mut widths[range.clone()], &rules[range], width);
+        SizeRules::solve_seq_pri(&mut widths[range.clone()], &rules[range], width, last);
     }
 }
 
