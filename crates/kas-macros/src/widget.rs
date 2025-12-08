@@ -23,6 +23,10 @@ use syn::{parse_quote, parse2};
 pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let layout = crate::make_layout::Tree::try_parse(scope)?;
+    let mut have_rect_definition = layout
+        .as_ref()
+        .map(|tree| tree.rect(&quote! {}).is_some())
+        .unwrap_or_default();
     let name = &scope.ident;
 
     let mut widget_impl = None;
@@ -74,6 +78,14 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             {
                 if layout_impl.is_none() {
                     layout_impl = Some(index);
+                }
+
+                for item in &impl_.items {
+                    if let ImplItem::Fn(item) = item {
+                        if item.sig.ident == "rect" {
+                            have_rect_definition = true;
+                        }
+                    }
                 }
             } else if *path == parse_quote! { ::kas::Viewport }
                 || *path == parse_quote! { kas::Viewport }
@@ -215,9 +227,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 let core_type = Ident::new(&name, Span::call_site());
                 let stor_ty = &stor_defs.ty_toks;
                 let stor_def = &stor_defs.def_toks;
+                let (rect_ty, rect_def) = if have_rect_definition {
+                    (quote! {}, quote! {})
+                } else {
+                    (
+                        quote! { _rect: ::kas::geom::Rect, },
+                        quote! { _rect: Default::default(), },
+                    )
+                };
                 scope.generated.push(quote! {
                     struct #core_type {
-                        _rect: ::kas::geom::Rect,
+                        #rect_ty
                         _id: ::kas::Id,
                         status: ::kas::WidgetStatus,
                         #stor_ty
@@ -226,7 +246,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     impl Default for #core_type {
                         fn default() -> Self {
                             #core_type {
-                                _rect: Default::default(),
+                                #rect_def
                                 _id: Default::default(),
                                 status: ::kas::WidgetStatus::New,
                                 #stor_def
@@ -244,25 +264,32 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                             self.status
                         }
                     }
-
-                    impl ::kas::WidgetCoreRect for #core_type {
-                        #[inline]
-                        fn rect(&self) -> ::kas::geom::Rect {
-                            self._rect
-                        }
-
-                        #[inline]
-                        fn set_rect(&mut self, rect: ::kas::geom::Rect) {
-                            self._rect = rect;
-                        }
-                    }
                 });
+                if !have_rect_definition {
+                    scope.generated.push(quote! {
+                        impl ::kas::WidgetCoreRect for #core_type {
+                            #[inline]
+                            fn rect(&self) -> ::kas::geom::Rect {
+                                self._rect
+                            }
+
+                            #[inline]
+                            fn set_rect(&mut self, rect: ::kas::geom::Rect) {
+                                self._rect = rect;
+                            }
+                        }
+                    });
+                }
                 field.ty = Type::Path(syn::TypePath {
                     qself: None,
                     path: core_type.into(),
                 });
             } else {
-                field.ty = parse_quote! { ::kas::DefaultCoreType };
+                if have_rect_definition {
+                    field.ty = parse_quote! { ::kas::DefaultCoreType };
+                } else {
+                    field.ty = parse_quote! { ::kas::DefaultCoreRectType };
+                }
             }
 
             continue;
@@ -503,13 +530,11 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         None
     };
 
-    let mut have_rect_from_layout = false;
     if let Some(tree) = layout {
         // TODO(opt): omit field widget.core._rect if not set here
         let get_rect;
         let set_core_rect;
         if let Some(expr) = tree.rect(&core_path) {
-            have_rect_from_layout = true;
             get_rect = expr;
             set_core_rect = quote! {};
         } else {
@@ -665,11 +690,11 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
 
-        let has_fn_rect = item_idents
+        if item_idents
             .iter()
             .find(|(_, ident)| *ident == "rect")
-            .is_some();
-        if !has_fn_rect {
+            .is_none()
+        {
             layout_impl.items.push(Verbatim(fn_rect));
         }
 
@@ -695,10 +720,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "set_rect") {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                if !has_fn_rect
-                    && !have_rect_from_layout
-                    && !crate::visitors::is_core_accessed(&core, &f.block)
-                {
+                if !have_rect_definition && !crate::visitors::is_core_accessed(&core, &f.block) {
                     emit_warning!(
                         &f.block, "no call to self.{core}.set_rect(_) found";
                         note = "expected when not using an explicit definition of `fn rect`";

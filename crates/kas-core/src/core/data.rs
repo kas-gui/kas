@@ -165,6 +165,9 @@ pub trait WidgetCore: Default {
 }
 
 /// Extension for a widget core with a [`Rect`]
+///
+/// This is only implemented on the core when there is not an explicit
+/// definition of [`Layout::rect`].
 pub trait WidgetCoreRect: WidgetCore {
     /// Get the stored [`Rect`]
     ///
@@ -182,7 +185,6 @@ pub trait WidgetCoreRect: WidgetCore {
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[derive(Default, Debug)]
 pub struct DefaultCoreType {
-    pub _rect: Rect,
     pub _id: Id,
     pub status: WidgetStatus,
 }
@@ -198,7 +200,30 @@ impl WidgetCore for DefaultCoreType {
     }
 }
 
-impl WidgetCoreRect for DefaultCoreType {
+/// Common widget data
+///
+/// This type may be used for a [`Widget`]'s `core: widget_core!()` field.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+#[derive(Default, Debug)]
+pub struct DefaultCoreRectType {
+    pub _rect: Rect,
+    pub _id: Id,
+    pub status: WidgetStatus,
+}
+
+impl WidgetCore for DefaultCoreRectType {
+    #[inline]
+    fn id_ref(&self) -> &Id {
+        &self._id
+    }
+
+    fn status(&self) -> WidgetStatus {
+        self.status
+    }
+}
+
+impl WidgetCoreRect for DefaultCoreRectType {
     #[inline]
     fn rect(&self) -> Rect {
         self._rect
