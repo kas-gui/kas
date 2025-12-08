@@ -7,8 +7,9 @@ use proc_macro_error2::emit_error;
 use proc_macro2::{Span, TokenStream};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
+use syn::visit::Visit;
 use syn::visit_mut::{self, VisitMut};
-use syn::{Error, Member, Result, Token, parse_quote};
+use syn::{Error, ExprField, Member, Result, Token, parse_quote};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -100,48 +101,26 @@ pub fn widget_index<'a, I: Clone + Iterator<Item = (usize, &'a Member)>>(
     }
 }
 
-struct SetRectVisitor {
-    path_rect: TokenStream,
-    first_usage: Option<Span>,
+struct CoreAccessDetector<'a> {
+    core: &'a Member,
+    detected: bool,
 }
-impl VisitMut for SetRectVisitor {
-    fn visit_macro_mut(&mut self, node: &mut syn::Macro) {
-        // HACK: we cannot expand the macro here since we do not have an Expr
-        // to replace. Instead we can only modify the macro's tokens.
-        // WARNING: if the macro's tokens are modified before printing an error
-        // message is emitted then the span of that error message is incorrect.
-
-        if node.path == parse_quote! { widget_set_rect } {
-            if self.first_usage.is_none() {
-                self.first_usage = Some(node.span());
-            }
-
-            let expr = match syn::parse2::<syn::Expr>(node.tokens.clone()) {
-                Ok(expr) => expr,
-                Err(err) => {
-                    emit_error!(node.tokens.span(), "{}", err);
-                    node.tokens = parse_quote! { error_emitted };
-                    return;
-                }
-            };
-
-            let path_rect = &self.path_rect;
-            node.tokens = parse_quote! { expanded_result #path_rect = #expr };
-            return;
+impl<'a, 'ast> Visit<'ast> for CoreAccessDetector<'a> {
+    fn visit_expr_field(&mut self, field: &'ast ExprField) {
+        if field.base == parse_quote! { self } && field.member == *self.core {
+            self.detected = true;
         }
-
-        visit_mut::visit_macro_mut(self, node);
     }
 }
 
-/// Returns first span of widget_set_rect usage, if any
-pub fn widget_set_rect(path_rect: TokenStream, block: &mut syn::Block) -> Option<Span> {
-    let mut obj = SetRectVisitor {
-        path_rect,
-        first_usage: None,
+/// Detects whether `self.core` is ever accessed
+pub fn is_core_accessed(core: &Member, block: &syn::Block) -> bool {
+    let mut obj = CoreAccessDetector {
+        core,
+        detected: false,
     };
 
-    obj.visit_block_mut(block);
+    obj.visit_block(block);
 
-    obj.first_usage
+    obj.detected
 }

@@ -167,6 +167,7 @@ mod RadioButton {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
+            let _ = &self.core; // silence proc-macro warning
             kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
             let dir = self.direction();
             crate::check_box::shrink_to_text(&mut self.rect(), dir, &self.label);

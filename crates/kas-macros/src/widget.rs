@@ -512,15 +512,21 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         None
     };
 
+    let mut have_rect_from_layout = false;
     if let Some(tree) = layout {
         // TODO(opt): omit field widget.core._rect if not set here
-        let mut set_rect = quote! {};
-        let tree_rect = tree.rect(&core_path).unwrap_or_else(|| {
-            set_rect = quote! {
+        let get_rect;
+        let set_core_rect;
+        if let Some(expr) = tree.rect(&core_path) {
+            have_rect_from_layout = true;
+            get_rect = expr;
+            set_core_rect = quote! {};
+        } else {
+            get_rect = quote! { #core_path._rect };
+            set_core_rect = quote! {
                 #core_path._rect = rect;
             };
-            quote! { #core_path._rect }
-        });
+        };
         let tree_size_rules = tree.size_rules(&core_path);
         let tree_set_rect = tree.set_rect(&core_path);
         let tree_draw = tree.draw(&core_path);
@@ -530,7 +536,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             impl #impl_generics ::kas::MacroDefinedLayout for #impl_target {
                 #[inline]
                 fn rect(&self) -> ::kas::geom::Rect {
-                    #tree_rect
+                    #get_rect
                 }
 
                 #[inline]
@@ -549,7 +555,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     rect: ::kas::geom::Rect,
                     hints: ::kas::layout::AlignHints,
                 ) {
-                    #set_rect
+                    #set_core_rect
                     #tree_set_rect
                 }
 
@@ -663,11 +669,18 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    let mut widget_set_rect_span = None;
     let mut layout_draw_span = None;
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
+
+        let has_fn_rect = item_idents
+            .iter()
+            .find(|(_, ident)| *ident == "rect")
+            .is_some();
+        if !has_fn_rect {
+            layout_impl.items.push(Verbatim(fn_rect));
+        }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
@@ -689,13 +702,18 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             layout_impl.items.push(Verbatim(method));
         }
 
-        let mut fn_set_rect_span = None;
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "set_rect") {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                fn_set_rect_span = Some(f.span());
-
-                let path_rect = quote! { #core_path._rect };
-                widget_set_rect_span = crate::visitors::widget_set_rect(path_rect, &mut f.block);
+                if !has_fn_rect
+                    && !have_rect_from_layout
+                    && !crate::visitors::is_core_accessed(&core, &f.block)
+                {
+                    emit_warning!(
+                        &f.block, "no call to self.{core}.set_rect(_) found";
+                        note = "expected when not using an explicit definition of `fn rect`";
+                        note = "this lint is a heuristic which may sometimes be wrong; it may be silenced via any access to the core field: `let _ = &self.core;`";
+                    );
+                }
 
                 f.block.stmts.insert(0, parse_quote! {
                     self.#core.status.require_size_determined(&self.#core._id);
@@ -706,24 +724,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             }
         } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
-        }
-
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "rect") {
-            if let Some(span) = widget_set_rect_span {
-                let fn_rect_span = layout_impl.items[*index].span();
-                emit_warning!(
-                    span, "assignment `widget_set_rect!` has no effect when `fn rect` is defined";
-                    note = fn_rect_span => "this `fn rect`";
-                );
-            } else if fn_set_rect_span.is_none() {
-                let fn_rect_span = layout_impl.items[*index].span();
-                emit_warning!(
-                    fn_rect_span,
-                    "definition of `Layout::set_rect` is expected when `fn rect` is defined"
-                );
-            }
-        } else {
-            layout_impl.items.push(Verbatim(fn_rect));
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
