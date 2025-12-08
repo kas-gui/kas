@@ -527,6 +527,7 @@ impl SizeRules {
     // TODO: this method shares a lot of code with solve_seq_total; deduplicate
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[allow(clippy::collapsible_if, clippy::needless_return)]
     pub fn solve_seq_pri(out: &mut [i32], rules: &[Self], target: i32, last: bool) {
         let total = SizeRules::sum(rules);
         #[allow(non_snake_case)]
