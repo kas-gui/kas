@@ -1,7 +1,16 @@
 Kas CPU-rendering backend
 =========================
 
-[KAS] graphics backend over [softbuffer].
+[KAS] CPU-rendering backend over [softbuffer].
+
+In its current state, this crate is usable with limitations:
+
+-   Only the `SimpleTheme` theme is currently supported
+-   Lines may be uglier than with `kas-wgpu` due to a lack of anti-aliasing and rounding
+-   Fonts appear slightly darker than `kas-wgpu` due to differences in the blending
+-   Performance seems mostly fine, though RGBA texture blending is a bit slow.
+
+See also [#610](https://github.com/kas-gui/kas/pull/610).
 
 [KAS]: https://crates.io/crates/kas
 [softbuffer]: https://github.com/rust-windowing/softbuffer
