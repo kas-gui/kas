@@ -96,6 +96,38 @@ impl DoubleEndedIterator for ChildIndicesIter {
     }
 }
 
+/// Type of the widget's core
+///
+/// This is a special placeholder macro for usage only with the [`widget`](crate::widget) macro.
+/// It expands to a type, dependant on the current widget.
+///
+/// # Example
+///
+/// ```rust
+/// # extern crate kas_core as kas;
+/// use kas::{impl_self, Events};
+///
+/// #[impl_self]
+/// mod MyHelloWidget {
+///     /// A simple greeting
+///     #[widget]
+///     #[layout("Hello!")]
+///     struct MyHelloWidget(widget_core!());
+///
+///     impl Events for Self {
+///         type Data = ();
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! widget_core {
+    () => {
+        compile_error!(
+            "This macro may only be used in a struct affected by the `#[widget]` attribute"
+        );
+    };
+}
+
 /// Common widget data
 ///
 /// This type may be used for a [`Widget`]'s `core: widget_core!()` field.
