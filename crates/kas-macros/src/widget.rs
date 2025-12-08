@@ -336,7 +336,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         );
     };
 
-    let Some(core) = core_data.clone() else {
+    let Some(core) = core_data else {
         let span = match scope.item {
             ScopeItem::Struct {
                 fields: Fields::Named(ref fields),
@@ -670,20 +670,18 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         let item_idents = collect_idents(layout_impl);
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
-            if let Some(ref core) = core_data {
-                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                    if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(2) {
-                        if let Pat::Ident(ref pat_ident) = *arg.pat {
-                            let axis = &pat_ident.ident;
-                            f.block.stmts.insert(0, parse_quote! {
-                                self.#core.status.size_rules(&self.#core._id, #axis);
-                            });
-                        } else {
-                            emit_error!(
-                                arg.pat,
-                                "hidden shenanigans require this parameter to have a name; suggestion: `_axis`"
-                            );
-                        }
+            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(2) {
+                    if let Pat::Ident(ref pat_ident) = *arg.pat {
+                        let axis = &pat_ident.ident;
+                        f.block.stmts.insert(0, parse_quote! {
+                            self.#core.status.size_rules(&self.#core._id, #axis);
+                        });
+                    } else {
+                        emit_error!(
+                            arg.pat,
+                            "hidden shenanigans require this parameter to have a name; suggestion: `_axis`"
+                        );
                     }
                 }
             }
@@ -699,14 +697,12 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 let path_rect = quote! { #core_path._rect };
                 widget_set_rect_span = crate::visitors::widget_set_rect(path_rect, &mut f.block);
 
-                if let Some(ref core) = core_data {
-                    f.block.stmts.insert(0, parse_quote! {
-                        self.#core.status.require_size_determined(&self.#core._id);
-                    });
-                    f.block.stmts.push(parse_quote! {
-                        self.#core.status.set_sized();
-                    });
-                }
+                f.block.stmts.insert(0, parse_quote! {
+                    self.#core.status.require_size_determined(&self.#core._id);
+                });
+                f.block.stmts.push(parse_quote! {
+                    self.#core.status.set_sized();
+                });
             }
         } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
@@ -734,9 +730,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                 layout_draw_span = Some(f.span());
 
-                if let Some(ref core) = core_data {
-                    modify_draw(f, core);
-                }
+                modify_draw(f, &core);
             }
         } else if let Some(method) = fn_draw {
             layout_impl.items.push(Verbatim(method));
@@ -768,9 +762,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     );
                 }
 
-                if let Some(ref core) = core_data {
-                    modify_draw(f, core);
-                }
+                modify_draw(f, &core);
             }
         }
 

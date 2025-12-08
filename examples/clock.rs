@@ -52,7 +52,7 @@ mod Clock {
             let size = Size::splat(size);
             let excess = rect.size - size;
             let pos = rect.pos + excess / 2;
-            widget_set_rect!(Rect { pos, size });
+            self.core.set_rect(Rect { pos, size });
 
             let text_size = Size(size.0, size.1 / 4);
             let text_height = text_size.1 as f32;

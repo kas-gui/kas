@@ -72,7 +72,7 @@ mod EditBox {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, outer_rect: Rect, hints: AlignHints) {
-            widget_set_rect!(outer_rect);
+            self.core.set_rect(outer_rect);
             let mut rect = outer_rect;
 
             self.clip_rect = Rect {
