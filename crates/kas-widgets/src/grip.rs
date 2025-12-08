@@ -65,7 +65,7 @@ mod GripPart {
     /// Optionally, the parent may call [`GripPart::handle_press_on_track`]
     /// when a [`Event::PressStart`] occurs on the track area (which identifies
     /// as being the parent widget).
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     pub struct GripPart {
         core: widget_core!(),

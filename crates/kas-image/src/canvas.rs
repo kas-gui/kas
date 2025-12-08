@@ -101,7 +101,6 @@ mod Canvas {
     /// a high stretch factor (i.e. will greedily occupy extra space). To adjust
     /// this call one of the sizing/scaling methods.
     #[autoimpl(Debug ignore self.inner)]
-    #[derive(Clone)]
     #[widget]
     pub struct Canvas<P: CanvasProgram> {
         core: widget_core!(),

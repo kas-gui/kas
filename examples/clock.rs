@@ -27,7 +27,6 @@ const TIMER: TimerHandle = TimerHandle::new(0, true);
 
 #[impl_self]
 mod Clock {
-    #[derive(Clone)]
     #[widget]
     struct Clock {
         core: widget_core!(),

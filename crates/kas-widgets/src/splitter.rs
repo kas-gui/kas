@@ -20,7 +20,7 @@ mod Splitter {
     ///
     /// Similar to [`crate::List`] but with draggable grips between items.
     // TODO: better doc
-    #[derive(Clone, Default, Debug)]
+    #[derive(Default, Debug)]
     #[widget]
     pub struct Splitter<C: Collection, D: Directional = Direction> {
         core: widget_core!(),

@@ -234,15 +234,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                         }
                     }
 
-                    impl Clone for #core_type {
-                        fn clone(&self) -> Self {
-                            #core_type {
-                                _rect: self._rect,
-                                .. #core_type::default()
-                            }
-                        }
-                    }
-
                     impl ::kas::WidgetCore for #core_type {
                         #[inline]
                         fn id_ref(&self) -> &::kas::Id {

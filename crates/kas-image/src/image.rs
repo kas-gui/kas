@@ -37,7 +37,7 @@ mod Image {
     /// to integer multiples of the source image size.
     ///
     /// May be default constructed (result is empty).
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     #[layout(self.raw)]
     pub struct Image {

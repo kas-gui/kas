@@ -97,7 +97,7 @@ mod Float {
     /// potentially more on GPU communication than CPU usage.
     ///
     /// [`pack`]: crate::AdaptWidget::pack
-    #[derive(Clone, Default)]
+    #[derive(Default)]
     #[widget]
     pub struct Float<C: Collection> {
         core: widget_core!(),

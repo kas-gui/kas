@@ -133,7 +133,7 @@ macro_rules! widget_core {
 }
 
 /// Operations supported by a widget core
-pub trait WidgetCore {
+pub trait WidgetCore: Default {
     /// Get a reference to the widget's identifier
     ///
     /// The widget identifier is assigned when the widget is configured (see
@@ -185,17 +185,6 @@ pub struct DefaultCoreType {
     pub _rect: Rect,
     pub _id: Id,
     pub status: WidgetStatus,
-}
-
-impl Clone for DefaultCoreType {
-    #[inline]
-    fn clone(&self) -> Self {
-        DefaultCoreType {
-            _rect: self._rect,
-            _id: Default::default(),
-            status: self.status,
-        }
-    }
 }
 
 impl WidgetCore for DefaultCoreType {

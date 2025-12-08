@@ -27,7 +27,7 @@ mod ClipRegion {
     ///     to scroll content.
     /// -   The minimum size is an arbitrary size defined by the theme
     ///     ([`SizeCx::min_scroll_size`]).
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     pub struct ClipRegion<W: Widget> {
         core: widget_core!(),
@@ -146,7 +146,7 @@ mod ScrollRegion {
     /// ### Messages
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     pub struct ScrollRegion<W: Viewport + Widget> {
         core: widget_core!(),

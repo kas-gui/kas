@@ -67,7 +67,7 @@ mod EditField {
     /// ### Special behaviour
     ///
     /// This is a [`Viewport`] widget.
-    #[autoimpl(Clone, Debug where G: trait)]
+    #[autoimpl(Debug where G: trait)]
     #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),

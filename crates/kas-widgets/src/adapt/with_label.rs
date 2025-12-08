@@ -17,7 +17,6 @@ mod WithLabel {
     ///
     /// Mouse/touch input on the label sends events to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
-    #[autoimpl(Clone where W: trait)]
     #[autoimpl(Viewport using self.inner where W: trait)]
     #[widget]
     #[layout(list![self.inner, self.label].with_direction(self.dir))]

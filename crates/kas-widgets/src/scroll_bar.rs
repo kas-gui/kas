@@ -53,7 +53,7 @@ mod ScrollBar {
     /// # Layout
     ///
     /// It is safe to not call `size_rules` before `set_rect` for this type.
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     pub struct ScrollBar<D: Directional = Direction> {
         core: widget_core!(),

@@ -147,7 +147,7 @@ mod Svg {
     /// positioned within this space according to alignment rules (centered by
     /// default).
     #[autoimpl(Debug ignore self.inner)]
-    #[derive(Clone, Default)]
+    #[derive(Default)]
     #[widget]
     pub struct Svg {
         core: widget_core!(),

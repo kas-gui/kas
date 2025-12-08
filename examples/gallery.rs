@@ -31,12 +31,8 @@ fn widgets() -> Page<AppData> {
 
     // A real app might use async loading of resources here (Svg permits loading
     // from a data slice; DrawShared allows allocation from data slice).
-    let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"))
-        .unwrap()
-        .with_margin_style(MarginStyle::Tiny);
-    let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"))
-        .unwrap()
-        .with_margin_style(MarginStyle::Tiny);
+    let svg_light = include_bytes!("../res/contrast-2-line.svg");
+    let svg_dark = include_bytes!("../res/contrast-2-fill.svg");
     const SVG_WARNING: &[u8] = include_bytes!("../res/error-warning-line.svg");
     let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
         Ok(svg) => svg,
@@ -160,17 +156,26 @@ fn widgets() -> Page<AppData> {
             "Button row",
             row![
                 Button::new_msg(
-                    img_light.clone().with_label(Right, "lig&ht"),
+                    Svg::new(svg_light)
+                        .unwrap()
+                        .with_margin_style(MarginStyle::Tiny)
+                        .with_label(Right, "lig&ht"),
                     ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("light".to_string()))
                 )
                 .with_background("#B38DF9".parse().unwrap()),
                 Button::new_msg(
-                    img_light.with_label(Right, "&blue"),
+                    Svg::new(svg_light)
+                        .unwrap()
+                        .with_margin_style(MarginStyle::Tiny)
+                        .with_label(Right, "&blue"),
                     ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("blue".to_string()))
                 )
                 .with_background("#7CDAFF".parse().unwrap()),
                 Button::new_msg(
-                    img_dark.with_label(Right, "dar&k"),
+                    Svg::new(svg_dark)
+                        .unwrap()
+                        .with_margin_style(MarginStyle::Tiny)
+                        .with_label(Right, "dar&k"),
                     ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("dark".to_string()))
                 )
                 .with_background("#E77346".parse().unwrap()),

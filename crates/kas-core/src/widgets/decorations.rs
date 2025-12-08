@@ -90,7 +90,7 @@ mod TitleBarButtons {
     /// A set of title-bar buttons
     ///
     /// Currently, this consists of minimise, maximise and close buttons.
-    #[derive(Clone, Default)]
+    #[derive(Default)]
     #[widget]
     #[layout(row! [
         MarkButton::new_msg(MarkStyle::Chevron(Direction::Down), "Minimize", TitleBarButton::Minimize),
@@ -137,7 +137,7 @@ mod TitleBarButtons {
 #[impl_self]
 mod TitleBar {
     /// A window's title bar (part of decoration)
-    #[derive(Clone, Default)]
+    #[derive(Default)]
     #[widget]
     #[layout(row! [
         self.title.align(AlignHints::CENTER).with_stretch(Stretch::Maximize, Stretch::None),

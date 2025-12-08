@@ -33,7 +33,7 @@ mod EditBox {
     /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[autoimpl(Clone, Default, Debug where G: trait)]
+    #[autoimpl(Default, Debug where G: trait)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
