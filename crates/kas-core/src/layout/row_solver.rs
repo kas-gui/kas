@@ -44,7 +44,7 @@ impl<S: RowStorage> RowSolver<S> {
         if axis.has_fixed && axis_is_vertical {
             // Assume we already have rules for the other axis; solve for the given width
             let (widths, rules) = storage.widths_and_rules();
-            SizeRules::solve_seq(widths, rules, axis.other_axis);
+            SizeRules::solve_widths(widths, rules, axis.other_axis);
         }
 
         RowSolver {
@@ -128,7 +128,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
             let is_horiz = direction.is_horizontal();
             let width = if is_horiz { rect.size.0 } else { rect.size.1 };
             let (widths, rules) = storage.widths_and_rules();
-            SizeRules::solve_seq(widths, rules, width);
+            SizeRules::solve_widths(widths, rules, width);
         }
 
         let _s = Default::default();
@@ -202,7 +202,12 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
         assert!(range.end <= self.offsets.as_mut().len());
 
         let (widths, rules) = storage.widths_and_rules();
-        SizeRules::solve_seq_pri(&mut widths[range.clone()], &rules[range], width, last);
+        SizeRules::solve_widths_with_priority(
+            &mut widths[range.clone()],
+            &rules[range],
+            width,
+            last,
+        );
     }
 }
 

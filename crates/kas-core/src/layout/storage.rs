@@ -82,7 +82,7 @@ pub trait RowStorage: Clone + Debug + sealed::Sealed {
     ///
     /// Widths are calculated from rules when `set_rect` is called. Assigning
     /// to widths before `set_rect` is called only has any effect when the available
-    /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
+    /// size exceeds the minimum required (see [`SizeRules::solve_widths`]).
     fn widths(&mut self) -> &mut [i32] {
         self.widths_and_rules().0
     }
@@ -191,7 +191,7 @@ pub trait GridStorage: sealed::Sealed + Clone + std::fmt::Debug {
     ///
     /// Widths are calculated from rules when `set_rect` is called. Assigning
     /// to widths before `set_rect` is called only has any effect when the available
-    /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
+    /// size exceeds the minimum required (see [`SizeRules::solve_widths`]).
     fn widths(&mut self) -> &mut [i32] {
         self.widths_and_rules().0
     }
@@ -200,7 +200,7 @@ pub trait GridStorage: sealed::Sealed + Clone + std::fmt::Debug {
     ///
     /// Heights are calculated from rules when `set_rect` is called. Assigning
     /// to heights before `set_rect` is called only has any effect when the available
-    /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
+    /// size exceeds the minimum required (see [`SizeRules::solve_widths`]).
     fn heights(&mut self) -> &mut [i32] {
         self.heights_and_rules().0
     }

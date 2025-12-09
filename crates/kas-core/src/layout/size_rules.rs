@@ -339,7 +339,7 @@ impl SizeRules {
     /// 6.  Extra space (after all widths are at least their ideal size) is
     ///     shared equally between all widgets with the highest stretch priority
     ///
-    /// Input requirements: `rules.len() == out.len()`.
+    /// Input requirements: `rules.len() == widths.len()`.
     ///
     /// This method is idempotent: if input widths already match the above
     /// requirements then they will not be modified.
@@ -347,29 +347,25 @@ impl SizeRules {
     /// is increased, then decreased back to the previous value, this will
     /// revert to the previous solution. (The reverse may not hold if widths
     /// had previously been affected by a different agent.)
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    pub fn solve_seq(out: &mut [i32], rules: &[Self], target: i32) {
+    pub fn solve_widths(widths: &mut [i32], rules: &[Self], target: i32) {
         let total = SizeRules::sum(rules);
-        Self::solve_seq_total(out, rules, total, target);
+        Self::solve_widths_with_total(widths, rules, total, target);
     }
 
     /// Solve a sequence of rules
     ///
-    /// This is the same as [`SizeRules::solve_seq`] except that the rules' sum
+    /// This is the same as [`SizeRules::solve_widths`] except that the rules' sum
     /// is passed explicitly.
     ///
     /// Input requirements:
     /// - `rules.len() == out.len()`
     /// - `SizeRules::sum(rules) == total`
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     #[allow(
         clippy::comparison_chain,
         clippy::needless_range_loop,
         clippy::needless_return
     )]
-    pub fn solve_seq_total(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
+    pub fn solve_widths_with_total(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
         #[allow(non_snake_case)]
         let N = out.len();
         assert_eq!(rules.len(), N);
@@ -535,11 +531,9 @@ impl SizeRules {
     /// revert to the previous solution. (The reverse may not hold if widths
     /// had previously been affected by a different agent.)
     //
-    // TODO: this method shares a lot of code with solve_seq_total; deduplicate
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    // TODO: this method shares a lot of code with solve_widths_with_total; deduplicate
     #[allow(clippy::collapsible_if, clippy::needless_return)]
-    pub fn solve_seq_pri(out: &mut [i32], rules: &[Self], target: i32, last: bool) {
+    pub fn solve_widths_with_priority(out: &mut [i32], rules: &[Self], target: i32, last: bool) {
         let total = SizeRules::sum(rules);
         #[allow(non_snake_case)]
         let N = out.len();
