@@ -331,12 +331,14 @@ impl SizeRules {
     /// 2.  The sum of widths plus margins between items equals `target`
     /// 3.  No width exceeds its ideal size while other widths are below their
     ///     own ideal size
-    /// 4.  When extra space is available and some widgets are below their ideal
+    /// 4.  No item with a [`Stretch`] priority less than the highest in `rules`
+    ///     exceeds its ideal size
+    /// 5.  When extra space is available and some widgets are below their ideal
     ///     size, extra space is divided evenly between these widgets until they
     ///     have reached their ideal size
-    /// 5.  If all rules use `Stretch::None`, then widths are not increased over
+    /// 6.  If all rules use `Stretch::None`, then widths are not increased over
     ///     their ideal size.
-    /// 6.  Extra space (after all widths are at least their ideal size) is
+    /// 7.  Extra space (after all widths are at least their ideal size) is
     ///     shared equally between all widgets with the highest stretch priority
     ///
     /// Input requirements: `rules.len() == widths.len()`.
@@ -375,12 +377,14 @@ impl SizeRules {
     /// 2.  The sum of widths plus margins between items equals `target`
     /// 3.  No width exceeds its ideal size while other widths are below their
     ///     own ideal size
-    /// 4.  When extra space is available and some widgets are below their ideal
+    /// 4.  No item with a [`Stretch`] priority less than the highest in `rules`
+    ///     exceeds its ideal size
+    /// 5.  When extra space is available and some widgets are below their ideal
     ///     size, extra space is divided evenly between these widgets until they
     ///     have reached their ideal size
-    /// 5.  If all rules use `Stretch::None`, then widths are not increased over
+    /// 6.  If all rules use `Stretch::None`, then widths are not increased over
     ///     their ideal size.
-    /// 6.  Extra space (after all widths are at least their ideal size) is
+    /// 7.  Extra space (after all widths are at least their ideal size) is
     ///     allocated to the first (or `last`) item with the highest stretch
     ///     priority
     ///
@@ -431,6 +435,7 @@ impl SizeRules {
             }
             return;
         }
+        let highest_stretch = total.stretch;
 
         // All minimum sizes can be met.
         out[0] = out[0].max(rules[0].a);
@@ -438,16 +443,24 @@ impl SizeRules {
         let mut sum = out[0];
         let mut dist_under_b = (rules[0].b - out[0]).max(0);
         let mut dist_over_b = (out[0] - rules[0].b).max(0);
+        let mut dist_over_b_lower_stretch = 0;
+        if rules[0].stretch < highest_stretch {
+            dist_over_b_lower_stretch = dist_over_b;
+        }
         for i in 1..N {
             out[i] = out[i].max(rules[i].a);
             margin_sum += i32::from((rules[i - 1].m.1).max(rules[i].m.0));
             sum += out[i];
             dist_under_b += (rules[i].b - out[i]).max(0);
-            dist_over_b += (out[i] - rules[i].b).max(0);
+            let over = (out[i] - rules[i].b).max(0);
+            dist_over_b += over;
+            if rules[i].stretch < highest_stretch {
+                dist_over_b_lower_stretch += over;
+            }
         }
         let target = target - margin_sum;
 
-        let mut to_shrink = sum + dist_under_b - target;
+        let mut to_shrink = dist_over_b_lower_stretch.max(sum + dist_under_b - target);
         if dist_over_b <= to_shrink {
             // Ensure nothing exceeds the ideal:
             let mut targets = Targets::new();
@@ -505,22 +518,28 @@ impl SizeRules {
                     }
                 }
 
+                sum = 0;
+                dist_over_b_lower_stretch = 0;
                 let mut avail = 0;
                 let mut targets = Targets::new();
                 for i in 0..N {
                     let stretch = rules[i].stretch as usize;
                     if out[i] > rules[i].b {
+                        let over = (out[i] - rules[i].b).max(0);
                         if stretch < highest_affected {
-                            sum -= out[i] - rules[i].b;
                             out[i] = rules[i].b;
                         } else if stretch == highest_affected {
-                            avail += out[i] - rules[i].b;
+                            avail += over;
                             targets.push(i.cast());
                         }
+                        if stretch < highest_stretch as usize {
+                            dist_over_b_lower_stretch += over;
+                        }
                     }
+                    sum += out[i];
                 }
-                let to_shrink = sum + dist_under_b - target;
-                if to_shrink > 0 {
+                let to_shrink = dist_over_b_lower_stretch.max(sum + dist_under_b - target);
+                if 0 < to_shrink && to_shrink <= avail {
                     avail = avail - to_shrink;
                     reduce_targets(out, &mut targets, |i| rules[i].b, avail);
                     sum -= to_shrink;
@@ -534,7 +553,6 @@ impl SizeRules {
                 // not be enough, we also count the number with highest
                 // stretch factor and how far these are over their ideal.
                 // If highest stretch is None, do not expand beyond ideal.
-                let highest_stretch = total.stretch;
                 sum = 0;
                 if let Some(prioritize_last) = pri.priority() {
                     let mut pick = None;
@@ -768,6 +786,7 @@ fn reduce_targets<F: Fn(usize) -> i32>(
     base: F,
     mut avail: i32,
 ) {
+    debug_assert!(avail >= 0);
     // We can ignore everything below the floor
     let mut any_removed = true;
     while any_removed {
@@ -777,6 +796,7 @@ fn reduce_targets<F: Fn(usize) -> i32>(
         while t < targets.len() {
             let i = usize::conv(targets[t]);
             let base = base(i);
+            debug_assert!(out[i] >= base);
             if out[i] <= base + floor {
                 avail -= out[i] - base;
                 targets.remove(t);
