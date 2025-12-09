@@ -655,7 +655,7 @@ mod ListView {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             self.align_hints = hints;
 
             let skip = if self.direction.is_horizontal() {

@@ -52,7 +52,7 @@ mod Frame {
     //
     // NOTE: this would use derive mode if that supported custom layout syntax,
     // but it does not. This would allow us to implement Deref to self.inner.
-    #[derive(Clone, Default)]
+    #[derive(Default)]
     #[widget]
     #[layout(frame!(self.inner).with_style(self.style))]
     pub struct Frame<W: Widget> {

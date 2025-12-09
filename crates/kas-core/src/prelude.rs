@@ -19,6 +19,7 @@ pub use crate::geom::{Coord, Offset, Rect, Size};
 pub use crate::layout::{Align, AlignHints, AlignPair, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)] pub use crate::text::AccessString;
 #[doc(no_inline)] pub use crate::theme::{DrawCx, SizeCx};
+#[doc(no_inline)] pub use crate::widget_index;
 #[doc(no_inline)] pub use crate::window::{Window, WindowId};
 #[doc(no_inline)]
 pub use crate::{ActionMoved, ActionResize};
@@ -27,6 +28,6 @@ pub use crate::{ActionMoved, ActionResize};
 pub use crate::{Events, Layout, Role, RoleCx, RoleCxExt, Tile, TileExt, Viewport, Widget};
 #[doc(no_inline)] pub use crate::{HasId, Id};
 #[doc(no_inline)]
-pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, impl_self};
+pub use crate::{WidgetCore, WidgetCoreRect};
 #[doc(no_inline)]
-pub use crate::{widget_index, widget_set_rect};
+pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, impl_self};

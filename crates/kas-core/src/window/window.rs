@@ -16,8 +16,8 @@ use crate::runner::AppData;
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::widgets::adapt::MapAny;
 use crate::widgets::{Border, Label, TitleBar};
-use crate::{Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
-use kas_macros::{autoimpl, impl_self, widget_set_rect};
+use crate::{Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget, WidgetCoreRect};
+use kas_macros::{autoimpl, impl_self};
 use smallvec::SmallVec;
 
 // TODO(Rust): replace with type-alias-impl-trait when available
@@ -214,7 +214,7 @@ mod Window {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             // Calculate position and size for nw, ne, and inner portions:
             let s_nw: Size = self.dec_offset.cast();
             let s_se = self.dec_size - s_nw;

@@ -35,7 +35,7 @@ mod AccessLabel {
     /// `Event::Command(Command::Activate)` (likewise, an ancestor may handle
     /// the event). This `AccessLabel` does not support focus and will not
     /// handle the [`Command::Activate`] event.
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     #[layout(self.text)]
     pub struct AccessLabel {

@@ -101,7 +101,6 @@ mod Canvas {
     /// a high stretch factor (i.e. will greedily occupy extra space). To adjust
     /// this call one of the sizing/scaling methods.
     #[autoimpl(Debug ignore self.inner)]
-    #[derive(Clone)]
     #[widget]
     pub struct Canvas<P: CanvasProgram> {
         core: widget_core!(),
@@ -176,7 +175,7 @@ mod Canvas {
             let align = hints.complete_default();
             let scale_factor = cx.scale_factor();
             let rect = self.scaling.align(rect, align, scale_factor);
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
 
             let size = self.rect().size.cast();
             if let Some(fut) = self.inner.get_mut().resize(size) {

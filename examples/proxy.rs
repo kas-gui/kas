@@ -71,7 +71,7 @@ mod ColourSquare {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             self.loading_text
                 .set_rect(cx, rect, hints.combine(AlignHints::CENTER));
         }

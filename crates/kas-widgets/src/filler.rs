@@ -13,7 +13,7 @@ mod Filler {
     ///
     /// This widget has zero minimum size but can expand according to the given
     /// stretch priority.
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     pub struct Filler {
         core: widget_core!(),

@@ -6,8 +6,8 @@
 //! Core data types
 
 use super::Id;
-#[allow(unused)] use crate::Widget;
 use crate::geom::Rect;
+#[allow(unused)] use crate::{Events, Layout, Widget};
 use std::ops::{Range, RangeInclusive};
 
 /// An opaque type representing a set of `usize` indices
@@ -96,6 +96,88 @@ impl DoubleEndedIterator for ChildIndicesIter {
     }
 }
 
+/// Type of the widget's core
+///
+/// This is a special placeholder macro for usage only with the [`widget`](crate::widget) macro.
+/// It expands to a type, dependant on the current widget.
+///
+/// This type always implements the [`WidgetCore`] trait.
+///
+/// This type *may* implement the [`WidgetCoreRect`] trait.
+///
+/// # Example
+///
+/// ```rust
+/// # extern crate kas_core as kas;
+/// use kas::{impl_self, Events};
+///
+/// #[impl_self]
+/// mod MyHelloWidget {
+///     /// A simple greeting
+///     #[widget]
+///     #[layout("Hello!")]
+///     struct MyHelloWidget(widget_core!());
+///
+///     impl Events for Self {
+///         type Data = ();
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! widget_core {
+    () => {
+        compile_error!(
+            "This macro may only be used in a struct affected by the `#[widget]` attribute"
+        );
+    };
+}
+
+/// Operations supported by a widget core
+pub trait WidgetCore: Default {
+    /// Get a reference to the widget's identifier
+    ///
+    /// The widget identifier is assigned when the widget is configured (see
+    /// [`Events#configuration`]). In case the
+    /// [`Id`] is accessed before this, it will be [invalid](Id#invalid-state).
+    /// The identifier *may* change when widgets which are descendants of some
+    /// dynamic layout are reconfigured.
+    fn id_ref(&self) -> &Id;
+
+    /// Get the widget's identifier
+    ///
+    /// This method returns a [`Clone`] of [`Self::id_ref`]. Since cloning an
+    /// `Id` is [very cheap](Id#representation), this can mostly be ignored.
+    ///
+    /// The widget identifier is assigned when the widget is configured (see
+    /// [`Events#configuration`]). In case the
+    /// [`Id`] is accessed before this, it will be [invalid](Id#invalid-state).
+    /// The identifier *may* change when widgets which are descendants of some
+    /// dynamic layout are reconfigured.
+    #[inline]
+    fn id(&self) -> Id {
+        self.id_ref().clone()
+    }
+
+    /// Get the widget configuration status
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    fn status(&self) -> WidgetStatus;
+}
+
+/// Extension for a widget core with a [`Rect`]
+///
+/// This is only implemented on the core when there is not an explicit
+/// definition of [`Layout::rect`].
+pub trait WidgetCoreRect: WidgetCore {
+    /// Get the stored [`Rect`]
+    ///
+    /// This should be equivalent to [`Layout::rect`].
+    fn rect(&self) -> Rect;
+
+    /// Set the stored [`Rect`]
+    fn set_rect(&mut self, rect: Rect);
+}
+
 /// Common widget data
 ///
 /// This type may be used for a [`Widget`]'s `core: widget_core!()` field.
@@ -103,18 +185,53 @@ impl DoubleEndedIterator for ChildIndicesIter {
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[derive(Default, Debug)]
 pub struct DefaultCoreType {
+    pub _id: Id,
+    pub status: WidgetStatus,
+}
+
+impl WidgetCore for DefaultCoreType {
+    #[inline]
+    fn id_ref(&self) -> &Id {
+        &self._id
+    }
+
+    fn status(&self) -> WidgetStatus {
+        self.status
+    }
+}
+
+/// Common widget data
+///
+/// This type may be used for a [`Widget`]'s `core: widget_core!()` field.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+#[derive(Default, Debug)]
+pub struct DefaultCoreRectType {
     pub _rect: Rect,
     pub _id: Id,
     pub status: WidgetStatus,
 }
 
-impl Clone for DefaultCoreType {
-    fn clone(&self) -> Self {
-        DefaultCoreType {
-            _rect: self._rect,
-            _id: Default::default(),
-            status: self.status,
-        }
+impl WidgetCore for DefaultCoreRectType {
+    #[inline]
+    fn id_ref(&self) -> &Id {
+        &self._id
+    }
+
+    fn status(&self) -> WidgetStatus {
+        self.status
+    }
+}
+
+impl WidgetCoreRect for DefaultCoreRectType {
+    #[inline]
+    fn rect(&self) -> Rect {
+        self._rect
+    }
+
+    #[inline]
+    fn set_rect(&mut self, rect: Rect) {
+        self._rect = rect;
     }
 }
 

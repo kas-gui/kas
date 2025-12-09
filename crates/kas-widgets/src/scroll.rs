@@ -27,7 +27,7 @@ mod ClipRegion {
     ///     to scroll content.
     /// -   The minimum size is an arbitrary size defined by the theme
     ///     ([`SizeCx::min_scroll_size`]).
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     pub struct ClipRegion<W: Widget> {
         core: widget_core!(),
@@ -84,7 +84,7 @@ mod ClipRegion {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos, child_size);
             self.inner.set_rect(cx, child_rect, hints);
@@ -146,7 +146,7 @@ mod ScrollRegion {
     /// ### Messages
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     pub struct ScrollRegion<W: Viewport + Widget> {
         core: widget_core!(),
@@ -281,7 +281,7 @@ mod ScrollRegion {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             self.hints = hints;
             let pos = rect.pos;
             let mut child_size = rect.size;

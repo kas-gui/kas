@@ -10,7 +10,8 @@ use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
 use kas_macros::autoimpl;
 
-#[allow(unused)] use super::{Events, Tile, Widget};
+#[allow(unused)]
+use super::{Events, Tile, Widget, WidgetCoreRect};
 #[allow(unused)] use crate::layout::{self};
 #[allow(unused)] use kas_macros as macros;
 
@@ -58,8 +59,13 @@ pub trait Layout {
     ///
     /// Coordinates are relative to the parent's coordinate space.
     ///
-    /// This method is usually implemented by the `#[widget]` macro.
-    /// See also [`widget_set_rect!()`](crate::widget_set_rect).
+    /// This is often the [`Rect`] passed to [`Layout::set_rect`], though it is
+    /// not required to be; for example some widgets align themselves within
+    /// their allocated `rect` when it is too large; widgets may also exceed
+    /// their allocated `rect` if it is smaller than their minimum size.
+    ///
+    /// This method is usually implemented by the `#[widget]` macro as
+    /// [`WidgetCoreRect::rect`] or from macro-defined layout.
     fn rect(&self) -> Rect;
 
     /// Calculate size requirements for an `axis`
@@ -103,6 +109,11 @@ pub trait Layout {
     /// based on children's [`SizeRules`] but do not attempt to align content
     /// when excess space is available. Instead, content is responsible for
     /// aligning itself using the provided `hints` and/or local information.
+    ///
+    /// This method must ensure that the widget's new [`Rect`] is available
+    /// through [`Layout::rect`]. The easiest way to achieve this is usually
+    /// to call [`WidgetCoreRect::set_rect`] and allow the `#[widget]` macro to
+    /// provide an implementation of [`Layout::rect`].
     ///
     /// ## Default implementation
     ///

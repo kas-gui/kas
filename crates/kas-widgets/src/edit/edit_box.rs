@@ -33,7 +33,7 @@ mod EditBox {
     /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[autoimpl(Clone, Default, Debug where G: trait)]
+    #[autoimpl(Default, Debug where G: trait)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
@@ -72,7 +72,7 @@ mod EditBox {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, outer_rect: Rect, hints: AlignHints) {
-            widget_set_rect!(outer_rect);
+            self.core.set_rect(outer_rect);
             let mut rect = outer_rect;
 
             self.clip_rect = Rect {

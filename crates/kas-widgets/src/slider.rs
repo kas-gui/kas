@@ -284,7 +284,7 @@ mod Slider {
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
             };
             let mut rect = cx.align_feature(Feature::Slider(self.direction()), rect, align);
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             self.grip.set_track(rect);
 
             // Set the grip size (we could instead call set_size but the widget

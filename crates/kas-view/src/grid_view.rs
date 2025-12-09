@@ -635,7 +635,7 @@ mod GridView {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             self.align_hints = hints;
 
             let skip = self.child_size + self.child_inter_margin;

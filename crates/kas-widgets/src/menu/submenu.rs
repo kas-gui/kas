@@ -297,7 +297,7 @@ mod MenuView {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
             let store = &mut self.store;
             let hints = AlignHints::NONE;
             let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, store);

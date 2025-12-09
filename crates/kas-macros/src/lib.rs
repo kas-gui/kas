@@ -579,34 +579,6 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
     input.into_token_stream().into()
 }
 
-/// Macro to set the `rect` stored in the widget core
-///
-/// Widgets have a hidden field of type [`Rect`] in their `widget_core!()`, used
-/// to implement method [`Layout::rect`]. This macro assigns to that field.
-///
-/// This macro is usable only within the definition of `Layout::set_rect` within
-/// an [`macro@impl_self`], [`impl_scope!`] or [`impl_anon!`] macro using the
-/// [`macro@widget`] attribute.
-///
-/// The method `Layout::rect` will be generated if this macro is used by the
-/// widget, otherwise a definition of the method must be provided.
-///
-/// Example usage:
-/// ```ignore
-/// fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, _: AlignHints) {
-///     widget_set_rect!(rect);
-/// }
-/// ```
-///
-/// [`Rect`]: https://docs.rs/kas/latest/kas/geom/struct.Rect.html
-/// [`Layout::rect`]: https://docs.rs/kas/latest/kas/trait.Layout.html#method.rect
-#[proc_macro_error]
-#[proc_macro]
-pub fn widget_set_rect(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as visitors::UnscopedInput);
-    input.into_token_stream().into()
-}
-
 /// Generate an anonymous struct which implements [`kas::Collection`]
 ///
 /// # Syntax

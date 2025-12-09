@@ -23,6 +23,10 @@ use syn::{parse_quote, parse2};
 pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let layout = crate::make_layout::Tree::try_parse(scope)?;
+    let mut have_rect_definition = layout
+        .as_ref()
+        .map(|tree| tree.rect(&quote! {}).is_some())
+        .unwrap_or_default();
     let name = &scope.ident;
 
     let mut widget_impl = None;
@@ -74,6 +78,14 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             {
                 if layout_impl.is_none() {
                     layout_impl = Some(index);
+                }
+
+                for item in &impl_.items {
+                    if let ImplItem::Fn(item) = item {
+                        if item.sig.ident == "rect" {
+                            have_rect_definition = true;
+                        }
+                    }
                 }
             } else if *path == parse_quote! { ::kas::Viewport }
                 || *path == parse_quote! { kas::Viewport }
@@ -215,9 +227,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 let core_type = Ident::new(&name, Span::call_site());
                 let stor_ty = &stor_defs.ty_toks;
                 let stor_def = &stor_defs.def_toks;
+                let (rect_ty, rect_def) = if have_rect_definition {
+                    (quote! {}, quote! {})
+                } else {
+                    (
+                        quote! { _rect: ::kas::geom::Rect, },
+                        quote! { _rect: Default::default(), },
+                    )
+                };
                 scope.generated.push(quote! {
                     struct #core_type {
-                        _rect: ::kas::geom::Rect,
+                        #rect_ty
                         _id: ::kas::Id,
                         status: ::kas::WidgetStatus,
                         #stor_ty
@@ -226,7 +246,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     impl Default for #core_type {
                         fn default() -> Self {
                             #core_type {
-                                _rect: Default::default(),
+                                #rect_def
                                 _id: Default::default(),
                                 status: ::kas::WidgetStatus::New,
                                 #stor_def
@@ -234,21 +254,42 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                         }
                     }
 
-                    impl Clone for #core_type {
-                        fn clone(&self) -> Self {
-                            #core_type {
-                                _rect: self._rect,
-                                .. #core_type::default()
-                            }
+                    impl ::kas::WidgetCore for #core_type {
+                        #[inline]
+                        fn id_ref(&self) -> &::kas::Id {
+                            &self._id
+                        }
+
+                        fn status(&self) -> ::kas::WidgetStatus {
+                            self.status
                         }
                     }
                 });
+                if !have_rect_definition {
+                    scope.generated.push(quote! {
+                        impl ::kas::WidgetCoreRect for #core_type {
+                            #[inline]
+                            fn rect(&self) -> ::kas::geom::Rect {
+                                self._rect
+                            }
+
+                            #[inline]
+                            fn set_rect(&mut self, rect: ::kas::geom::Rect) {
+                                self._rect = rect;
+                            }
+                        }
+                    });
+                }
                 field.ty = Type::Path(syn::TypePath {
                     qself: None,
                     path: core_type.into(),
                 });
             } else {
-                field.ty = parse_quote! { ::kas::DefaultCoreType };
+                if have_rect_definition {
+                    field.ty = parse_quote! { ::kas::DefaultCoreType };
+                } else {
+                    field.ty = parse_quote! { ::kas::DefaultCoreRectType };
+                }
             }
 
             continue;
@@ -313,7 +354,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         );
     };
 
-    let Some(core) = core_data.clone() else {
+    let Some(core) = core_data else {
         let span = match scope.item {
             ScopeItem::Struct {
                 fields: Fields::Named(ref fields),
@@ -491,13 +532,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
     if let Some(tree) = layout {
         // TODO(opt): omit field widget.core._rect if not set here
-        let mut set_rect = quote! {};
-        let tree_rect = tree.rect(&core_path).unwrap_or_else(|| {
-            set_rect = quote! {
+        let get_rect;
+        let set_core_rect;
+        if let Some(expr) = tree.rect(&core_path) {
+            get_rect = expr;
+            set_core_rect = quote! {};
+        } else {
+            get_rect = quote! { #core_path._rect };
+            set_core_rect = quote! {
                 #core_path._rect = rect;
             };
-            quote! { #core_path._rect }
-        });
+        };
         let tree_size_rules = tree.size_rules(&core_path);
         let tree_set_rect = tree.set_rect(&core_path);
         let tree_draw = tree.draw(&core_path);
@@ -507,7 +552,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             impl #impl_generics ::kas::MacroDefinedLayout for #impl_target {
                 #[inline]
                 fn rect(&self) -> ::kas::geom::Rect {
-                    #tree_rect
+                    #get_rect
                 }
 
                 #[inline]
@@ -526,7 +571,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     rect: ::kas::geom::Rect,
                     hints: ::kas::layout::AlignHints,
                 ) {
-                    #set_rect
+                    #set_core_rect
                     #tree_set_rect
                 }
 
@@ -640,28 +685,32 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    let mut widget_set_rect_span = None;
     let mut layout_draw_span = None;
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
-        let mut fn_rect_is_provided = fn_size_rules.is_some();
+
+        if item_idents
+            .iter()
+            .find(|(_, ident)| *ident == "rect")
+            .is_none()
+        {
+            layout_impl.items.push(Verbatim(fn_rect));
+        }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
-            if let Some(ref core) = core_data {
-                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                    if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(2) {
-                        if let Pat::Ident(ref pat_ident) = *arg.pat {
-                            let axis = &pat_ident.ident;
-                            f.block.stmts.insert(0, parse_quote! {
-                                self.#core.status.size_rules(&self.#core._id, #axis);
-                            });
-                        } else {
-                            emit_error!(
-                                arg.pat,
-                                "hidden shenanigans require this parameter to have a name; suggestion: `_axis`"
-                            );
-                        }
+            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(2) {
+                    if let Pat::Ident(ref pat_ident) = *arg.pat {
+                        let axis = &pat_ident.ident;
+                        f.block.stmts.insert(0, parse_quote! {
+                            self.#core.status.size_rules(&self.#core._id, #axis);
+                        });
+                    } else {
+                        emit_error!(
+                            arg.pat,
+                            "hidden shenanigans require this parameter to have a name; suggestion: `_axis`"
+                        );
                     }
                 }
             }
@@ -669,59 +718,32 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             layout_impl.items.push(Verbatim(method));
         }
 
-        let mut fn_set_rect_span = None;
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "set_rect") {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                fn_set_rect_span = Some(f.span());
-
-                let path_rect = quote! { #core_path._rect };
-                widget_set_rect_span = crate::visitors::widget_set_rect(path_rect, &mut f.block);
-                fn_rect_is_provided |= widget_set_rect_span.is_some();
-
-                if let Some(ref core) = core_data {
-                    f.block.stmts.insert(0, parse_quote! {
-                        self.#core.status.require_size_determined(&self.#core._id);
-                    });
-                    f.block.stmts.push(parse_quote! {
-                        self.#core.status.set_sized();
-                    });
+                if !have_rect_definition && !crate::visitors::is_core_accessed(&core, &f.block) {
+                    emit_warning!(
+                        &f.block, "no call to self.{core}.set_rect(_) found";
+                        note = "expected when not using an explicit definition of `fn rect`";
+                        note = "this lint is a heuristic which may sometimes be wrong; it may be silenced via any access to the core field: `let _ = &self.core;`";
+                    );
                 }
+
+                f.block.stmts.insert(0, parse_quote! {
+                    self.#core.status.require_size_determined(&self.#core._id);
+                });
+                f.block.stmts.push(parse_quote! {
+                    self.#core.status.set_sized();
+                });
             }
         } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
-            fn_rect_is_provided = true;
-        }
-
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "rect") {
-            if let Some(span) = widget_set_rect_span {
-                let fn_rect_span = layout_impl.items[*index].span();
-                emit_warning!(
-                    span, "assignment `widget_set_rect!` has no effect when `fn rect` is defined";
-                    note = fn_rect_span => "this `fn rect`";
-                );
-            } else if fn_set_rect_span.is_none() {
-                let fn_rect_span = layout_impl.items[*index].span();
-                emit_warning!(
-                    fn_rect_span,
-                    "definition of `Layout::set_rect` is expected when `fn rect` is defined"
-                );
-            }
-        } else if fn_rect_is_provided {
-            layout_impl.items.push(Verbatim(fn_rect));
-        } else if let Some(span) = fn_set_rect_span {
-            emit_warning!(
-                span,
-                "cowardly refusing to provide an impl of `fn rect` with custom `fn set_rect` without usage of `widget_set_rect!` and without a property-defined layout"
-            );
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                 layout_draw_span = Some(f.span());
 
-                if let Some(ref core) = core_data {
-                    modify_draw(f, core);
-                }
+                modify_draw(f, &core);
             }
         } else if let Some(method) = fn_draw {
             layout_impl.items.push(Verbatim(method));
@@ -753,9 +775,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     );
                 }
 
-                if let Some(ref core) = core_data {
-                    modify_draw(f, core);
-                }
+                modify_draw(f, &core);
             }
         }
 

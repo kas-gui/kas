@@ -79,7 +79,7 @@ mod ProgressBar {
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
             };
             let rect = cx.align_feature(Feature::ProgressBar(self.direction()), rect, align);
-            widget_set_rect!(rect);
+            self.core.set_rect(rect);
         }
 
         fn draw(&self, mut draw: DrawCx) {

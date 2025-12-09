@@ -17,7 +17,7 @@ mod Mark {
     /// used as icons or visual connectors. See also [`MarkButton`].
     ///
     /// TODO: expand or replace.
-    #[derive(Clone, Debug)]
+    #[derive(Debug)]
     #[widget]
     pub struct Mark {
         core: widget_core!(),
@@ -80,7 +80,7 @@ mod MarkButton {
     /// # Messages
     ///
     /// [`kas::messages::Activate`] may be used to trigger the button.
-    #[derive(Clone, Debug)]
+    #[derive(Debug)]
     #[widget]
     pub struct MarkButton<M: Clone + Debug + 'static> {
         core: widget_core!(),

@@ -23,7 +23,7 @@ mod MenuEntry {
     /// # Messages
     ///
     /// [`kas::messages::Activate`] may be used to trigger the menu entry.
-    #[derive(Clone, Debug, Default)]
+    #[derive(Debug, Default)]
     #[widget]
     #[layout(self.label)]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
