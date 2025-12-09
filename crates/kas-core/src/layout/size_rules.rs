@@ -347,6 +347,7 @@ impl SizeRules {
     /// is increased, then decreased back to the previous value, this will
     /// revert to the previous solution. (The reverse may not hold if widths
     /// had previously been affected by a different agent.)
+    #[inline]
     pub fn solve_widths(widths: &mut [i32], rules: &[Self], target: i32) {
         let total = SizeRules::sum(rules);
         Self::solve_widths_with_total(widths, rules, total, target);
@@ -358,14 +359,57 @@ impl SizeRules {
     /// is passed explicitly.
     ///
     /// Input requirements:
-    /// - `rules.len() == out.len()`
+    /// - `rules.len() == widths.len()`
     /// - `SizeRules::sum(rules) == total`
+    pub fn solve_widths_with_total(widths: &mut [i32], rules: &[Self], total: Self, target: i32) {
+        Self::solve_widths_impl(widths, rules, total, target, Even)
+    }
+
+    /// Solve a sequence of rules with priority distribution
+    ///
+    /// Given a sequence of width (or height) `rules` from children and a
+    /// `target` size, find an appropriate size for each child.
+    /// The method attempts to ensure that:
+    ///
+    /// 1.  All widths are at least their minimum size requirement
+    /// 2.  The sum of widths plus margins between items equals `target`
+    /// 3.  No width exceeds its ideal size while other widths are below their
+    ///     own ideal size
+    /// 4.  When extra space is available and some widgets are below their ideal
+    ///     size, extra space is divided evenly between these widgets until they
+    ///     have reached their ideal size
+    /// 5.  If all rules use `Stretch::None`, then widths are not increased over
+    ///     their ideal size.
+    /// 6.  Extra space (after all widths are at least their ideal size) is
+    ///     allocated to the first (or `last`) item with the highest stretch
+    ///     priority
+    ///
+    /// Input requirements: `rules.len() == widths.len()`.
+    ///
+    /// This method is idempotent: given satisfactory input widths, these will
+    /// be preserved. Moreover, this method attempts to ensure that if target
+    /// is increased, then decreased back to the previous value, this will
+    /// revert to the previous solution. (The reverse may not hold if widths
+    /// had previously been affected by a different agent.)
+    #[allow(clippy::collapsible_if, clippy::needless_return)]
+    pub fn solve_widths_with_priority(widths: &mut [i32], rules: &[Self], target: i32, last: bool) {
+        let total = SizeRules::sum(rules);
+        Self::solve_widths_impl(widths, rules, total, target, Prioritize { last })
+    }
+
     #[allow(
         clippy::comparison_chain,
         clippy::needless_range_loop,
         clippy::needless_return
     )]
-    pub fn solve_widths_with_total(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
+    #[inline(always)]
+    fn solve_widths_impl(
+        out: &mut [i32],
+        rules: &[Self],
+        total: Self,
+        target: i32,
+        pri: impl SolvePriority,
+    ) {
         #[allow(non_snake_case)]
         let N = out.len();
         assert_eq!(rules.len(), N);
@@ -403,7 +447,7 @@ impl SizeRules {
         }
         let target = target - margin_sum;
 
-        let to_shrink = sum + dist_under_b - target;
+        let mut to_shrink = sum + dist_under_b - target;
         if dist_over_b <= to_shrink {
             // Ensure nothing exceeds the ideal:
             let mut targets = Targets::new();
@@ -424,42 +468,63 @@ impl SizeRules {
             }
         } else if to_shrink > 0 {
             // we do not go below ideal, and will keep at least one above
-            // calculate distance over for each stretch priority
-            const MAX_STRETCH: usize = Stretch::Maximize as usize + 1;
-            let mut dists = [0; MAX_STRETCH];
-            for i in 0..N {
-                dists[rules[i].stretch as usize] += (out[i] - rules[i].b).max(0);
-            }
-            let mut accum = 0;
-            let mut highest_affected = 0;
-            for i in 0..MAX_STRETCH {
-                highest_affected = i;
-                dists[i] += accum;
-                accum = dists[i];
-                if accum >= to_shrink {
-                    break;
-                }
-            }
-
-            let mut avail = 0;
-            let mut targets = Targets::new();
-            for i in 0..N {
-                let stretch = rules[i].stretch as usize;
-                if out[i] > rules[i].b {
-                    if stretch < highest_affected {
-                        sum -= out[i] - rules[i].b;
-                        out[i] = rules[i].b;
-                    } else if stretch == highest_affected {
-                        avail += out[i] - rules[i].b;
-                        targets.push(i.cast());
+            if let Some(prioritize_last) = pri.priority() {
+                if !prioritize_last {
+                    for i in 0..N {
+                        if out[i] > rules[i].b {
+                            let decr = to_shrink.min((out[i] - rules[i].b).max(0));
+                            to_shrink -= decr;
+                            out[i] -= decr;
+                        }
+                    }
+                } else {
+                    for i in (0..N).rev() {
+                        if out[i] > rules[i].b {
+                            let decr = to_shrink.min((out[i] - rules[i].b).max(0));
+                            to_shrink -= decr;
+                            out[i] -= decr;
+                        }
                     }
                 }
-            }
-            let to_shrink = sum + dist_under_b - target;
-            if to_shrink > 0 {
-                avail = avail - to_shrink;
-                reduce_targets(out, &mut targets, |i| rules[i].b, avail);
-                sum -= to_shrink;
+                debug_assert_eq!(to_shrink, 0);
+            } else {
+                // calculate distance over for each stretch priority
+                const MAX_STRETCH: usize = Stretch::Maximize as usize + 1;
+                let mut dists = [0; MAX_STRETCH];
+                for i in 0..N {
+                    dists[rules[i].stretch as usize] += (out[i] - rules[i].b).max(0);
+                }
+                let mut accum = 0;
+                let mut highest_affected = 0;
+                for i in 0..MAX_STRETCH {
+                    highest_affected = i;
+                    dists[i] += accum;
+                    accum = dists[i];
+                    if accum >= to_shrink {
+                        break;
+                    }
+                }
+
+                let mut avail = 0;
+                let mut targets = Targets::new();
+                for i in 0..N {
+                    let stretch = rules[i].stretch as usize;
+                    if out[i] > rules[i].b {
+                        if stretch < highest_affected {
+                            sum -= out[i] - rules[i].b;
+                            out[i] = rules[i].b;
+                        } else if stretch == highest_affected {
+                            avail += out[i] - rules[i].b;
+                            targets.push(i.cast());
+                        }
+                    }
+                }
+                let to_shrink = sum + dist_under_b - target;
+                if to_shrink > 0 {
+                    avail = avail - to_shrink;
+                    reduce_targets(out, &mut targets, |i| rules[i].b, avail);
+                    sum -= to_shrink;
+                }
             }
         }
 
@@ -469,21 +534,38 @@ impl SizeRules {
                 // not be enough, we also count the number with highest
                 // stretch factor and how far these are over their ideal.
                 // If highest stretch is None, do not expand beyond ideal.
-                sum = 0;
                 let highest_stretch = total.stretch;
-                let mut targets = Targets::new();
-                let mut over = 0;
-                for i in 0..N {
-                    out[i] = out[i].max(rules[i].b);
-                    sum += out[i];
-                    if highest_stretch > Stretch::None && rules[i].stretch == highest_stretch {
-                        over += out[i] - rules[i].b;
-                        targets.push(i.cast());
+                sum = 0;
+                if let Some(prioritize_last) = pri.priority() {
+                    let mut pick = None;
+                    for i in 0..N {
+                        out[i] = out[i].max(rules[i].b);
+                        sum += out[i];
+                        if highest_stretch > Stretch::None && rules[i].stretch == highest_stretch {
+                            if prioritize_last || pick.is_none() {
+                                pick = Some(i);
+                            }
+                        }
                     }
-                }
 
-                let avail = target - sum + over;
-                increase_targets(out, &mut targets, |i| rules[i].b, avail);
+                    if let Some(i) = pick {
+                        out[i] += target - sum;
+                    }
+                } else {
+                    let mut targets = Targets::new();
+                    let mut over = 0;
+                    for i in 0..N {
+                        out[i] = out[i].max(rules[i].b);
+                        sum += out[i];
+                        if highest_stretch > Stretch::None && rules[i].stretch == highest_stretch {
+                            over += out[i] - rules[i].b;
+                            targets.push(i.cast());
+                        }
+                    }
+
+                    let avail = target - sum + over;
+                    increase_targets(out, &mut targets, |i| rules[i].b, avail);
+                }
 
                 debug_assert!(target >= (0..N).fold(0, |x, i| x + out[i]));
                 return;
@@ -505,161 +587,6 @@ impl SizeRules {
         }
 
         debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
-    }
-
-    /// Solve a sequence of rules with priority distribution
-    ///
-    /// Given a sequence of width (or height) `rules` from children and a
-    /// `target` size, find an appropriate size for each child.
-    /// The method attempts to ensure that:
-    ///
-    /// -   All widths are at least their minimum size requirement
-    /// -   The sum of widths plus margins between items equals `target`
-    ///     (except as required to meet the above criteria).
-    /// -   When some widgets are below their ideal size, extra space is divided
-    ///     evenly between only these widgets
-    /// -   If all rules use `Stretch::None`, then widths are not increased over
-    ///     their ideal size.
-    /// -   Otherwise, extra space is allocated to the first (or `last`) widget
-    ///     with the highest stretch priority
-    ///
-    /// Input requirements: `rules.len() == out.len()`.
-    ///
-    /// This method is idempotent: given satisfactory input widths, these will
-    /// be preserved. Moreover, this method attempts to ensure that if target
-    /// is increased, then decreased back to the previous value, this will
-    /// revert to the previous solution. (The reverse may not hold if widths
-    /// had previously been affected by a different agent.)
-    //
-    // TODO: this method shares a lot of code with solve_widths_with_total; deduplicate
-    #[allow(clippy::collapsible_if, clippy::needless_return)]
-    pub fn solve_widths_with_priority(out: &mut [i32], rules: &[Self], target: i32, last: bool) {
-        let total = SizeRules::sum(rules);
-        #[allow(non_snake_case)]
-        let N = out.len();
-        assert_eq!(rules.len(), N);
-        if N == 0 {
-            return;
-        }
-        #[cfg(debug_assertions)]
-        {
-            assert!(out.iter().all(|w| *w >= 0));
-            let mut sum = SizeRules::sum(rules);
-            sum.m = total.m; // external margins are unimportant here
-            assert_eq!(sum, total);
-        }
-
-        if target > total.a {
-            // All minimum sizes can be met.
-            out[0] = out[0].max(rules[0].a);
-            let mut margin_sum = 0;
-            let mut sum = out[0];
-            let mut dist_under_b = (rules[0].b - out[0]).max(0);
-            let mut dist_over_b = (out[0] - rules[0].b).max(0);
-            for i in 1..N {
-                out[i] = out[i].max(rules[i].a);
-                margin_sum += i32::from((rules[i - 1].m.1).max(rules[i].m.0));
-                sum += out[i];
-                dist_under_b += (rules[i].b - out[i]).max(0);
-                dist_over_b += (out[i] - rules[i].b).max(0);
-            }
-            let target = target - margin_sum;
-
-            if sum == target {
-                return;
-            } else if sum < target {
-                if target - sum >= dist_under_b {
-                    // We can increase all sizes to their ideal. Since this may
-                    // not be enough, we also count the number with highest
-                    // stretch factor and how far these are over their ideal.
-                    // If highest stretch is None, do not expand beyond ideal.
-                    let highest_stretch = total.stretch;
-                    let mut pick = None;
-                    let mut sum = 0;
-                    for i in 0..N {
-                        out[i] = out[i].max(rules[i].b);
-                        sum += out[i];
-                        if highest_stretch > Stretch::None && rules[i].stretch == highest_stretch {
-                            if last || pick.is_none() {
-                                pick = Some(i);
-                            }
-                        }
-                    }
-
-                    if let Some(i) = pick {
-                        out[i] += target - sum;
-                    }
-                    eprintln!("increased over ideal: {out:?} for target={target}");
-                    debug_assert!(target >= (0..N).fold(0, |x, i| x + out[i]));
-                } else {
-                    // We cannot increase sizes as far as their ideal: instead
-                    // increase over minimum size and under ideal
-                    let mut targets = Targets::new();
-                    let mut over = 0;
-                    for i in 0..N {
-                        if out[i] < rules[i].b {
-                            over += out[i] - rules[i].a;
-                            targets.push(i.cast());
-                        }
-                    }
-
-                    let avail = target - sum + over;
-                    increase_targets(out, &mut targets, |i| rules[i].a, avail);
-                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
-                }
-            } else {
-                // sum > target: we need to decrease some sizes
-                if dist_over_b > sum - target {
-                    let mut amount = sum - target;
-                    debug_assert!(amount > 0);
-                    // let mut reduce = move |out: &mut [i32], i| {
-                    // };
-                    if !last {
-                        for i in 0..N {
-                            if out[i] > rules[i].b {
-                                let decr = amount.min((out[i] - rules[i].b).max(0));
-                                amount -= decr;
-                                out[i] -= decr;
-                            }
-                            debug_assert!(amount >= 0);
-                        }
-                    } else {
-                        for i in (0..N).rev() {
-                            if out[i] > rules[i].b {
-                                let decr = amount.min((out[i] - rules[i].b).max(0));
-                                amount -= decr;
-                                out[i] -= decr;
-                            }
-                            debug_assert!(amount >= 0);
-                        }
-                    }
-                    eprintln!("reduced over ideal: {out:?} for target={target}; {amount}");
-                    debug_assert_eq!(amount, 0);
-                } else {
-                    // No size can exceed the ideal
-                    // First, ensure nothing exceeds the ideal:
-                    let mut targets = Targets::new();
-                    sum = 0;
-                    for i in 0..N {
-                        out[i] = out[i].min(rules[i].b);
-                        sum += out[i];
-                        if out[i] > rules[i].a {
-                            targets.push(i.cast());
-                        }
-                    }
-                    if sum > target {
-                        let avail = target + margin_sum - total.a;
-                        reduce_targets(out, &mut targets, |i| rules[i].a, avail);
-                    }
-                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
-                }
-            }
-        } else {
-            // Below minimum size: ignore target and use minimum sizes.
-            for n in 0..N {
-                out[n] = rules[n].a;
-            }
-        }
     }
 
     /// Ensure at least one of `rules` has stretch priority at least as high as self
@@ -725,6 +652,33 @@ impl SizeRules {
                 }
             }
         }
+    }
+}
+
+trait SolvePriority {
+    /// Are we giving priority to some widget when increasing/decreasing size?
+    ///
+    /// - `None` means even distribution
+    /// - `Some(true)` means give priority to the *last* item
+    /// - `Some(false)` means give priority to the *first* item
+    fn priority(&self) -> Option<bool>;
+}
+
+struct Even;
+impl SolvePriority for Even {
+    #[inline]
+    fn priority(&self) -> Option<bool> {
+        None
+    }
+}
+
+struct Prioritize {
+    last: bool,
+}
+impl SolvePriority for Prioritize {
+    #[inline]
+    fn priority(&self) -> Option<bool> {
+        Some(self.last)
     }
 }
 
