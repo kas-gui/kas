@@ -36,6 +36,7 @@
 //! [`Layout`]: crate::Layout
 
 mod align;
+mod flow_solver;
 mod grid_solver;
 mod row_solver;
 mod size_rules;
@@ -46,6 +47,7 @@ mod storage;
 use crate::dir::{Direction, Directional, Directions};
 
 pub use align::{Align, AlignHints, AlignPair};
+pub use flow_solver::{FlowSetter, FlowSolver, FlowStorage};
 pub use grid_solver::{DefaultWithLen, GridCellInfo, GridDimensions, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use size_rules::SizeRules;
