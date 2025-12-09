@@ -338,7 +338,7 @@ impl<A> Stack<A> {
 
             let Size(w, _h) = rect.size;
             // HACK: we should pass the known height here, but it causes
-            // even distribution of excess space. Maybe SizeRules::solve_seq
+            // even distribution of excess space. Maybe SizeRules::solve_widths
             // should not always distribute excess space?
             solve_size_rules(&mut entry.0, &mut cx.size_cx(), Some(w), None);
 

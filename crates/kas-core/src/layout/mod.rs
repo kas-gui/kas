@@ -13,7 +13,7 @@
 //!
 //! [`SizeRules`] is the "heart" of widget layout, used to specify a widget's
 //! size requirements. It provides various methods to compute derived rules
-//! and [`SizeRules::solve_seq`], the "muscle" of the layout engine.
+//! and [`SizeRules::solve_widths`], the "muscle" of the layout engine.
 //!
 //! [`AxisInfo`], [`Margins`] and [`Stretch`] are auxilliary data types.
 //!
