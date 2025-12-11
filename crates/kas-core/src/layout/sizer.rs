@@ -53,11 +53,6 @@ pub trait RulesSetter {
 
     /// Called once for each child. The order is unimportant.
     fn child_rect(&mut self, storage: &mut Self::Storage, child_info: Self::ChildInfo) -> Rect;
-
-    /// Calculates the maximal rect of a given child
-    ///
-    /// This assumes that all other entries have minimum size.
-    fn maximal_rect_of(&mut self, storage: &mut Self::Storage, index: Self::ChildInfo) -> Rect;
 }
 
 /// Solve size rules for a widget

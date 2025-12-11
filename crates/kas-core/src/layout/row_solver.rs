@@ -209,25 +209,11 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
             last,
         );
     }
-}
 
-impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
-    type Storage = S;
-    type ChildInfo = usize;
-
-    fn child_rect(&mut self, storage: &mut Self::Storage, index: Self::ChildInfo) -> Rect {
-        let mut rect = self.rect;
-        if self.direction.is_horizontal() {
-            rect.pos.0 = self.offsets.as_mut()[index];
-            rect.size.0 = storage.widths()[index];
-        } else {
-            rect.pos.1 = self.offsets.as_mut()[index];
-            rect.size.1 = storage.widths()[index];
-        }
-        rect
-    }
-
-    fn maximal_rect_of(&mut self, storage: &mut Self::Storage, index: Self::ChildInfo) -> Rect {
+    /// Calculates the maximal rect of a given child
+    ///
+    /// This assumes that all other entries have minimum size.
+    pub fn maximal_rect_of(&mut self, storage: &mut S, index: usize) -> Rect {
         let pre_rules = SizeRules::min_sum(&storage.rules()[0..index]);
         let m = storage.rules()[index].margins();
         let len = storage.widths().len();
@@ -243,6 +229,23 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
         } else {
             rect.pos.1 = self.rect.pos.1 + size1;
             rect.size.1 = (self.rect.size.1 - size2).max(0);
+        }
+        rect
+    }
+}
+
+impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
+    type Storage = S;
+    type ChildInfo = usize;
+
+    fn child_rect(&mut self, storage: &mut Self::Storage, index: Self::ChildInfo) -> Rect {
+        let mut rect = self.rect;
+        if self.direction.is_horizontal() {
+            rect.pos.0 = self.offsets.as_mut()[index];
+            rect.size.0 = storage.widths()[index];
+        } else {
+            rect.pos.1 = self.offsets.as_mut()[index];
+            rect.size.1 = storage.widths()[index];
         }
         rect
     }
