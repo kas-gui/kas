@@ -259,11 +259,11 @@ mod List {
     #[autoimpl(Default where C: Default, D: Default)]
     #[widget]
     pub struct List<C: Collection, D: Directional> {
-        core: widget_core!(),
-        layout: DynRowStorage,
+        pub(crate) core: widget_core!(),
+        pub(crate) layout: DynRowStorage,
         #[collection]
-        widgets: C,
-        direction: D,
+        pub(crate) widgets: C,
+        pub(crate) direction: D,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of Id to index
     }

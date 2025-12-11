@@ -7,6 +7,7 @@
 
 use crate::List;
 use kas::Collection;
+use kas::layout::{FlowSetter, FlowSolver, FlowStorage, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use std::ops::{Index, IndexMut};
 
@@ -41,6 +42,65 @@ mod Flow {
     pub struct Flow<C: Collection, D: Directional> {
         #[widget]
         list: List<C, D>,
+        layout: FlowStorage,
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut solver = FlowSolver::new(
+                axis,
+                self.list.direction.as_direction(),
+                secondary_is_reversed,
+                self.list.widgets.len(),
+                &mut self.layout,
+            );
+            for n in 0..self.list.widgets.len() {
+                if let Some(child) = self.list.widgets.get_mut_tile(n) {
+                    solver.for_child(&mut self.layout, n, |axis| child.size_rules(cx, axis));
+                }
+            }
+            solver.finish(&mut self.layout)
+        }
+
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
+            self.list.core.set_rect(rect);
+            let mut setter = FlowSetter::new(
+                rect,
+                self.list.direction.as_direction(),
+                secondary_is_reversed,
+                self.list.widgets.len(),
+                &mut self.layout,
+            );
+
+            for n in 0..self.list.widgets.len() {
+                if let Some(child) = self.list.widgets.get_mut_tile(n) {
+                    child.set_rect(cx, setter.child_rect(&mut self.layout, n), hints);
+                }
+            }
+        }
+
+        fn draw(&self, mut draw: DrawCx) {
+            // TODO(opt): use position solver as with List widget
+            for child in self.list.widgets.iter_tile(..) {
+                child.draw(draw.re());
+            }
+        }
+    }
+
+    impl Tile for Self {
+        fn try_probe(&self, coord: Coord) -> Option<Id> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+
+            for child in self.list.widgets.iter_tile(..) {
+                if let Some(id) = child.try_probe(coord) {
+                    return Some(id);
+                }
+            }
+
+            Some(self.id())
+        }
     }
 
     impl Self
@@ -132,6 +192,7 @@ mod Flow {
         pub fn new_dir(widgets: C, direction: D) -> Self {
             Flow {
                 list: List::new_dir(widgets, direction),
+                layout: Default::default(),
             }
         }
 
