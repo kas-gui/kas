@@ -7,6 +7,7 @@
 
 use super::Id;
 use crate::geom::Rect;
+use crate::layout::AxisInfo;
 #[allow(unused)] use crate::{Events, Layout, Widget};
 use std::ops::{Range, RangeInclusive};
 
@@ -186,6 +187,54 @@ pub trait WidgetCore: Default {
     fn require_status_set_rect(&self) {
         self.require_status(WidgetStatus::SetRect);
     }
+
+    /// Set the widget configuration status
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    fn set_status(&mut self, status: WidgetStatus);
+
+    /// Update status for [`Events::configure`]
+    ///
+    /// Requires no prior state. Does not imply further actions.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    fn update_status_configured(&mut self) {
+        // re-configure does not require repeating other actions
+        let status = self.status().max(WidgetStatus::Configured);
+        self.set_status(status);
+    }
+
+    /// Update status for [`Layout::size_rules`]
+    ///
+    /// Requires at least [`WidgetStatus::Configured`]. When
+    /// `axis.is_vertical()`, requires at least [`WidgetStatus::SizeRulesX`].
+    ///
+    /// Re-calling `size_rules` does not require additional actions.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    fn update_status_size_rules(&mut self, axis: AxisInfo) {
+        let id = self.id_ref();
+        let mut status = self.status();
+        if axis.is_horizontal() {
+            status.require(id, WidgetStatus::Configured);
+            status = status.max(WidgetStatus::SizeRulesX);
+        } else {
+            status.require(id, WidgetStatus::SizeRulesX);
+            status = status.max(WidgetStatus::SizeRulesY);
+        }
+        self.set_status(status);
+    }
+
+    /// Set status signifying that [`Layout::set_rect`] has been called
+    ///
+    /// This does not check the prior status; the caller should call
+    /// [`Self::require_status_size_rules`] before this method.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[inline]
+    fn set_status_set_rect(&mut self) {
+        self.set_status(WidgetStatus::SetRect);
+    }
 }
 
 /// Extension for a widget core with a [`Rect`]
@@ -223,6 +272,11 @@ impl WidgetCore for DefaultCoreType {
     fn status(&self) -> WidgetStatus {
         self.status
     }
+
+    #[inline]
+    fn set_status(&mut self, status: WidgetStatus) {
+        self.status = status;
+    }
 }
 
 /// Common widget data
@@ -246,6 +300,11 @@ impl WidgetCore for DefaultCoreRectType {
     #[inline]
     fn status(&self) -> WidgetStatus {
         self.status
+    }
+
+    #[inline]
+    fn set_status(&mut self, status: WidgetStatus) {
+        self.status = status;
     }
 }
 
@@ -285,40 +344,6 @@ impl WidgetStatus {
         if self < expected {
             panic!("WidgetStatus of {id}: require {expected:?}, found {self:?}");
         }
-    }
-
-    /// Configure
-    ///
-    /// Requires no prior state. Does not imply further actions.
-    #[inline]
-    pub fn set_configured(&mut self) {
-        // re-configure does not require repeating other actions
-        *self = (*self).max(WidgetStatus::Configured);
-    }
-
-    /// Size rules
-    ///
-    /// Requires a prior call to `configure`. When `axis.is_vertical()`,
-    /// requires a prior call to `size_rules` for the horizontal axis.
-    ///
-    /// Re-calling `size_rules` does not require additional actions.
-    pub fn size_rules(&mut self, id: &Id, axis: crate::layout::AxisInfo) {
-        if axis.is_horizontal() {
-            self.require(id, WidgetStatus::Configured);
-            *self = (*self).max(WidgetStatus::SizeRulesX);
-        } else {
-            self.require(id, WidgetStatus::SizeRulesX);
-            *self = (*self).max(WidgetStatus::SizeRulesY);
-        }
-    }
-
-    /// Set rect
-    ///
-    /// Requires calling `size_rules` for each axis. Re-calling `set_rect` does
-    /// not require additional actions.
-    #[inline]
-    pub fn set_sized(&mut self) {
-        *self = WidgetStatus::SetRect;
     }
 
     /// Get whether the widget is configured

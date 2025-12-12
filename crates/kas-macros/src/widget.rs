@@ -264,6 +264,11 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                         fn status(&self) -> ::kas::WidgetStatus {
                             self.status
                         }
+
+                        #[inline]
+                        fn set_status(&mut self, status: ::kas::WidgetStatus) {
+                            self.status = status;
+                        }
                     }
                 });
                 if !have_rect_definition {
@@ -593,7 +598,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 cx: &mut ::kas::theme::SizeCx,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
-                #core_path.status.size_rules(&#core_path._id, axis);
+                ::kas::WidgetCore::update_status_size_rules(&mut #core_path, axis);
 
                 ::kas::MacroDefinedLayout::size_rules(self, cx, axis)
             }
@@ -608,7 +613,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             ) {
                 ::kas::WidgetCore::require_status_size_rules(&#core_path);
                 ::kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
-                #core_path.status.set_sized();
+                ::kas::WidgetCore::set_status_set_rect(&mut #core_path);
             }
         };
 
@@ -651,7 +656,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             ) {
                 ::kas::WidgetCore::require_status_size_rules(&#core_path);
                 self.#core._rect = rect;
-                #core_path.status.set_sized();
+                ::kas::WidgetCore::set_status_set_rect(&mut #core_path);
             }
         };
 
@@ -701,7 +706,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     if let Pat::Ident(ref pat_ident) = *arg.pat {
                         let axis = &pat_ident.ident;
                         f.block.stmts.insert(0, parse_quote! {
-                            self.#core.status.size_rules(&self.#core._id, #axis);
+                            ::kas::WidgetCore::update_status_size_rules(&mut #core_path, #axis);
                         });
                     } else {
                         emit_error!(
@@ -729,7 +734,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     ::kas::WidgetCore::require_status_size_rules(&self.#core);
                 });
                 f.block.stmts.push(parse_quote! {
-                    self.#core.status.set_sized();
+                    ::kas::WidgetCore::set_status_set_rect(&mut #core_path);
                 });
             }
         } else {
@@ -1084,7 +1089,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
 
             #core_path._id = id;
             ::kas::impls::_configure(self, cx, data);
-            #core_path.status.set_configured();
+            ::kas::WidgetCore::update_status_configured(&mut #core_path);
         }
 
         fn _update(
