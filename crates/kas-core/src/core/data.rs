@@ -162,6 +162,30 @@ pub trait WidgetCore: Default {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn status(&self) -> WidgetStatus;
+
+    /// Require configuration status of at least `status`
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[inline]
+    fn require_status(&self, status: WidgetStatus) {
+        self.status().require(self.id_ref(), status);
+    }
+
+    /// Require that [`Layout::size_rules`] has been called for both axes
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[inline]
+    fn require_status_size_rules(&self) {
+        self.require_status(WidgetStatus::SizeRulesY);
+    }
+
+    /// Require that [`Layout::set_rect`] has been called
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[inline]
+    fn require_status_set_rect(&self) {
+        self.require_status(WidgetStatus::SetRect);
+    }
 }
 
 /// Extension for a widget core with a [`Rect`]
@@ -195,6 +219,7 @@ impl WidgetCore for DefaultCoreType {
         &self._id
     }
 
+    #[inline]
     fn status(&self) -> WidgetStatus {
         self.status
     }
@@ -218,6 +243,7 @@ impl WidgetCore for DefaultCoreRectType {
         &self._id
     }
 
+    #[inline]
     fn status(&self) -> WidgetStatus {
         self.status
     }
@@ -270,12 +296,6 @@ impl WidgetStatus {
         *self = (*self).max(WidgetStatus::Configured);
     }
 
-    /// Require configured status
-    #[inline]
-    pub fn require_configured(self, id: &Id) {
-        self.require(id, WidgetStatus::Configured);
-    }
-
     /// Size rules
     ///
     /// Requires a prior call to `configure`. When `axis.is_vertical()`,
@@ -292,12 +312,6 @@ impl WidgetStatus {
         }
     }
 
-    /// Require that size rules have been determined for both axes
-    #[inline]
-    pub fn require_size_determined(&mut self, id: &Id) {
-        self.require(id, WidgetStatus::SizeRulesY);
-    }
-
     /// Set rect
     ///
     /// Requires calling `size_rules` for each axis. Re-calling `set_rect` does
@@ -305,12 +319,6 @@ impl WidgetStatus {
     #[inline]
     pub fn set_sized(&mut self) {
         *self = WidgetStatus::SetRect;
-    }
-
-    /// Require that `set_rect` has been called
-    #[inline]
-    pub fn require_rect(self, id: &Id) {
-        self.require(id, WidgetStatus::SetRect);
     }
 
     /// Get whether the widget is configured

@@ -260,6 +260,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                             &self._id
                         }
 
+                        #[inline]
                         fn status(&self) -> ::kas::WidgetStatus {
                             self.status
                         }
@@ -407,10 +408,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let impl_generics = impl_generics.to_token_stream();
     let impl_target = quote! { #name #ty_generics #where_clause };
 
-    let require_rect: syn::Stmt = parse_quote! {
-        #core_path.status.require_rect(&#core_path._id);
-    };
-
     let mut fn_role = None;
     let mut fn_child_indices = None;
     let mut fn_get_child = None;
@@ -514,7 +511,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let fn_set_rect;
     let mut fn_try_probe = (fn_probe_span.is_some() || children.is_empty()).then_some(quote! {
         fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            self.#core.status.require_rect(&self.#core._id);
+            ::kas::WidgetCore::require_status_set_rect(&#core_path);
 
             self.rect().contains(coord).then(|| ::kas::Events::probe(self, coord))
         }
@@ -609,7 +606,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 rect: ::kas::geom::Rect,
                 hints: ::kas::layout::AlignHints,
             ) {
-                #core_path.status.require_size_determined(&#core_path._id);
+                ::kas::WidgetCore::require_status_size_rules(&#core_path);
                 ::kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
                 #core_path.status.set_sized();
             }
@@ -620,7 +617,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         {
             fn_try_probe = Some(quote! {
                 fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    self.#core.status.require_rect(&self.#core._id);
+                    ::kas::WidgetCore::require_status_set_rect(&#core_path);
 
                     #toks
                 }
@@ -630,7 +627,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         if fn_draw.is_none() {
             fn_draw = Some(quote! {
                 fn draw(&self, draw: ::kas::theme::DrawCx) {
-                    #core_path.status.require_rect(&#core_path._id);
+                    ::kas::WidgetCore::require_status_set_rect(&#core_path);
 
                     ::kas::MacroDefinedLayout::draw(self, draw);
                 }
@@ -652,7 +649,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 rect: ::kas::geom::Rect,
                 _: ::kas::layout::AlignHints,
             ) {
-                #core_path.status.require_size_determined(&#core_path._id);
+                ::kas::WidgetCore::require_status_size_rules(&#core_path);
                 self.#core._rect = rect;
                 #core_path.status.set_sized();
             }
@@ -667,7 +664,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
     fn modify_draw(f: &mut ImplItemFn, core: &Member) {
         f.block.stmts.insert(0, parse_quote! {
-            self.#core.status.require_rect(&self.#core._id);
+            ::kas::WidgetCore::require_status_set_rect(&self.#core);
         });
 
         if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(1) {
@@ -729,7 +726,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 }
 
                 f.block.stmts.insert(0, parse_quote! {
-                    self.#core.status.require_size_determined(&self.#core._id);
+                    ::kas::WidgetCore::require_status_size_rules(&self.#core);
                 });
                 f.block.stmts.push(parse_quote! {
                     self.#core.status.set_sized();
@@ -789,7 +786,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     coord: ::kas::geom::Coord,
                     offset: ::kas::geom::Offset,
                 ) -> Option<::kas::Id> {
-                    self.#core.status.require_rect(&self.#core._id);
+                    ::kas::WidgetCore::require_status_set_rect(&#core_path);
 
                     self.rect().contains(coord).then(|| ::kas::Events::probe(self, coord + offset))
                 }
@@ -924,7 +921,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             _: &Self::Data,
             _: ::kas::event::Event,
         ) -> ::kas::event::IsUsed {
-            #require_rect
+            ::kas::WidgetCore::require_status_set_rect(&#core_path);
             ::kas::event::Unused
         }
     };
@@ -938,7 +935,9 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             .find(|(_, ident)| *ident == "handle_event")
         {
             if let ImplItem::Fn(f) = &mut events_impl.items[*index] {
-                f.block.stmts.insert(0, require_rect);
+                f.block.stmts.insert(0, parse_quote! {
+                    ::kas::WidgetCore::require_status_set_rect(&#core_path);
+                });
             }
         } else {
             events_impl.items.push(Verbatim(fn_handle_event));
@@ -1093,7 +1092,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
         ) {
-            #core_path.status.require_configured(&#core_path._id);
+            ::kas::WidgetCore::require_status(&#core_path, ::kas::WidgetStatus::Configured);
             ::kas::impls::_update(self, cx, data);
         }
 
