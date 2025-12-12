@@ -667,26 +667,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         });
     }
 
-    fn modify_draw(f: &mut ImplItemFn, core: &Member) {
-        f.block.stmts.insert(0, parse_quote! {
-            ::kas::WidgetCore::require_status_set_rect(&self.#core);
-        });
-
-        if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(1) {
-            // NOTE: if the 'draw' parameter is unnamed or not 'mut'
-            // then we don't need to call DrawCx::set_id since no
-            // calls to draw methods are possible.
-            if let Pat::Ident(ref pat_ident) = *arg.pat {
-                if pat_ident.mutability.is_some() {
-                    let draw = &pat_ident.ident;
-                    f.block.stmts.insert(0, parse_quote! {
-                        #draw.set_id(::kas::Tile::id(self));
-                    });
-                }
-            }
-        }
-    }
-
     let mut layout_draw_span = None;
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
@@ -745,7 +725,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                 layout_draw_span = Some(f.span());
 
-                modify_draw(f, &core);
+                modify_draw(f, &quote! { &#core_path });
             }
         } else if let Some(method) = fn_draw {
             layout_impl.items.push(Verbatim(method));
@@ -777,7 +757,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     );
                 }
 
-                modify_draw(f, &core);
+                modify_draw(f, &quote! { &#core_path });
             }
         }
 
@@ -841,6 +821,12 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
+            if let ImplItem::Fn(f) = &mut tile_impl.items[*index] {
+                f.block.stmts.insert(0, parse_quote! {
+                    ::kas::WidgetCore::require_status_set_rect(&#core_path);
+                });
+            }
+
             if let Some(span2) = fn_probe_span {
                 let span = tile_impl.items[*index].span();
                 emit_error!(
@@ -1064,6 +1050,26 @@ pub fn required_tile_methods(name: &str, core_path: &Toks) -> Toks {
         #[inline]
         fn identify(&self) -> ::kas::util::IdentifyWidget<'_> {
             ::kas::util::IdentifyWidget::simple(#name, self.id_ref())
+        }
+    }
+}
+
+pub fn modify_draw(f: &mut ImplItemFn, core_path: &Toks) {
+    f.block.stmts.insert(0, parse_quote! {
+        ::kas::WidgetCore::require_status_set_rect(#core_path);
+    });
+
+    if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(1) {
+        // NOTE: if the 'draw' parameter is unnamed or not 'mut'
+        // then we don't need to call DrawCx::set_id since no
+        // calls to draw methods are possible.
+        if let Pat::Ident(ref pat_ident) = *arg.pat {
+            if pat_ident.mutability.is_some() {
+                let draw = &pat_ident.ident;
+                f.block.stmts.insert(0, parse_quote! {
+                    #draw.set_id(::kas::Tile::id(self));
+                });
+            }
         }
     }
 }

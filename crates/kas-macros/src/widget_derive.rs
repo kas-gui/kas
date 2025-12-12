@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::widget::{collect_idents, widget_as_node};
+use crate::widget::{collect_idents, modify_draw, widget_as_node};
 use crate::widget_args::member;
 use impl_tools_lib::SimplePath;
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
@@ -11,10 +11,10 @@ use impl_tools_lib::scope::{Scope, ScopeAttr, ScopeItem};
 use proc_macro_error2::{emit_error, emit_warning};
 use proc_macro2::Span;
 use quote::{ToTokens, quote};
-use syn::ImplItem::Verbatim;
+use syn::ImplItem::{self, Verbatim};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{MacroDelimiter, Meta, parse_quote, parse2};
+use syn::{FnArg, MacroDelimiter, Meta, Pat, parse_quote, parse2};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -285,15 +285,44 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
             layout_impl.items.push(Verbatim(fn_rect));
         }
 
-        if !has_item("size_rules") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
+            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(2) {
+                    if let Pat::Ident(ref pat_ident) = *arg.pat {
+                        let axis = &pat_ident.ident;
+                        f.block.stmts.insert(0, parse_quote! {
+                            ::kas::WidgetCore::update_status_size_rules(::kas::Tile::core_mut(self), #axis);
+                        });
+                    } else {
+                        emit_error!(
+                            arg.pat,
+                            "hidden shenanigans require this parameter to have a name; suggestion: `_axis`"
+                        );
+                    }
+                }
+            }
+        } else {
             layout_impl.items.push(Verbatim(fn_size_rules));
         }
 
-        if !has_item("set_rect") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "set_rect") {
+            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                f.block.stmts.insert(0, parse_quote! {
+                    ::kas::WidgetCore::require_status_size_rules(::kas::Tile::core(self));
+                });
+                f.block.stmts.push(parse_quote! {
+                    ::kas::WidgetCore::set_status_set_rect(::kas::Tile::core_mut(self));
+                });
+            }
+        } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
         }
 
-        if !has_item("draw") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
+            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                modify_draw(f, &parse_quote! { ::kas::Tile::core(self) });
+            }
+        } else {
             layout_impl.items.push(Verbatim(fn_draw));
         }
     } else {
@@ -380,7 +409,13 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
             tile_impl.items.push(Verbatim(fn_role_child_properties));
         }
 
-        if !has_item("try_probe") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
+            if let ImplItem::Fn(f) = &mut tile_impl.items[*index] {
+                f.block.stmts.insert(0, parse_quote! {
+                    ::kas::WidgetCore::require_status_set_rect(::kas::Tile::core(self));
+                });
+            }
+        } else {
             tile_impl.items.push(Verbatim(fn_try_probe));
         }
 
