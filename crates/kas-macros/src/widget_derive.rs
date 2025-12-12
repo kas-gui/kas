@@ -187,6 +187,22 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
 
     let required_tile_methods = quote! {
         #[inline]
+        fn core(&self) -> &impl ::kas::WidgetCore
+        where
+            Self: Sized,
+        {
+            self.#inner.core()
+        }
+
+        #[inline]
+        fn core_mut(&mut self) -> &mut impl ::kas::WidgetCore
+        where
+            Self: Sized,
+        {
+            self.#inner.core_mut()
+        }
+
+        #[inline]
         fn as_tile(&self) -> &dyn ::kas::Tile {
             self
         }

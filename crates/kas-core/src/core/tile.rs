@@ -8,7 +8,8 @@
 use crate::event::{EventState, NavAdvance};
 use crate::geom::{Coord, Offset, Rect};
 use crate::util::IdentifyWidget;
-use crate::{ChildIndices, HasId, Id, Layout, Role, RoleCx, WidgetStatus};
+use crate::{ChildIndices, DefaultCoreType, WidgetCore, WidgetStatus};
+use crate::{HasId, Id, Layout, Role, RoleCx};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, RoleCxExt, Widget};
@@ -45,6 +46,28 @@ use kas_macros::autoimpl;
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Tile: Layout {
+    /// Get the widget core
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    fn core(&self) -> &impl WidgetCore
+    where
+        Self: Sized,
+    {
+        // make rustdoc show that this is a provided method
+        unimplemented!() as &DefaultCoreType
+    }
+
+    /// Get the widget core (mut)
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    fn core_mut(&mut self) -> &mut impl WidgetCore
+    where
+        Self: Sized,
+    {
+        // make rustdoc show that this is a provided method
+        unimplemented!() as &mut DefaultCoreType
+    }
+
     /// Get as a `dyn Tile`
     ///
     /// This method is implemented by the `#[widget]` macro.

@@ -1029,6 +1029,22 @@ pub fn collect_idents(item_impl: &ItemImpl) -> Vec<(usize, Ident)> {
 pub fn required_tile_methods(name: &str, core_path: &Toks) -> Toks {
     quote! {
         #[inline]
+        fn core(&self) -> &impl ::kas::WidgetCore
+        where
+            Self: Sized,
+        {
+            &#core_path
+        }
+
+        #[inline]
+        fn core_mut(&mut self) -> &mut impl ::kas::WidgetCore
+        where
+            Self: Sized,
+        {
+            &mut #core_path
+        }
+
+        #[inline]
         fn as_tile(&self) -> &dyn ::kas::Tile {
             self
         }
