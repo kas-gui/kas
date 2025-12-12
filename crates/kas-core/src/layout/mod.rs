@@ -89,6 +89,12 @@ impl AxisInfo {
     }
 
     /// Size of other axis, if fixed
+    ///
+    /// When [sizing](Layout#sizing) the vertical axis, this value represents
+    /// the expected width thus allowing text/content flow to affect vertical
+    /// size requirements.
+    ///
+    /// NOTE: this value may be inaccurate due to lack of testing.
     #[inline]
     pub fn other(&self) -> Option<i32> {
         if self.has_fixed { Some(self.other_axis) } else { None }
