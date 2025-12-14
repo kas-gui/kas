@@ -17,10 +17,24 @@ mod Flow {
     ///
     /// This widget is a variant of [`List`], arranging a linear [`Collection`]
     /// of children into multiple rows or columns with automatic splitting.
-    /// See also [`Grid`](crate::Grid).
+    /// Unlike [`Grid`](crate::Grid), items are not aligned across lines.
     ///
     /// When the collection uses [`Vec`], various methods to insert/remove
     /// elements are available.
+    ///
+    /// ## Layout details
+    ///
+    /// Currently only horizontal lines (rows) which wrap down to the next line
+    /// are supported.
+    ///
+    /// Items within each line are stretched (if any has non-zero [`Stretch`]
+    /// priority) in accordance with [`SizeRules::solve_widths`]. It is not
+    /// currently possible to adjust this (except by tweaking the stretchiness
+    /// of items).
+    ///
+    /// ## Performance
+    ///
+    /// Sizing, drawing and event handling are all `O(n)` where `n` is the number of children.
     ///
     /// ## Example
     ///
@@ -43,6 +57,7 @@ mod Flow {
         #[widget]
         list: List<C, D>,
         layout: FlowStorage,
+        secondary_is_reversed: bool,
     }
 
     impl Layout for Self {
@@ -50,7 +65,7 @@ mod Flow {
             let mut solver = FlowSolver::new(
                 axis,
                 self.list.direction.as_direction(),
-                secondary_is_reversed,
+                self.secondary_is_reversed,
                 self.list.widgets.len(),
                 &mut self.layout,
             );
@@ -67,7 +82,7 @@ mod Flow {
             let mut setter = FlowSetter::new(
                 rect,
                 self.list.direction.as_direction(),
-                secondary_is_reversed,
+                self.secondary_is_reversed,
                 self.list.widgets.len(),
                 &mut self.layout,
             );
@@ -110,8 +125,7 @@ mod Flow {
         /// Construct a new instance with default-constructed direction
         ///
         /// This constructor is available where the direction is determined by the
-        /// type: for `D: Directional + Default`. In other cases, use
-        /// [`Self::new_dir`].
+        /// type: for `D: Directional + Default`. The wrap direction is down or right.
         ///
         /// # Examples
         ///
@@ -159,6 +173,8 @@ mod Flow {
 
     impl<C: Collection> Flow<C, kas::dir::Left> {
         /// Construct a new instance with fixed direction
+        ///
+        /// Lines flow from right-to-left, wrapping down.
         #[inline]
         pub fn left(widgets: C) -> Self {
             Self::new(widgets)
@@ -166,22 +182,10 @@ mod Flow {
     }
     impl<C: Collection> Flow<C, kas::dir::Right> {
         /// Construct a new instance with fixed direction
+        ///
+        /// Lines flow from left-to-right, wrapping down.
         #[inline]
         pub fn right(widgets: C) -> Self {
-            Self::new(widgets)
-        }
-    }
-    impl<C: Collection> Flow<C, kas::dir::Up> {
-        /// Construct a new instance with fixed direction
-        #[inline]
-        pub fn up(widgets: C) -> Self {
-            Self::new(widgets)
-        }
-    }
-    impl<C: Collection> Flow<C, kas::dir::Down> {
-        /// Construct a new instance with fixed direction
-        #[inline]
-        pub fn down(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
@@ -190,9 +194,14 @@ mod Flow {
         /// Construct a new instance with explicit direction
         #[inline]
         pub fn new_dir(widgets: C, direction: D) -> Self {
+            assert!(
+                direction.is_horizontal(),
+                "column flow is not (yet) supported"
+            );
             Flow {
                 list: List::new_dir(widgets, direction),
                 layout: Default::default(),
+                secondary_is_reversed: false,
             }
         }
 

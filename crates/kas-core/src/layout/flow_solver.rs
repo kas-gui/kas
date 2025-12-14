@@ -58,8 +58,11 @@ impl FlowSolver {
     ) -> Self {
         storage.rules.resize(len, SizeRules::EMPTY);
         storage.widths.resize(len, 0);
-        storage.breaks.clear();
-        storage.height_rules.clear();
+
+        if direction.is_horizontal() || axis.is_horizontal() {
+            storage.breaks.clear();
+            storage.height_rules.clear();
+        }
 
         // If the flow consists of rows, then we solve widths on the vertical
         // axis. For columns we can't do anything useful here.
@@ -149,7 +152,7 @@ impl RulesSolver for FlowSolver {
             storage.rules[index] = child_rules;
         }
 
-        if self.direction.is_horizontal() && self.axis.is_horizontal() {
+        if self.direction.is_horizontal() == self.axis.is_horizontal() {
             // We calculate the ideal size by appending all items into one line:
             self.opt_rules = Some(if let Some(rules) = self.opt_rules {
                 if self.direction.is_reversed() {
@@ -160,7 +163,7 @@ impl RulesSolver for FlowSolver {
             } else {
                 child_rules
             });
-        } else if self.direction.is_horizontal() && self.axis.is_vertical() {
+        } else {
             if storage.breaks.contains(&index) {
                 storage.height_rules.push(self.rules);
 
@@ -181,47 +184,25 @@ impl RulesSolver for FlowSolver {
     }
 
     fn finish(self, storage: &mut Self::Storage) -> SizeRules {
-        if self.direction.is_horizontal() {
-            if self.axis.is_horizontal() {
-                let min = self.rules.min_size();
-                let ideal = self.opt_rules.unwrap_or(SizeRules::EMPTY).ideal_size();
-                let stretch = self.rules.stretch();
-                SizeRules::new(min, ideal, stretch).with_margins(self.rules.margins())
-            } else {
-                let rules = if let Some(rules) = self.opt_rules {
-                    if self.secondary_is_reversed {
-                        rules.appended(self.rules)
-                    } else {
-                        self.rules.appended(rules)
-                    }
-                } else {
-                    self.rules
-                };
-
-                storage.height_rules.push(rules);
-                debug_assert_eq!(storage.breaks.len() + 1, storage.height_rules.len());
-                rules
-            }
+        if self.direction.is_horizontal() == self.axis.is_horizontal() {
+            let min = self.rules.min_size();
+            let ideal = self.opt_rules.unwrap_or(SizeRules::EMPTY).ideal_size();
+            let stretch = self.rules.stretch();
+            SizeRules::new(min, ideal, stretch).with_margins(self.rules.margins())
         } else {
-            if self.axis.is_horizontal() {
-                // Note to user: this is correct only for one column.
-                // Consider calling multiply_with_margin(min, ideal) on the result!
-                self.rules
-            } else {
-                // TODO: we can fit at least self.axis.other_axis.unwrap() / col_width columns
-                let mut iter = storage.rules.iter();
-                let Some(mut rules) = iter.next().cloned() else {
-                    return SizeRules::EMPTY;
-                };
-                for r in iter {
-                    if !self.direction.is_reversed() {
-                        rules.append(*r);
-                    } else {
-                        rules = r.appended(rules);
-                    }
+            let rules = if let Some(rules) = self.opt_rules {
+                if self.secondary_is_reversed {
+                    rules.appended(self.rules)
+                } else {
+                    self.rules.appended(rules)
                 }
-                rules
-            }
+            } else {
+                self.rules
+            };
+
+            storage.height_rules.push(rules);
+            debug_assert_eq!(storage.breaks.len() + 1, storage.height_rules.len());
+            rules
         }
     }
 }
@@ -254,17 +235,21 @@ impl FlowSetter {
         len: usize,
         storage: &mut FlowStorage,
     ) -> Self {
-        let mut offsets = vec![];
-        offsets.resize(len, 0);
+        let offsets = vec![0; len];
         assert_eq!(storage.rules.len(), len);
         let mut heights = vec![];
+
+        if direction.is_vertical() {
+            // TODO: solve storage.breaks (wrap points) here, then solve storage.widths (which are
+            // heights in this case) and finally column widths (which requires per-item width rules
+            // or just fixed column widths).
+            todo!()
+        }
 
         if len != 0 {
             let height = rect.size.extract(direction.flipped());
             heights = vec![0; storage.height_rules.len()];
             SizeRules::solve_widths(&mut heights, &storage.height_rules, height);
-        } else if direction.is_vertical() {
-            todo!()
         }
 
         let mut row = FlowSetter {
@@ -329,7 +314,7 @@ impl FlowSetter {
                 &storage.widths,
                 &mut self.offsets,
                 (0..len).rev(),
-                |i| i == len - 1 || storage.breaks.contains(&i),
+                |i| i == len - 1 || storage.breaks.contains(&(i + 1)),
             );
         }
 
