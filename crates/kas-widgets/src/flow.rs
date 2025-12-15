@@ -27,6 +27,9 @@ mod Flow {
     /// Currently only horizontal lines (rows) which wrap down to the next line
     /// are supported.
     ///
+    /// Width requirements depend on the desired numbers of columns; see
+    /// [`Self::set_num_columns`].
+    ///
     /// Items within each line are stretched (if any has non-zero [`Stretch`]
     /// priority) in accordance with [`SizeRules::solve_widths`]. It is not
     /// currently possible to adjust this (except by tweaking the stretchiness
@@ -58,6 +61,8 @@ mod Flow {
         list: List<C, D>,
         layout: FlowStorage,
         secondary_is_reversed: bool,
+        min_cols: i32,
+        ideal_cols: i32,
     }
 
     impl Layout for Self {
@@ -69,6 +74,7 @@ mod Flow {
                 self.list.widgets.len(),
                 &mut self.layout,
             );
+            solver.set_num_columns(self.min_cols, self.ideal_cols);
             for n in 0..self.list.widgets.len() {
                 if let Some(child) = self.list.widgets.get_mut_tile(n) {
                     solver.for_child(&mut self.layout, n, |axis| child.size_rules(cx, axis));
@@ -202,7 +208,31 @@ mod Flow {
                 list: List::new_dir(widgets, direction),
                 layout: Default::default(),
                 secondary_is_reversed: false,
+                min_cols: 1,
+                ideal_cols: 3,
             }
+        }
+
+        /// Set the (minimum, ideal) numbers of columns
+        ///
+        /// This affects the final [`SizeRules`] for the horizontal axis.
+        ///
+        /// By default, the values `1, 3` are used.
+        #[inline]
+        pub fn set_num_columns(&mut self, min: i32, ideal: i32) {
+            self.min_cols = min;
+            self.ideal_cols = ideal;
+        }
+
+        /// Set the (minimum, ideal) numbers of columns (inline)
+        ///
+        /// This affects the final [`SizeRules`] for the horizontal axis.
+        ///
+        /// By default, the values `1, 3` are used.
+        #[inline]
+        pub fn with_num_columns(mut self, min: i32, ideal: i32) -> Self {
+            self.set_num_columns(min, ideal);
+            self
         }
 
         /// True if there are no child widgets

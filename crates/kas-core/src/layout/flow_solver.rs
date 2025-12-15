@@ -36,6 +36,8 @@ pub struct FlowSolver {
     secondary_is_reversed: bool,
     opt_rules: Option<SizeRules>,
     rules: SizeRules,
+    min_cols: i32,
+    ideal_cols: i32,
 }
 
 impl FlowSolver {
@@ -109,7 +111,20 @@ impl FlowSolver {
             secondary_is_reversed,
             opt_rules: None,
             rules: SizeRules::EMPTY,
+            min_cols: 1,
+            ideal_cols: 3,
         }
+    }
+
+    /// Set the (minimum, ideal) numbers of columns
+    ///
+    /// This affects the final [`SizeRules`] for the horizontal axis.
+    ///
+    /// By default, the values `1, 3` are used.
+    #[inline]
+    pub fn set_num_columns(&mut self, min: i32, ideal: i32) {
+        self.min_cols = min;
+        self.ideal_cols = ideal;
     }
 
     /// Set column width
@@ -185,8 +200,11 @@ impl RulesSolver for FlowSolver {
 
     fn finish(self, storage: &mut Self::Storage) -> SizeRules {
         if self.direction.is_horizontal() == self.axis.is_horizontal() {
-            let min = self.rules.min_size();
-            let ideal = self.opt_rules.unwrap_or(SizeRules::EMPTY).ideal_size();
+            let mut col_limited_rules = self.rules.clone();
+            col_limited_rules.multiply_with_margin(self.min_cols, self.ideal_cols);
+            let unwrapped_width = self.opt_rules.unwrap_or(SizeRules::EMPTY).ideal_size();
+            let min = col_limited_rules.min_size();
+            let ideal = unwrapped_width.min(col_limited_rules.ideal_size());
             let stretch = self.rules.stretch();
             SizeRules::new(min, ideal, stretch).with_margins(self.rules.margins())
         } else {
