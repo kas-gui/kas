@@ -44,6 +44,7 @@ mod size_types;
 mod sizer;
 mod storage;
 
+#[allow(unused)] use crate::Layout;
 use crate::dir::{Direction, Directional, Directions};
 
 pub use align::{Align, AlignHints, AlignPair};

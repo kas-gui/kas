@@ -48,7 +48,7 @@ impl FlowSolver {
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `direction`: primary direction of flow (lines)
     /// - `secondary_is_reversed`: true if the direction in which lines wrap is
-    ///     left or up (this corresponds to [`Directional::is_reversed`])
+    ///   left or up (this corresponds to [`Directional::is_reversed`])
     /// - `len`:  and total number of items
     /// - `storage`: reference to persistent storage
     pub fn new(
@@ -85,7 +85,7 @@ impl FlowSolver {
                 // Line break. Solve widths for the previous line:
                 SizeRules::solve_widths_with_total(
                     &mut storage.widths[start..i],
-                    &mut storage.rules[start..i],
+                    &storage.rules[start..i],
                     total,
                     width,
                 );
@@ -97,7 +97,7 @@ impl FlowSolver {
             // Final line:
             SizeRules::solve_widths_with_total(
                 &mut storage.widths[start..],
-                &mut storage.rules[start..],
+                &storage.rules[start..],
                 total,
                 width,
             );
@@ -200,7 +200,7 @@ impl RulesSolver for FlowSolver {
 
     fn finish(self, storage: &mut Self::Storage) -> SizeRules {
         if self.direction.is_horizontal() == self.axis.is_horizontal() {
-            let mut col_limited_rules = self.rules.clone();
+            let mut col_limited_rules = self.rules;
             col_limited_rules.multiply_with_margin(self.min_cols, self.ideal_cols);
             let unwrapped_width = self.opt_rules.unwrap_or(SizeRules::EMPTY).ideal_size();
             let min = col_limited_rules.min_size();
@@ -243,7 +243,7 @@ impl FlowSetter {
     /// -   `rect`: the [`Rect`] within which to position children
     /// - `direction`: primary direction of flow (lines)
     /// - `secondary_is_reversed`: true if the direction in which lines wrap is
-    ///     left or up (this corresponds to [`Directional::is_reversed`])
+    ///   left or up (this corresponds to [`Directional::is_reversed`])
     /// - `len`:  and total number of items
     /// - `storage`: reference to persistent storage
     pub fn new(
@@ -343,7 +343,7 @@ impl FlowSetter {
         if !self.secondary_is_reversed {
             set_offsets(
                 pos,
-                &mut storage.height_rules,
+                &storage.height_rules,
                 &self.heights,
                 offsets,
                 0..len,
@@ -352,7 +352,7 @@ impl FlowSetter {
         } else {
             set_offsets(
                 pos,
-                &mut storage.height_rules,
+                &storage.height_rules,
                 &self.heights,
                 offsets,
                 (0..len).rev(),

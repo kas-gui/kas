@@ -672,11 +672,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
 
-        if item_idents
-            .iter()
-            .find(|(_, ident)| *ident == "rect")
-            .is_none()
-        {
+        if !item_idents.iter().any(|(_, ident)| *ident == "rect") {
             layout_impl.items.push(Verbatim(fn_rect));
         }
 

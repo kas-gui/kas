@@ -540,7 +540,7 @@ impl SizeRules {
                 }
                 let to_shrink = dist_over_b_lower_stretch.max(sum + dist_under_b - target);
                 if 0 < to_shrink && to_shrink <= avail {
-                    avail = avail - to_shrink;
+                    avail -= to_shrink;
                     reduce_targets(out, &mut targets, |i| rules[i].b, avail);
                     sum -= to_shrink;
                 }

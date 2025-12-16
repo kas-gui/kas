@@ -50,10 +50,6 @@ mod Flow {
     ///     CheckBox::new(|_, state: &bool| *state),
     /// ]);
     /// ```
-    ///
-    /// [`row!`]: crate::row
-    /// [`column!`]: crate::column
-    /// [`set_direction`]: Flow::set_direction
     #[autoimpl(Default where C: Default, D: Default)]
     #[derive_widget]
     pub struct Flow<C: Collection, D: Directional> {
