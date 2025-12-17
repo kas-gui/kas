@@ -7,7 +7,7 @@
 
 use kas::event::CursorIcon;
 use kas::prelude::*;
-use kas::widgets::{Column, Label};
+use kas::widgets::{Flow, Label};
 
 #[impl_self]
 mod CursorWidget {
@@ -49,7 +49,7 @@ fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     // These are winit::window::CursorIcon enum variants
-    let column = Column::new([
+    let list = Flow::right([
         cursor!(Default),
         cursor!(ContextMenu),
         cursor!(Help),
@@ -86,6 +86,6 @@ fn main() -> kas::runner::Result<()> {
         cursor!(ZoomOut),
     ]);
 
-    let window = Window::new(column, "Cursor gallery");
+    let window = Window::new(list, "Cursor gallery");
     kas::runner::Runner::new(())?.with(window).run()
 }
