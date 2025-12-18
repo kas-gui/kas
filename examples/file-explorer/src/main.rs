@@ -9,8 +9,8 @@ pub mod tile;
 mod viewer;
 
 use kas::prelude::*;
-use kas::widgets::adapt::MapAny;
-use kas::widgets::{Button, Label, Row, column};
+use kas::widgets::adapt::{MapAny, WithMarginStyle};
+use kas::widgets::{Button, Filler, Label, Row, column, frame, row};
 use kas::window::Window;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -26,36 +26,39 @@ type Entry = PathBuf;
 struct ChangeDir(PathBuf);
 
 fn trail() -> impl Widget<Data = Data> {
-    Row::<Vec<MapAny<_, Button<Label<String>>>>>::new(vec![]).on_update(|cx, row, data: &Data| {
-        let mut path = PathBuf::new();
-        for (i, component) in data.path.iter().enumerate() {
-            if path.as_os_str().is_empty() {
-                path = PathBuf::from(component);
-            } else {
-                path = path.join(component);
+    Row::<Vec<MapAny<_, WithMarginStyle<Button<Label<String>>>>>>::new(vec![]).on_update(
+        |cx, row, data: &Data| {
+            let mut path = PathBuf::new();
+            for (i, component) in data.path.iter().enumerate() {
+                if path.as_os_str().is_empty() {
+                    path = PathBuf::from(component);
+                } else {
+                    path = path.join(component);
+                }
+
+                let label = format!("{} 〉", component.display());
+                if row
+                    .get(i)
+                    .map(|b| (***b).inner.as_str() == label)
+                    .unwrap_or(false)
+                {
+                    continue;
+                }
+
+                row.truncate(cx, i);
+
+                row.push(
+                    cx,
+                    data,
+                    Button::new(Label::new(label.to_string()))
+                        .with_msg(ChangeDir(path.clone()))
+                        .with_frame_style(kas::theme::FrameStyle::InvisibleButton)
+                        .with_margin_style(kas::theme::MarginStyle::None)
+                        .map_any(),
+                );
             }
-
-            let label = component.to_string_lossy();
-            if row
-                .get(i)
-                .map(|b| b.inner.inner.as_str() == label)
-                .unwrap_or(false)
-            {
-                continue;
-            }
-
-            row.truncate(cx, i);
-
-            row.push(
-                cx,
-                data,
-                Button::new(Label::new(label.to_string()))
-                    .with_msg(ChangeDir(path.clone()))
-                    .with_frame_style(kas::theme::FrameStyle::InvisibleButton)
-                    .map_any(),
-            );
-        }
-    })
+        },
+    )
 }
 
 fn main() -> kas::runner::Result<()> {
@@ -82,7 +85,12 @@ fn main() -> kas::runner::Result<()> {
         filter_hidden: true,
     };
 
-    let ui = column![trail(), viewer::viewer()]
+    let trail = row![
+        frame!(trail()).with_style(kas::theme::FrameStyle::None),
+        Filler::new().map_any()
+    ];
+
+    let ui = column![trail, viewer::viewer()]
         .with_state(data)
         .on_message(|cx, state, ChangeDir(path)| {
             let title = window_title(&path);

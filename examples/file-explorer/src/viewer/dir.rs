@@ -2,7 +2,7 @@
 
 use crate::{Data, Entry, report_io_error};
 use kas::prelude::*;
-use kas::theme::FrameStyle;
+use kas::theme::{FrameStyle, MarginStyle};
 use kas::view::{ListView, clerk};
 use kas::widgets::ScrollRegion;
 use std::{ops::Range, path::PathBuf};
@@ -122,7 +122,11 @@ impl clerk::TokenClerk<usize> for Clerk {
 #[impl_self]
 mod DirView {
     #[widget]
-    #[layout(frame!(self.list).with_style(FrameStyle::EditBox))]
+    #[layout(
+        frame!(self.list)
+            .with_style(FrameStyle::EditBox)
+            .with_margin_style(MarginStyle::None)
+    )]
     #[derive(Default)]
     pub struct DirView {
         core: widget_core!(),
