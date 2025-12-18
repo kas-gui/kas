@@ -97,7 +97,7 @@ pub enum FrameStyle {
     Button,
     /// Border of a tab
     Tab,
-    /// Box used to contain editable text
+    /// Frame with a background, often used for editable text
     EditBox,
     /// Window decoration (excludes top buttons)
     Window,
