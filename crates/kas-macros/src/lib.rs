@@ -282,7 +282,7 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// ## Examples
 ///
 /// A simple example is the
-/// [`Frame`](https://docs.rs/kas-widgets/latest/kas_widgets/struct.Frame.html) widget:
+/// [`Frame`](https://docs.rs/kas/latest/kas/widgets/struct.Frame.html) widget:
 ///
 /// ```ignore
 /// #[impl_self]
@@ -348,63 +348,59 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Provide a default implementation of the [`Layout`] trait for a widget
 ///
-/// The [`macro@widget`] macro uses this attribute to implement
-/// [`MacroDefinedLayout`] for the widget, then adjusts the default
-/// implementations of each [`Layout`] method to call the corresponding
-/// [`MacroDefinedLayout`] method.
+/// This attribute macro may be used with the [`macro@widget`] macro to provide
+/// an implementation of [`Layout`].
 ///
-/// This attribute may *only* appear after the [`macro@widget`] attribute (it is
-/// not a stand-alone macro). It does not need to be imported (it is resolved by
-/// [`macro@widget`]).
+/// The `#[layout]` attribute **must** follow the [`macro@widget`] attribute (it
+/// is not a stand-alone macro).
+/// It does not need to be imported (it is resolved by [`macro@widget`]).
 ///
-/// ## Layout
+/// ## Overriding provided fns
 ///
-/// Widget layout may be specified by implementing the `Layout` trait and/or
-/// with a `#[layout(...)]` attribute (this must appear after `#[widget]` on the
-/// type definition). The latter accepts the following
-/// syntax, where _Layout_ is any of the below.
+/// This macro implements [`MacroDefinedLayout`] for the widget and adjusts the
+/// default implementations of each [`Layout`] method to call the corresponding
+/// [`MacroDefinedLayout`] method. The user may instead provide a direct
+/// implementation of any [`Layout`] method; this implementation may or may not
+/// call the corresponding [`MacroDefinedLayout`] method.
 ///
-/// Using the `#[layout]` attribute will also generate a corresponding
-/// implementation of `Tile::nav_next`, with a couple of exceptions
-/// (where macro-time analysis is insufficient to implement this method).
+/// ## Layout syntax
 ///
-/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_], [_AlignedRow_], [_Grid_],
-/// > [_Float_], [_Frame_] :\
-/// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
+/// Syntax is as follows:
+///
+/// > _Item_: _MemberItem_ _Call_* | _LitItem_ _Call_* |
+/// > _MacroItem_ _Call_* | _ExprItem_\
+/// > &nbsp;&nbsp; A single item
 /// >
-/// > _Single_ :\
-/// > &nbsp;&nbsp; `self` `.` _Member_\
-/// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any
-/// > expression starting `self`, and uses `&mut (#expr)`).
+/// > _MemberItem_: `self` `.` _Member_\
+/// > &nbsp;&nbsp; A reference to a field (e.g. `self.label` or `self.0`); this
+/// > field must be a `#[widget]`.
 /// >
-/// > _WidgetConstructor_ :\
-/// > &nbsp;&nbsp; _Expr_\
+/// > _LitItem_: _StrLit_\
+/// > &nbsp;&nbsp; A string literal (e.g. `"Hello world"`). This implicitly
+/// > constructs a widget roughly equivalent to `Label<'static str>` but without
+/// > text wrapping.
+/// >
+/// > _MacroItem_: (`frame` | `column` | `row` | `list` | `float` |
+/// > `aligned_column` | `aligned_row` | `grid`) `!` _MacroArgs_\
+/// > &nbsp;&nbsp; These layout macros are natively supported in layout syntax.
+/// > They are equivalent to the like-named [macros in `kas::widgets`] aside from
+/// > name resolution.
+/// >
+/// > _ExprItem_: _Expr_\
 /// > &nbsp;&nbsp; An expression yielding a widget, e.g.
 /// > `Label::new("Hello world")`. The result must be an object of some type
 /// > `W: Widget<Data = ()>`. This widget will be stored in a hidden field and
 /// > is accessible through `Tile::get_child` but does not receive input data.
-/// >
-/// > _LabelLit_ :\
-/// > &nbsp;&nbsp; _StrLit_\
-/// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello
-/// > world". This is an internal type without text wrapping.
 ///
-/// Additional syntax rules (not layout items):
-///
-/// > _Member_ :\
-/// > &nbsp;&nbsp; _Ident_ | _Index_\
-/// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
+/// > _Call_ : (`.` ([`align`] | [`pack`] | [`with_stretch`]) _MethodArgs_)\
+/// > &nbsp;&nbsp; A method call modifying layout.
 ///
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
 /// [`MacroDefinedLayout`]: https://docs.rs/kas/latest/kas/trait.MacroDefinedLayout.html
-/// [_Column_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.column.html
-/// [_Row_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.row.html
-/// [_List_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.list.html
-/// [_Float_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.float.html
-/// [_Frame_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.frame.html
-/// [_Grid_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.grid.html
-/// [_AlignedColumn_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.aligned_column.html
-/// [_AlignedRow_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.aligned_row.html
+/// [macros in `kas::widgets`]: https://docs.rs/kas/latest/kas/widgets/#macros
+/// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
+/// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
+/// [`with_stretch`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_stretch
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
