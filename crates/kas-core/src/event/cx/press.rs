@@ -362,7 +362,12 @@ impl EventState {
     /// Get whether the widget is under the mouse pointer
     #[inline]
     pub fn is_under_mouse(&self, w_id: &Id) -> bool {
-        self.mouse.grab.is_none() && *w_id == self.mouse.over
+        *w_id == self.mouse.over
+            && self
+                .mouse
+                .grab
+                .as_ref()
+                .is_none_or(|grab| grab.start_id == w_id)
     }
 
     /// Set the pointer icon
