@@ -227,12 +227,12 @@ impl ColorsSrgb {
     /// Default "light" scheme
     pub const LIGHT: ColorsSrgb = Colors {
         is_dark: false,
-        background: Rgba8Srgb::parse("FAFAFA"),
+        background: Rgba8Srgb::parse("EFF0F1"),
         frame: Rgba8Srgb::parse("BCBCBC"),
         accent: Rgba8Srgb::parse("8347f2"),
         accent_soft: Rgba8Srgb::parse("B38DF9"),
         nav_focus: Rgba8Srgb::parse("7E3FF2"),
-        edit_bg: Rgba8Srgb::parse("FAFAFA"),
+        edit_bg: Rgba8Srgb::parse("FFFFFF"),
         edit_bg_disabled: Rgba8Srgb::parse("DCDCDC"),
         edit_bg_error: Rgba8Srgb::parse("FFBCBC"),
         text: Rgba8Srgb::parse("000000"),
@@ -244,12 +244,12 @@ impl ColorsSrgb {
     /// Dark scheme
     pub const DARK: ColorsSrgb = Colors {
         is_dark: true,
-        background: Rgba8Srgb::parse("404040"),
+        background: Rgba8Srgb::parse("292C30"),
         frame: Rgba8Srgb::parse("AAAAAA"),
         accent: Rgba8Srgb::parse("F74C00"),
         accent_soft: Rgba8Srgb::parse("E77346"),
         nav_focus: Rgba8Srgb::parse("D03E00"),
-        edit_bg: Rgba8Srgb::parse("303030"),
+        edit_bg: Rgba8Srgb::parse("000000"),
         edit_bg_disabled: Rgba8Srgb::parse("606060"),
         edit_bg_error: Rgba8Srgb::parse("a06868"),
         text: Rgba8Srgb::parse("FFFFFF"),
@@ -261,7 +261,7 @@ impl ColorsSrgb {
     /// Blue scheme
     pub const BLUE: ColorsSrgb = Colors {
         is_dark: false,
-        background: Rgba8Srgb::parse("FFFFFF"),
+        background: Rgba8Srgb::parse("EFFAFF"),
         frame: Rgba8Srgb::parse("DADADA"),
         accent: Rgba8Srgb::parse("3fafd7"),
         accent_soft: Rgba8Srgb::parse("7CDAFF"),
