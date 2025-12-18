@@ -169,6 +169,7 @@ mod Window {
         #[widget(&())]
         b_se: Border,
         bar_h: i32,
+        bar_margin: i32,
         dec_offset: Offset,
         dec_size: Size,
         popups: SmallVec<[(WindowId, PopupDescriptor, Offset); 16]>,
@@ -186,8 +187,9 @@ mod Window {
                 if axis.is_horizontal() {
                     inner.max_with(bar);
                 } else {
-                    inner.append(bar);
                     self.bar_h = bar.min_size();
+                    self.bar_margin = bar.margins_i32().1.max(inner.margins_i32().0);
+                    inner = bar.appended(inner);
                 }
             }
 
@@ -262,8 +264,8 @@ mod Window {
                 let bar_size = Size(s_in.0, self.bar_h);
                 self.title_bar
                     .set_rect(cx, Rect::new(p_in, bar_size), hints);
-                p_in.1 += self.bar_h;
-                s_in -= Size(0, self.bar_h);
+                p_in.1 += self.bar_h + self.bar_margin;
+                s_in -= Size(0, self.bar_h + self.bar_margin);
             }
             self.inner.set_rect(cx, Rect::new(p_in, s_in), hints);
         }
@@ -444,6 +446,7 @@ impl Window<()> {
             b_sw: self.b_sw,
             b_se: self.b_se,
             bar_h: 0,
+            bar_margin: 0,
             dec_offset: Default::default(),
             dec_size: Default::default(),
             popups: self.popups,
@@ -474,6 +477,7 @@ impl<Data: AppData> Window<Data> {
             b_sw: Border::new(ResizeDirection::SouthWest),
             b_se: Border::new(ResizeDirection::SouthEast),
             bar_h: 0,
+            bar_margin: 0,
             dec_offset: Default::default(),
             dec_size: Default::default(),
             popups: Default::default(),
