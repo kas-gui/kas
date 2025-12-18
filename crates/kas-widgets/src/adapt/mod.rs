@@ -17,7 +17,7 @@ pub use adapt_cx::{AdaptConfigCx, AdaptEventCx};
 pub use adapt_events::AdaptEvents;
 pub use adapt_widget::*;
 #[doc(inline)] pub use kas::widgets::adapt::*;
-pub use reserve::{Margins, Reserve};
+pub use reserve::{Reserve, WithMarginStyle};
 pub use with_label::{WithHiddenLabel, WithLabel};
 
 #[allow(unused)] use kas::event::{ConfigCx, EventCx};

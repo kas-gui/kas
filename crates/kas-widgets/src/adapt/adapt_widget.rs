@@ -9,7 +9,7 @@ use super::*;
 #[allow(unused)] use kas::Events;
 use kas::Widget;
 use kas::cast::{Cast, CastFloat};
-use kas::dir::{Directional, Directions};
+use kas::dir::Directional;
 use kas::geom::Vec2;
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::text::AccessString;
@@ -69,14 +69,12 @@ pub trait AdaptWidget: Widget + Sized {
         WithStretch::new(self, horiz, vert)
     }
 
-    /// Specify margins
-    ///
-    /// This replaces a widget's margins.
+    /// Set the margin style
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
-    fn margins(self, dirs: Directions, style: MarginStyle) -> Margins<Self> {
-        Margins::new(self, dirs, style)
+    fn with_margin_style(self, style: MarginStyle) -> WithMarginStyle<Self> {
+        WithMarginStyle::new(self, style)
     }
 
     /// Map data type via a function

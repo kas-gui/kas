@@ -45,7 +45,7 @@ mod sizer;
 mod storage;
 
 #[allow(unused)] use crate::Layout;
-use crate::dir::{Direction, Directional, Directions};
+use crate::dir::{Direction, Directional};
 
 pub use align::{Align, AlignHints, AlignPair};
 pub use flow_solver::{FlowSetter, FlowSolver, FlowStorage};
@@ -129,15 +129,6 @@ impl Directional for AxisInfo {
         match self.vertical {
             false => Direction::Right,
             true => Direction::Down,
-        }
-    }
-}
-
-impl From<AxisInfo> for Directions {
-    fn from(axis: AxisInfo) -> Directions {
-        match axis.vertical {
-            false => Directions::LEFT | Directions::RIGHT,
-            true => Directions::UP | Directions::DOWN,
         }
     }
 }

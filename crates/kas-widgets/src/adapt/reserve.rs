@@ -5,7 +5,7 @@
 
 //! Size reservation
 
-use kas::dir::Directions;
+#[allow(unused)] use crate::adapt::AdaptWidget;
 use kas::prelude::*;
 use kas::theme::MarginStyle;
 
@@ -18,7 +18,7 @@ mod Reserve {
     /// widget can be used for this by wrapping the base widget.
     ///
     /// Usually, this type will be constructed through one of the methods on
-    /// [`AdaptWidget`](crate::adapt::AdaptWidget).
+    /// [`AdaptWidget`].
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget]
@@ -64,46 +64,35 @@ mod Reserve {
 }
 
 #[impl_self]
-mod Margins {
-    /// Specify margins
+mod WithMarginStyle {
+    /// Specify margins via a style
     ///
     /// This replaces a widget's margins.
     ///
-    /// Usually, this type will be constructed through one of the methods on
-    /// [`AdaptWidget`](crate::adapt::AdaptWidget).
+    /// Usually, this type will be constructed using
+    /// [`AdaptWidget::with_margin_style`].
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Viewport using self.inner where W: trait)]
     #[derive_widget]
-    pub struct Margins<W: Widget> {
+    pub struct WithMarginStyle<W: Widget> {
         #[widget]
         pub inner: W,
-        dirs: Directions,
         style: MarginStyle,
     }
 
     impl Self {
         /// Construct
         #[inline]
-        pub fn new(inner: W, dirs: Directions, style: MarginStyle) -> Self {
-            Margins { inner, dirs, style }
+        pub fn new(inner: W, style: MarginStyle) -> Self {
+            WithMarginStyle { inner, style }
         }
     }
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut child_rules = self.inner.size_rules(cx, axis);
-            if self.dirs.intersects(Directions::from(axis)) {
-                let mut rule_margins = child_rules.margins();
-                let margins = cx.margins(self.style).extract(axis);
-                if self.dirs.intersects(Directions::LEFT | Directions::UP) {
-                    rule_margins.0 = margins.0;
-                }
-                if self.dirs.intersects(Directions::RIGHT | Directions::DOWN) {
-                    rule_margins.1 = margins.1;
-                }
-                child_rules.set_margins(rule_margins);
-            }
-            child_rules
+            let child_rules = self.inner.size_rules(cx, axis);
+            let margins = cx.margins(self.style).extract(axis);
+            child_rules.with_margins(margins)
         }
     }
 }

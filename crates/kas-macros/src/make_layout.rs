@@ -173,17 +173,6 @@ enum Direction {
     Expr(Expr),
 }
 
-bitflags::bitflags! {
-    // NOTE: this must match kas::dir::Directions!
-    #[derive(Debug)]
-    struct Directions: u8 {
-        const LEFT = 0b0001;
-        const RIGHT = 0b0010;
-        const UP = 0b0100;
-        const DOWN = 0b1000;
-    }
-}
-
 impl Parse for Tree {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut core_gen = NameGenerator::default();
@@ -495,13 +484,6 @@ impl ToTokens for ExprMember {
 impl Parse for Direction {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(Direction::Expr(input.parse()?))
-    }
-}
-
-impl ToTokens for Directions {
-    fn to_tokens(&self, toks: &mut Toks) {
-        let dirs = self.bits();
-        toks.append_all(quote! { #dirs })
     }
 }
 
