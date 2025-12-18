@@ -282,8 +282,11 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
                     self.draw.frame(outer, inner, col);
                 }
             }
-            FrameStyle::Button | FrameStyle::Tab => {
+            FrameStyle::Button | FrameStyle::InvisibleButton | FrameStyle::Tab => {
                 let state = InputState::new_all(self.ev, id);
+                if style == FrameStyle::InvisibleButton && !state.under_mouse() {
+                    return;
+                }
                 let outer = Quad::conv(rect);
 
                 let col_bg = self.cols.from_bg(bg, state, false);

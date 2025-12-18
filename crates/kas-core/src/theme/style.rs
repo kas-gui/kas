@@ -95,6 +95,8 @@ pub enum FrameStyle {
     NavFocus,
     /// Border of a button
     Button,
+    /// Border of a button which is visible only when under the mouse
+    InvisibleButton,
     /// Border of a tab
     Tab,
     /// Frame with a background, often used for editable text

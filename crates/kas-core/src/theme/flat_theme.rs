@@ -364,8 +364,12 @@ where
                     self.draw.rounded_frame(outer, inner, 0.0, col);
                 }
             }
-            FrameStyle::Button => {
+            FrameStyle::Button | FrameStyle::InvisibleButton => {
                 let state = InputState::new_all(self.ev, id);
+                if style == FrameStyle::InvisibleButton && !state.under_mouse() {
+                    return;
+                }
+
                 let outer = Quad::conv(rect);
                 let inner = outer.shrink(self.w.dims.button_frame as f32);
 

@@ -51,6 +51,7 @@ fn trail() -> impl Widget<Data = Data> {
                 data,
                 Button::new(Label::new(label.to_string()))
                     .with_msg(ChangeDir(path.clone()))
+                    .with_frame_style(kas::theme::FrameStyle::InvisibleButton)
                     .map_any(),
             );
         }

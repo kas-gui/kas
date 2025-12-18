@@ -316,7 +316,7 @@ impl<D: 'static> ThemeSize for Window<D> {
             FrameStyle::Popup => FrameRules::new_sym(self.dims.frame_popup, 0, 0),
             FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),
             FrameStyle::NavFocus => FrameRules::new_sym(0, self.dims.m_inner, 0),
-            FrameStyle::Button | FrameStyle::Tab => {
+            FrameStyle::Button | FrameStyle::InvisibleButton | FrameStyle::Tab => {
                 if is_vert && style == FrameStyle::Tab {
                     FrameRules::new(
                         self.dims.button_frame,
