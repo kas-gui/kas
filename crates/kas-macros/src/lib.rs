@@ -392,7 +392,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// > `W: Widget<Data = ()>`. This widget will be stored in a hidden field and
 /// > is accessible through `Tile::get_child` but does not receive input data.
 ///
-/// > _Call_ : (`.` ([`align`] | [`pack`] | [`with_stretch`]) _MethodArgs_)\
+/// > _Call_ : (`.` ([`align`] | [`pack`] | [`with_stretch`] | [`with_margin_style`]) _MethodArgs_)\
 /// > &nbsp;&nbsp; A method call modifying layout.
 ///
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
@@ -401,6 +401,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
 /// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
 /// [`with_stretch`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_stretch
+/// [`with_margin_style`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_margin_style
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -588,7 +589,8 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 /// In this case, _Item_ may be:
 ///
 /// -   A string literal (interpreted as a label widget), optionally followed by
-///     any of the following method calls: [`align`], [`pack`], [`with_stretch`]
+///     any of the following method calls: [`align`], [`pack`],
+///     [`with_stretch`], [`with_margin_style`]
 /// -   An expression yielding an object implementing `Widget<Data = _A>`
 ///
 /// In case all _Item_ instances are a string literal, the data type of the
@@ -601,6 +603,7 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 /// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
 /// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
 /// [`with_stretch`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_stretch
+/// [`with_margin_style`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_margin_style
 #[proc_macro_error]
 #[proc_macro]
 pub fn collection(input: TokenStream) -> TokenStream {
@@ -634,6 +637,7 @@ pub fn collection(input: TokenStream) -> TokenStream {
 ///
 /// -   A string literal (interpreted as a label widget), optionally followed by
 ///     any of the following method calls: [`align`], [`pack`], [`with_stretch`]
+///     [`with_stretch`], [`with_margin_style`]
 /// -   An expression yielding an object implementing `Widget<Data = _A>`
 ///
 /// In case all _Item_ instances are a string literal, the data type of the
@@ -646,6 +650,7 @@ pub fn collection(input: TokenStream) -> TokenStream {
 /// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
 /// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
 /// [`with_stretch`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_stretch
+/// [`with_margin_style`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_margin_style
 #[proc_macro_error]
 #[proc_macro]
 pub fn cell_collection(input: TokenStream) -> TokenStream {

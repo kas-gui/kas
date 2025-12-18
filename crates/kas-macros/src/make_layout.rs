@@ -21,6 +21,7 @@ mod kw {
     custom_keyword!(align);
     custom_keyword!(pack);
     custom_keyword!(with_stretch);
+    custom_keyword!(with_margin_style);
     custom_keyword!(column);
     custom_keyword!(row);
     custom_keyword!(frame);
@@ -147,6 +148,7 @@ enum Layout {
     Align(Box<Layout>, Align),
     Pack(Box<Layout>, Pack),
     Stretch(Box<Layout>, Stretch),
+    WithMarginStyle(Box<Layout>, Expr),
     Single(ExprMember),
     Widget(Ident, Expr),
     Frame(Ident, Box<Layout>, Expr, Expr),
@@ -206,6 +208,12 @@ impl Layout {
                 } else if input.peek(kw::with_stretch) {
                     let stretch = Stretch::parse(dot_token, input)?;
                     layout = Layout::Stretch(Box::new(layout), stretch);
+                } else if input.peek(kw::with_margin_style) {
+                    let _: kw::with_margin_style = input.parse()?;
+                    let inner;
+                    let _ = parenthesized!(inner in input);
+                    let expr = inner.parse()?;
+                    layout = Layout::WithMarginStyle(Box::new(layout), expr);
                 } else if let Ok(ident) = input.parse::<Ident>() {
                     let note_msg = if matches!(&layout, &Layout::Frame(_, _, _, _)) {
                         "supported methods on layout objects: `align`, `pack`, `with_style`, `with_background`"
@@ -589,6 +597,7 @@ impl Layout {
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
+            | Layout::WithMarginStyle(layout, _)
             | Layout::Frame(_, layout, _, _) => {
                 layout.validate(fields);
             }
@@ -616,7 +625,9 @@ impl Layout {
 
     fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>) {
         match self {
-            Layout::Align(layout, _) | Layout::Stretch(layout, _) => {
+            Layout::Align(layout, _)
+            | Layout::Stretch(layout, _)
+            | Layout::WithMarginStyle(layout, _) => {
                 layout.append_fields(fields, children);
             }
             Layout::Single(_) => (),
@@ -696,9 +707,10 @@ impl Layout {
     /// Yield an implementation of `fn rect`, if easy
     fn rect(&self, core_path: &Toks) -> Option<Toks> {
         match self {
-            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Stretch(layout, _) => {
-                layout.rect(core_path)
-            }
+            Layout::Align(layout, _)
+            | Layout::Pack(layout, _)
+            | Layout::Stretch(layout, _)
+            | Layout::WithMarginStyle(layout, _) => layout.rect(core_path),
             Layout::Single(expr) => Some(quote! { ::kas::Layout::rect(&#expr) }),
             Layout::Widget(stor, _) | Layout::Label(stor, _) => {
                 Some(quote! { ::kas::Layout::rect(&#core_path.#stor) })
@@ -739,6 +751,12 @@ impl Layout {
                         rules.set_stretch(stretch);
                     }
                     rules
+                }
+            }
+            Layout::WithMarginStyle(layout, style) => {
+                let inner = layout.size_rules(core_path);
+                quote! {
+                    { #inner }.with_margins(cx.margins(#style).extract(axis))
                 }
             }
             Layout::Single(expr) => quote! {
@@ -837,7 +855,9 @@ impl Layout {
                     #inner
                 } }
             }
-            Layout::Stretch(layout, _) => layout.set_rect(core_path),
+            Layout::Stretch(layout, _) | Layout::WithMarginStyle(layout, _) => {
+                layout.set_rect(core_path)
+            }
             Layout::Single(expr) => quote! {
                 ::kas::Layout::set_rect(&mut #expr, cx, rect, hints);
             },
@@ -906,6 +926,7 @@ impl Layout {
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
+            | Layout::WithMarginStyle(layout, _)
             | Layout::Frame(_, layout, _, _) => {
                 layout.try_probe_recurse(core_path, children, toks)?
             }
@@ -950,9 +971,10 @@ impl Layout {
     /// Yield an implementation of `fn draw`
     fn draw(&self, core_path: &Toks) -> Toks {
         match self {
-            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Stretch(layout, _) => {
-                layout.draw(core_path)
-            }
+            Layout::Align(layout, _)
+            | Layout::Pack(layout, _)
+            | Layout::Stretch(layout, _)
+            | Layout::WithMarginStyle(layout, _) => layout.draw(core_path),
             Layout::Single(expr) => quote! {
                 ::kas::Layout::draw(&#expr, draw.re());
             },
@@ -995,6 +1017,7 @@ impl Layout {
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
+            | Layout::WithMarginStyle(layout, _)
             | Layout::Frame(_, layout, _, _) => layout.nav_next(children, output),
             Layout::Single(m) => {
                 for (i, child) in children.enumerate() {
