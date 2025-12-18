@@ -47,6 +47,10 @@ crate::impl_scope! {
         ///
         /// Guide size: 7px at 100%, 9px at 125%, 11px at 150%, 15px at 200%.
         pub m_large: f32 = 7.4,
+        /// Huge margin, used between things like file icons
+        ///
+        /// Guide size: 15px at 100%.
+        pub m_huge: f32 = 15.0,
         /// Margin around text elements (horiz, vert)
         pub m_text: (f32, f32) = (3.3, 0.8),
         /// Frame size
@@ -92,6 +96,7 @@ pub struct Dimensions {
     pub m_tiny: u16,
     pub m_small: u16,
     pub m_large: u16,
+    pub m_huge: u16,
     pub m_text: (u16, u16),
     pub frame: i32,
     pub frame_window: i32,
@@ -126,6 +131,7 @@ impl Dimensions {
             m_tiny: (params.m_tiny * scale).cast_nearest(),
             m_small: (params.m_small * scale).cast_nearest(),
             m_large: (params.m_large * scale).cast_nearest(),
+            m_huge: (params.m_huge * scale).cast_nearest(),
             m_text: (text_m0, text_m1),
             frame: (params.frame * scale).cast_nearest(),
             frame_window: (params.frame_window * scale).cast_nearest(),
@@ -222,6 +228,7 @@ impl<D: 'static> ThemeSize for Window<D> {
             MarginStyle::Tiny => Margins::splat(self.dims.m_tiny),
             MarginStyle::Small => Margins::splat(self.dims.m_small),
             MarginStyle::Large => Margins::splat(self.dims.m_large),
+            MarginStyle::Huge => Margins::splat(self.dims.m_huge),
             MarginStyle::Text => Margins::hv_splat(self.dims.m_text),
             MarginStyle::Px(px) => Margins::splat(u16::conv_nearest(px * self.dims.scale)),
             MarginStyle::Em(em) => Margins::splat(u16::conv_nearest(em * self.dims.dpem)),

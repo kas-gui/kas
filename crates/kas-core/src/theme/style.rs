@@ -34,6 +34,10 @@ pub enum MarginStyle {
     ///
     /// Guide size: 7px at 100%, 9px at 125%, 11px at 150%, 15px at 200%.
     Large,
+    /// Huge margin, used between things like file icons
+    ///
+    /// Guide size: 15px at 100%.
+    Huge,
     /// Text margins
     ///
     /// Margins for use around standard text elements (may be asymmetric).
