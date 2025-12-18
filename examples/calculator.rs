@@ -10,7 +10,8 @@ use std::str::FromStr;
 
 use kas::event::NamedKey;
 use kas::prelude::*;
-use kas::widgets::{AccessLabel, Adapt, Button, EditBox, column, grid};
+use kas::theme::FrameStyle;
+use kas::widgets::{AccessLabel, Adapt, Button, EditBox, Frame, column, grid};
 
 type Key = kas::event::Key<kas::event::SmolStr>;
 
@@ -33,7 +34,8 @@ fn calc_ui() -> Window<()> {
     let display = EditBox::string(|calc: &Calculator| calc.display())
         .with_multi_line(true)
         .with_lines(3.0, 3.0)
-        .with_width_em(5.0, 10.0);
+        .with_width_em(5.0, 10.0)
+        .with_margin_style(kas::theme::MarginStyle::None);
 
     // We use map_any to avoid passing input data (not wanted by buttons):
     let buttons = grid! {
@@ -59,8 +61,8 @@ fn calc_ui() -> Window<()> {
         (3, 3..5) => key_button_with("&=", NamedKey::Enter.into()),
         (0..2, 4) => key_button("&0"),
         (2, 4) => key_button("&."),
-    }
-    .map_any();
+    };
+    let buttons = Frame::new(buttons).with_style(FrameStyle::None).map_any();
 
     let ui = Adapt::new(column![display, buttons], Calculator::new())
         .on_message(|_, calc, key| calc.handle(key));
