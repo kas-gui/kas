@@ -82,7 +82,7 @@ impl From<MarkStyle> for Feature {
 /// A "frame" is an element surrounding another element.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum FrameStyle {
-    /// No frame, just draw the background
+    /// No frame, just draw the background and force margins to be internal
     #[default]
     None,
     /// A frame for grouping content

@@ -264,13 +264,9 @@ impl FrameRules {
     /// component. Parameters `inner` and `outer` are inner and outer margin
     /// sizes respectively while `size` is the frame size.
     ///
-    /// If `size > 0` then internal margins are the maximum of `inner` and
-    /// content margin; generated rules have size
-    /// `content_size + size + inner_margin` and outer margin `outer`.
-    ///
-    /// If `size ≤ 0` then the generated rules are simply content rules but
-    /// with margins the maximum of `inner` and content margins; `outer` and
-    /// `size` are ignored (other than to enable this mode).
+    /// Frames have an inner margin, whose size is the maximum of `inner` and
+    /// content margins. Additionally, frames have an external margin of size
+    /// `outer`.
     #[inline]
     pub const fn new(size: i32, inner: (u16, u16), outer: (u16, u16)) -> Self {
         FrameRules { size, inner, outer }
@@ -297,25 +293,19 @@ impl FrameRules {
     /// -   the size consumed by the frame and inner margins (thus the content's
     ///     size will be that allocated for this object minus this `size` value)
     pub fn surround(self, content: SizeRules) -> (SizeRules, i32, i32) {
-        if self.size > 0 {
-            let (m0, m1) = content.margins();
-            let m0 = m0.max(self.inner.0);
-            let m1 = m1.max(self.inner.1);
+        let (m0, m1) = content.margins();
+        let m0 = m0.max(self.inner.0);
+        let m1 = m1.max(self.inner.1);
 
-            let offset = self.size + i32::conv(m0);
-            let size = offset + self.size + i32::conv(m1);
+        let offset = self.size + i32::conv(m0);
+        let size = offset + self.size + i32::conv(m1);
 
-            let rules = SizeRules::new(
-                content.min_size() + size,
-                content.ideal_size() + size,
-                content.stretch(),
-            )
-            .with_margins(self.outer);
-            (rules, offset, size)
-        } else {
-            let mut rules = content;
-            rules.include_margins(self.inner);
-            (rules, 0, 0)
-        }
+        let rules = SizeRules::new(
+            content.min_size() + size,
+            content.ideal_size() + size,
+            content.stretch(),
+        )
+        .with_margins(self.outer);
+        (rules, offset, size)
     }
 }
