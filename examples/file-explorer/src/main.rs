@@ -74,6 +74,8 @@ fn main() -> kas::runner::Result<()> {
             path
         }
     };
+    let title = window_title(&path);
+
     let data = Data {
         path,
         filter_hidden: true,
@@ -81,10 +83,22 @@ fn main() -> kas::runner::Result<()> {
 
     let ui = column![trail(), viewer::viewer()]
         .with_state(data)
-        .on_message(|_, state, ChangeDir(path)| state.path = path);
-    let window = Window::new(ui, "File System Explorer").escapable();
+        .on_message(|cx, state, ChangeDir(path)| {
+            let title = window_title(&path);
+            cx.push(kas::messages::SetWindowTitle(title));
+            state.path = path;
+        });
+    let window = Window::new(ui, title).escapable();
 
     kas::runner::Runner::new(())?.with(window).run()
+}
+
+fn window_title(path: &Path) -> String {
+    if let Some(name) = path.file_name() {
+        format!("{} — File Explorer", name.display())
+    } else {
+        format!("{} — File Explorer", path.display())
+    }
 }
 
 fn report_io_error(path: &Path, err: io::Error) {
