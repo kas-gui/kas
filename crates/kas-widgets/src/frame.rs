@@ -54,7 +54,7 @@ mod Frame {
     // but it does not. This would allow us to implement Deref to self.inner.
     #[derive(Default)]
     #[widget]
-    #[layout(frame!(self.inner).with_style(self.style))]
+    #[layout(frame!(self.inner).with_style(self.style).with_background(self.bg))]
     pub struct Frame<W: Widget> {
         core: widget_core!(),
         style: FrameStyle,
@@ -94,6 +94,8 @@ mod Frame {
         }
 
         /// Set the frame background color (inline)
+        ///
+        /// Dependant on the [style](Self::with_style), this may not be used.
         ///
         /// The default background is [`Background::Default`].
         #[inline]
