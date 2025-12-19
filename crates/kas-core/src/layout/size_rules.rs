@@ -208,12 +208,6 @@ impl SizeRules {
         self.m = margins;
     }
 
-    /// Set margins to max of own margins and given margins
-    pub fn include_margins(&mut self, margins: (u16, u16)) {
-        self.m.0 = self.m.0.max(margins.0);
-        self.m.1 = self.m.1.max(margins.1);
-    }
-
     /// Use the maximum size of `self` and `rhs`.
     #[must_use = "method does not modify self but returns a new value"]
     pub fn max(self, rhs: Self) -> SizeRules {

@@ -34,6 +34,10 @@ pub enum MarginStyle {
     ///
     /// Guide size: 7px at 100%, 9px at 125%, 11px at 150%, 15px at 200%.
     Large,
+    /// Huge margin, used between things like file icons
+    ///
+    /// Guide size: 15px at 100%.
+    Huge,
     /// Text margins
     ///
     /// Margins for use around standard text elements (may be asymmetric).
@@ -78,7 +82,7 @@ impl From<MarkStyle> for Feature {
 /// A "frame" is an element surrounding another element.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum FrameStyle {
-    /// No frame, just draw the background
+    /// No frame, just draw the background and force margins to be internal
     #[default]
     None,
     /// A frame for grouping content
@@ -91,9 +95,11 @@ pub enum FrameStyle {
     NavFocus,
     /// Border of a button
     Button,
+    /// Border of a button which is visible only when under the mouse
+    InvisibleButton,
     /// Border of a tab
     Tab,
-    /// Box used to contain editable text
+    /// Frame with a background, often used for editable text
     EditBox,
     /// Window decoration (excludes top buttons)
     Window,

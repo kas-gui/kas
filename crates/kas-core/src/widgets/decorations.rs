@@ -10,7 +10,7 @@
 use super::{Label, MarkButton};
 use crate::event::CursorIcon;
 use crate::prelude::*;
-use crate::theme::MarkStyle;
+use crate::theme::{FrameStyle, MarkStyle};
 use crate::window::ResizeDirection;
 use kas_macros::impl_self;
 use std::fmt::Debug;
@@ -137,12 +137,14 @@ mod TitleBarButtons {
 #[impl_self]
 mod TitleBar {
     /// A window's title bar (part of decoration)
+    ///
+    /// This widget has no external margin.
     #[derive(Default)]
     #[widget]
-    #[layout(row! [
+    #[layout(frame!(row! [
         self.title.align(AlignHints::CENTER).with_stretch(Stretch::Maximize, Stretch::None),
         self.buttons,
-    ])]
+    ]).with_style(FrameStyle::None))]
     pub struct TitleBar {
         core: widget_core!(),
         #[widget]

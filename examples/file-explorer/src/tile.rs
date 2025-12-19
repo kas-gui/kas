@@ -2,7 +2,8 @@ use crate::{ChangeDir, Entry};
 use image::ImageFormat;
 use kas::Tile as _;
 use kas::prelude::*;
-use kas::widgets::{Button, Page, Stack, Text};
+use kas::theme::MarginStyle;
+use kas::widgets::{AdaptWidget, Button, Label, Page, Stack, Text};
 use std::borrow::Cow;
 use std::path::PathBuf;
 
@@ -124,7 +125,7 @@ mod Tile {
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-            let rules = cx.logical(128.0, 128.0).with_margin(16.0).build(axis);
+            let rules = cx.logical(128.0, 128.0).build(axis);
             self.stack.size_rules(cx, axis).max(rules)
         }
     }
@@ -168,18 +169,59 @@ mod Tile {
     }
 }
 
+#[impl_self]
+mod DirItem {
+    #[widget]
+    #[layout(column![
+        self.tile,
+        self.label.align(AlignHints::CENTER),
+    ].with_margin_style(MarginStyle::Huge)
+    )]
+    pub struct DirItem {
+        core: widget_core!(),
+        #[widget]
+        tile: Tile,
+        #[widget = &()]
+        label: Label<String>,
+    }
+
+    impl Events for Self {
+        type Data = Entry;
+
+        fn update(&mut self, cx: &mut ConfigCx, entry: &Entry) {
+            // TODO(opt): change detection
+
+            let mut file_name = String::new();
+            if let Some(name) = entry.file_name() {
+                file_name = name.to_string_lossy().into();
+            }
+            self.label.set_string(cx, file_name);
+        }
+    }
+
+    impl Self {
+        fn new() -> Self {
+            DirItem {
+                core: Default::default(),
+                tile: Tile::new(),
+                label: Label::default(),
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Driver;
 
 impl kas::view::Driver<usize, Entry> for Driver {
     const TAB_NAVIGABLE: bool = false;
-    type Widget = Tile;
+    type Widget = DirItem;
 
-    fn make(&mut self, _: &usize) -> Tile {
-        Tile::new()
+    fn make(&mut self, _: &usize) -> DirItem {
+        DirItem::new()
     }
 
-    fn navigable(_: &Tile) -> bool {
+    fn navigable(_: &DirItem) -> bool {
         false
     }
 }

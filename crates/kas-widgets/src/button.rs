@@ -23,7 +23,7 @@ mod Button {
     #[widget]
     #[layout(
         frame!(self.inner)
-            .with_style(FrameStyle::Button)
+            .with_style(self.frame_style)
             .with_background(self.bg)
             .align(AlignHints::CENTER)
     )]
@@ -31,6 +31,7 @@ mod Button {
         core: widget_core!(),
         key: Option<Key>,
         bg: Background,
+        frame_style: FrameStyle,
         #[widget]
         pub inner: W,
         on_press: Option<Box<dyn Fn(&mut EventCx, &W::Data)>>,
@@ -43,6 +44,7 @@ mod Button {
             Button {
                 core: Default::default(),
                 key: Default::default(),
+                frame_style: FrameStyle::Button,
                 bg: Background::Default,
                 inner,
                 on_press: None,
@@ -93,6 +95,16 @@ mod Button {
         #[must_use]
         pub fn with_background(mut self, bg: Background) -> Self {
             self.bg = bg;
+            self
+        }
+
+        /// Set the frame style (inline)
+        ///
+        /// The default style is [`FrameStyle::Button`].
+        #[inline]
+        #[must_use]
+        pub fn with_frame_style(mut self, style: FrameStyle) -> Self {
+            self.frame_style = style;
             self
         }
     }
