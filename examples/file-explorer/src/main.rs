@@ -10,20 +10,23 @@ mod viewer;
 
 use kas::prelude::*;
 use kas::widgets::adapt::{MapAny, WithMarginStyle};
-use kas::widgets::{Button, Filler, Label, Row, column, frame, row};
+use kas::widgets::{Button, CheckButton, Filler, Label, Row, column, frame, row};
 use kas::window::Window;
 use std::io;
 use std::path::{Path, PathBuf};
 
 pub struct Data {
+    pub show_hidden: bool,
     path: PathBuf,
-    filter_hidden: bool,
 }
 
 type Entry = PathBuf;
 
 #[derive(Clone, Debug)]
 struct ChangeDir(PathBuf);
+
+#[derive(Debug)]
+struct ShowHidden(bool);
 
 fn trail() -> impl Widget<Data = Data> {
     Row::<Vec<MapAny<_, WithMarginStyle<Button<Label<String>>>>>>::new(vec![]).on_update(
@@ -61,6 +64,12 @@ fn trail() -> impl Widget<Data = Data> {
     )
 }
 
+fn bottom_bar() -> impl Widget<Data = Data> {
+    let show_hidden = CheckButton::new("Show hidden", |_, data: &Data| data.show_hidden)
+        .with(|cx, _, state| cx.push(ShowHidden(state)));
+    row![show_hidden]
+}
+
 fn main() -> kas::runner::Result<()> {
     env_logger::Builder::new()
         .filter_level(log::LevelFilter::Warn)
@@ -81,8 +90,8 @@ fn main() -> kas::runner::Result<()> {
     let title = window_title(&path);
 
     let data = Data {
+        show_hidden: false,
         path,
-        filter_hidden: true,
     };
 
     let trail = row![
@@ -90,8 +99,11 @@ fn main() -> kas::runner::Result<()> {
         Filler::new().map_any()
     ];
 
-    let ui = column![trail, viewer::viewer()]
+    let ui = column![trail, viewer::viewer(), bottom_bar()]
         .with_state(data)
+        .on_message(|_, state, ShowHidden(show_hidden)| {
+            state.show_hidden = show_hidden;
+        })
         .on_message(|cx, state, ChangeDir(path)| {
             let title = window_title(&path);
             cx.push(kas::messages::SetWindowTitle(title));
