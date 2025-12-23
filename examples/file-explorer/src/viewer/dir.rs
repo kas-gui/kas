@@ -13,6 +13,7 @@ struct NewEntries(Vec<Entry>);
 #[derive(Default)]
 struct Clerk {
     path: PathBuf,
+    show_hidden: bool,
     entries: Vec<Entry>,
 }
 
@@ -39,13 +40,14 @@ impl clerk::AsyncClerk<usize> for Clerk {
         _: Range<usize>,
         data: &Data,
     ) -> clerk::Changes<usize> {
-        if data.path != self.path {
+        let show_hidden = data.show_hidden;
+        if data.path != self.path || show_hidden != self.show_hidden {
             log::trace!("update: path=\"{}\"", data.path.display());
             self.path = data.path.clone();
+            self.show_hidden = show_hidden;
             self.entries.clear();
 
             let path = data.path.clone();
-            let filter_hidden = data.filter_hidden;
             cx.send_spawn(id, async move {
                 match std::fs::read_dir(&path) {
                     Ok(dirs) => NewEntries(
@@ -57,7 +59,7 @@ impl clerk::AsyncClerk<usize> for Clerk {
                             }
                         })
                         .filter(|path| {
-                            if filter_hidden
+                            if !show_hidden
                                 && let Some(name) = path.file_name()
                                 && name.as_encoded_bytes().first() == Some(&b'.')
                             {

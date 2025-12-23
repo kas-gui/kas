@@ -102,9 +102,10 @@ fn image() -> impl Widget<Data = State> {
     use kas::image::Image;
 
     Image::default()
-        .with_logical_size((128.0, 128.0))
         .map_any()
         .on_update(|cx, widget, state: &State| {
+            let size = crate::tile_size().cast();
+            widget.set_logical_size((size, size));
             if let State::Image(path, _format) = state {
                 // TODO: use format parameter?
                 widget.set(cx, path);
@@ -125,7 +126,8 @@ mod Tile {
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-            let rules = cx.logical(128.0, 128.0).build(axis);
+            let size = crate::tile_size().cast();
+            let rules = cx.logical(size, size).build(axis);
             self.stack.size_rules(cx, axis).max(rules)
         }
     }

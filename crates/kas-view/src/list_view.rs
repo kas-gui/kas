@@ -486,11 +486,17 @@ mod ListView {
         // Call after scrolling to re-map widgets (if required)
         #[inline]
         fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            self.handle_update(cx, data, Changes::None);
+            self.handle_update(cx, data, Changes::None, false);
         }
 
         // Handle a data clerk update or change in view position
-        fn handle_update(&mut self, cx: &mut ConfigCx, data: &C::Data, changes: Changes<usize>) {
+        fn handle_update(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            changes: Changes<usize>,
+            force_update: bool,
+        ) {
             // TODO(opt): let Changes::Range only update a sub-set of items
             if matches!(changes, Changes::Range(_) | Changes::Any) {
                 self.token_update = self.token_update.max(Update::Token);
@@ -524,7 +530,7 @@ mod ListView {
             if virtual_offset != self.virtual_offset {
                 self.virtual_offset = virtual_offset;
                 self.rect_update = true;
-            } else if self.rect_update || self.token_update != Update::None {
+            } else if force_update || self.rect_update || self.token_update != Update::None {
                 // This forces an update to all widgets
             } else if start >= old_start {
                 start = start.max(old_end);
@@ -537,14 +543,20 @@ mod ListView {
             self.first_data = first_data.cast();
 
             if start < end {
-                self.map_view_widgets(cx, data, start..end);
+                self.map_view_widgets(cx, data, start..end, force_update);
             }
         }
 
         // Assign view widgets to data as required and set their rects
         //
         // View widgets are configured and sized if assigned a new data item.
-        fn map_view_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, range: Range<usize>) {
+        fn map_view_widgets(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            range: Range<usize>,
+            force_update: bool,
+        ) {
             let time = Instant::now();
 
             self.clerk
@@ -581,7 +593,7 @@ mod ListView {
                         Some(self.child_size.1),
                     );
                     rect_update = true;
-                } else if changes.item() {
+                } else if force_update || changes.item() {
                     let item = self.clerk.item(data, token);
                     cx.update(w.item.as_node(item));
                 }
@@ -872,7 +884,14 @@ mod ListView {
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if self.token_update != Update::None || changes != Changes::None {
-                self.handle_update(cx, data, changes);
+                self.handle_update(cx, data, changes, true);
+            } else {
+                for w in &mut self.widgets[..self.cur_len.cast()] {
+                    if let Some(ref token) = w.token {
+                        let item = self.clerk.item(data, token);
+                        cx.update(w.item.as_node(item));
+                    }
+                }
             }
 
             let id = self.id();
@@ -1036,7 +1055,7 @@ mod ListView {
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
             if changes != Changes::None {
-                self.handle_update(cx, data, changes);
+                self.handle_update(cx, data, changes, false);
             }
         }
 

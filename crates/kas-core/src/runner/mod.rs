@@ -184,6 +184,9 @@ pub trait AppData: 'static {
     /// method is called repeatedly until either the message stack is empty or
     /// the last call did not remove a message from the stack.
     ///
+    /// If any message is pushed or popped, widgets will be
+    /// [updated](crate::Events#update) on all windows.
+    ///
     /// Unhandled messages will result in warnings in the log.
     fn handle_message(&mut self, messages: &mut impl ReadMessage);
 
