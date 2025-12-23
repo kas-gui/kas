@@ -10,10 +10,16 @@ mod viewer;
 
 use kas::prelude::*;
 use kas::widgets::adapt::{MapAny, WithMarginStyle};
-use kas::widgets::{Button, CheckButton, Filler, Label, Row, column, frame, row};
+use kas::widgets::{Button, CheckButton, Filler, Label, Row, Slider, column, frame, row};
 use kas::window::Window;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU32, Ordering};
+
+static TILE_SIZE: AtomicU32 = AtomicU32::new(128);
+fn tile_size() -> u32 {
+    TILE_SIZE.load(Ordering::Relaxed)
+}
 
 pub struct Data {
     pub show_hidden: bool,
@@ -27,6 +33,9 @@ struct ChangeDir(PathBuf);
 
 #[derive(Debug)]
 struct ShowHidden(bool);
+
+#[derive(Debug)]
+struct TileSize(u32);
 
 fn trail() -> impl Widget<Data = Data> {
     Row::<Vec<MapAny<_, WithMarginStyle<Button<Label<String>>>>>>::new(vec![]).on_update(
@@ -67,7 +76,10 @@ fn trail() -> impl Widget<Data = Data> {
 fn bottom_bar() -> impl Widget<Data = Data> {
     let show_hidden = CheckButton::new("Show hidden", |_, data: &Data| data.show_hidden)
         .with(|cx, _, state| cx.push(ShowHidden(state)));
-    row![show_hidden]
+    let tile_size = Slider::right(32..=512, |_, _| tile_size())
+        .with_step(32)
+        .with_msg(TileSize);
+    row![show_hidden, tile_size]
 }
 
 fn main() -> kas::runner::Result<()> {
@@ -108,6 +120,10 @@ fn main() -> kas::runner::Result<()> {
             let title = window_title(&path);
             cx.push(kas::messages::SetWindowTitle(title));
             state.path = path;
+        })
+        .on_message(|cx, _, TileSize(size)| {
+            TILE_SIZE.store(size, Ordering::Relaxed);
+            cx.resize();
         });
     let window = Window::new(ui, title).escapable();
 
