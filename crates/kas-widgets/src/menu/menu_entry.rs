@@ -60,7 +60,7 @@ mod MenuEntry {
         pub fn new_msg<S: Into<AccessString>>(label: S, msg: M) -> Self {
             MenuEntry {
                 core: Default::default(),
-                label: AccessLabel::new(label).with_class(TextClass::MenuLabel),
+                label: AccessLabel::new(label).with_class(TextClass::Label),
                 msg,
             }
         }
@@ -197,7 +197,7 @@ mod MenuToggle {
             MenuToggle {
                 core: Default::default(),
                 checkbox: CheckBox::new(state_fn),
-                label: AccessLabel::new(label).with_class(TextClass::MenuLabel),
+                label: AccessLabel::new(label).with_class(TextClass::Label),
             }
         }
 

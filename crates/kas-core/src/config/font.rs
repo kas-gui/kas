@@ -172,7 +172,7 @@ mod defaults {
     }
 
     pub fn fonts() -> BTreeMap<TextClass, FontSelector> {
-        let list = [(TextClass::Edit, FamilySelector::SERIF.into())];
+        let list = [(TextClass::Editor, FamilySelector::SERIF.into())];
         list.iter().cloned().collect()
     }
 

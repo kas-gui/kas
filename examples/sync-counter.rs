@@ -7,7 +7,7 @@
 //!
 //! Each window shares the counter, but has its own increment step.
 
-use kas::widgets::{AdaptWidget, Button, Label, Slider, column, format_text, row};
+use kas::widgets::{AdaptWidget, Button, Label, Slider, column, format_label, row};
 use kas::window::Window;
 
 #[cfg(feature = "wgpu")]
@@ -43,8 +43,8 @@ fn counter(title: &str) -> Window<Count> {
 
     let slider = Slider::right(1..=10, |_, data: &Data| data.1).with_msg(SetValue);
     let ui = column![
-        format_text!(data: &Data, "Count: {}", data.0.0),
-        row![slider, format_text!(data: &Data, "{}", data.1)],
+        format_label!(data: &Data, "Count: {}", data.0.0),
+        row![slider, format_label!(data: &Data, "{}", data.1)],
         row![
             Button::new(Label::new_any("Sub")).with(|cx, data: &Data| cx.push(Increment(-data.1))),
             Button::new(Label::new_any("Add")).with(|cx, data: &Data| cx.push(Increment(data.1))),

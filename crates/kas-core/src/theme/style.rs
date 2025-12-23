@@ -127,28 +127,31 @@ impl SelectionStyle {
     }
 }
 
-/// Class of text drawn
+/// Font "class" selector
 ///
-/// Themes choose font, font size, colour, and alignment based on this.
+/// Fonts are chosen from available (system) fonts depending on the `TextClass`
+/// and [configuration](crate::config::FontConfig).
+/// `TextClass` may affect other font properties, including size and weight.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TextClass {
-    /// Label text is drawn over the background colour
+    /// The standard UI font
+    Standard,
+    /// Label UI font
+    ///
+    /// This text class should be used by short labels such as those found on
+    /// buttons, menus and other UI controls.
+    ///
+    /// According to user preference, this may appear identical to
+    /// [`TextClass::Standard`] or may be distinct, e.g. using a larger font
+    /// size or heavier weight.
     Label,
-    /// Scrollable label
+    /// Small UI font
     ///
-    /// This is similar to `Label(true)`, but may occupy less vertical space.
-    /// Usually it also implies that the text is both scrollable and selectable,
-    /// but these are characteristics of the widget, not the text object.
-    LabelScroll,
-    /// Button text is drawn over a button
+    /// This class is usually similar to [`TextClass::Standard`] but smaller.
+    Small,
+    /// Editable text
     ///
-    /// Same as `AccessLabel(false)`, though theme may differentiate.
-    Button,
-    /// Menu label (single line, does not stretch)
-    ///
-    /// Similar to `AccessLabel(false)`, but with horizontal stretching disabled.
-    MenuLabel,
-    /// Editable text, usually encapsulated in some type of box
-    Edit,
+    /// This text class should be preferred for editable text.
+    Editor,
 }

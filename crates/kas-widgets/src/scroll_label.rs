@@ -91,7 +91,7 @@ mod SelectableText {
         pub fn new(text: T) -> Self {
             SelectableText {
                 core: Default::default(),
-                text: Text::new(text, TextClass::LabelScroll, true),
+                text: Text::new(text, TextClass::Standard, true),
                 text_fn: None,
                 selection: SelectionHelper::new(0, 0),
                 has_sel_focus: false,

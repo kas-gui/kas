@@ -263,7 +263,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         state_fn: impl Fn(&ConfigCx, &A) -> V + 'static,
     ) -> Self {
         let label = entries.first().map(|entry| entry.as_str().to_string());
-        let label = Label::new(label.unwrap_or_default()).with_class(TextClass::Button);
+        let label = Label::new(label.unwrap_or_default()).with_class(TextClass::Label);
         ComboBox {
             core: Default::default(),
             label,

@@ -90,6 +90,7 @@ pub struct Dimensions {
     /// Scale factor
     pub scale: f32,
     pub dpem: f32,
+    pub dpem_small: f32,
     pub mark_line: f32,
     pub min_line_length: i32,
     pub m_inner: u16,
@@ -125,6 +126,7 @@ impl Dimensions {
         Dimensions {
             scale,
             dpem,
+            dpem_small: dpem * 0.8,
             mark_line: (1.6 * scale).round().max(1.0),
             min_line_length: (8.0 * dpem).cast_nearest(),
             m_inner: (params.m_inner * scale).cast_nearest(),
@@ -197,8 +199,11 @@ impl<D: 'static> ThemeSize for Window<D> {
         self.dims.scale
     }
 
-    fn dpem(&self, _: TextClass) -> f32 {
-        self.dims.dpem
+    fn dpem(&self, class: TextClass) -> f32 {
+        match class {
+            TextClass::Small => self.dims.dpem_small,
+            _ => self.dims.dpem,
+        }
     }
 
     fn min_element_size(&self) -> i32 {

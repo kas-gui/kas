@@ -16,8 +16,11 @@ mod Text {
     /// `Text` derives its contents from input data. Use [`Label`](crate::Label)
     /// instead for fixed contents.
     ///
+    /// By default, this uses [`TextClass::Standard`]; see [`Self::set_class`]
+    /// and [`Self::with_class`].
+    ///
     /// See also macros [`format_text`](super::format_text) and
-    /// [`format_text`](super::format_text) which construct a
+    /// [`format_label`](super::format_label) which construct a
     /// `Text` widget.
     ///
     /// Vertical alignment defaults to centred, horizontal alignment depends on
@@ -38,7 +41,7 @@ mod Text {
         fn default() -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(T::default(), TextClass::Label, true),
+                text: theme::Text::new(T::default(), TextClass::Standard, true),
                 text_fn: Box::new(|_, data, text| {
                     let new_text = data.into();
                     let changed = new_text != *text;
@@ -56,7 +59,7 @@ mod Text {
         pub fn new_str(as_str: impl Fn(&A) -> &str + 'static) -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(String::new(), TextClass::Label, true),
+                text: theme::Text::new(String::new(), TextClass::Standard, true),
                 text_fn: Box::new(move |_, data, text| {
                     let s = as_str(data);
                     let changed = *text != *s;
@@ -77,7 +80,7 @@ mod Text {
         pub fn new_gen(gen_text: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(T::default(), TextClass::Label, true),
+                text: theme::Text::new(T::default(), TextClass::Standard, true),
                 text_fn: Box::new(move |cx, data, text| {
                     let new_text = gen_text(cx, data);
                     let changed = new_text != *text;
@@ -99,7 +102,7 @@ mod Text {
         pub fn new_update(update_text: impl Fn(&ConfigCx, &A, &mut T) -> bool + 'static) -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(T::default(), TextClass::Label, true),
+                text: theme::Text::new(T::default(), TextClass::Standard, true),
                 text_fn: Box::new(update_text),
             }
         }
@@ -112,7 +115,7 @@ mod Text {
 
         /// Set text class
         ///
-        /// Default: `TextClass::Label`
+        /// Default: [`TextClass::Standard`]
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
             self.text.set_class(class);
@@ -120,7 +123,7 @@ mod Text {
 
         /// Set text class (inline)
         ///
-        /// Default: `TextClass::Label`
+        /// Default: [`TextClass::Standard`]
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
             self.text.set_class(class);
@@ -192,6 +195,8 @@ mod Text {
 
 /// Construct a [`Text`] widget which updates text using the [`format!`] macro
 ///
+/// This uses [`TextClass::Standard`]. See also [`format_label`].
+///
 /// Examples:
 /// ```
 /// use kas_widgets::Text;
@@ -209,5 +214,25 @@ macro_rules! format_text {
     };
     ($lit:literal $(, $arg:tt)*) => {
         $crate::Text::new_gen(move |_, data| format!($lit $(, $arg)*, data))
+    };
+}
+
+/// Construct a [`Text`] widget using [`TextClass::Label`] which updates text
+/// using the [`format!`] macro
+///
+/// This is identical to [`format_text`] aside from the [`TextClass`].
+#[macro_export]
+macro_rules! format_label {
+    ($data:ident, $($arg:tt)*) => {
+        $crate::Text::new_gen(move |_, $data| format!($($arg)*))
+            .with_class(::kas::theme::TextClass::Label)
+    };
+    ($data:ident : $data_ty:ty , $($arg:tt)*) => {
+        $crate::Text::new_gen(move |_, $data : $data_ty| format!($($arg)*))
+            .with_class(::kas::theme::TextClass::Label)
+    };
+    ($lit:literal $(, $arg:tt)*) => {
+        $crate::Text::new_gen(move |_, data| format!($lit $(, $arg)*, data))
+            .with_class(::kas::theme::TextClass::Label)
     };
 }

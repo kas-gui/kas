@@ -22,6 +22,9 @@ mod Label {
     /// `Label` text is set at construction time. It may also be set by
     /// [`Self::set_text`] or [`Self::set_string`].
     ///
+    /// By default, this uses [`TextClass::Label`]; see [`Self::set_class`] and
+    /// [`Self::with_class`].
+    ///
     /// Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
     /// Line-wrapping is enabled by default.
@@ -59,7 +62,7 @@ mod Label {
 
         /// Set text class
         ///
-        /// Default: `TextClass::Label`
+        /// Default: [`TextClass::Label`]
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
             self.text.set_class(class);
@@ -67,7 +70,7 @@ mod Label {
 
         /// Set text class (inline)
         ///
-        /// Default: `TextClass::Label`
+        /// Default: [`TextClass::Label`]
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
             self.text.set_class(class);

@@ -16,7 +16,7 @@ use kas::config::{ConfigMsg, ThemeConfigMsg};
 use kas::dir::{Down, Right};
 use kas::image::Svg;
 use kas::prelude::*;
-use kas::theme::MarginStyle;
+use kas::theme::{MarginStyle, TextClass};
 use kas::widgets::{column, *};
 use kas::window::Popup;
 use std::ops::Range;
@@ -704,7 +704,8 @@ fn canvas() -> Page<AppData> {
     let ui = column![
         Label::new(
             "Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."
-        ),
+        )
+        .with_class(TextClass::Standard),
         Canvas::new(Program(Instant::now())),
     ];
     Page::new(ui.map_any())

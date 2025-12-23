@@ -496,7 +496,7 @@ mod EditField {
                 editable: true,
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
-                text: Text::new(String::new(), TextClass::Edit, false),
+                text: Text::new(String::new(), TextClass::Editor, false),
                 selection: Default::default(),
                 edit_x_coord: None,
                 old_state: None,
@@ -703,7 +703,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
         let len = text.len();
         EditField {
             editable: true,
-            text: Text::new(text, TextClass::Edit, false),
+            text: Text::new(text, TextClass::Editor, false),
             selection: SelectionHelper::new(len, len),
             ..Default::default()
         }

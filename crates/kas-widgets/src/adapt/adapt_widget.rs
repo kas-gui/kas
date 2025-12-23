@@ -174,14 +174,14 @@ pub trait AdaptWidget: Widget + Sized {
 
     /// Construct a wrapper, setting minimum size in Em
     ///
-    /// This depends on the font size, though not the exact font in use.
+    /// This depends on the size of the font for [`TextClass::Standard`].
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
     fn with_min_size_em(self, w: f32, h: f32) -> Reserve<Self> {
         let size = Vec2(w, h);
         Reserve::new(self, move |cx: &mut SizeCx, axis: AxisInfo| {
-            let size = size.extract(axis) * cx.dpem(TextClass::Label);
+            let size = size.extract(axis) * cx.dpem(TextClass::Standard);
             SizeRules::fixed(size.cast_ceil())
         })
     }
