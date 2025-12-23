@@ -258,9 +258,10 @@ mod Slider {
                 false => (offset.0, max_offset.0),
                 true => (offset.1, max_offset.1),
             };
-            let mut a = (b.cast() * (offset as f64 / max as f64))
-                .round()
-                .cast_approx();
+            let step = self.step.cast();
+            let a: f64 = b.cast() * (offset as f64 / (max as f64 * step));
+            let a: f64 = a.round() * step;
+            let mut a: T = a.cast_approx();
             if self.direction.is_reversed() {
                 a = b - a;
             }
