@@ -62,12 +62,6 @@ pub struct Text<T: FormattableText> {
     text: T,
 }
 
-impl<T: Default + FormattableText> Default for Text<T> {
-    fn default() -> Self {
-        Self::new(T::default(), TextClass::Label, true)
-    }
-}
-
 /// Implement [`Layout`], using default alignment where alignment is not provided
 impl<T: FormattableText> Layout for Text<T> {
     fn rect(&self) -> Rect {
@@ -136,8 +130,6 @@ impl<T: FormattableText> Text<T> {
     ///
     /// `TextClass::Edit(false)` has special handling: line wrapping is disabled
     /// and the width of self is set to that of the text.
-    ///
-    /// Default: `TextClass::Label`
     #[inline]
     pub fn with_class(mut self, class: TextClass) -> Self {
         self.class = class;
@@ -232,8 +224,6 @@ impl<T: FormattableText> Text<T> {
     ///
     /// `TextClass::Edit(false)` has special handling: line wrapping is disabled
     /// and the width of self is set to that of the text.
-    ///
-    /// Default: `TextClass::Label`
     #[inline]
     pub fn set_class(&mut self, class: TextClass) {
         self.class = class;

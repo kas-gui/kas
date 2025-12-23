@@ -27,7 +27,7 @@ mod Label {
     /// Line-wrapping is enabled by default.
     ///
     /// This type is generic over the text type.
-    #[derive(Debug, Default)]
+    #[derive(Debug)]
     #[widget]
     #[layout(self.text)]
     pub struct Label<T: FormattableText + 'static> {

@@ -139,7 +139,6 @@ mod TitleBar {
     /// A window's title bar (part of decoration)
     ///
     /// This widget has no external margin.
-    #[derive(Default)]
     #[widget]
     #[layout(frame!(row! [
         self.title.align(AlignHints::CENTER).with_stretch(Stretch::Maximize, Stretch::None),
