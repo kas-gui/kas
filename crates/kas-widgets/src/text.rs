@@ -38,7 +38,7 @@ mod Text {
         fn default() -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(T::default(), TextClass::Label(true)),
+                text: theme::Text::new(T::default(), TextClass::Label, true),
                 text_fn: Box::new(|_, data, text| {
                     let new_text = data.into();
                     let changed = new_text != *text;
@@ -56,7 +56,7 @@ mod Text {
         pub fn new_str(as_str: impl Fn(&A) -> &str + 'static) -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(String::new(), TextClass::Label(true)),
+                text: theme::Text::new(String::new(), TextClass::Label, true),
                 text_fn: Box::new(move |_, data, text| {
                     let s = as_str(data);
                     let changed = *text != *s;
@@ -77,7 +77,7 @@ mod Text {
         pub fn new_gen(gen_text: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(T::default(), TextClass::Label(true)),
+                text: theme::Text::new(T::default(), TextClass::Label, true),
                 text_fn: Box::new(move |cx, data, text| {
                     let new_text = gen_text(cx, data);
                     let changed = new_text != *text;
@@ -99,7 +99,7 @@ mod Text {
         pub fn new_update(update_text: impl Fn(&ConfigCx, &A, &mut T) -> bool + 'static) -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(T::default(), TextClass::Label(true)),
+                text: theme::Text::new(T::default(), TextClass::Label, true),
                 text_fn: Box::new(update_text),
             }
         }
@@ -112,7 +112,7 @@ mod Text {
 
         /// Set text class
         ///
-        /// Default: `TextClass::Label(true)`
+        /// Default: `TextClass::Label`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
             self.text.set_class(class);
@@ -120,7 +120,7 @@ mod Text {
 
         /// Set text class (inline)
         ///
-        /// Default: `TextClass::Label(true)`
+        /// Default: `TextClass::Label`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
             self.text.set_class(class);
@@ -130,23 +130,21 @@ mod Text {
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.class().multi_line()
+            self.text.wrap()
         }
 
         /// Enable/disable line wrapping
         ///
-        /// This is equivalent to `label.set_class(TextClass::Label(wrap))`.
-        ///
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.text.set_class(TextClass::Label(wrap));
+            self.text.set_wrap(wrap);
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.text.set_class(TextClass::Label(wrap));
+            self.text.set_wrap(wrap);
             self
         }
 

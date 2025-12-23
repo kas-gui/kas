@@ -188,8 +188,8 @@ impl<'a> SizeCx<'a> {
     /// required to call this method but it is required to call
     /// [`ConfigCx::text_configure`] before text display for correct results.
     pub fn text_rules<T: FormattableText>(&self, text: &mut Text<T>, axis: AxisInfo) -> SizeRules {
-        let class = text.class();
-        self.w.text_rules(text, class, axis)
+        let wrap = text.wrap();
+        self.w.text_rules(text, wrap, axis)
     }
 }
 
@@ -243,8 +243,6 @@ pub trait ThemeSize {
 
     /// Get [`SizeRules`] for a text element
     ///
-    /// Calculates required text dimensions according to the `class` and uses
-    /// theme-defined margins.
-    fn text_rules(&self, text: &mut dyn SizableText, class: TextClass, axis: AxisInfo)
-    -> SizeRules;
+    /// Parameter `wrap`: whether long lines automatically wrap.
+    fn text_rules(&self, text: &mut dyn SizableText, wrap: bool, axis: AxisInfo) -> SizeRules;
 }

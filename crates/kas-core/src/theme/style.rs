@@ -134,9 +134,7 @@ impl SelectionStyle {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TextClass {
     /// Label text is drawn over the background colour
-    ///
-    /// This takes one parameter: `multi_line`. Text is wrapped only if true.
-    Label(bool),
+    Label,
     /// Scrollable label
     ///
     /// This is similar to `Label(true)`, but may occupy less vertical space.
@@ -152,22 +150,5 @@ pub enum TextClass {
     /// Similar to `AccessLabel(false)`, but with horizontal stretching disabled.
     MenuLabel,
     /// Editable text, usually encapsulated in some type of box
-    ///
-    /// This takes one parameter: `multi_line`. Text is wrapped only if true.
-    Edit(bool),
-}
-
-impl TextClass {
-    /// True if text is single-line only
-    #[inline]
-    pub fn single_line(self) -> bool {
-        !self.multi_line()
-    }
-
-    /// True if text is multi-line and should automatically line-wrap
-    #[inline]
-    pub fn multi_line(self) -> bool {
-        use TextClass::*;
-        matches!(self, Label(true) | LabelScroll | Edit(true))
-    }
+    Edit,
 }

@@ -48,7 +48,7 @@ mod AccessLabel {
             AccessLabel {
                 core: Default::default(),
                 target: Default::default(),
-                text: Text::new(text.into(), TextClass::Label(true)),
+                text: Text::new(text.into(), TextClass::Label, true),
             }
         }
 
@@ -68,7 +68,7 @@ mod AccessLabel {
 
         /// Set text class
         ///
-        /// Default: `TextClass::Label(true)`
+        /// Default: `TextClass::Label`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
             self.text.set_class(class);
@@ -76,7 +76,7 @@ mod AccessLabel {
 
         /// Set text class (inline)
         ///
-        /// Default: `TextClass::Label(true)`
+        /// Default: `TextClass::Label`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
             self.text.set_class(class);
@@ -86,23 +86,21 @@ mod AccessLabel {
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.class().multi_line()
+            self.text.wrap()
         }
 
         /// Enable/disable line wrapping
         ///
-        /// This is equivalent to `label.set_class(TextClass::Label(wrap))`.
-        ///
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.text.set_class(TextClass::Label(wrap));
+            self.text.set_wrap(wrap);
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.text.set_class(TextClass::Label(wrap));
+            self.text.set_wrap(wrap);
             self
         }
 

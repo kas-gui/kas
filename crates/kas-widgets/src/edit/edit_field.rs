@@ -496,7 +496,7 @@ mod EditField {
                 editable: true,
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
-                text: Text::default().with_class(TextClass::Edit(false)),
+                text: Text::new(String::new(), TextClass::Edit, false),
                 selection: Default::default(),
                 edit_x_coord: None,
                 old_state: None,
@@ -703,7 +703,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
         let len = text.len();
         EditField {
             editable: true,
-            text: Text::new(text, TextClass::Edit(false)),
+            text: Text::new(text, TextClass::Edit, false),
             selection: SelectionHelper::new(len, len),
             ..Default::default()
         }
@@ -815,7 +815,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
-        self.text.set_class(TextClass::Edit(multi_line));
+        self.text.set_wrap(multi_line);
         self.lines = match multi_line {
             false => (1.0, 1.0),
             true => (4.0, 7.0),
@@ -828,7 +828,7 @@ impl<G: EditGuard> EditField<G> {
     /// See also: [`Self::with_multi_line`]
     #[inline]
     pub fn multi_line(&self) -> bool {
-        self.class().multi_line()
+        self.text.wrap()
     }
 
     /// Set the text class used

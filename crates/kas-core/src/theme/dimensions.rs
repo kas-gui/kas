@@ -347,14 +347,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         text.set_font(font, dpem);
     }
 
-    fn text_rules(
-        &self,
-        text: &mut dyn SizableText,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
-        let wrap = class.multi_line();
-
+    fn text_rules(&self, text: &mut dyn SizableText, wrap: bool, axis: AxisInfo) -> SizeRules {
         let rules = if axis.is_horizontal() {
             if wrap {
                 let min = self.dims.min_line_length;

@@ -48,6 +48,7 @@ pub struct Text<T: FormattableText> {
     font: FontSelector,
     dpem: f32,
     class: TextClass,
+    wrap: bool,
     /// Alignment (`horiz`, `vert`)
     ///
     /// By default, horizontal alignment is left or right depending on the
@@ -63,7 +64,7 @@ pub struct Text<T: FormattableText> {
 
 impl<T: Default + FormattableText> Default for Text<T> {
     fn default() -> Self {
-        Self::new(T::default(), TextClass::Label(true))
+        Self::new(T::default(), TextClass::Label, true)
     }
 }
 
@@ -100,12 +101,13 @@ impl<T: FormattableText> Text<T> {
     ///
     /// This struct must be made ready for usage by calling [`Text::prepare`].
     #[inline]
-    pub fn new(text: T, class: TextClass) -> Self {
+    pub fn new(text: T, class: TextClass, wrap: bool) -> Self {
         Text {
             rect: Rect::default(),
             font: FontSelector::default(),
             dpem: 16.0,
             class,
+            wrap,
             align: Default::default(),
             direction: Direction::default(),
             status: Status::New,
@@ -135,7 +137,7 @@ impl<T: FormattableText> Text<T> {
     /// `TextClass::Edit(false)` has special handling: line wrapping is disabled
     /// and the width of self is set to that of the text.
     ///
-    /// Default: `TextClass::Label(true)`
+    /// Default: `TextClass::Label`
     #[inline]
     pub fn with_class(mut self, class: TextClass) -> Self {
         self.class = class;
@@ -231,10 +233,22 @@ impl<T: FormattableText> Text<T> {
     /// `TextClass::Edit(false)` has special handling: line wrapping is disabled
     /// and the width of self is set to that of the text.
     ///
-    /// Default: `TextClass::Label(true)`
+    /// Default: `TextClass::Label`
     #[inline]
     pub fn set_class(&mut self, class: TextClass) {
         self.class = class;
+    }
+
+    /// Get whether long lines are automatically wrapped
+    #[inline]
+    pub fn wrap(&self) -> bool {
+        self.wrap
+    }
+
+    /// Set whether long lines are automatically wrapped
+    #[inline]
+    pub fn set_wrap(&mut self, wrap: bool) {
+        self.wrap = wrap;
     }
 
     /// Get the default font
@@ -473,11 +487,7 @@ impl<T: FormattableText> Text<T> {
 
         if self.status == Status::LevelRuns {
             let align_width = self.rect.size.0.cast();
-            let wrap_width = if self.class.single_line() {
-                f32::INFINITY
-            } else {
-                align_width
-            };
+            let wrap_width = if !self.wrap { f32::INFINITY } else { align_width };
             self.display
                 .prepare_lines(wrap_width, align_width, self.align.0);
         }
