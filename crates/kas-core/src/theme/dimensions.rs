@@ -332,6 +332,10 @@ impl<D: 'static> ThemeSize for Window<D> {
     }
 
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass) {
+        self.text_configure_with_dpem(text, class, self.dims.dpem);
+    }
+
+    fn text_configure_with_dpem(&self, text: &mut dyn SizableText, class: TextClass, dpem: f32) {
         let font = self
             .config
             .borrow()
@@ -340,7 +344,6 @@ impl<D: 'static> ThemeSize for Window<D> {
             .get(&class)
             .cloned()
             .unwrap_or_default();
-        let dpem = self.dims.dpem;
         text.set_font(font, dpem);
     }
 

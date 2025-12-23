@@ -233,8 +233,13 @@ pub trait ThemeSize {
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
 
-    /// Configure a text object, setting font properties
+    /// Set font and font size from `class`
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass);
+
+    /// Set font from `class`, using a custom font size
+    ///
+    /// The default font size is available using [`Self::dpem`].
+    fn text_configure_with_dpem(&self, text: &mut dyn SizableText, class: TextClass, dpem: f32);
 
     /// Get [`SizeRules`] for a text element
     ///
