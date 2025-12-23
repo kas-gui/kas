@@ -143,13 +143,6 @@ pub enum TextClass {
     /// Usually it also implies that the text is both scrollable and selectable,
     /// but these are characteristics of the widget, not the text object.
     LabelScroll,
-    /// Label with access keys
-    ///
-    /// This takes one parameter: `multi_line`. Text is wrapped only if true.
-    ///
-    /// This is identical to `Label` except that effects are only drawn if
-    /// access key mode is activated (usually the `Alt` key).
-    AccessLabel(bool),
     /// Button text is drawn over a button
     ///
     /// Same as `AccessLabel(false)`, though theme may differentiate.
@@ -175,17 +168,6 @@ impl TextClass {
     #[inline]
     pub fn multi_line(self) -> bool {
         use TextClass::*;
-        matches!(
-            self,
-            Label(true) | LabelScroll | AccessLabel(true) | Edit(true)
-        )
-    }
-
-    /// True if text effects should only be shown dependant on access key
-    /// mode being active
-    #[inline]
-    pub fn is_access_key(self) -> bool {
-        use TextClass::*;
-        matches!(self, AccessLabel(_) | Button | MenuLabel)
+        matches!(self, Label(true) | LabelScroll | Edit(true))
     }
 }
