@@ -429,7 +429,7 @@ mod GridView {
         // This auto-detects whether remapping is required, unless `self.token_update` is set.
         #[inline]
         fn post_scroll(&mut self, cx: &mut ConfigCx, data: &C::Data) {
-            self.handle_update(cx, data, Changes::None);
+            self.handle_update(cx, data, Changes::None, false);
         }
 
         // Handle a data clerk update or change in view position
@@ -438,6 +438,7 @@ mod GridView {
             cx: &mut ConfigCx,
             data: &C::Data,
             changes: Changes<GridIndex>,
+            force_update: bool,
         ) {
             // TODO(opt): let Changes::Range only update a sub-set of items
             if matches!(changes, Changes::Range(_) | Changes::Any) {
@@ -480,7 +481,7 @@ mod GridView {
             if virtual_offset != self.virtual_offset {
                 self.virtual_offset = virtual_offset;
                 self.rect_update = true;
-            } else if self.rect_update || self.token_update != Update::None {
+            } else if force_update || self.rect_update || self.token_update != Update::None {
                 // This forces an update to all widgets
             } else if start == old_start && cur_len == self.cur_len {
                 return;
@@ -508,7 +509,7 @@ mod GridView {
             debug_assert!(self.cur_end() <= self.widgets.len());
             self.first_data = first_data;
 
-            self.map_view_widgets(cx, data, start..end);
+            self.map_view_widgets(cx, data, start..end, force_update);
         }
 
         // Assign view widgets to data as required and set their rects
@@ -519,6 +520,7 @@ mod GridView {
             cx: &mut ConfigCx,
             data: &C::Data,
             Range { start, end }: Range<GridIndex>,
+            force_update: bool,
         ) {
             let time = Instant::now();
 
@@ -559,7 +561,7 @@ mod GridView {
                             Some(self.child_size.1),
                         );
                         rect_update = true;
-                    } else if changes.item() {
+                    } else if force_update || changes.item() {
                         let item = self.clerk.item(data, token);
                         cx.update(w.item.as_node(item));
                     }
@@ -884,7 +886,15 @@ mod GridView {
         fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
             let changes = self.clerk.update(cx, self.id(), self.view_range(), data);
             if self.token_update != Update::None || changes != Changes::None {
-                self.handle_update(cx, data, changes);
+                self.handle_update(cx, data, changes, true);
+            } else {
+                let end = self.cur_end();
+                for w in &mut self.widgets[..end] {
+                    if let Some(ref token) = w.token {
+                        let item = self.clerk.item(data, token);
+                        cx.update(w.item.as_node(item));
+                    }
+                }
             }
 
             let id = self.id();
@@ -1054,7 +1064,7 @@ mod GridView {
                 self.clerk
                     .handle_messages(cx, self.id(), self.view_range(), data, opt_key);
             if changes != Changes::None {
-                self.handle_update(cx, data, changes);
+                self.handle_update(cx, data, changes, false);
             }
         }
 
