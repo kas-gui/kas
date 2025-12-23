@@ -197,7 +197,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         self.dims.scale
     }
 
-    fn dpem(&self) -> f32 {
+    fn dpem(&self, _: TextClass) -> f32 {
         self.dims.dpem
     }
 

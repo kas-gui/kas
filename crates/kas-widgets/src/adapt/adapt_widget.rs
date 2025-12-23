@@ -13,7 +13,7 @@ use kas::dir::Directional;
 use kas::geom::Vec2;
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::text::AccessString;
-use kas::theme::{MarginStyle, SizeCx};
+use kas::theme::{MarginStyle, SizeCx, TextClass};
 use std::fmt::Debug;
 
 /// Provides `.map_any()`
@@ -181,7 +181,7 @@ pub trait AdaptWidget: Widget + Sized {
     fn with_min_size_em(self, w: f32, h: f32) -> Reserve<Self> {
         let size = Vec2(w, h);
         Reserve::new(self, move |cx: &mut SizeCx, axis: AxisInfo| {
-            let size = size.extract(axis) * cx.dpem();
+            let size = size.extract(axis) * cx.dpem(TextClass::Label(false));
             SizeRules::fixed(size.cast_ceil())
         })
     }

@@ -79,15 +79,17 @@ impl<'a> SizeCx<'a> {
         LogicalBuilder::new((width, height), self.scale_factor())
     }
 
-    /// The Em size of the standard font in pixels
+    /// Get the default font size for `class`
+    ///
+    /// Units are physical pixels per font Em.
     ///
     /// The Em is a unit of typography (variously defined as the point-size of
     /// the font, the height of the font or the width of an upper-case `M`).
     ///
     /// This method returns the size of 1 Em in physical pixels, derived from
     /// the font size in use by the theme and the screen's scale factor.
-    pub fn dpem(&self) -> f32 {
-        self.w.dpem()
+    pub fn dpem(&self, class: TextClass) -> f32 {
+        self.w.dpem(class)
     }
 
     /// The smallest reasonable size for a visible (non-frame) component
@@ -197,8 +199,10 @@ pub trait ThemeSize {
     /// Get the scale factor
     fn scale_factor(&self) -> f32;
 
-    /// Get the Em size of the standard font in pixels
-    fn dpem(&self) -> f32;
+    /// Get the default font size for `class`
+    ///
+    /// Units are physical pixels per Em.
+    fn dpem(&self, class: TextClass) -> f32;
 
     /// The smallest reasonable size for a visible (non-frame) component
     ///

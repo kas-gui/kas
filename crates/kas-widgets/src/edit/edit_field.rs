@@ -96,7 +96,7 @@ mod EditField {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
-                let dpem = cx.dpem();
+                let dpem = cx.dpem(self.text.class());
                 min = (self.width.0 * dpem).cast_ceil();
                 ideal = (self.width.1 * dpem).cast_ceil();
             } else if let Some(width) = axis.other() {

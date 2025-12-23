@@ -331,7 +331,8 @@ mod ScrollText {
             let mut rules = self.label.size_rules(cx, axis);
             let _ = self.vert_bar.size_rules(cx, axis);
             if axis.is_vertical() {
-                rules.reduce_min_to((cx.dpem() * 4.0).cast_ceil());
+                let dpem = cx.dpem(self.label.text.class());
+                rules.reduce_min_to((dpem * 4.0).cast_ceil());
             }
             rules.with_stretch(Stretch::Low)
         }
