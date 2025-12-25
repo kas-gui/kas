@@ -48,7 +48,7 @@
 //! -   [`ScrollLabel`]: static text label supporting scrolling and selection
 //! -   [`ScrollText`]: dynamic text label supporting scrolling and selection
 //! -   [`Separator`]: a visible bar to separate things
-//! -   [`format_value`] and [`format_data`] are constructors for [`Text`],
+//! -   [`format_text`] and [`format_text`] are constructors for [`Text`],
 //!     displaying a text label derived from input data
 //! -   [`ProgressBar`]: show completion level
 //!

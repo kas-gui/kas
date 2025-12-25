@@ -12,7 +12,7 @@ use kas::event::{CursorIcon, GrabMode};
 use kas::geom::{Affine, DVec2, Linear, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widgets::adapt::Reserve;
-use kas::widgets::{Label, Slider, Text, TitleBarButtons, format_value};
+use kas::widgets::{Label, Slider, Text, TitleBarButtons, format_text};
 use kas::window::Decorations;
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas_wgpu::wgpu;
@@ -471,10 +471,10 @@ mod MandlebrotUI {
             let loc = mbrot.loc();
             MandlebrotUI {
                 core: Default::default(),
-                label: format_value!("{}"),
+                label: format_text!("{}"),
                 title: Label::new("Mandlebrot"),
                 buttons: Default::default(),
-                iters_label: format_value!("{}").with_min_size_em(3.0, 0.0),
+                iters_label: format_text!("{}").with_min_size_em(3.0, 0.0),
                 slider: Slider::up(0..=256, |_, iters| *iters).with_msg(|iters| iters),
                 mbrot,
                 iters: 64,

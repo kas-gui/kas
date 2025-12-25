@@ -16,8 +16,8 @@ mod Text {
     /// `Text` derives its contents from input data. Use [`Label`](crate::Label)
     /// instead for fixed contents.
     ///
-    /// See also macros [`format_data`](super::format_data) and
-    /// [`format_value`](super::format_value) which construct a
+    /// See also macros [`format_text`](super::format_text) and
+    /// [`format_text`](super::format_text) which construct a
     /// `Text` widget.
     ///
     /// Vertical alignment defaults to centred, horizontal alignment depends on
@@ -190,36 +190,24 @@ mod Text {
     }
 }
 
-/// A [`Text`] widget which formats a value from input
+/// Construct a [`Text`] widget which updates text using the [`format!`] macro
 ///
 /// Examples:
 /// ```
 /// use kas_widgets::Text;
-/// let _: Text<i32, _> = kas_widgets::format_data!(data, "Data value: {data}");
-/// let _ = kas_widgets::format_data!(data: &i32, "Data value: {data}");
+/// let _ = kas_widgets::format_text!(data: &i32, "Data value: {data}");
+/// let _: Text<i32, _> = kas_widgets::format_text!(data, "Data value: {data}");
+/// let _: Text<i32, String> = kas_widgets::format_text!("Data value: {}");
 /// ```
-// TODO: a more fancy macro could determine the data fields used and wrap with
-// a node testing for changes to these fields before calling update().
 #[macro_export]
-macro_rules! format_data {
+macro_rules! format_text {
     ($data:ident, $($arg:tt)*) => {
         $crate::Text::new_gen(move |_, $data| format!($($arg)*))
     };
     ($data:ident : $data_ty:ty , $($arg:tt)*) => {
         $crate::Text::new_gen(move |_, $data : $data_ty| format!($($arg)*))
     };
-}
-
-/// A [`Text`] widget which formats a value from input
-///
-/// Example:
-/// ```
-/// use kas_widgets::Text;
-/// let _: Text<i32, String> = kas_widgets::format_value!("Data value: {}");
-/// ```
-#[macro_export]
-macro_rules! format_value {
-    ($($arg:tt)*) => {
-        $crate::Text::new_gen(move |_, data| format!($($arg)*, data))
+    ($lit:literal $(, $arg:tt)*) => {
+        $crate::Text::new_gen(move |_, data| format!($lit $(, $arg)*, data))
     };
 }

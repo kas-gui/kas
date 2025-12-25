@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use kas::event::TimerHandle;
 use kas::prelude::*;
-use kas::widgets::{Button, format_data, row};
+use kas::widgets::{Button, format_text, row};
 
 #[cfg(feature = "wgpu")]
 type Theme = kas_wgpu::ShadedTheme;
@@ -31,7 +31,7 @@ const TIMER: TimerHandle = TimerHandle::new(0, true);
 
 fn make_ui() -> impl Widget<Data = ()> {
     let ui = row![
-        format_data!(timer: &Timer, "{}.{:03}", timer.elapsed.as_secs(), timer.elapsed.subsec_millis()),
+        format_text!(timer: &Timer, "{}.{:03}", timer.elapsed.as_secs(), timer.elapsed.subsec_millis()),
         Button::label_msg("&reset", MsgReset).map_any(),
         Button::label_msg("&start / &stop", MsgStart).map_any(),
     ];
