@@ -345,13 +345,19 @@ macro_rules! impl_vec2 {
                 self.0 * self.0 + self.1 * self.1
             }
 
-            /// Return the L1 (rectilinear / taxicab) distance
+            /// Return the L1 norm: (rectilinear / taxicab) distance
             #[inline]
             pub fn distance_l1(self) -> $f {
                 self.0.abs() + self.1.abs()
             }
 
-            /// Return the L-inf (max) distance
+            /// Return the L2 norm: (Euclidean) distance
+            #[inline]
+            pub fn distance_l2(self) -> $f {
+                self.sum_square().sqrt()
+            }
+
+            /// Return the L-inf norm: max absolute value of components
             #[inline]
             pub fn distance_l_inf(self) -> $f {
                 self.0.abs().max(self.1.abs())
