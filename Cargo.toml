@@ -177,7 +177,7 @@ resolver = "2"
 
 [patch.crates-io.kas-text]
 git = "https://github.com/kas-gui/kas-text.git"
-rev = "554b38c8"
+rev = "e97ced7b"
 
 [patch.crates-io.rfd]
 git = "https://github.com/PolyMeilex/rfd.git"
