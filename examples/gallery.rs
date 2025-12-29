@@ -729,7 +729,7 @@ KAS_CONFIG_MODE=readwrite
     .unwrap();
 
     let ui = column![
-        ScrollLabel::new(desc),
+        ScrollLabel::new(desc).with_class(TextClass::Small),
         Separator::new(),
         ScrollRegion::new_clip(EventConfig::new())
     ];
