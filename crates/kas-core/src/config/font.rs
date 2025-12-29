@@ -26,17 +26,17 @@ pub enum FontConfigMsg {
 pub struct FontConfig {
     /// Standard font size, in units of pixels-per-Em
     #[cfg_attr(feature = "serde", serde(default = "defaults::size"))]
-    pub size: f32,
+    size: f32,
 
     /// Standard fonts
     ///
     /// TODO: read/write support.
     #[cfg_attr(feature = "serde", serde(skip, default))]
-    pub fonts: BTreeMap<TextClass, FontSelector>,
+    fonts: BTreeMap<TextClass, FontSelector>,
 
     /// Text glyph rastering settings
     #[cfg_attr(feature = "serde", serde(default))]
-    pub raster: RasterConfig,
+    raster: RasterConfig,
 }
 
 impl Default for FontConfig {
@@ -126,10 +126,10 @@ impl FontConfig {
         self.size
     }
 
-    /// Get an iterator over font mappings
+    /// Get a [`FontSelector`] for `class`
     #[inline]
-    pub fn iter_fonts(&self) -> impl Iterator<Item = (&TextClass, &FontSelector)> {
-        self.fonts.iter()
+    pub fn get_font_selector(&self, class: TextClass) -> FontSelector {
+        self.fonts.get(&class).cloned().unwrap_or_default()
     }
 }
 
