@@ -132,7 +132,7 @@ impl SelectionStyle {
 /// Fonts are chosen from available (system) fonts depending on the `TextClass`
 /// and [configuration](crate::config::FontConfig).
 /// `TextClass` may affect other font properties, including size and weight.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash, linearize::Linearize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TextClass {
     /// The standard UI font

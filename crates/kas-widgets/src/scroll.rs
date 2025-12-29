@@ -73,7 +73,7 @@ mod ClipRegion {
 
             let mut rules = self.inner.size_rules(cx, axis);
             self.min_child_size.set_component(axis, rules.min_size());
-            rules.reduce_min_to(cx.min_scroll_size(axis));
+            rules.reduce_min_to(cx.min_scroll_size(axis, None));
 
             // We use a frame to contain the content margin within the scrollable area.
             let frame = kas::layout::FrameRules::ZERO;

@@ -677,6 +677,9 @@ impl Text<String> {
 
 /// Required functionality on [`Text`] objects for sizing by the theme
 pub trait SizableText {
+    /// Get the text class
+    fn class(&self) -> TextClass;
+
     /// Set font face and size
     fn set_font(&mut self, font: FontSelector, dpem: f32);
 
@@ -688,6 +691,11 @@ pub trait SizableText {
 }
 
 impl<T: FormattableText> SizableText for Text<T> {
+    #[inline]
+    fn class(&self) -> TextClass {
+        self.class
+    }
+
     fn set_font(&mut self, font: FontSelector, dpem: f32) {
         if font != self.font {
             self.font = font;

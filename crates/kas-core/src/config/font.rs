@@ -116,14 +116,18 @@ impl Default for RasterConfig {
 
 /// Getters
 impl FontConfig {
-    /// Standard font size
+    /// Get font size
     ///
     /// Units: logical (unscaled) pixels per Em.
     ///
     /// To convert to Points, multiply by three quarters.
     #[inline]
-    pub fn size(&self) -> f32 {
-        self.size
+    pub fn get_dpem(&self, class: TextClass) -> f32 {
+        if class != TextClass::Small {
+            self.size
+        } else {
+            self.size * 0.8
+        }
     }
 
     /// Get a [`FontSelector`] for `class`

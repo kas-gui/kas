@@ -100,8 +100,9 @@ impl<'a> SizeCx<'a> {
     }
 
     /// The minimum size of a scrollable area
-    pub fn min_scroll_size(&self, axis: impl Directional) -> i32 {
-        self.w.min_scroll_size(axis.is_vertical())
+    pub fn min_scroll_size(&self, axis: impl Directional, class: Option<TextClass>) -> i32 {
+        let class = class.unwrap_or(TextClass::Standard);
+        self.w.min_scroll_size(axis.is_vertical(), class)
     }
 
     /// The length of the grip (draggable handle) on a scroll bar or slider
@@ -210,7 +211,7 @@ pub trait ThemeSize {
     fn min_element_size(&self) -> i32;
 
     /// The minimum size of a scrollable area
-    fn min_scroll_size(&self, axis_is_vertical: bool) -> i32;
+    fn min_scroll_size(&self, axis_is_vertical: bool, class: TextClass) -> i32;
 
     /// The length of the grip (draggable handle) on a scroll bar or slider
     fn grip_len(&self) -> i32;
