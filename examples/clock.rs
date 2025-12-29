@@ -172,7 +172,7 @@ fn main() -> kas::runner::Result<()> {
         .with_decorations(kas::window::Decorations::None)
         .with_transparent(true);
 
-    kas::runner::Runner::with_theme(kas::theme::SimpleTheme::default())
+    kas::runner::Runner::with_theme(kas::theme::FlatTheme::default())
         .build(())?
         .with(window)
         .run()

@@ -148,7 +148,13 @@ impl<'a> DrawCx<'a> {
         self.h.components().1
     }
 
-    /// Access the draw device as a [`DrawRounded`] implementation
+    /// Access the draw device as a [`DrawRounded`] implementation, if possible
+    ///
+    /// Warning: this does not reflect whether the underlying draw device
+    /// supports [`DrawRounded`] (which would require specialization) but
+    /// whether the theme in question requires [`DrawRounded`]. As such, this
+    /// method is only useful with a theme requiring this extension such as
+    /// [`FlatTheme`](super::FlatTheme).
     pub fn draw_rounded(&mut self) -> Option<&mut dyn DrawRounded> {
         self.h.draw_rounded()
     }
