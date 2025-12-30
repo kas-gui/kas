@@ -13,7 +13,7 @@ use super::{ShaderManager, atlases};
 use kas::cast::Conv;
 use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
-use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, UnpreparedSprite};
+use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, SpriteType, UnpreparedSprite};
 
 #[derive(Debug)]
 struct Image {
@@ -240,28 +240,31 @@ impl Images {
         }
         for UnpreparedSprite {
             atlas,
-            color,
+            ty,
             origin,
             size,
             data,
         } in unprepared.drain(..)
         {
-            let (texture, texel_layout);
-            if !color {
-                texture = self.atlas_a.get_texture(atlas);
-                texel_layout = wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(size.0),
-                    rows_per_image: Some(size.1),
-                };
-            } else {
-                texture = self.atlas_rgba.get_texture(atlas);
-                texel_layout = wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(4 * size.0),
-                    rows_per_image: Some(size.1),
-                };
-            }
+            let texture;
+            let texel_layout = match ty {
+                SpriteType::Mask => {
+                    texture = self.atlas_a.get_texture(atlas);
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(size.0),
+                        rows_per_image: Some(size.1),
+                    }
+                }
+                SpriteType::Bitmap => {
+                    texture = self.atlas_rgba.get_texture(atlas);
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(4 * size.0),
+                        rows_per_image: Some(size.1),
+                    }
+                }
+            };
 
             queue.write_texture(
                 wgpu::TexelCopyTextureInfo {
@@ -365,12 +368,10 @@ impl RenderQueue for Window {
         let mut a = glyph_pos.floor() + sprite.offset;
         let mut b = a + sprite.size;
 
-        if !(sprite.is_valid()
-            && a.0 < rect.b.0
-            && a.1 < rect.b.1
-            && b.0 > rect.a.0
-            && b.1 > rect.a.1)
-        {
+        let Some(ty) = sprite.ty else {
+            return;
+        };
+        if !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1) {
             return;
         }
 
@@ -392,12 +393,15 @@ impl RenderQueue for Window {
             b.1 = b.1.clamp(rect.a.1, rect.b.1);
         }
 
-        if !sprite.color {
-            let instance = InstanceA { a, b, ta, tb, col };
-            self.atlas_a.rect(pass, sprite.atlas, instance);
-        } else {
-            let instance = InstanceRgba { a, b, ta, tb };
-            self.atlas_rgba.rect(pass, sprite.atlas, instance);
+        match ty {
+            SpriteType::Mask => {
+                let instance = InstanceA { a, b, ta, tb, col };
+                self.atlas_a.rect(pass, sprite.atlas, instance);
+            }
+            SpriteType::Bitmap => {
+                let instance = InstanceRgba { a, b, ta, tb };
+                self.atlas_rgba.rect(pass, sprite.atlas, instance);
+            }
         }
     }
 }

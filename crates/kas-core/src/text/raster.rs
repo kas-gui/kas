@@ -164,6 +164,14 @@ impl SpriteDescriptor {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SpriteType {
+    /// 8-bit coverage mask
+    Mask,
+    /// 32-bit RGBA bitmap
+    Bitmap,
+}
+
 /// A Sprite
 ///
 /// A "sprite" is a glyph rendered to a texture with fixed properties. This
@@ -171,27 +179,17 @@ impl SpriteDescriptor {
 #[derive(Clone, Debug, Default)]
 pub struct Sprite {
     pub atlas: u32,
-    /// If true, use atlas_rgba; if false use atlas_a
-    pub color: bool,
-    /// If false, this is not drawable (used for zero-sized glyphs)
-    valid: bool,
+    pub ty: Option<SpriteType>,
     pub size: Vec2,
     pub offset: Vec2,
     pub tex_quad: Quad,
-}
-
-impl Sprite {
-    /// Is this a valid sprite or a non-renderable placeholder?
-    pub fn is_valid(&self) -> bool {
-        self.valid
-    }
 }
 
 /// A sprite pending upload to the GPU texture
 #[derive(Debug)]
 pub struct UnpreparedSprite {
     pub atlas: u32,
-    pub color: bool,
+    pub ty: SpriteType,
     pub origin: (u32, u32),
     pub size: (u32, u32),
     pub data: Vec<u8>,
@@ -335,7 +333,7 @@ impl State {
         glyphs: &mut dyn Iterator<Item = Glyph>,
     ) {
         use swash::scale::{Render, Source, StrikeWith, image::Content};
-        use swash::zeno::{Angle, Format, Transform};
+        use swash::zeno::{Angle, Transform};
 
         let face = fonts::library().get_face_store(face_id);
         let font = face.swash();
@@ -405,7 +403,7 @@ impl State {
 
                     self.prepare.push(UnpreparedSprite {
                         atlas: alloc.atlas,
-                        color: false,
+                        ty: SpriteType::Mask,
                         origin: alloc.origin,
                         size,
                         data: image.data,
@@ -413,8 +411,7 @@ impl State {
 
                     Sprite {
                         atlas: alloc.atlas,
-                        color: false,
-                        valid: true,
+                        ty: Some(SpriteType::Mask),
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
                         tex_quad: alloc.tex_quad,
@@ -433,7 +430,7 @@ impl State {
 
                     self.prepare.push(UnpreparedSprite {
                         atlas: alloc.atlas,
-                        color: true,
+                        ty: SpriteType::Bitmap,
                         origin: alloc.origin,
                         size,
                         data: image.data,
@@ -441,8 +438,7 @@ impl State {
 
                     Sprite {
                         atlas,
-                        color: true,
-                        valid: true,
+                        ty: Some(SpriteType::Bitmap),
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
                         tex_quad: alloc.tex_quad,

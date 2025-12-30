@@ -12,7 +12,7 @@ use kas::autoimpl;
 use kas::cast::traits::*;
 use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, color};
 use kas::geom::{Coord, Offset, Quad, Rect, Size, Vec2};
-use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, UnpreparedSprite};
+use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, SpriteType, UnpreparedSprite};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
@@ -498,16 +498,15 @@ impl Shared {
         }
         for UnpreparedSprite {
             atlas,
-            color,
+            ty,
             origin,
             size,
             data,
         } in unprepared.drain(..)
         {
-            if !color {
-                self.atlas_a.upload_a8(atlas, origin, size, &data);
-            } else {
-                self.atlas_rgba.upload_rgba8(atlas, origin, size, &data);
+            match ty {
+                SpriteType::Mask => self.atlas_a.upload_a8(atlas, origin, size, &data),
+                SpriteType::Bitmap => self.atlas_rgba.upload_rgba8(atlas, origin, size, &data),
             }
         }
     }
@@ -574,12 +573,10 @@ impl RenderQueue for Window {
         let mut a = glyph_pos.floor() + sprite.offset;
         let mut b = a + sprite.size;
 
-        if !(sprite.is_valid()
-            && a.0 < rect.b.0
-            && a.1 < rect.b.1
-            && b.0 > rect.a.0
-            && b.1 > rect.a.1)
-        {
+        let Some(ty) = sprite.ty else {
+            return;
+        };
+        if !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1) {
             return;
         }
 
@@ -601,14 +598,17 @@ impl RenderQueue for Window {
             b.1 = b.1.clamp(rect.a.1, rect.b.1);
         }
 
-        if !sprite.color {
-            let col: color::Rgba8Srgb = col.into();
-            let col = u32::from_le_bytes(col.0).swap_bytes() >> 8;
-            let instance = InstanceA { a, b, ta, tb, col };
-            self.atlas_a.rect(pass, sprite.atlas, instance);
-        } else {
-            let instance = InstanceRgba { a, b, ta, tb };
-            self.atlas_rgba.rect(pass, sprite.atlas, instance);
+        match ty {
+            SpriteType::Mask => {
+                let col: color::Rgba8Srgb = col.into();
+                let col = u32::from_le_bytes(col.0).swap_bytes() >> 8;
+                let instance = InstanceA { a, b, ta, tb, col };
+                self.atlas_a.rect(pass, sprite.atlas, instance);
+            }
+            SpriteType::Bitmap => {
+                let instance = InstanceRgba { a, b, ta, tb };
+                self.atlas_rgba.rect(pass, sprite.atlas, instance);
+            }
         }
     }
 }
