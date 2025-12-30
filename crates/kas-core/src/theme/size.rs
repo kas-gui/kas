@@ -79,15 +79,17 @@ impl<'a> SizeCx<'a> {
         LogicalBuilder::new((width, height), self.scale_factor())
     }
 
-    /// The Em size of the standard font in pixels
+    /// Get the default font size for `class`
+    ///
+    /// Units are physical pixels per font Em.
     ///
     /// The Em is a unit of typography (variously defined as the point-size of
     /// the font, the height of the font or the width of an upper-case `M`).
     ///
     /// This method returns the size of 1 Em in physical pixels, derived from
     /// the font size in use by the theme and the screen's scale factor.
-    pub fn dpem(&self) -> f32 {
-        self.w.dpem()
+    pub fn dpem(&self, class: TextClass) -> f32 {
+        self.w.dpem(class)
     }
 
     /// The smallest reasonable size for a visible (non-frame) component
@@ -98,8 +100,9 @@ impl<'a> SizeCx<'a> {
     }
 
     /// The minimum size of a scrollable area
-    pub fn min_scroll_size(&self, axis: impl Directional) -> i32 {
-        self.w.min_scroll_size(axis.is_vertical())
+    pub fn min_scroll_size(&self, axis: impl Directional, class: Option<TextClass>) -> i32 {
+        let class = class.unwrap_or(TextClass::Standard);
+        self.w.min_scroll_size(axis.is_vertical(), class)
     }
 
     /// The length of the grip (draggable handle) on a scroll bar or slider
@@ -186,8 +189,8 @@ impl<'a> SizeCx<'a> {
     /// required to call this method but it is required to call
     /// [`ConfigCx::text_configure`] before text display for correct results.
     pub fn text_rules<T: FormattableText>(&self, text: &mut Text<T>, axis: AxisInfo) -> SizeRules {
-        let class = text.class();
-        self.w.text_rules(text, class, axis)
+        let wrap = text.wrap();
+        self.w.text_rules(text, wrap, axis)
     }
 }
 
@@ -197,8 +200,10 @@ pub trait ThemeSize {
     /// Get the scale factor
     fn scale_factor(&self) -> f32;
 
-    /// Get the Em size of the standard font in pixels
-    fn dpem(&self) -> f32;
+    /// Get the default font size for `class`
+    ///
+    /// Units are physical pixels per Em.
+    fn dpem(&self, class: TextClass) -> f32;
 
     /// The smallest reasonable size for a visible (non-frame) component
     ///
@@ -206,7 +211,7 @@ pub trait ThemeSize {
     fn min_element_size(&self) -> i32;
 
     /// The minimum size of a scrollable area
-    fn min_scroll_size(&self, axis_is_vertical: bool) -> i32;
+    fn min_scroll_size(&self, axis_is_vertical: bool, class: TextClass) -> i32;
 
     /// The length of the grip (draggable handle) on a scroll bar or slider
     fn grip_len(&self) -> i32;
@@ -229,13 +234,16 @@ pub trait ThemeSize {
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
 
-    /// Configure a text object, setting font properties
+    /// Set font and font size from `class`
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass);
+
+    /// Set font from `class`, using a custom font size
+    ///
+    /// The default font size is available using [`Self::dpem`].
+    fn text_configure_with_dpem(&self, text: &mut dyn SizableText, class: TextClass, dpem: f32);
 
     /// Get [`SizeRules`] for a text element
     ///
-    /// Calculates required text dimensions according to the `class` and uses
-    /// theme-defined margins.
-    fn text_rules(&self, text: &mut dyn SizableText, class: TextClass, axis: AxisInfo)
-    -> SizeRules;
+    /// Parameter `wrap`: whether long lines automatically wrap.
+    fn text_rules(&self, text: &mut dyn SizableText, wrap: bool, axis: AxisInfo) -> SizeRules;
 }

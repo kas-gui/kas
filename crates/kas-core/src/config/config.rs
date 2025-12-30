@@ -9,6 +9,7 @@ use super::{EventConfig, EventConfigMsg, EventWindowConfig};
 use super::{FontConfig, FontConfigMsg, ThemeConfig, ThemeConfigMsg};
 use crate::ConfigAction;
 use crate::config::Shortcuts;
+use crate::theme::TextClass;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell};
@@ -118,7 +119,7 @@ impl WindowConfig {
         let base = self.config.borrow();
         self.scale_factor = scale_factor;
         self.kinetic_decay_sub = base.event.kinetic_decay_sub * scale_factor;
-        let dpem = base.font.size() * scale_factor;
+        let dpem = base.font.get_dpem(TextClass::Standard) * scale_factor;
         self.scroll_dist = base.event.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.event.pan_dist_thresh * scale_factor;
     }

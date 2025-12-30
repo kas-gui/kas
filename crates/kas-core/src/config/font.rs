@@ -19,24 +19,26 @@ pub enum FontConfigMsg {
 }
 
 /// Font configuration
-///
-/// Note that only changes to [`Self::size`] are currently supported at run-time.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FontConfig {
     /// Standard font size, in units of pixels-per-Em
     #[cfg_attr(feature = "serde", serde(default = "defaults::size"))]
-    pub size: f32,
+    size: f32,
 
     /// Standard fonts
     ///
+    /// Changing this at run-tme is not currently supported.
+    ///
     /// TODO: read/write support.
     #[cfg_attr(feature = "serde", serde(skip, default))]
-    pub fonts: BTreeMap<TextClass, FontSelector>,
+    fonts: BTreeMap<TextClass, FontSelector>,
 
     /// Text glyph rastering settings
+    ///
+    /// Changing this at run-tme is not currently supported.
     #[cfg_attr(feature = "serde", serde(default))]
-    pub raster: RasterConfig,
+    raster: RasterConfig,
 }
 
 impl Default for FontConfig {
@@ -116,20 +118,24 @@ impl Default for RasterConfig {
 
 /// Getters
 impl FontConfig {
-    /// Standard font size
+    /// Get font size
     ///
     /// Units: logical (unscaled) pixels per Em.
     ///
     /// To convert to Points, multiply by three quarters.
     #[inline]
-    pub fn size(&self) -> f32 {
-        self.size
+    pub fn get_dpem(&self, class: TextClass) -> f32 {
+        if class != TextClass::Small {
+            self.size
+        } else {
+            self.size * 0.8
+        }
     }
 
-    /// Get an iterator over font mappings
+    /// Get a [`FontSelector`] for `class`
     #[inline]
-    pub fn iter_fonts(&self) -> impl Iterator<Item = (&TextClass, &FontSelector)> {
-        self.fonts.iter()
+    pub fn get_font_selector(&self, class: TextClass) -> FontSelector {
+        self.fonts.get(&class).cloned().unwrap_or_default()
     }
 }
 
@@ -172,11 +178,7 @@ mod defaults {
     }
 
     pub fn fonts() -> BTreeMap<TextClass, FontSelector> {
-        let serif = FamilySelector::SERIF;
-        let list = [
-            (TextClass::Edit(false), serif.into()),
-            (TextClass::Edit(true), serif.into()),
-        ];
+        let list = [(TextClass::Editor, FamilySelector::SERIF.into())];
         list.iter().cloned().collect()
     }
 

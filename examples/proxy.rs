@@ -61,7 +61,7 @@ mod ColourSquare {
             ColourSquare {
                 core: Default::default(),
                 color: None,
-                loading_text: Text::new("Loading...", TextClass::Label(false)),
+                loading_text: Text::new("Loading...", TextClass::Label, false),
             }
         }
     }

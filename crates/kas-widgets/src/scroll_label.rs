@@ -20,6 +20,9 @@ mod SelectableText {
     /// The [`ScrollText`] widget should be preferred in most cases; this widget
     /// is a component of `ScrollText` and has some special behaviour.
     ///
+    /// By default, this uses [`TextClass::Standard`]; see [`Self::set_class`]
+    /// and [`Self::with_class`].
+    ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
     ///
@@ -91,7 +94,7 @@ mod SelectableText {
         pub fn new(text: T) -> Self {
             SelectableText {
                 core: Default::default(),
-                text: Text::new(text, TextClass::LabelScroll),
+                text: Text::new(text, TextClass::Standard, true),
                 text_fn: None,
                 selection: SelectionHelper::new(0, 0),
                 has_sel_focus: false,
@@ -130,6 +133,12 @@ mod SelectableText {
             SelectableText::<(), T>::new(T::default()).with_fn(text_fn)
         }
 
+        /// Get text contents
+        #[inline]
+        pub fn as_str(&self) -> &str {
+            self.text.as_str()
+        }
+
         /// Set text in an existing `Label`
         ///
         /// Note: this must not be called before fonts have been initialised
@@ -144,6 +153,29 @@ mod SelectableText {
 
             self.selection.set_max_len(self.text.str_len());
             true
+        }
+
+        /// Get text class
+        #[inline]
+        pub fn class(&self) -> TextClass {
+            self.text.class()
+        }
+
+        /// Set text class
+        ///
+        /// Default: [`TextClass::Standard`]
+        #[inline]
+        pub fn set_class(&mut self, class: TextClass) {
+            self.text.set_class(class);
+        }
+
+        /// Set text class (inline)
+        ///
+        /// Default: [`TextClass::Standard`]
+        #[inline]
+        pub fn with_class(mut self, class: TextClass) -> Self {
+            self.text.set_class(class);
+            self
         }
 
         fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
@@ -179,12 +211,6 @@ mod SelectableText {
                 let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
                 cx.set_scroll(Scroll::Rect(Rect { pos, size }));
             }
-        }
-
-        /// Get text contents
-        #[inline]
-        pub fn as_str(&self) -> &str {
-            self.text.as_str()
         }
     }
 
@@ -309,6 +335,9 @@ mod ScrollText {
     /// This widget is a wrapper around [`SelectableText`] enabling scrolling
     /// and adding a vertical scroll bar.
     ///
+    /// By default, this uses [`TextClass::Standard`]; see [`Self::set_class`]
+    /// and [`Self::with_class`].
+    ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
     ///
@@ -319,26 +348,27 @@ mod ScrollText {
     pub struct ScrollText<A, T: FormattableText + 'static> {
         core: widget_core!(),
         scroll: ScrollComponent,
-        // NOTE: label is a Viewport which doesn't use update methods, therefore we don't call them.
+        // NOTE: text is a Viewport which doesn't use update methods, therefore we don't call them.
         #[widget]
-        label: SelectableText<A, T>,
+        text: SelectableText<A, T>,
         #[widget = &()]
         vert_bar: ScrollBar<kas::dir::Down>,
     }
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.label.size_rules(cx, axis);
+            let mut rules = self.text.size_rules(cx, axis);
             let _ = self.vert_bar.size_rules(cx, axis);
             if axis.is_vertical() {
-                rules.reduce_min_to((cx.dpem() * 4.0).cast_ceil());
+                let dpem = cx.dpem(self.text.text.class());
+                rules.reduce_min_to((dpem * 4.0).cast_ceil());
             }
             rules.with_stretch(Stretch::Low)
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, mut rect: Rect, hints: AlignHints) {
             self.core.set_rect(rect);
-            self.label.set_rect(cx, rect, hints);
+            self.text.set_rect(cx, rect, hints);
 
             let w = cx.scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
@@ -349,7 +379,7 @@ mod ScrollText {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            self.label
+            self.text
                 .draw_with_offset(draw.re(), self.rect(), self.scroll.offset());
 
             // We use a new pass to draw the scroll bar over inner content, but
@@ -369,7 +399,7 @@ mod ScrollText {
         }
 
         fn translation(&self, index: usize) -> Offset {
-            if index == widget_index!(self.label) {
+            if index == widget_index!(self.text) {
                 self.scroll.offset()
             } else {
                 Offset::ZERO
@@ -386,7 +416,7 @@ mod ScrollText {
             ScrollText {
                 core: Default::default(),
                 scroll: Default::default(),
-                label: SelectableText::new(text),
+                text: SelectableText::new(text),
                 vert_bar: ScrollBar::new().with_invisible(true),
             }
         }
@@ -402,7 +432,7 @@ mod ScrollText {
             ScrollText {
                 core: self.core,
                 scroll: self.scroll,
-                label: self.label.with_fn(text_fn),
+                text: self.text.with_fn(text_fn),
                 vert_bar: self.vert_bar,
             }
         }
@@ -420,25 +450,48 @@ mod ScrollText {
             ScrollText::<(), T>::new(T::default()).with_fn(text_fn)
         }
 
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
+            self.text.as_str()
+        }
+
         /// Replace text
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, cx: &mut EventState, text: T) {
-            if self.label.set_text(text) {
+            if self.text.set_text(text) {
                 self.update_content_size(cx);
                 cx.redraw(self);
             }
         }
 
-        /// Get text contents
-        pub fn as_str(&self) -> &str {
-            self.label.as_str()
+        /// Get text class
+        #[inline]
+        pub fn class(&self) -> TextClass {
+            self.text.class()
+        }
+
+        /// Set text class
+        ///
+        /// Default: [`TextClass::Standard`]
+        #[inline]
+        pub fn set_class(&mut self, class: TextClass) {
+            self.text.set_class(class);
+        }
+
+        /// Set text class (inline)
+        ///
+        /// Default: [`TextClass::Standard`]
+        #[inline]
+        pub fn with_class(mut self, class: TextClass) -> Self {
+            self.text.set_class(class);
+            self
         }
 
         fn update_content_size(&mut self, cx: &mut EventState) {
             let size = self.rect().size;
-            let _ = self.scroll.set_sizes(size, self.label.content_size());
+            let _ = self.scroll.set_sizes(size, self.text.content_size());
             self.vert_bar
                 .set_limits(cx, self.scroll.max_offset().1, size.1);
             self.vert_bar.set_value(cx, self.scroll.offset().1);
@@ -448,7 +501,7 @@ mod ScrollText {
     impl ScrollText<(), String> {
         /// Set text contents from a string
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
-            if self.label.set_string(string) {
+            if self.text.set_string(string) {
                 self.update_content_size(cx);
             }
         }
@@ -460,7 +513,7 @@ mod ScrollText {
         fn probe(&self, coord: Coord) -> Id {
             self.vert_bar
                 .try_probe(coord)
-                .unwrap_or_else(|| self.label.id())
+                .unwrap_or_else(|| self.text.id())
         }
 
         #[inline]
@@ -495,13 +548,13 @@ mod ScrollText {
         }
 
         fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
-            let size = self.label.rect().size;
+            let size = self.text.rect().size;
             let axis = AxisInfo::new(false, Some(size.1));
-            let mut resize = self.label.size_rules(&mut cx.size_cx(), axis).min_size() > size.0;
+            let mut resize = self.text.size_rules(&mut cx.size_cx(), axis).min_size() > size.0;
             let axis = AxisInfo::new(true, Some(size.0));
-            resize |= self.label.size_rules(&mut cx.size_cx(), axis).min_size() > size.1;
-            self.label
-                .set_rect(&mut cx.size_cx(), self.label.rect(), Default::default());
+            resize |= self.text.size_rules(&mut cx.size_cx(), axis).min_size() > size.1;
+            self.text
+                .set_rect(&mut cx.size_cx(), self.text.rect(), Default::default());
             self.update_content_size(cx);
             ActionResize(resize)
         }

@@ -57,7 +57,7 @@ mod SubMenu {
         ) -> Self {
             SubMenu {
                 core: Default::default(),
-                label: AccessLabel::new(label).with_class(TextClass::MenuLabel),
+                label: AccessLabel::new(label).with_class(TextClass::Label),
                 mark: Mark::new(MarkStyle::Chevron(direction), "Open"),
                 popup: Popup::new(MenuView::new(list), direction),
             }

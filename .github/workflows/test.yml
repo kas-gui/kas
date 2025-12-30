@@ -20,7 +20,9 @@ jobs:
         with:
           components: rustfmt
       - name: Install dependencies
-        run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1-dev
 
       - name: Rustfmt check
         run: |
@@ -93,7 +95,9 @@ jobs:
           # components: clippy
       - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1-dev
 
       - name: Test kas-macros
         run: cargo test --manifest-path crates/kas-macros/Cargo.toml --features log

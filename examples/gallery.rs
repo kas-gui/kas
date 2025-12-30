@@ -16,7 +16,7 @@ use kas::config::{ConfigMsg, ThemeConfigMsg};
 use kas::dir::{Down, Right};
 use kas::image::Svg;
 use kas::prelude::*;
-use kas::theme::MarginStyle;
+use kas::theme::{MarginStyle, TextClass};
 use kas::widgets::{column, *};
 use kas::window::Popup;
 use std::ops::Range;
@@ -108,7 +108,7 @@ fn widgets() -> Page<AppData> {
         #[layout(row! [self.text, Button::label_msg("&Edit", MsgEdit)])]
         struct {
             core: widget_core!(),
-            #[widget] text: Text<Data, String> = format_data!(data: &Data, "{}", &data.text),
+            #[widget] text: Text<Data, String> = format_text!(data: &Data, "{}", &data.text),
             #[widget(&())] popup: Popup<TextEdit> = Popup::new(TextEdit::new("", true), Direction::Down),
         }
         impl Events for Self {
@@ -704,7 +704,8 @@ fn canvas() -> Page<AppData> {
     let ui = column![
         Label::new(
             "Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."
-        ),
+        )
+        .with_class(TextClass::Standard),
         Canvas::new(Program(Instant::now())),
     ];
     Page::new(ui.map_any())
@@ -728,7 +729,7 @@ KAS_CONFIG_MODE=readwrite
     .unwrap();
 
     let ui = column![
-        ScrollLabel::new(desc),
+        ScrollLabel::new(desc).with_class(TextClass::Small),
         Separator::new(),
         ScrollRegion::new_clip(EventConfig::new())
     ];

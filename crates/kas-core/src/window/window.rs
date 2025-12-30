@@ -466,7 +466,7 @@ impl<Data: AppData> Window<Data> {
             core: Default::default(),
             props: Properties::default(),
             inner: ui,
-            tooltip: Popup::new(Label::default(), Direction::Down).align(Align::Center),
+            tooltip: Popup::new(Label::new("".to_string()), Direction::Down).align(Align::Center),
             title_bar: TitleBar::new(title),
             b_w: Border::new(ResizeDirection::West),
             b_e: Border::new(ResizeDirection::East),

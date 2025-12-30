@@ -127,65 +127,31 @@ impl SelectionStyle {
     }
 }
 
-/// Class of text drawn
+/// Font "class" selector
 ///
-/// Themes choose font, font size, colour, and alignment based on this.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+/// Fonts are chosen from available (system) fonts depending on the `TextClass`
+/// and [configuration](crate::config::FontConfig).
+/// `TextClass` may affect other font properties, including size and weight.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash, linearize::Linearize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TextClass {
-    /// Label text is drawn over the background colour
+    /// The standard UI font
+    Standard,
+    /// Label UI font
     ///
-    /// This takes one parameter: `multi_line`. Text is wrapped only if true.
-    Label(bool),
-    /// Scrollable label
+    /// This text class should be used by short labels such as those found on
+    /// buttons, menus and other UI controls.
     ///
-    /// This is similar to `Label(true)`, but may occupy less vertical space.
-    /// Usually it also implies that the text is both scrollable and selectable,
-    /// but these are characteristics of the widget, not the text object.
-    LabelScroll,
-    /// Label with access keys
+    /// According to user preference, this may appear identical to
+    /// [`TextClass::Standard`] or may be distinct, e.g. using a larger font
+    /// size or heavier weight.
+    Label,
+    /// Small UI font
     ///
-    /// This takes one parameter: `multi_line`. Text is wrapped only if true.
+    /// This class is usually similar to [`TextClass::Standard`] but smaller.
+    Small,
+    /// Editable text
     ///
-    /// This is identical to `Label` except that effects are only drawn if
-    /// access key mode is activated (usually the `Alt` key).
-    AccessLabel(bool),
-    /// Button text is drawn over a button
-    ///
-    /// Same as `AccessLabel(false)`, though theme may differentiate.
-    Button,
-    /// Menu label (single line, does not stretch)
-    ///
-    /// Similar to `AccessLabel(false)`, but with horizontal stretching disabled.
-    MenuLabel,
-    /// Editable text, usually encapsulated in some type of box
-    ///
-    /// This takes one parameter: `multi_line`. Text is wrapped only if true.
-    Edit(bool),
-}
-
-impl TextClass {
-    /// True if text is single-line only
-    #[inline]
-    pub fn single_line(self) -> bool {
-        !self.multi_line()
-    }
-
-    /// True if text is multi-line and should automatically line-wrap
-    #[inline]
-    pub fn multi_line(self) -> bool {
-        use TextClass::*;
-        matches!(
-            self,
-            Label(true) | LabelScroll | AccessLabel(true) | Edit(true)
-        )
-    }
-
-    /// True if text effects should only be shown dependant on access key
-    /// mode being active
-    #[inline]
-    pub fn is_access_key(self) -> bool {
-        use TextClass::*;
-        matches!(self, AccessLabel(_) | Button | MenuLabel)
-    }
+    /// This text class should be preferred for editable text.
+    Editor,
 }

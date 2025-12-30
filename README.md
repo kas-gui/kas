@@ -31,7 +31,7 @@ struct Increment(i32);
 
 fn counter() -> impl Widget<Data = ()> {
     let tree = column![
-        format_value!("{}").align(AlignHints::CENTER),
+        format_label!("{}").align(AlignHints::CENTER),
         row![
             Button::label_msg("−", Increment(-1)),
             Button::label_msg("+", Increment(1)),

@@ -5,6 +5,7 @@
 
 //! A shared implementation of [`ThemeSize`]
 
+use linearize::StaticMap;
 use std::any::Any;
 use std::cell::RefCell;
 use std::f32;
@@ -89,9 +90,9 @@ crate::impl_scope! {
 pub struct Dimensions {
     /// Scale factor
     pub scale: f32,
-    pub dpem: f32,
+    pub dpem: StaticMap<TextClass, f32>,
     pub mark_line: f32,
-    pub min_line_length: i32,
+    pub min_line_len_em: f32,
     pub m_inner: u16,
     pub m_tiny: u16,
     pub m_small: u16,
@@ -115,7 +116,10 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: &Parameters, scale: f32, dpem: f32) -> Self {
+    pub fn new(params: &Parameters, config: &WindowConfig) -> Self {
+        let scale = config.scale_factor();
+        let font = config.font();
+
         let text_m0 = (params.m_text.0 * scale).cast_nearest();
         let text_m1 = (params.m_text.1 * scale).cast_nearest();
 
@@ -124,9 +128,9 @@ impl Dimensions {
 
         Dimensions {
             scale,
-            dpem,
+            dpem: StaticMap::from_fn(|class| scale * font.get_dpem(class)),
             mark_line: (1.6 * scale).round().max(1.0),
-            min_line_length: (8.0 * dpem).cast_nearest(),
+            min_line_len_em: 8.0,
             m_inner: (params.m_inner * scale).cast_nearest(),
             m_tiny: (params.m_tiny * scale).cast_nearest(),
             m_small: (params.m_small * scale).cast_nearest(),
@@ -160,11 +164,9 @@ pub struct Window<D> {
 
 impl<D> Window<D> {
     pub fn new(dims: &Parameters, config: &WindowConfig) -> Self {
-        let scale = config.scale_factor();
-        let dpem = scale * config.font().size();
         Window {
             config: config.clone_base(),
-            dims: Dimensions::new(dims, scale, dpem),
+            dims: Dimensions::new(dims, config),
             anim: AnimState::new(&config.theme()),
         }
     }
@@ -174,11 +176,9 @@ impl<D> Window<D> {
     /// Returns `true` if a resize is needed based on changes to `config` data.
     /// Does not test whether `dims` have changed.
     pub fn update(&mut self, dims: &Parameters, config: &WindowConfig) -> bool {
-        let scale = config.scale_factor();
-        let dpem = scale * config.font().size();
-        let need_resize = scale != self.dims.scale || dpem != self.dims.dpem;
-        self.dims = Dimensions::new(dims, scale, dpem);
-        need_resize
+        let old_dims = self.dims.clone();
+        self.dims = Dimensions::new(dims, config);
+        old_dims.scale != self.dims.scale || old_dims.dpem != self.dims.dpem
     }
 }
 
@@ -197,20 +197,21 @@ impl<D: 'static> ThemeSize for Window<D> {
         self.dims.scale
     }
 
-    fn dpem(&self) -> f32 {
-        self.dims.dpem
+    fn dpem(&self, class: TextClass) -> f32 {
+        self.dims.dpem[class]
     }
 
     fn min_element_size(&self) -> i32 {
         (self.dims.scale * 8.0).cast_nearest()
     }
 
-    fn min_scroll_size(&self, axis_is_vertical: bool) -> i32 {
-        if axis_is_vertical {
-            (self.dims.dpem * 3.0).cast_ceil()
+    fn min_scroll_size(&self, axis_is_vertical: bool, class: TextClass) -> i32 {
+        let factor = if axis_is_vertical {
+            3.0
         } else {
-            self.dims.min_line_length
-        }
+            self.dims.min_line_len_em
+        };
+        (self.dims.dpem[class] * factor).cast_ceil()
     }
 
     fn grip_len(&self) -> i32 {
@@ -231,7 +232,10 @@ impl<D: 'static> ThemeSize for Window<D> {
             MarginStyle::Huge => Margins::splat(self.dims.m_huge),
             MarginStyle::Text => Margins::hv_splat(self.dims.m_text),
             MarginStyle::Px(px) => Margins::splat(u16::conv_nearest(px * self.dims.scale)),
-            MarginStyle::Em(em) => Margins::splat(u16::conv_nearest(em * self.dims.dpem)),
+            MarginStyle::Em(em) => {
+                let dpem = self.dims.dpem[TextClass::Standard];
+                Margins::splat(u16::conv_nearest(em * dpem))
+            }
         }
     }
 
@@ -332,29 +336,20 @@ impl<D: 'static> ThemeSize for Window<D> {
     }
 
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass) {
-        let font = self
-            .config
-            .borrow()
-            .font
-            .fonts
-            .get(&class)
-            .cloned()
-            .unwrap_or_default();
-        let dpem = self.dims.dpem;
+        let dpem = self.dims.dpem[class];
+        self.text_configure_with_dpem(text, class, dpem);
+    }
+
+    fn text_configure_with_dpem(&self, text: &mut dyn SizableText, class: TextClass, dpem: f32) {
+        let font = self.config.borrow().font.get_font_selector(class);
         text.set_font(font, dpem);
     }
 
-    fn text_rules(
-        &self,
-        text: &mut dyn SizableText,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
-        let wrap = class.multi_line();
-
+    fn text_rules(&self, text: &mut dyn SizableText, wrap: bool, axis: AxisInfo) -> SizeRules {
         let rules = if axis.is_horizontal() {
             if wrap {
-                let min = self.dims.min_line_length;
+                let min: i32 =
+                    (self.dims.min_line_len_em * self.dims.dpem[text.class()]).cast_nearest();
                 let limit = 2 * min;
                 let bound: i32 = text.measure_width(limit.cast()).cast_ceil();
 

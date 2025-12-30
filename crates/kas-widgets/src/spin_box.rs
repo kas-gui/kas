@@ -234,7 +234,7 @@ mod SpinBox {
                 core: Default::default(),
                 edit: EditField::new(SpinGuard::new(range, Box::new(state_fn)))
                     .with_width_em(3.0, 8.0),
-                unit: Default::default(),
+                unit: Text::new("".to_string(), TextClass::Label, false),
                 b_up: MarkButton::new_msg(
                     MarkStyle::Chevron(Direction::Up),
                     "Increment",

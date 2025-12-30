@@ -16,7 +16,14 @@ layout(location = 0) out vec4 outColor;
 layout(set = 1, binding = 0) uniform texture2D tex;
 layout(set = 1, binding = 1) uniform sampler tex_sampler;
 
+const float gamma = 1.43;
+
 void main() {
-    float alpha = texture(sampler2D(tex, tex_sampler), tex_coord).r;
-    outColor = vec4(col.rgb, col.a * alpha);
+    // Get a coverage value of the rastered glyph and use gamma correction to
+    // ensure perceptually-linear blending of foreground and background.
+    // This assumes a pre-multiplied alpha blend mode.
+    float cov = texture(sampler2D(tex, tex_sampler), tex_coord).r;
+    vec3 rgb = col.rgb * pow(cov, gamma);
+    float inv_cov = 1.0 - pow(1.0 - cov, gamma);
+    outColor = vec4(rgb, col.a * inv_cov);
 }
