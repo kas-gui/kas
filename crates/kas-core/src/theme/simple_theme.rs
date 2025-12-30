@@ -209,6 +209,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
     }
 
     fn draw_rounded(&mut self) -> Option<&mut dyn DrawRounded> {
+        // FIXME: this should return Some(&mut self.draw) where DS::Draw: DrawRoundedImpl
         None
     }
 

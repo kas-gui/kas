@@ -454,9 +454,11 @@ impl SizeRules {
         }
         let target = target - margin_sum;
 
-        let mut to_shrink = dist_over_b_lower_stretch.max(sum + dist_under_b - target);
+        // Shrink: sum - target
+        // + dist_under_b because this lets us increase targets under b
+        let mut to_shrink = sum + dist_under_b - target;
         if dist_over_b <= to_shrink {
-            // Ensure nothing exceeds the ideal:
+            // Ensure nothing exceeds the ideal and consider shrinking anything over min:
             let mut targets = Targets::new();
             sum = 0;
             for i in 0..N {
@@ -472,6 +474,15 @@ impl SizeRules {
                 reduce_targets(out, &mut targets, |i| rules[i].a, avail);
                 debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
                 return;
+            }
+        } else if dist_over_b_lower_stretch >= to_shrink {
+            // Ensure only highest-stretch-priority items exceed the ideal:
+            sum = 0;
+            for i in 0..N {
+                if rules[i].stretch < highest_stretch {
+                    out[i] = out[i].min(rules[i].b);
+                }
+                sum += out[i];
             }
         } else if to_shrink > 0 {
             // we do not go below ideal, and will keep at least one above
@@ -513,7 +524,6 @@ impl SizeRules {
                 }
 
                 sum = 0;
-                dist_over_b_lower_stretch = 0;
                 let mut avail = 0;
                 let mut targets = Targets::new();
                 for i in 0..N {
@@ -526,13 +536,10 @@ impl SizeRules {
                             avail += over;
                             targets.push(i.cast());
                         }
-                        if stretch < highest_stretch as usize {
-                            dist_over_b_lower_stretch += over;
-                        }
                     }
                     sum += out[i];
                 }
-                let to_shrink = dist_over_b_lower_stretch.max(sum + dist_under_b - target);
+                let to_shrink = sum + dist_under_b - target;
                 if 0 < to_shrink && to_shrink <= avail {
                     avail -= to_shrink;
                     reduce_targets(out, &mut targets, |i| rules[i].b, avail);
@@ -598,7 +605,11 @@ impl SizeRules {
             }
         }
 
-        debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
+        debug_assert_eq!(
+            target,
+            (0..N).fold(0, |x, i| x + out[i]),
+            "widths {out:?} not equal to target {target}"
+        );
     }
 
     /// Ensure at least one of `rules` has stretch priority at least as high as self
@@ -667,7 +678,7 @@ impl SizeRules {
     }
 }
 
-trait SolvePriority {
+trait SolvePriority: std::fmt::Debug {
     /// Are we giving priority to some widget when increasing/decreasing size?
     ///
     /// - `None` means even distribution
@@ -676,6 +687,7 @@ trait SolvePriority {
     fn priority(&self) -> Option<bool>;
 }
 
+#[derive(Debug)]
 struct Even;
 impl SolvePriority for Even {
     #[inline]
@@ -684,6 +696,7 @@ impl SolvePriority for Even {
     }
 }
 
+#[derive(Debug)]
 struct Prioritize {
     last: bool,
 }

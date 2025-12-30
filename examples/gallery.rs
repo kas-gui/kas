@@ -719,10 +719,10 @@ Event configuration editor
 
 Updated items should have immediate effect.
 
-To persist, set the following environment variables:
+To persist configuration set `KAS_CONFIG`:
 ```
-KAS_CONFIG=config.yaml
-KAS_CONFIG_MODE=readwrite
+export KAS_CONFIG=config.toml
+cargo run --example gallery --features toml
 ```
 ",
     )
