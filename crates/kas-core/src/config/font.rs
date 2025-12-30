@@ -72,13 +72,6 @@ pub struct RasterConfig {
     /// -   `mode == 4`: use `swash` for rastering with hinting
     #[cfg_attr(feature = "serde", serde(default = "defaults::mode"))]
     pub mode: u8,
-    /// Scale multiplier for fixed-precision
-    ///
-    /// This should be an integer `n >= 1`, e.g. `n = 4` provides four sub-pixel
-    /// steps of precision. It is also required that `n * h < (1 << 24)` where
-    /// `h` is the text height in pixels.
-    #[cfg_attr(feature = "serde", serde(default = "defaults::scale_steps"))]
-    pub scale_steps: u8,
     /// Subpixel positioning threshold
     ///
     /// Text with height `h` less than this threshold will use sub-pixel
@@ -109,7 +102,6 @@ impl Default for RasterConfig {
     fn default() -> Self {
         RasterConfig {
             mode: defaults::mode(),
-            scale_steps: defaults::scale_steps(),
             subpixel_threshold: defaults::subpixel_threshold(),
             subpixel_steps: defaults::subpixel_steps(),
         }
@@ -183,9 +175,6 @@ mod defaults {
     }
 
     pub fn mode() -> u8 {
-        4
-    }
-    pub fn scale_steps() -> u8 {
         4
     }
     pub fn subpixel_threshold() -> u8 {

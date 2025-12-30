@@ -18,6 +18,13 @@ use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
 
+/// Number of sub-pixel text sizes
+///
+/// Text `dpem * SCALE_STEPS` is rounded to the nearest integer, so for example
+/// `SCALE_STEPS = 4.0` would support a text size of 5.25 pixels per Em.
+/// In practice it's not very useful to support fractional text sizes.
+const SCALE_STEPS: f32 = 1.0;
+
 /// Support allocation of glyph sprites
 ///
 /// Allocation failures will result in glyphs not drawing.
@@ -49,7 +56,6 @@ kas::impl_scope! {
     #[derive(Debug, PartialEq)]
     #[impl_default]
     pub struct Config {
-        scale_steps: f32 = 4.0,
         subpixel_threshold: f32 = 18.0,
         subpixel_steps: u8 = 5,
     }
@@ -108,7 +114,7 @@ impl SpriteDescriptor {
         let glyph_id: u16 = glyph.id.0;
         let steps = Self::sub_pixel_from_dpem(config, dpem);
         let mult = f32::conv(steps);
-        let dpem = u32::conv_trunc(dpem * config.scale_steps + 0.5);
+        let dpem = u32::conv_trunc(dpem * SCALE_STEPS + 0.5);
         let x_off = u8::conv_trunc(glyph.position.0.fract() * mult) % steps;
         let y_off = u8::conv_trunc(glyph.position.1.fract() * mult) % steps;
         assert!(dpem & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
@@ -131,9 +137,9 @@ impl SpriteDescriptor {
     }
 
     /// Get scale (pixels per Em)
-    pub fn dpem(self, config: &Config) -> f32 {
+    pub fn dpem(self) -> f32 {
         let dpem_steps = ((self.0 & 0x00FF_FFFF_0000_0000) >> 32) as u32;
-        f32::conv(dpem_steps) / config.scale_steps
+        f32::conv(dpem_steps) / SCALE_STEPS
     }
 
     /// Get fractional position
@@ -142,7 +148,7 @@ impl SpriteDescriptor {
     /// spacing at small font sizes. Returns the `(x, y)` offsets in the range
     /// `0.0 ≤ x < 1.0` (and the same for `y`).
     pub fn fractional_position(self, config: &Config) -> (f32, f32) {
-        let mult = 1.0 / f32::conv(Self::sub_pixel_from_dpem(config, self.dpem(config)));
+        let mult = 1.0 / f32::conv(Self::sub_pixel_from_dpem(config, self.dpem()));
         let x_steps = ((self.0 & 0x0F00_0000_0000_0000) >> 56) as u8;
         let y_steps = ((self.0 & 0xF000_0000_0000_0000) >> 60) as u8;
         let x = f32::conv(x_steps) * mult;
@@ -212,7 +218,6 @@ impl State {
         self.hint = config.mode == 4;
 
         self.config = Config {
-            scale_steps: config.scale_steps.cast(),
             subpixel_threshold: config.subpixel_threshold.cast(),
             subpixel_steps: config.subpixel_steps.clamp(1, 16),
         };
