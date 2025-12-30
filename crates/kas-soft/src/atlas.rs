@@ -300,10 +300,10 @@ struct InstanceRgba {
     tb: Vec2,
 }
 
-/// Screen and texture coordinates (alpha-only texture)
+/// Screen and texture coordinates (8-bit coverage mask)
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct InstanceA {
+struct InstanceMask {
     a: Vec2,
     b: Vec2,
     ta: Vec2,
@@ -372,7 +372,7 @@ impl Format for InstanceRgba {
     }
 }
 
-impl Format for InstanceA {
+impl Format for InstanceMask {
     type C = u8;
 
     fn render(
@@ -425,7 +425,7 @@ impl Format for InstanceA {
 /// Image loader and storage
 pub struct Shared {
     atlas_rgba: Atlases<InstanceRgba>,
-    atlas_a: Atlases<InstanceA>,
+    atlas_mask: Atlases<InstanceMask>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -435,7 +435,7 @@ impl Shared {
     pub fn new() -> Self {
         Shared {
             atlas_rgba: Atlases::new(2048),
-            atlas_a: Atlases::new(512),
+            atlas_mask: Atlases::new(512),
             last_image_n: 0,
             images: Default::default(),
         }
@@ -505,7 +505,7 @@ impl Shared {
         } in unprepared.drain(..)
         {
             match ty {
-                SpriteType::Mask => self.atlas_a.upload_a8(atlas, origin, size, &data),
+                SpriteType::Mask => self.atlas_mask.upload_a8(atlas, origin, size, &data),
                 SpriteType::Bitmap => self.atlas_rgba.upload_rgba8(atlas, origin, size, &data),
             }
         }
@@ -513,8 +513,8 @@ impl Shared {
 }
 
 impl SpriteAllocator for Shared {
-    fn alloc_a(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_a.allocate(size)
+    fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_mask.allocate(size)
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
@@ -525,7 +525,7 @@ impl SpriteAllocator for Shared {
 #[derive(Debug, Default)]
 pub struct Window {
     atlas_rgba: AtlasWindow<InstanceRgba>,
-    atlas_a: AtlasWindow<InstanceA>,
+    atlas_mask: AtlasWindow<InstanceMask>,
 }
 
 impl Window {
@@ -556,8 +556,8 @@ impl Window {
     ) {
         self.atlas_rgba
             .render(&shared.atlas_rgba, pass, buffer, size, clip_rect, offset);
-        self.atlas_a
-            .render(&shared.atlas_a, pass, buffer, size, clip_rect, offset);
+        self.atlas_mask
+            .render(&shared.atlas_mask, pass, buffer, size, clip_rect, offset);
     }
 }
 
@@ -602,8 +602,8 @@ impl RenderQueue for Window {
             SpriteType::Mask => {
                 let col: color::Rgba8Srgb = col.into();
                 let col = u32::from_le_bytes(col.0).swap_bytes() >> 8;
-                let instance = InstanceA { a, b, ta, tb, col };
-                self.atlas_a.rect(pass, sprite.atlas, instance);
+                let instance = InstanceMask { a, b, ta, tb, col };
+                self.atlas_mask.rect(pass, sprite.atlas, instance);
             }
             SpriteType::Bitmap => {
                 let instance = InstanceRgba { a, b, ta, tb };

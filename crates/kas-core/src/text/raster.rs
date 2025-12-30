@@ -32,10 +32,10 @@ const SCALE_STEPS: f32 = 1.0;
 ///
 /// Allocation failures will result in glyphs not drawing.
 pub trait SpriteAllocator {
-    /// Allocate a single-channel texture sprite
-    fn alloc_a(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+    /// Allocate a sprite using an 8-bit coverage mask
+    fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
 
-    /// Allocate an RGBA texture sprite
+    /// Allocate a sprite using a 32-bit RGBA bitmap
     ///
     /// This is only used for colored glyphs.
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
@@ -395,7 +395,7 @@ impl State {
 
             let sprite = match image.content {
                 Content::Mask => {
-                    let Ok(alloc) = allocator.alloc_a(size) else {
+                    let Ok(alloc) = allocator.alloc_mask(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
                         self.glyphs.insert(desc, Sprite::default());
                         continue;

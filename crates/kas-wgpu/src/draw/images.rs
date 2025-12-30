@@ -70,10 +70,10 @@ pub struct InstanceRgba {
 unsafe impl bytemuck::Zeroable for InstanceRgba {}
 unsafe impl bytemuck::Pod for InstanceRgba {}
 
-/// Screen and texture coordinates (alpha-only texture)
+/// Screen and texture coordinates (8-bit coverage mask)
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct InstanceA {
+pub struct InstanceMask {
     pub(super) a: Vec2,
     pub(super) b: Vec2,
     pub(super) ta: Vec2,
@@ -81,13 +81,13 @@ pub struct InstanceA {
     pub(super) col: Rgba,
 }
 
-unsafe impl bytemuck::Zeroable for InstanceA {}
-unsafe impl bytemuck::Pod for InstanceA {}
+unsafe impl bytemuck::Zeroable for InstanceMask {}
+unsafe impl bytemuck::Pod for InstanceMask {}
 
 /// Image loader and storage
 pub struct Images {
     pub(super) atlas_rgba: atlases::Pipeline<InstanceRgba>,
-    pub(super) atlas_a: atlases::Pipeline<InstanceA>,
+    pub(super) atlas_mask: atlases::Pipeline<InstanceMask>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -132,7 +132,7 @@ impl Images {
             },
         );
 
-        let atlas_a = atlases::Pipeline::new(
+        let atlas_mask = atlases::Pipeline::new(
             device,
             Some("text pipe"),
             bgl_common,
@@ -143,7 +143,7 @@ impl Images {
                 entry_point: Some("main"),
                 compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: size_of::<InstanceA>() as wgpu::BufferAddress,
+                    array_stride: size_of::<InstanceMask>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
                         0 => Float32x2,
@@ -168,7 +168,7 @@ impl Images {
 
         Images {
             atlas_rgba,
-            atlas_a,
+            atlas_mask,
             last_image_n: 0,
             images: Default::default(),
         }
@@ -232,7 +232,7 @@ impl Images {
         encoder: &mut wgpu::CommandEncoder,
         text: &mut kas::text::raster::State,
     ) {
-        self.atlas_a.prepare(device);
+        self.atlas_mask.prepare(device);
 
         let unprepared = text.unprepared_sprites();
         if !unprepared.is_empty() {
@@ -249,7 +249,7 @@ impl Images {
             let texture;
             let texel_layout = match ty {
                 SpriteType::Mask => {
-                    texture = self.atlas_a.get_texture(atlas);
+                    texture = self.atlas_mask.get_texture(atlas);
                     wgpu::TexelCopyBufferLayout {
                         offset: 0,
                         bytes_per_row: Some(size.0),
@@ -307,13 +307,14 @@ impl Images {
     ) {
         self.atlas_rgba
             .render(&window.atlas_rgba, pass, rpass, bg_common);
-        self.atlas_a.render(&window.atlas_a, pass, rpass, bg_common);
+        self.atlas_mask
+            .render(&window.atlas_mask, pass, rpass, bg_common);
     }
 }
 
 impl SpriteAllocator for Images {
-    fn alloc_a(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_a.allocate(size)
+    fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_mask.allocate(size)
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
@@ -324,7 +325,7 @@ impl SpriteAllocator for Images {
 #[derive(Debug, Default)]
 pub struct Window {
     pub(super) atlas_rgba: atlases::Window<InstanceRgba>,
-    pub(super) atlas_a: atlases::Window<InstanceA>,
+    pub(super) atlas_mask: atlases::Window<InstanceMask>,
 }
 
 impl Window {
@@ -336,7 +337,7 @@ impl Window {
         encoder: &mut wgpu::CommandEncoder,
     ) {
         self.atlas_rgba.write_buffers(device, staging_belt, encoder);
-        self.atlas_a.write_buffers(device, staging_belt, encoder);
+        self.atlas_mask.write_buffers(device, staging_belt, encoder);
     }
 
     /// Add a rectangle to the buffer
@@ -395,8 +396,8 @@ impl RenderQueue for Window {
 
         match ty {
             SpriteType::Mask => {
-                let instance = InstanceA { a, b, ta, tb, col };
-                self.atlas_a.rect(pass, sprite.atlas, instance);
+                let instance = InstanceMask { a, b, ta, tb, col };
+                self.atlas_mask.rect(pass, sprite.atlas, instance);
             }
             SpriteType::Bitmap => {
                 let instance = InstanceRgba { a, b, ta, tb };
