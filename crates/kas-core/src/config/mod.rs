@@ -12,7 +12,7 @@ mod event;
 pub use event::{EventConfig, EventConfigMsg, EventWindowConfig, MousePan};
 
 mod font;
-pub use font::{FontConfig, FontConfigMsg, RasterConfig};
+pub use font::{FontConfig, FontConfigMsg, RasterConfig, SubpixelMode};
 
 mod format;
 pub use format::{Error, Format};

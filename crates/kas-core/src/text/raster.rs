@@ -17,6 +17,9 @@ use kas::geom::{Quad, Vec2};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
+use swash::zeno::Format;
+
+use crate::config::SubpixelMode;
 
 /// Number of sub-pixel text sizes
 ///
@@ -58,6 +61,7 @@ kas::impl_scope! {
     pub struct Config {
         subpixel_threshold: f32 = 18.0,
         subpixel_x_steps: u8 = 3,
+        subpixel_format: Format = Format::Alpha,
     }
 }
 
@@ -223,6 +227,10 @@ impl State {
         self.config = Config {
             subpixel_threshold: config.subpixel_threshold.cast(),
             subpixel_x_steps: config.subpixel_x_steps.clamp(1, 16),
+            subpixel_format: match config.subpixel_mode {
+                SubpixelMode::None => Format::Alpha,
+                SubpixelMode::HorizontalRGB => Format::Subpixel,
+            },
         };
 
         // NOTE: possibly this should force re-drawing of all glyphs, but for

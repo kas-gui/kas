@@ -51,6 +51,21 @@ impl Default for FontConfig {
     }
 }
 
+/// Sub-pixel font rendering control
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum SubpixelMode {
+    /// No sub-pixel rendering
+    ///
+    /// This is the default because it is the simplest, always supported and never wrong.
+    #[default]
+    None,
+    /// Horizontal RGB sub-pixels
+    ///
+    /// This is the most common LCD display type.
+    HorizontalRGB,
+}
+
 /// Font raster settings
 ///
 /// These are not used by the theme, but passed through to the rendering
@@ -89,6 +104,8 @@ pub struct RasterConfig {
     /// Minimum: 1 (no sub-pixel positioning). Maximum: 16. Default: 3.
     #[cfg_attr(feature = "serde", serde(default = "defaults::subpixel_x_steps"))]
     pub subpixel_x_steps: u8,
+    /// Subpixel rendering mode
+    pub subpixel_mode: SubpixelMode,
 }
 
 impl Default for RasterConfig {
@@ -97,6 +114,7 @@ impl Default for RasterConfig {
             mode: defaults::mode(),
             subpixel_threshold: defaults::subpixel_threshold(),
             subpixel_x_steps: defaults::subpixel_x_steps(),
+            subpixel_mode: Default::default(),
         }
     }
 }
