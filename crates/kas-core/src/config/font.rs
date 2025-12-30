@@ -75,27 +75,20 @@ pub struct RasterConfig {
     /// Subpixel positioning threshold
     ///
     /// Text with height `h` less than this threshold will use sub-pixel
-    /// positioning, which should make letter spacing more accurate for small
-    /// fonts (though exact behaviour depends on the font; it may be worse).
-    /// This may make rendering worse by breaking pixel alignment.
+    /// positioning (see below), which should make letter spacing more
+    /// accurate for small fonts.
     ///
-    /// Note: this feature may not be available, depending on the backend and
-    /// the mode.
-    ///
-    /// See also sub-pixel positioning steps.
+    /// Units: physical pixels per Em ("dpem"). Default value: 18.
     #[cfg_attr(feature = "serde", serde(default = "defaults::subpixel_threshold"))]
     pub subpixel_threshold: u8,
-    /// Subpixel steps
+    /// Subpixel steps (horizontal)
     ///
-    /// The number of sub-pixel positioning steps to use. 1 is the minimum and
-    /// equivalent to no sub-pixel positioning. 16 is the maximum.
+    /// The number of sub-pixel positioning steps to use on the x-axis for
+    /// horizontal text (when enabled; see [`Self::subpixel_threshold`]).
     ///
-    /// Note that since this applies to horizontal and vertical positioning, the
-    /// maximum number of rastered glyphs is multiplied by the square of this
-    /// value, though this maxmimum may not be reached in practice. Since this
-    /// feature is usually only used for small fonts this likely acceptable.
-    #[cfg_attr(feature = "serde", serde(default = "defaults::subpixel_steps"))]
-    pub subpixel_steps: u8,
+    /// Minimum: 1 (no sub-pixel positioning). Maximum: 16. Default: 3.
+    #[cfg_attr(feature = "serde", serde(default = "defaults::subpixel_x_steps"))]
+    pub subpixel_x_steps: u8,
 }
 
 impl Default for RasterConfig {
@@ -103,7 +96,7 @@ impl Default for RasterConfig {
         RasterConfig {
             mode: defaults::mode(),
             subpixel_threshold: defaults::subpixel_threshold(),
-            subpixel_steps: defaults::subpixel_steps(),
+            subpixel_x_steps: defaults::subpixel_x_steps(),
         }
     }
 }
@@ -178,9 +171,9 @@ mod defaults {
         4
     }
     pub fn subpixel_threshold() -> u8 {
-        0
+        18
     }
-    pub fn subpixel_steps() -> u8 {
-        5
+    pub fn subpixel_x_steps() -> u8 {
+        3
     }
 }

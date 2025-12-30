@@ -57,7 +57,7 @@ kas::impl_scope! {
     #[impl_default]
     pub struct Config {
         subpixel_threshold: f32 = 18.0,
-        subpixel_steps: u8 = 5,
+        subpixel_x_steps: u8 = 3,
     }
 }
 
@@ -100,9 +100,9 @@ impl SpriteDescriptor {
     /// Choose a sub-pixel precision multiplier based on scale (pixels per Em)
     ///
     /// Must return an integer between 1 and 16.
-    fn sub_pixel_from_dpem(config: &Config, dpem: f32) -> u8 {
+    fn sub_pixel_x_steps(config: &Config, dpem: f32) -> u8 {
         if dpem < config.subpixel_threshold {
-            config.subpixel_steps
+            config.subpixel_x_steps
         } else {
             1
         }
@@ -112,11 +112,15 @@ impl SpriteDescriptor {
     pub fn new(config: &Config, face: FaceId, glyph: Glyph, dpem: f32) -> Self {
         let face: u16 = face.get().cast();
         let glyph_id: u16 = glyph.id.0;
-        let steps = Self::sub_pixel_from_dpem(config, dpem);
+
+        let steps = Self::sub_pixel_x_steps(config, dpem);
         let mult = f32::conv(steps);
         let dpem = u32::conv_trunc(dpem * SCALE_STEPS + 0.5);
         let x_off = u8::conv_trunc(glyph.position.0.fract() * mult) % steps;
-        let y_off = u8::conv_trunc(glyph.position.1.fract() * mult) % steps;
+        // y-offset serves little purpose since we don't support vertical text
+        // and kas-text already rounds the v-caret to the nearest pixel.
+        let y_off = 0;
+
         assert!(dpem & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
         let packed = face as u64
             | ((glyph_id as u64) << 16)
@@ -148,11 +152,10 @@ impl SpriteDescriptor {
     /// spacing at small font sizes. Returns the `(x, y)` offsets in the range
     /// `0.0 ≤ x < 1.0` (and the same for `y`).
     pub fn fractional_position(self, config: &Config) -> (f32, f32) {
-        let mult = 1.0 / f32::conv(Self::sub_pixel_from_dpem(config, self.dpem()));
+        let mult = 1.0 / f32::conv(Self::sub_pixel_x_steps(config, self.dpem()));
         let x_steps = ((self.0 & 0x0F00_0000_0000_0000) >> 56) as u8;
-        let y_steps = ((self.0 & 0xF000_0000_0000_0000) >> 60) as u8;
         let x = f32::conv(x_steps) * mult;
-        let y = f32::conv(y_steps) * mult;
+        let y = 0.0;
         (x, y)
     }
 }
@@ -219,7 +222,7 @@ impl State {
 
         self.config = Config {
             subpixel_threshold: config.subpixel_threshold.cast(),
-            subpixel_steps: config.subpixel_steps.clamp(1, 16),
+            subpixel_x_steps: config.subpixel_x_steps.clamp(1, 16),
         };
 
         // NOTE: possibly this should force re-drawing of all glyphs, but for
