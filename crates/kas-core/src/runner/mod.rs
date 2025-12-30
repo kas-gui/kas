@@ -27,7 +27,7 @@ pub use runner::{ClosedError, PreLaunchState, Proxy};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use common::{GraphicsInstance, RunError, WindowSurface};
+pub use common::{GraphicsFeatures, GraphicsInstance, RunError, WindowSurface};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]

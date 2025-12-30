@@ -17,7 +17,7 @@ use kas::config::RasterConfig;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Size, Vec2};
-use kas::runner::RunError;
+use kas::runner::{GraphicsFeatures, RunError};
 use kas::text::{Effect, TextDisplay};
 
 impl<C: CustomPipe> DrawPipe<C> {
@@ -27,6 +27,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         custom: &mut CB,
         options: &Options,
         surface: Option<&wgpu::Surface>,
+        features: GraphicsFeatures,
     ) -> Result<Self, RunError> {
         let mut adapter_options = options.adapter_options();
         adapter_options.compatible_surface = surface;
@@ -38,7 +39,14 @@ impl<C: CustomPipe> DrawPipe<C> {
         log::info!("Using graphics adapter: {}", adapter.get_info().name);
 
         // Use adapter texture size limits to support the largest window surface possible
-        let mut desc = CB::device_descriptor();
+        let mut desc = CB::device_descriptor(&adapter);
+        if features.subpixel_rendering
+            && adapter
+                .features()
+                .contains(wgpu::Features::DUAL_SOURCE_BLENDING)
+        {
+            desc.required_features |= wgpu::Features::DUAL_SOURCE_BLENDING;
+        }
         desc.required_limits = desc.required_limits.using_resolution(adapter.limits());
 
         let req = adapter.request_device(&desc);

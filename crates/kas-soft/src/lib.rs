@@ -24,7 +24,9 @@ use kas::cast::Cast;
 use kas::draw::{SharedState, WindowCommon, color};
 use kas::geom::Size;
 use kas::runner::raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-use kas::runner::{GraphicsInstance, HasDisplayAndWindowHandle, RunError, WindowSurface};
+use kas::runner::{
+    GraphicsFeatures, GraphicsInstance, HasDisplayAndWindowHandle, RunError, WindowSurface,
+};
 
 /// Graphics context
 pub struct Instance {}
@@ -109,7 +111,7 @@ impl GraphicsInstance for Instance {
 
     type Surface = Surface;
 
-    fn new_shared(&mut self, _: Option<&Surface>) -> Result<Shared, RunError> {
+    fn new_shared(&mut self, _: Option<&Surface>, _: GraphicsFeatures) -> Result<Shared, RunError> {
         Ok(Shared::default())
     }
 

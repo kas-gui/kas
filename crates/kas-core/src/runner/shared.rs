@@ -11,6 +11,7 @@ use super::{
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
+use crate::runner::GraphicsFeatures;
 use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
@@ -124,7 +125,16 @@ where
 
     pub(crate) fn create_draw_shared(&mut self, surface: &G::Surface) -> Result<(), RunError> {
         if self.draw.is_none() {
-            let mut draw_shared = self.instance.new_shared(Some(surface))?;
+            let features = GraphicsFeatures {
+                subpixel_rendering: self
+                    .config
+                    .borrow()
+                    .font
+                    .raster()
+                    .subpixel_mode
+                    .any_subpixel(),
+            };
+            let mut draw_shared = self.instance.new_shared(Some(surface), features)?;
             draw_shared.set_raster_config(self.config.borrow().font.raster());
             self.draw = Some(SharedState::new(draw_shared));
         }

@@ -52,7 +52,7 @@ impl Default for FontConfig {
 }
 
 /// Sub-pixel font rendering control
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SubpixelMode {
     /// No sub-pixel rendering
@@ -64,6 +64,13 @@ pub enum SubpixelMode {
     ///
     /// This is the most common LCD display type.
     HorizontalRGB,
+}
+
+impl SubpixelMode {
+    /// Returns true if any subpixel rendering mode is enabled
+    pub fn any_subpixel(self) -> bool {
+        self != SubpixelMode::None
+    }
 }
 
 /// Font raster settings
