@@ -206,7 +206,7 @@ mod DirItem {
             DirItem {
                 core: Default::default(),
                 tile: Tile::new(),
-                label: Label::default(),
+                label: Label::new(String::new()),
             }
         }
     }
