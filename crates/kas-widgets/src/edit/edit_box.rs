@@ -385,7 +385,7 @@ impl<G: EditGuard> EditBox<G> {
     /// and wrapping is enabled if true. Default: false.
     ///
     /// This method is ineffective if the text class is set by
-    /// [`Self::with_class`] to anything other than [`TextClass::Edit`].
+    /// [`Self::with_class`] to anything other than [`TextClass::Editor`].
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {

@@ -19,8 +19,6 @@ pub enum FontConfigMsg {
 }
 
 /// Font configuration
-///
-/// Note that only changes to [`Self::size`] are currently supported at run-time.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FontConfig {
@@ -30,11 +28,15 @@ pub struct FontConfig {
 
     /// Standard fonts
     ///
+    /// Changing this at run-tme is not currently supported.
+    ///
     /// TODO: read/write support.
     #[cfg_attr(feature = "serde", serde(skip, default))]
     fonts: BTreeMap<TextClass, FontSelector>,
 
     /// Text glyph rastering settings
+    ///
+    /// Changing this at run-tme is not currently supported.
     #[cfg_attr(feature = "serde", serde(default))]
     raster: RasterConfig,
 }

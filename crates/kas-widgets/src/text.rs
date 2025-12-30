@@ -195,7 +195,7 @@ mod Text {
 
 /// Construct a [`Text`] widget which updates text using the [`format!`] macro
 ///
-/// This uses [`TextClass::Standard`]. See also [`format_label`].
+/// This uses [`TextClass::Standard`]. See also [`format_label`](crate::format_label).
 ///
 /// Examples:
 /// ```
@@ -220,7 +220,8 @@ macro_rules! format_text {
 /// Construct a [`Text`] widget using [`TextClass::Label`] which updates text
 /// using the [`format!`] macro
 ///
-/// This is identical to [`format_text`] aside from the [`TextClass`].
+/// This is identical to [`format_text`](crate::format_text) aside from the
+/// [`TextClass`].
 #[macro_export]
 macro_rules! format_label {
     ($data:ident, $($arg:tt)*) => {
