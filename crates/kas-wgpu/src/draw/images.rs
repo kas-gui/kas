@@ -262,6 +262,18 @@ impl Images {
                         rows_per_image: Some(size.1),
                     }
                 }
+                SpriteType::RgbaMask => {
+                    texture = self
+                        .atlas_rgba_mask
+                        .as_mut()
+                        .expect("subpixel rendering feature is unavailable")
+                        .get_texture(atlas);
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(4 * size.0),
+                        rows_per_image: Some(size.1),
+                    }
+                }
                 SpriteType::Bitmap => {
                     texture = self.atlas_rgba.get_texture(atlas);
                     wgpu::TexelCopyBufferLayout {
@@ -315,6 +327,9 @@ impl Images {
             .render(&window.atlas_rgba, pass, rpass, bg_common);
         self.atlas_mask
             .render(&window.atlas_mask, pass, rpass, bg_common);
+        if let Some(pipeline) = self.atlas_rgba_mask.as_ref() {
+            pipeline.render(&window.atlas_rgba_mask, pass, rpass, bg_common);
+        }
     }
 }
 
@@ -343,6 +358,7 @@ impl SpriteAllocator for Images {
 pub struct Window {
     pub(super) atlas_rgba: atlases::Window<InstanceRgba>,
     pub(super) atlas_mask: atlases::Window<InstanceMask>,
+    pub(super) atlas_rgba_mask: atlases::Window<InstanceMask>,
 }
 
 impl Window {
@@ -355,6 +371,8 @@ impl Window {
     ) {
         self.atlas_rgba.write_buffers(device, staging_belt, encoder);
         self.atlas_mask.write_buffers(device, staging_belt, encoder);
+        self.atlas_rgba_mask
+            .write_buffers(device, staging_belt, encoder);
     }
 
     /// Add a rectangle to the buffer
@@ -415,6 +433,10 @@ impl RenderQueue for Window {
             SpriteType::Mask => {
                 let instance = InstanceMask { a, b, ta, tb, col };
                 self.atlas_mask.rect(pass, sprite.atlas, instance);
+            }
+            SpriteType::RgbaMask => {
+                let instance = InstanceMask { a, b, ta, tb, col };
+                self.atlas_rgba_mask.rect(pass, sprite.atlas, instance);
             }
             SpriteType::Bitmap => {
                 let instance = InstanceRgba { a, b, ta, tb };

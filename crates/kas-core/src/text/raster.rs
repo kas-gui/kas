@@ -177,6 +177,8 @@ impl SpriteDescriptor {
 pub enum SpriteType {
     /// 8-bit coverage mask
     Mask,
+    /// 32-bit RGBA coverage mask
+    RgbaMask,
     /// 32-bit RGBA bitmap
     Bitmap,
 }
@@ -431,7 +433,29 @@ impl State {
                         tex_quad: alloc.tex_quad,
                     }
                 }
-                Content::SubpixelMask => unimplemented!(),
+                Content::SubpixelMask => {
+                    let Ok(alloc) = allocator.alloc_rgba_mask(size) else {
+                        log::warn!("raster_glyphs failed: unable to allocate");
+                        self.glyphs.insert(desc, Sprite::default());
+                        continue;
+                    };
+
+                    self.prepare.push(UnpreparedSprite {
+                        atlas: alloc.atlas,
+                        ty: SpriteType::RgbaMask,
+                        origin: alloc.origin,
+                        size,
+                        data: image.data,
+                    });
+
+                    Sprite {
+                        atlas: alloc.atlas,
+                        ty: Some(SpriteType::RgbaMask),
+                        size: Vec2(size.0.cast(), size.1.cast()),
+                        offset: Vec2(offset.0.cast(), offset.1.cast()),
+                        tex_quad: alloc.tex_quad,
+                    }
+                }
                 Content::Color => {
                     let Ok(alloc) = allocator.alloc_rgba(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");

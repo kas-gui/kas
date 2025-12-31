@@ -506,6 +506,7 @@ impl Shared {
         {
             match ty {
                 SpriteType::Mask => self.atlas_mask.upload_a8(atlas, origin, size, &data),
+                SpriteType::RgbaMask => panic!("subpixel rendering feature is unavailable"),
                 SpriteType::Bitmap => self.atlas_rgba.upload_rgba8(atlas, origin, size, &data),
             }
         }
@@ -613,6 +614,7 @@ impl RenderQueue for Window {
                 let instance = InstanceMask { a, b, ta, tb, col };
                 self.atlas_mask.rect(pass, sprite.atlas, instance);
             }
+            SpriteType::RgbaMask => (),
             SpriteType::Bitmap => {
                 let instance = InstanceRgba { a, b, ta, tb };
                 self.atlas_rgba.rect(pass, sprite.atlas, instance);
