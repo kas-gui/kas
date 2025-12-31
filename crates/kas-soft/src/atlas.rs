@@ -513,8 +513,16 @@ impl Shared {
 }
 
 impl SpriteAllocator for Shared {
+    fn query_subpixel_rendering(&self) -> bool {
+        false
+    }
+
     fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
         self.atlas_mask.allocate(size)
+    }
+
+    fn alloc_rgba_mask(&mut self, _: (u32, u32)) -> Result<Allocation, AllocError> {
+        panic!("subpixel rendering feature is unavailable")
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {

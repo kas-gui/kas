@@ -32,8 +32,17 @@ const SCALE_STEPS: f32 = 1.0;
 ///
 /// Allocation failures will result in glyphs not drawing.
 pub trait SpriteAllocator {
+    /// Returns true if sub-pixel rendering is available
+    fn query_subpixel_rendering(&self) -> bool;
+
     /// Allocate a sprite using an 8-bit coverage mask
     fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+
+    /// Allocate a sprite using a 32-bit RGBA coverage mask
+    ///
+    /// This is an optional feature, only used if
+    /// [`Self::query_subpixel_rendering`] returns `true`.
+    fn alloc_rgba_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
 
     /// Allocate a sprite using a 32-bit RGBA bitmap
     ///
@@ -360,6 +369,11 @@ impl State {
             Source::Outline,
         ];
 
+        let mut format = self.config.subpixel_format;
+        if format != Format::Alpha && allocator.query_subpixel_rendering() == false {
+            format = Format::Alpha;
+        }
+
         // Faux italic skew:
         let transform = synthesis
             .skew()
@@ -374,7 +388,7 @@ impl State {
             }
 
             let Some(image) = Render::new(sources)
-                .format(Format::Alpha)
+                .format(format)
                 .offset(desc.fractional_position(&self.config).into())
                 .transform(transform)
                 .embolden(embolden)

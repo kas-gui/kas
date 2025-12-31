@@ -88,6 +88,7 @@ unsafe impl bytemuck::Pod for InstanceMask {}
 pub struct Images {
     pub(super) atlas_rgba: atlases::Pipeline<InstanceRgba>,
     pub(super) atlas_mask: atlases::Pipeline<InstanceMask>,
+    pub(super) atlas_rgba_mask: Option<atlases::Pipeline<InstanceMask>>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -166,9 +167,11 @@ impl Images {
             },
         );
 
+        let atlas_rgba_mask = None;
         Images {
             atlas_rgba,
             atlas_mask,
+            atlas_rgba_mask,
             last_image_n: 0,
             images: Default::default(),
         }
@@ -233,6 +236,9 @@ impl Images {
         text: &mut kas::text::raster::State,
     ) {
         self.atlas_mask.prepare(device);
+        if let Some(pipeline) = self.atlas_rgba_mask.as_mut() {
+            pipeline.prepare(device);
+        }
 
         let unprepared = text.unprepared_sprites();
         if !unprepared.is_empty() {
@@ -313,8 +319,19 @@ impl Images {
 }
 
 impl SpriteAllocator for Images {
+    fn query_subpixel_rendering(&self) -> bool {
+        self.atlas_rgba_mask.is_some()
+    }
+
     fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
         self.atlas_mask.allocate(size)
+    }
+
+    fn alloc_rgba_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_rgba_mask
+            .as_mut()
+            .expect("subpixel rendering feature is unavailable")
+            .allocate(size)
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
