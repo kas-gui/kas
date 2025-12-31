@@ -118,6 +118,7 @@ impl<F: Format> Atlases<F> {
 
         for (i, row) in data.chunks_exact(bytes * w).enumerate() {
             let ti = tx + (ty + i) * tw;
+            let w = w + F::EXTRA_WIDTH;
             F::copy_texture_slice(row, &mut atlas.tex[ti..ti + w]);
         }
     }
@@ -265,6 +266,8 @@ struct InstanceMask {
 struct InstanceRgbaMask(InstanceMask);
 
 trait Format {
+    const EXTRA_WIDTH: usize = 0;
+
     /// Color representation type
     type C: Clone + Default;
 
@@ -414,10 +417,13 @@ impl From<[u8; 4]> for U16x4 {
 }
 
 impl Format for InstanceRgbaMask {
+    const EXTRA_WIDTH: usize = 2;
     type C = u32;
 
     fn copy_texture_slice(src: &[u8], dst: &mut [Self::C]) {
-        assert!(src.len() == 4 * dst.len());
+        // dst is 2 longer than src row to allow room for filter
+        assert_eq!(src.len() + 8, 4 * dst.len());
+
         let (chunks, rem) = src.as_chunks();
         debug_assert!(rem.is_empty());
         if chunks.is_empty() {
@@ -448,6 +454,11 @@ impl Format for InstanceRgbaMask {
         let mut x = U16x4([0u16; 4]);
         let mut y: U16x4 = chunks[0].into();
 
+        let r = (R3 * y) / SUM;
+        let g = (G3 * y) / SUM;
+        let b = (B3 * y) / SUM;
+        dst[0] = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
+
         for i in 1..chunks.len() {
             let z: U16x4 = chunks[i].into();
             let r = (R1 * x + R2 * y + R3 * z) / SUM;
@@ -455,7 +466,7 @@ impl Format for InstanceRgbaMask {
             let b = (B1 * x + B2 * y + B3 * z) / SUM;
 
             // Output format is ARGB with A=0:
-            dst[i - 1] = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
+            dst[i] = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
 
             x = y;
             y = z;
@@ -464,7 +475,12 @@ impl Format for InstanceRgbaMask {
         let r = (R1 * x + R2 * y) / SUM;
         let g = (G1 * x + G2 * y) / SUM;
         let b = (B1 * x + B2 * y) / SUM;
-        *dst.last_mut().unwrap() = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
+        dst[dst.len() - 2] = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
+
+        let r = (R1 * y) / SUM;
+        let g = (G1 * y) / SUM;
+        let b = (B1 * y) / SUM;
+        dst[dst.len() - 1] = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
     }
 
     fn render(
@@ -628,7 +644,8 @@ impl SpriteAllocator for Shared {
         self.atlas_mask.allocate(size)
     }
 
-    fn alloc_rgba_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+    fn alloc_rgba_mask(&mut self, mut size: (u32, u32)) -> Result<Allocation, AllocError> {
+        size.0 += 2; // allow for correct filtering
         self.atlas_rgba_mask.allocate(size)
     }
 
@@ -702,6 +719,12 @@ impl RenderQueue for Window {
         };
         if !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1) {
             return;
+        }
+
+        if ty == SpriteType::RgbaMask {
+            // Correct for extra room allocated for filter, assuming pixel-perfect placement
+            a.0 -= 1.0;
+            b.0 += 1.0;
         }
 
         let (mut ta, mut tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
