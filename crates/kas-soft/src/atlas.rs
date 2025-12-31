@@ -257,6 +257,12 @@ struct InstanceMask {
     col: u32, // 0RGB BE format
 }
 
+/// Screen and texture coordinates (32-bit coverage mask)
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug)]
+#[autoimpl(Deref, DerefMut using self.0)]
+struct InstanceRgbaMask(InstanceMask);
+
 trait Format {
     /// Color representation type
     type C: Clone + Default;
@@ -387,10 +393,77 @@ impl Format for InstanceMask {
     }
 }
 
+impl Format for InstanceRgbaMask {
+    type C = u32;
+
+    fn copy_texture_slice(src: &[u8], dst: &mut [Self::C]) {
+        assert!(src.len() == 4 * dst.len());
+        for (out, chunk) in dst.iter_mut().zip(src.chunks_exact(4)) {
+            // We convert color from input RGBA (LE) to ARGB (BE)
+            let c = u32::from_le_bytes(chunk.try_into().unwrap());
+            let a = c >> 24 & 0xFF;
+            let b = c >> 16 & 0xFF;
+            let g = c >> 8 & 0xFF;
+            let r = c & 0xFF;
+            *out = a << 24 | r << 16 | g << 8 | b;
+        }
+    }
+
+    fn render(
+        &self,
+        tex: &[Self::C],
+        tex_size: (usize, usize),
+        buffer: &mut [u32],
+        buf_size: (usize, usize),
+        clip_rect: Rect,
+        offset: Offset,
+    ) {
+        let (clip_p, clip_q) = (clip_rect.pos, clip_rect.pos2());
+        let p = (Coord::conv_nearest(self.a) - offset).clamp(clip_p, clip_q);
+        let q = (Coord::conv_nearest(self.b) - offset).clamp(clip_p, clip_q);
+
+        let xdi = 1.0 / (self.b.0 - self.a.0);
+        let txd = self.tb.0 - self.ta.0;
+        let ydi = 1.0 / (self.b.1 - self.a.1);
+        let tyd = self.tb.1 - self.ta.1;
+
+        for y in p.1..q.1 {
+            let ly = (f32::conv(y + offset.1) - self.a.1) * ydi;
+            let ty: usize = (self.ta.1 + tyd * ly).cast_nearest();
+
+            for x in p.0..q.0 {
+                let lx = (f32::conv(x + offset.0) - self.a.0) * xdi;
+                let tx: usize = (self.ta.0 + txd * lx).cast_nearest();
+
+                let m = tex[ty * tex_size.0 + tx];
+                let mr = m >> 16 & 0xFF;
+                let mg = m >> 8 & 0xFF;
+                let mb = m & 0xFF;
+
+                let r = mr * (self.col >> 16 & 0xFF) / 255;
+                let g = mg * (self.col >> 8 & 0xFF) / 255;
+                let b = mb * (self.col & 0xFF) / 255;
+
+                let index = usize::conv(y) * buf_size.0 + usize::conv(x);
+                let bc = buffer[index];
+
+                let br = (255 - mr) * (bc >> 16 & 0xFF) / 255;
+                let bg = (255 - mg) * (bc >> 8 & 0xFF) / 255;
+                let bb = (255 - mb) * (bc & 0xFF) / 255;
+
+                let c = r << 16 | g << 8 | b;
+                let ab = br << 16 | bg << 8 | bb;
+                buffer[index] = c + ab;
+            }
+        }
+    }
+}
+
 /// Image loader and storage
 pub struct Shared {
     atlas_rgba: Atlases<InstanceRgba>,
     atlas_mask: Atlases<InstanceMask>,
+    atlas_rgba_mask: Atlases<InstanceRgbaMask>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -401,6 +474,7 @@ impl Shared {
         Shared {
             atlas_rgba: Atlases::new(2048),
             atlas_mask: Atlases::new(512),
+            atlas_rgba_mask: Atlases::new(512),
             last_image_n: 0,
             images: Default::default(),
         }
@@ -470,7 +544,7 @@ impl Shared {
         {
             match ty {
                 SpriteType::Mask => self.atlas_mask.upload(atlas, origin, size, &data),
-                SpriteType::RgbaMask => panic!("subpixel rendering feature is unavailable"),
+                SpriteType::RgbaMask => self.atlas_rgba_mask.upload(atlas, origin, size, &data),
                 SpriteType::Bitmap => self.atlas_rgba.upload(atlas, origin, size, &data),
             }
         }
@@ -479,15 +553,15 @@ impl Shared {
 
 impl SpriteAllocator for Shared {
     fn query_subpixel_rendering(&self) -> bool {
-        false
+        true
     }
 
     fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
         self.atlas_mask.allocate(size)
     }
 
-    fn alloc_rgba_mask(&mut self, _: (u32, u32)) -> Result<Allocation, AllocError> {
-        panic!("subpixel rendering feature is unavailable")
+    fn alloc_rgba_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_rgba_mask.allocate(size)
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
@@ -499,6 +573,7 @@ impl SpriteAllocator for Shared {
 pub struct Window {
     atlas_rgba: AtlasWindow<InstanceRgba>,
     atlas_mask: AtlasWindow<InstanceMask>,
+    atlas_rgba_mask: AtlasWindow<InstanceRgbaMask>,
 }
 
 impl Window {
@@ -531,6 +606,14 @@ impl Window {
             .render(&shared.atlas_rgba, pass, buffer, size, clip_rect, offset);
         self.atlas_mask
             .render(&shared.atlas_mask, pass, buffer, size, clip_rect, offset);
+        self.atlas_rgba_mask.render(
+            &shared.atlas_rgba_mask,
+            pass,
+            buffer,
+            size,
+            clip_rect,
+            offset,
+        );
     }
 }
 
@@ -571,14 +654,18 @@ impl RenderQueue for Window {
             b.1 = b.1.clamp(rect.a.1, rect.b.1);
         }
 
+        let col: color::Rgba8Srgb = col.into();
+        let col = u32::from_le_bytes(col.0).swap_bytes() >> 8;
+
         match ty {
             SpriteType::Mask => {
-                let col: color::Rgba8Srgb = col.into();
-                let col = u32::from_le_bytes(col.0).swap_bytes() >> 8;
                 let instance = InstanceMask { a, b, ta, tb, col };
                 self.atlas_mask.rect(pass, sprite.atlas, instance);
             }
-            SpriteType::RgbaMask => (),
+            SpriteType::RgbaMask => {
+                let instance = InstanceRgbaMask(InstanceMask { a, b, ta, tb, col });
+                self.atlas_rgba_mask.rect(pass, sprite.atlas, instance);
+            }
             SpriteType::Bitmap => {
                 let instance = InstanceRgba { a, b, ta, tb };
                 self.atlas_rgba.rect(pass, sprite.atlas, instance);
