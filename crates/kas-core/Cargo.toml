@@ -151,6 +151,7 @@ too_many_arguments = "allow"
 neg_cmp_op_on_partial_ord = "allow"
 collapsible_if = "allow"
 collapsible_else_if = "allow"
+bool_comparison = "allow"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(internal_doc)'] }
