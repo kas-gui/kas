@@ -135,7 +135,7 @@ impl Images {
 
         let atlas_mask = atlases::Pipeline::new(
             device,
-            Some("text pipe"),
+            Some("text mask pipe"),
             bgl_common,
             512,
             wgpu::TextureFormat::R8Unorm,
@@ -167,7 +167,55 @@ impl Images {
             },
         );
 
-        let atlas_rgba_mask = None;
+        let mut atlas_rgba_mask = None;
+        // FIXME: This is disabled because of a wgpu validation error
+        if false
+            && device
+                .features()
+                .contains(wgpu::Features::DUAL_SOURCE_BLENDING)
+        {
+            atlas_rgba_mask = Some(atlases::Pipeline::new(
+                device,
+                Some("text subpixel mask pipe"),
+                bgl_common,
+                512,
+                wgpu::TextureFormat::Rgba8Unorm,
+                wgpu::VertexState {
+                    module: &shaders.vert_glyph,
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    buffers: &[wgpu::VertexBufferLayout {
+                        array_stride: size_of::<InstanceMask>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &wgpu::vertex_attr_array![
+                            0 => Float32x2,
+                            1 => Float32x2,
+                            2 => Float32x2,
+                            3 => Float32x2,
+                            4 => Float32x4,
+                        ],
+                    }],
+                },
+                wgpu::FragmentState {
+                    module: &shaders.frag_subpixel,
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: super::RENDER_TEX_FORMAT,
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent {
+                                src_factor: wgpu::BlendFactor::One,
+                                dst_factor: wgpu::BlendFactor::OneMinusSrc1,
+                                operation: wgpu::BlendOperation::Add,
+                            },
+                            alpha: wgpu::BlendComponent::OVER, // TODO
+                        }),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                },
+            ));
+        }
+
         Images {
             atlas_rgba,
             atlas_mask,

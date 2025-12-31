@@ -21,6 +21,7 @@ pub struct ShaderManager {
     pub frag_shaded_square: ShaderModule,
     pub frag_image: ShaderModule,
     pub frag_glyph: ShaderModule,
+    pub frag_subpixel: ShaderModule,
 }
 
 macro_rules! create {
@@ -43,6 +44,7 @@ impl ShaderManager {
             frag_shaded_square: create!(device, "shaders/shaded_square.frag.spv"),
             frag_image: create!(device, "shaders/image.frag.spv"),
             frag_glyph: create!(device, "shaders/glyph.frag.spv"),
+            frag_subpixel: create!(device, "shaders/subpixel.frag.spv"),
         }
     }
 }
