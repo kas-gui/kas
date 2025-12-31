@@ -87,16 +87,10 @@ impl<F: Format> Atlases<F> {
         }
     }
 
-    fn upload_a8(&mut self, atlas: u32, origin: (u32, u32), size: (u32, u32), data: &[u8])
-    where
-        F: Format<C = u8>,
-    {
+    fn upload(&mut self, atlas: u32, origin: (u32, u32), size: (u32, u32), data: &[u8]) {
         let atlas: usize = atlas.cast();
         let Some(atlas) = self.atlases.get_mut(atlas) else {
-            log::warn!(
-                "upload_rgba8: unknown atlas {atlas} of {}",
-                self.atlases.len()
-            );
+            log::warn!("upload: unknown atlas {atlas} of {}", self.atlases.len());
             return;
         };
 
@@ -107,72 +101,23 @@ impl<F: Format> Atlases<F> {
         assert_eq!(atlas.tex.len(), tw * th);
         if tx + w > tw || ty + h > th {
             log::error!(
-                "upload_rgba8: image of size {w}x{h} with origin {tx},{ty} not within bounds of texture {tw}x{th}"
+                "upload: image of size {w}x{h} with origin {tx},{ty} not within bounds of texture {tw}x{th}"
             );
             return;
         }
 
-        if data.len() != w * h {
+        let bytes = size_of::<F::C>();
+        if data.len() != bytes * w * h {
             log::error!(
-                "upload_rgba8: bad data length (received {} bytes for image of size {w}x{h})",
+                "upload: bad data length (received {} bytes for image of size {w}x{h})",
                 data.len()
             );
             return;
         }
 
-        for (i, row) in data.chunks_exact(w).enumerate() {
+        for (i, row) in data.chunks_exact(bytes * w).enumerate() {
             let ti = tx + (ty + i) * tw;
-            let dst = &mut atlas.tex[ti..ti + w];
-            dst.copy_from_slice(row);
-        }
-    }
-
-    fn upload_rgba8(&mut self, atlas: u32, origin: (u32, u32), size: (u32, u32), data: &[u8])
-    where
-        F: Format<C = u32>,
-    {
-        let atlas: usize = atlas.cast();
-        let Some(atlas) = self.atlases.get_mut(atlas) else {
-            log::warn!(
-                "upload_rgba8: unknown atlas {atlas} of {}",
-                self.atlases.len()
-            );
-            return;
-        };
-
-        let (tx, ty): (usize, usize) = origin.cast();
-        let (w, h): (usize, usize) = size.cast();
-        let tex_size = atlas.alloc.size();
-        let (tw, th): (usize, usize) = (tex_size.width.cast(), tex_size.height.cast());
-        assert_eq!(atlas.tex.len(), tw * th);
-        if tx + w > tw || ty + h > th {
-            log::error!(
-                "upload_rgba8: image of size {w}x{h} with origin {tx},{ty} not within bounds of texture {tw}x{th}"
-            );
-            return;
-        }
-
-        if data.len() != 4 * w * h {
-            log::error!(
-                "upload_rgba8: bad data length (received {} bytes for image of size {w}x{h})",
-                data.len()
-            );
-            return;
-        }
-
-        for (i, row) in data.chunks_exact(4 * w).enumerate() {
-            let ti = tx + (ty + i) * tw;
-            let dst = &mut atlas.tex[ti..ti + w];
-            assert!(row.len() == 4 * dst.len());
-            for (out, chunk) in dst.iter_mut().zip(row.chunks_exact(4)) {
-                // We convert color from input RGBA (LE) to ARGB (BE) with pre-multiplied alpha
-                let c = u32::from_le_bytes(chunk.try_into().unwrap());
-                let a = c >> 24 & 0xFF;
-                let b = a * (c >> 16 & 0xFF) / 255;
-                let g = a * (c >> 8 & 0xFF) / 255;
-                let r = a * (c & 0xFF) / 255;
-                *out = a << 24 | r << 16 | g << 8 | b;
-            }
+            F::copy_texture_slice(row, &mut atlas.tex[ti..ti + w]);
         }
     }
 }
@@ -270,6 +215,7 @@ impl<I: Format> AtlasWindow<I> {
         if let Some(pass) = self.passes.get_mut(pass) {
             for (atlas, data) in pass.atlases.iter_mut().enumerate() {
                 let Some(atlas) = atlases.atlases.get(atlas) else {
+                    data.instances.clear();
                     continue;
                 };
                 let tex = &atlas.tex;
@@ -315,6 +261,8 @@ trait Format {
     /// Color representation type
     type C: Clone + Default;
 
+    fn copy_texture_slice(src: &[u8], dst: &mut [Self::C]);
+
     fn render(
         &self,
         tex: &[Self::C],
@@ -328,6 +276,19 @@ trait Format {
 
 impl Format for InstanceRgba {
     type C = u32;
+
+    fn copy_texture_slice(src: &[u8], dst: &mut [Self::C]) {
+        assert!(src.len() == 4 * dst.len());
+        for (out, chunk) in dst.iter_mut().zip(src.chunks_exact(4)) {
+            // We convert color from input RGBA (LE) to ARGB (BE) with pre-multiplied alpha
+            let c = u32::from_le_bytes(chunk.try_into().unwrap());
+            let a = c >> 24 & 0xFF;
+            let b = a * (c >> 16 & 0xFF) / 255;
+            let g = a * (c >> 8 & 0xFF) / 255;
+            let r = a * (c & 0xFF) / 255;
+            *out = a << 24 | r << 16 | g << 8 | b;
+        }
+    }
 
     fn render(
         &self,
@@ -374,6 +335,10 @@ impl Format for InstanceRgba {
 
 impl Format for InstanceMask {
     type C = u8;
+
+    fn copy_texture_slice(src: &[u8], dst: &mut [Self::C]) {
+        dst.copy_from_slice(src);
+    }
 
     fn render(
         &self,
@@ -465,8 +430,7 @@ impl Shared {
         if let Some(image) = self.images.get_mut(&id) {
             let atlas = image.alloc.atlas.cast();
             let origin = image.alloc.origin;
-            self.atlas_rgba
-                .upload_rgba8(atlas, origin, image.size, data);
+            self.atlas_rgba.upload(atlas, origin, image.size, data);
         }
     }
 
@@ -505,9 +469,9 @@ impl Shared {
         } in unprepared.drain(..)
         {
             match ty {
-                SpriteType::Mask => self.atlas_mask.upload_a8(atlas, origin, size, &data),
+                SpriteType::Mask => self.atlas_mask.upload(atlas, origin, size, &data),
                 SpriteType::RgbaMask => panic!("subpixel rendering feature is unavailable"),
-                SpriteType::Bitmap => self.atlas_rgba.upload_rgba8(atlas, origin, size, &data),
+                SpriteType::Bitmap => self.atlas_rgba.upload(atlas, origin, size, &data),
             }
         }
     }
