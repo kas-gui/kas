@@ -425,9 +425,6 @@ impl State {
                         continue;
                     };
 
-                    assert!(alloc.atlas & 0x8000_0000 == 0);
-                    let atlas = alloc.atlas | 0x8000_0000;
-
                     self.prepare.push(UnpreparedSprite {
                         atlas: alloc.atlas,
                         ty: SpriteType::Bitmap,
@@ -437,7 +434,7 @@ impl State {
                     });
 
                     Sprite {
-                        atlas,
+                        atlas: alloc.atlas,
                         ty: Some(SpriteType::Bitmap),
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
