@@ -6,6 +6,7 @@
 //! Images pipeline
 
 use guillotiere::{AllocId, AtlasAllocator};
+use kas::config::SubpixelMode;
 use std::collections::HashMap;
 
 use kas::autoimpl;
@@ -393,20 +394,77 @@ impl Format for InstanceMask {
     }
 }
 
+// TODO: replace with portable SIMD type when stable
+// Components are u16 to allow widening multiplication
+#[derive(Clone, Copy)]
+struct U16x4([u16; 4]);
+
+impl std::ops::Mul for U16x4 {
+    type Output = u16;
+
+    fn mul(self, rhs: Self) -> u16 {
+        self.0[0] * rhs.0[0] + self.0[1] * rhs.0[1] + self.0[2] * rhs.0[2] + self.0[3] * rhs.0[3]
+    }
+}
+
+impl From<[u8; 4]> for U16x4 {
+    fn from([r, g, b, a]: [u8; 4]) -> Self {
+        U16x4([r as u16, g as u16, b as u16, a as u16])
+    }
+}
+
 impl Format for InstanceRgbaMask {
     type C = u32;
 
     fn copy_texture_slice(src: &[u8], dst: &mut [Self::C]) {
         assert!(src.len() == 4 * dst.len());
-        for (out, chunk) in dst.iter_mut().zip(src.chunks_exact(4)) {
-            // We convert color from input RGBA (LE) to ARGB (BE)
-            let c = u32::from_le_bytes(chunk.try_into().unwrap());
-            let a = c >> 24 & 0xFF;
-            let b = c >> 16 & 0xFF;
-            let g = c >> 8 & 0xFF;
-            let r = c & 0xFF;
-            *out = a << 24 | r << 16 | g << 8 | b;
+        let (chunks, rem) = src.as_chunks();
+        debug_assert!(rem.is_empty());
+        if chunks.is_empty() {
+            return;
         }
+
+        // TODO: filter is cut off at the edges
+        // Weights are copied from FreeType2's default weights, per RGBA sub-pixels
+        // https://freetype.org/freetype2/docs/reference/ft2-lcd_rendering.html
+        const A: u16 = 0x08;
+        const B: u16 = 0x4D;
+        const C: u16 = 0x56;
+        const SUM: u16 = 0x100;
+        assert_eq!(2 * A + 2 * B + C, SUM);
+
+        // NOTE: weights assume RGB sub-pixel layout
+        // Weight tables are designed to be SIMD-friendly
+        const R1: U16x4 = U16x4([0, A, B, 0]);
+        const R2: U16x4 = U16x4([C, B, A, 0]);
+        const R3: U16x4 = U16x4([0, 0, 0, 0]);
+        const G1: U16x4 = U16x4([0, 0, A, 0]);
+        const G2: U16x4 = U16x4([B, C, B, 0]);
+        const G3: U16x4 = U16x4([A, 0, 0, 0]);
+        const B1: U16x4 = U16x4([0, 0, 0, 0]);
+        const B2: U16x4 = U16x4([A, B, C, 0]);
+        const B3: U16x4 = U16x4([B, A, 0, 0]);
+
+        let mut x = U16x4([0u16; 4]);
+        let mut y: U16x4 = chunks[0].into();
+
+        for i in 1..chunks.len() {
+            let z: U16x4 = chunks[i].into();
+            let r = (R1 * x + R2 * y + R3 * z) / SUM;
+            let g = (G1 * x + G2 * y + G3 * z) / SUM;
+            let b = (B1 * x + B2 * y + B3 * z) / SUM;
+
+            // Output format is ARGB with A=0:
+            dst[i - 1] = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
+
+            x = y;
+            y = z;
+        }
+
+        let r = (R1 * x + R2 * y) / SUM;
+        let g = (G1 * x + G2 * y) / SUM;
+        let b = (B1 * x + B2 * y) / SUM;
+        *dst.last_mut().unwrap() = (r as u32) << 16 | (g as u32) << 8 | (b as u32);
     }
 
     fn render(
@@ -477,6 +535,16 @@ impl Shared {
             atlas_rgba_mask: Atlases::new(512),
             last_image_n: 0,
             images: Default::default(),
+        }
+    }
+
+    /// Configure
+    pub fn set_raster_config(&mut self, config: &kas::config::RasterConfig) {
+        match config.subpixel_mode {
+            SubpixelMode::None => (),
+            SubpixelMode::HorizontalRGB => {
+                // <InstanceRgbaMask as Format>::copy_texture_slice assumes this mode
+            } // NOTE: additional modes will require changes to the subpixel filter weights
         }
     }
 

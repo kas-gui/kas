@@ -321,6 +321,7 @@ impl Images {
                         bytes_per_row: Some(4 * size.0),
                         rows_per_image: Some(size.1),
                     }
+                    // TODO: apply a filter as in kas_soft::atlas::<InstanceRgbaMask as Format>::copy_texture_slice
                 }
                 SpriteType::Bitmap => {
                     texture = self.atlas_rgba.get_texture(atlas);
