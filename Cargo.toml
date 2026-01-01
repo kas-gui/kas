@@ -29,10 +29,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 #########  meta / build features  #########
 
-# Basic support for common platforms
-minimal = ["wayland", "vulkan", "dx12", "metal"]
-# Minimal + strongly recommended features
-default = ["minimal", "clipboard", "shaping"]
+# Basic support for common platforms (uses kas-soft)
+minimal = ["wayland", "soft"]
+# Recommended minimal feature set (uses kas-wgpu)
+default = ["wayland", "vulkan", "dx12", "metal", "clipboard", "shaping"]
 # All standard test target features
 stable = ["default", "view", "image-default-formats", "canvas", "svg", "markdown", "spawn", "x11", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
@@ -154,7 +154,7 @@ optional = true
 default-features = false
 
 [dev-dependencies]
-kas = { path = ".", features = ["view", "markdown", "svg", "canvas"] }
+kas = { path = ".", default-features = false, features = ["view", "markdown", "svg", "canvas"] }
 chrono = "0.4"
 env_logger = "0.11"
 log = "0.4"
