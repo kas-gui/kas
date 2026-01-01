@@ -111,10 +111,14 @@ jobs:
         run: cargo test --manifest-path crates/kas-view/Cargo.toml --all-features --features kas/wayland
       - name: Test kas-wgpu
         run: cargo test --manifest-path crates/kas-wgpu/Cargo.toml --features kas/x11
+      - name: Test kas-soft
+        run: cargo test --manifest-path crates/kas-soft/Cargo.toml --features wayland
       - name: Test kas-dylib
         run: cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-soft/x11
       - name: Test kas
-        run: cargo test --features stable
+        run: |
+          cargo test --no-default-features --features minimal
+          cargo test --features stable
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
       - name: Test examples/text-editor

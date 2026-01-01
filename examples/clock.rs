@@ -165,6 +165,7 @@ mod Clock {
     }
 }
 
+#[cfg(feature = "wgpu")]
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
@@ -176,4 +177,9 @@ fn main() -> kas::runner::Result<()> {
         .build(())?
         .with(window)
         .run()
+}
+
+#[cfg(not(feature = "wgpu"))]
+fn main() {
+    eprintln!("This example requires feature wgpu!");
 }
