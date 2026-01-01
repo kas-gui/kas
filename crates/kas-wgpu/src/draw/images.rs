@@ -13,7 +13,7 @@ use super::{ShaderManager, atlases};
 use kas::cast::Conv;
 use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
-use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, UnpreparedSprite};
+use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, SpriteType, UnpreparedSprite};
 
 #[derive(Debug)]
 struct Image {
@@ -70,10 +70,10 @@ pub struct InstanceRgba {
 unsafe impl bytemuck::Zeroable for InstanceRgba {}
 unsafe impl bytemuck::Pod for InstanceRgba {}
 
-/// Screen and texture coordinates (alpha-only texture)
+/// Screen and texture coordinates (8-bit coverage mask)
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct InstanceA {
+pub struct InstanceMask {
     pub(super) a: Vec2,
     pub(super) b: Vec2,
     pub(super) ta: Vec2,
@@ -81,13 +81,14 @@ pub struct InstanceA {
     pub(super) col: Rgba,
 }
 
-unsafe impl bytemuck::Zeroable for InstanceA {}
-unsafe impl bytemuck::Pod for InstanceA {}
+unsafe impl bytemuck::Zeroable for InstanceMask {}
+unsafe impl bytemuck::Pod for InstanceMask {}
 
 /// Image loader and storage
 pub struct Images {
     pub(super) atlas_rgba: atlases::Pipeline<InstanceRgba>,
-    pub(super) atlas_a: atlases::Pipeline<InstanceA>,
+    pub(super) atlas_mask: atlases::Pipeline<InstanceMask>,
+    pub(super) atlas_rgba_mask: Option<atlases::Pipeline<InstanceMask>>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -132,9 +133,9 @@ impl Images {
             },
         );
 
-        let atlas_a = atlases::Pipeline::new(
+        let atlas_mask = atlases::Pipeline::new(
             device,
-            Some("text pipe"),
+            Some("text mask pipe"),
             bgl_common,
             512,
             wgpu::TextureFormat::R8Unorm,
@@ -143,7 +144,7 @@ impl Images {
                 entry_point: Some("main"),
                 compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: size_of::<InstanceA>() as wgpu::BufferAddress,
+                    array_stride: size_of::<InstanceMask>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
                         0 => Float32x2,
@@ -166,9 +167,60 @@ impl Images {
             },
         );
 
+        let mut atlas_rgba_mask = None;
+        // FIXME: This is disabled because of a wgpu validation error
+        #[allow(clippy::overly_complex_bool_expr)]
+        if false
+            && device
+                .features()
+                .contains(wgpu::Features::DUAL_SOURCE_BLENDING)
+        {
+            atlas_rgba_mask = Some(atlases::Pipeline::new(
+                device,
+                Some("text subpixel mask pipe"),
+                bgl_common,
+                512,
+                wgpu::TextureFormat::Rgba8Unorm,
+                wgpu::VertexState {
+                    module: &shaders.vert_glyph,
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    buffers: &[wgpu::VertexBufferLayout {
+                        array_stride: size_of::<InstanceMask>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &wgpu::vertex_attr_array![
+                            0 => Float32x2,
+                            1 => Float32x2,
+                            2 => Float32x2,
+                            3 => Float32x2,
+                            4 => Float32x4,
+                        ],
+                    }],
+                },
+                wgpu::FragmentState {
+                    module: &shaders.frag_subpixel,
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: super::RENDER_TEX_FORMAT,
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent {
+                                src_factor: wgpu::BlendFactor::One,
+                                dst_factor: wgpu::BlendFactor::OneMinusSrc1,
+                                operation: wgpu::BlendOperation::Add,
+                            },
+                            alpha: wgpu::BlendComponent::OVER, // TODO
+                        }),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                },
+            ));
+        }
+
         Images {
             atlas_rgba,
-            atlas_a,
+            atlas_mask,
+            atlas_rgba_mask,
             last_image_n: 0,
             images: Default::default(),
         }
@@ -232,7 +284,10 @@ impl Images {
         encoder: &mut wgpu::CommandEncoder,
         text: &mut kas::text::raster::State,
     ) {
-        self.atlas_a.prepare(device);
+        self.atlas_mask.prepare(device);
+        if let Some(pipeline) = self.atlas_rgba_mask.as_mut() {
+            pipeline.prepare(device);
+        }
 
         let unprepared = text.unprepared_sprites();
         if !unprepared.is_empty() {
@@ -240,28 +295,44 @@ impl Images {
         }
         for UnpreparedSprite {
             atlas,
-            color,
+            ty,
             origin,
             size,
             data,
         } in unprepared.drain(..)
         {
-            let (texture, texel_layout);
-            if !color {
-                texture = self.atlas_a.get_texture(atlas);
-                texel_layout = wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(size.0),
-                    rows_per_image: Some(size.1),
-                };
-            } else {
-                texture = self.atlas_rgba.get_texture(atlas);
-                texel_layout = wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(4 * size.0),
-                    rows_per_image: Some(size.1),
-                };
-            }
+            let texture;
+            let texel_layout = match ty {
+                SpriteType::Mask => {
+                    texture = self.atlas_mask.get_texture(atlas);
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(size.0),
+                        rows_per_image: Some(size.1),
+                    }
+                }
+                SpriteType::RgbaMask => {
+                    texture = self
+                        .atlas_rgba_mask
+                        .as_mut()
+                        .expect("subpixel rendering feature is unavailable")
+                        .get_texture(atlas);
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(4 * size.0),
+                        rows_per_image: Some(size.1),
+                    }
+                    // TODO: apply a filter as in kas_soft::atlas::<InstanceRgbaMask as Format>::copy_texture_slice
+                }
+                SpriteType::Bitmap => {
+                    texture = self.atlas_rgba.get_texture(atlas);
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(4 * size.0),
+                        rows_per_image: Some(size.1),
+                    }
+                }
+            };
 
             queue.write_texture(
                 wgpu::TexelCopyTextureInfo {
@@ -304,13 +375,28 @@ impl Images {
     ) {
         self.atlas_rgba
             .render(&window.atlas_rgba, pass, rpass, bg_common);
-        self.atlas_a.render(&window.atlas_a, pass, rpass, bg_common);
+        self.atlas_mask
+            .render(&window.atlas_mask, pass, rpass, bg_common);
+        if let Some(pipeline) = self.atlas_rgba_mask.as_ref() {
+            pipeline.render(&window.atlas_rgba_mask, pass, rpass, bg_common);
+        }
     }
 }
 
 impl SpriteAllocator for Images {
-    fn alloc_a(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_a.allocate(size)
+    fn query_subpixel_rendering(&self) -> bool {
+        self.atlas_rgba_mask.is_some()
+    }
+
+    fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_mask.allocate(size)
+    }
+
+    fn alloc_rgba_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+        self.atlas_rgba_mask
+            .as_mut()
+            .expect("subpixel rendering feature is unavailable")
+            .allocate(size)
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
@@ -321,7 +407,8 @@ impl SpriteAllocator for Images {
 #[derive(Debug, Default)]
 pub struct Window {
     pub(super) atlas_rgba: atlases::Window<InstanceRgba>,
-    pub(super) atlas_a: atlases::Window<InstanceA>,
+    pub(super) atlas_mask: atlases::Window<InstanceMask>,
+    pub(super) atlas_rgba_mask: atlases::Window<InstanceMask>,
 }
 
 impl Window {
@@ -333,7 +420,9 @@ impl Window {
         encoder: &mut wgpu::CommandEncoder,
     ) {
         self.atlas_rgba.write_buffers(device, staging_belt, encoder);
-        self.atlas_a.write_buffers(device, staging_belt, encoder);
+        self.atlas_mask.write_buffers(device, staging_belt, encoder);
+        self.atlas_rgba_mask
+            .write_buffers(device, staging_belt, encoder);
     }
 
     /// Add a rectangle to the buffer
@@ -365,12 +454,10 @@ impl RenderQueue for Window {
         let mut a = glyph_pos.floor() + sprite.offset;
         let mut b = a + sprite.size;
 
-        if !(sprite.is_valid()
-            && a.0 < rect.b.0
-            && a.1 < rect.b.1
-            && b.0 > rect.a.0
-            && b.1 > rect.a.1)
-        {
+        let Some(ty) = sprite.ty else {
+            return;
+        };
+        if !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1) {
             return;
         }
 
@@ -392,12 +479,19 @@ impl RenderQueue for Window {
             b.1 = b.1.clamp(rect.a.1, rect.b.1);
         }
 
-        if !sprite.color {
-            let instance = InstanceA { a, b, ta, tb, col };
-            self.atlas_a.rect(pass, sprite.atlas, instance);
-        } else {
-            let instance = InstanceRgba { a, b, ta, tb };
-            self.atlas_rgba.rect(pass, sprite.atlas, instance);
+        match ty {
+            SpriteType::Mask => {
+                let instance = InstanceMask { a, b, ta, tb, col };
+                self.atlas_mask.rect(pass, sprite.atlas, instance);
+            }
+            SpriteType::RgbaMask => {
+                let instance = InstanceMask { a, b, ta, tb, col };
+                self.atlas_rgba_mask.rect(pass, sprite.atlas, instance);
+            }
+            SpriteType::Bitmap => {
+                let instance = InstanceRgba { a, b, ta, tb };
+                self.atlas_rgba.rect(pass, sprite.atlas, instance);
+            }
         }
     }
 }

@@ -146,6 +146,7 @@ impl DrawSharedImpl for Shared {
 
     #[inline]
     fn set_raster_config(&mut self, config: &kas::config::RasterConfig) {
+        self.images.set_raster_config(config);
         self.text.set_raster_config(config);
     }
 

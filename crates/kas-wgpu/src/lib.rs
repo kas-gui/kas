@@ -63,12 +63,17 @@ impl<CB: CustomPipeBuilder> runner::GraphicsInstance for Instance<CB> {
 
     type Surface = surface::Surface<CB::Pipe>;
 
-    fn new_shared(&mut self, surface: Option<&Self::Surface>) -> Result<Self::Shared, RunError> {
+    fn new_shared(
+        &mut self,
+        surface: Option<&Self::Surface>,
+        features: runner::GraphicsFeatures,
+    ) -> Result<Self::Shared, RunError> {
         DrawPipe::new(
             &self.instance,
             &mut self.custom,
             &self.options,
             surface.map(|s| &s.surface),
+            features,
         )
     }
 

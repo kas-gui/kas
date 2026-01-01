@@ -17,15 +17,34 @@ use kas::geom::{Quad, Vec2};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
+use swash::zeno::Format;
+
+use crate::config::SubpixelMode;
+
+/// Number of sub-pixel text sizes
+///
+/// Text `dpem * SCALE_STEPS` is rounded to the nearest integer, so for example
+/// `SCALE_STEPS = 4.0` would support a text size of 5.25 pixels per Em.
+/// In practice it's not very useful to support fractional text sizes.
+const SCALE_STEPS: f32 = 1.0;
 
 /// Support allocation of glyph sprites
 ///
 /// Allocation failures will result in glyphs not drawing.
 pub trait SpriteAllocator {
-    /// Allocate a single-channel texture sprite
-    fn alloc_a(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+    /// Returns true if sub-pixel rendering is available
+    fn query_subpixel_rendering(&self) -> bool;
 
-    /// Allocate an RGBA texture sprite
+    /// Allocate a sprite using an 8-bit coverage mask
+    fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+
+    /// Allocate a sprite using a 32-bit RGBA coverage mask
+    ///
+    /// This is an optional feature, only used if
+    /// [`Self::query_subpixel_rendering`] returns `true`.
+    fn alloc_rgba_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+
+    /// Allocate a sprite using a 32-bit RGBA bitmap
     ///
     /// This is only used for colored glyphs.
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
@@ -49,9 +68,9 @@ kas::impl_scope! {
     #[derive(Debug, PartialEq)]
     #[impl_default]
     pub struct Config {
-        scale_steps: f32 = 4.0,
         subpixel_threshold: f32 = 18.0,
-        subpixel_steps: u8 = 5,
+        subpixel_x_steps: u8 = 3,
+        subpixel_format: Format = Format::Alpha,
     }
 }
 
@@ -94,9 +113,9 @@ impl SpriteDescriptor {
     /// Choose a sub-pixel precision multiplier based on scale (pixels per Em)
     ///
     /// Must return an integer between 1 and 16.
-    fn sub_pixel_from_dpem(config: &Config, dpem: f32) -> u8 {
+    fn sub_pixel_x_steps(config: &Config, dpem: f32) -> u8 {
         if dpem < config.subpixel_threshold {
-            config.subpixel_steps
+            config.subpixel_x_steps
         } else {
             1
         }
@@ -106,11 +125,15 @@ impl SpriteDescriptor {
     pub fn new(config: &Config, face: FaceId, glyph: Glyph, dpem: f32) -> Self {
         let face: u16 = face.get().cast();
         let glyph_id: u16 = glyph.id.0;
-        let steps = Self::sub_pixel_from_dpem(config, dpem);
+
+        let steps = Self::sub_pixel_x_steps(config, dpem);
         let mult = f32::conv(steps);
-        let dpem = u32::conv_trunc(dpem * config.scale_steps + 0.5);
+        let dpem = u32::conv_trunc(dpem * SCALE_STEPS + 0.5);
         let x_off = u8::conv_trunc(glyph.position.0.fract() * mult) % steps;
-        let y_off = u8::conv_trunc(glyph.position.1.fract() * mult) % steps;
+        // y-offset serves little purpose since we don't support vertical text
+        // and kas-text already rounds the v-caret to the nearest pixel.
+        let y_off = 0;
+
         assert!(dpem & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
         let packed = face as u64
             | ((glyph_id as u64) << 16)
@@ -131,9 +154,9 @@ impl SpriteDescriptor {
     }
 
     /// Get scale (pixels per Em)
-    pub fn dpem(self, config: &Config) -> f32 {
+    pub fn dpem(self) -> f32 {
         let dpem_steps = ((self.0 & 0x00FF_FFFF_0000_0000) >> 32) as u32;
-        f32::conv(dpem_steps) / config.scale_steps
+        f32::conv(dpem_steps) / SCALE_STEPS
     }
 
     /// Get fractional position
@@ -142,13 +165,22 @@ impl SpriteDescriptor {
     /// spacing at small font sizes. Returns the `(x, y)` offsets in the range
     /// `0.0 ≤ x < 1.0` (and the same for `y`).
     pub fn fractional_position(self, config: &Config) -> (f32, f32) {
-        let mult = 1.0 / f32::conv(Self::sub_pixel_from_dpem(config, self.dpem(config)));
+        let mult = 1.0 / f32::conv(Self::sub_pixel_x_steps(config, self.dpem()));
         let x_steps = ((self.0 & 0x0F00_0000_0000_0000) >> 56) as u8;
-        let y_steps = ((self.0 & 0xF000_0000_0000_0000) >> 60) as u8;
         let x = f32::conv(x_steps) * mult;
-        let y = f32::conv(y_steps) * mult;
+        let y = 0.0;
         (x, y)
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SpriteType {
+    /// 8-bit coverage mask
+    Mask,
+    /// 32-bit RGBA coverage mask
+    RgbaMask,
+    /// 32-bit RGBA bitmap
+    Bitmap,
 }
 
 /// A Sprite
@@ -158,27 +190,17 @@ impl SpriteDescriptor {
 #[derive(Clone, Debug, Default)]
 pub struct Sprite {
     pub atlas: u32,
-    /// If true, use atlas_rgba; if false use atlas_a
-    pub color: bool,
-    /// If false, this is not drawable (used for zero-sized glyphs)
-    valid: bool,
+    pub ty: Option<SpriteType>,
     pub size: Vec2,
     pub offset: Vec2,
     pub tex_quad: Quad,
-}
-
-impl Sprite {
-    /// Is this a valid sprite or a non-renderable placeholder?
-    pub fn is_valid(&self) -> bool {
-        self.valid
-    }
 }
 
 /// A sprite pending upload to the GPU texture
 #[derive(Debug)]
 pub struct UnpreparedSprite {
     pub atlas: u32,
-    pub color: bool,
+    pub ty: SpriteType,
     pub origin: (u32, u32),
     pub size: (u32, u32),
     pub data: Vec<u8>,
@@ -212,9 +234,12 @@ impl State {
         self.hint = config.mode == 4;
 
         self.config = Config {
-            scale_steps: config.scale_steps.cast(),
             subpixel_threshold: config.subpixel_threshold.cast(),
-            subpixel_steps: config.subpixel_steps.clamp(1, 16),
+            subpixel_x_steps: config.subpixel_x_steps.clamp(1, 16),
+            subpixel_format: match config.subpixel_mode {
+                SubpixelMode::None => Format::Alpha,
+                SubpixelMode::HorizontalRGB => Format::Subpixel,
+            },
         };
 
         // NOTE: possibly this should force re-drawing of all glyphs, but for
@@ -319,7 +344,7 @@ impl State {
         glyphs: &mut dyn Iterator<Item = Glyph>,
     ) {
         use swash::scale::{Render, Source, StrikeWith, image::Content};
-        use swash::zeno::{Angle, Format, Transform};
+        use swash::zeno::{Angle, Transform};
 
         let face = fonts::library().get_face_store(face_id);
         let font = face.swash();
@@ -346,6 +371,11 @@ impl State {
             Source::Outline,
         ];
 
+        let mut format = self.config.subpixel_format;
+        if format != Format::Alpha && allocator.query_subpixel_rendering() == false {
+            format = Format::Alpha;
+        }
+
         // Faux italic skew:
         let transform = synthesis
             .skew()
@@ -360,7 +390,7 @@ impl State {
             }
 
             let Some(image) = Render::new(sources)
-                .format(Format::Alpha)
+                .format(format)
                 .offset(desc.fractional_position(&self.config).into())
                 .transform(transform)
                 .embolden(embolden)
@@ -381,7 +411,7 @@ impl State {
 
             let sprite = match image.content {
                 Content::Mask => {
-                    let Ok(alloc) = allocator.alloc_a(size) else {
+                    let Ok(alloc) = allocator.alloc_mask(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
                         self.glyphs.insert(desc, Sprite::default());
                         continue;
@@ -389,7 +419,7 @@ impl State {
 
                     self.prepare.push(UnpreparedSprite {
                         atlas: alloc.atlas,
-                        color: false,
+                        ty: SpriteType::Mask,
                         origin: alloc.origin,
                         size,
                         data: image.data,
@@ -397,14 +427,35 @@ impl State {
 
                     Sprite {
                         atlas: alloc.atlas,
-                        color: false,
-                        valid: true,
+                        ty: Some(SpriteType::Mask),
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
                         tex_quad: alloc.tex_quad,
                     }
                 }
-                Content::SubpixelMask => unimplemented!(),
+                Content::SubpixelMask => {
+                    let Ok(alloc) = allocator.alloc_rgba_mask(size) else {
+                        log::warn!("raster_glyphs failed: unable to allocate");
+                        self.glyphs.insert(desc, Sprite::default());
+                        continue;
+                    };
+
+                    self.prepare.push(UnpreparedSprite {
+                        atlas: alloc.atlas,
+                        ty: SpriteType::RgbaMask,
+                        origin: alloc.origin,
+                        size,
+                        data: image.data,
+                    });
+
+                    Sprite {
+                        atlas: alloc.atlas,
+                        ty: Some(SpriteType::RgbaMask),
+                        size: Vec2(size.0.cast(), size.1.cast()),
+                        offset: Vec2(offset.0.cast(), offset.1.cast()),
+                        tex_quad: alloc.tex_quad,
+                    }
+                }
                 Content::Color => {
                     let Ok(alloc) = allocator.alloc_rgba(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
@@ -412,21 +463,17 @@ impl State {
                         continue;
                     };
 
-                    assert!(alloc.atlas & 0x8000_0000 == 0);
-                    let atlas = alloc.atlas | 0x8000_0000;
-
                     self.prepare.push(UnpreparedSprite {
                         atlas: alloc.atlas,
-                        color: true,
+                        ty: SpriteType::Bitmap,
                         origin: alloc.origin,
                         size,
                         data: image.data,
                     });
 
                     Sprite {
-                        atlas,
-                        color: true,
-                        valid: true,
+                        atlas: alloc.atlas,
+                        ty: Some(SpriteType::Bitmap),
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
                         tex_quad: alloc.tex_quad,

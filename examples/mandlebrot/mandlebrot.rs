@@ -99,7 +99,7 @@ struct PipeBuilder;
 impl CustomPipeBuilder for PipeBuilder {
     type Pipe = Pipe;
 
-    fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
+    fn device_descriptor(_: &wgpu::Adapter) -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: None,
             required_features: wgpu::Features::PUSH_CONSTANTS | SHADER_FLOAT64,

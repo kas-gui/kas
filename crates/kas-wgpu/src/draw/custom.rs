@@ -22,10 +22,13 @@ pub trait DrawCustom<CW: CustomWindow> {
 pub trait CustomPipeBuilder {
     type Pipe: CustomPipe;
 
-    /// Request a device supporting these features and limits
+    /// Graphics device request descriptor
     ///
-    /// See [`wgpu::Adapter::request_device`] and [`wgpu::DeviceDescriptor`] doc.
-    fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
+    /// The requirements may be increased by Kas before calling
+    /// [`wgpu::Adapter::request_device`] to establish a connection to a
+    /// physical graphics device.
+    fn device_descriptor(adapter: &wgpu::Adapter) -> wgpu::DeviceDescriptor<'static> {
+        let _ = adapter;
         Default::default()
     }
 

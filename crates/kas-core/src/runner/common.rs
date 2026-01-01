@@ -167,6 +167,12 @@ impl Platform {
     }
 }
 
+/// Graphics features requirement and support
+pub struct GraphicsFeatures {
+    /// Support for sub-pixel font rendering
+    pub subpixel_rendering: bool,
+}
+
 /// Context for a graphics backend
 pub trait GraphicsInstance {
     /// Draw state shared by all windows
@@ -179,9 +185,12 @@ pub trait GraphicsInstance {
     ///
     /// Providing a `surface` may aid construction of a graphics adapter
     /// (see [`compatible_surface`](https://docs.rs/wgpu/latest/wgpu/type.RequestAdapterOptions.html#structfield.compatible_surface)).
+    ///
+    /// The given `features` should be enabled if available.
     fn new_shared(
         &mut self,
         surface: Option<&Self::Surface>,
+        features: GraphicsFeatures,
     ) -> std::result::Result<Self::Shared, RunError>;
 
     /// Construct a window surface

@@ -21,6 +21,7 @@ pub struct ShaderManager {
     pub frag_shaded_square: ShaderModule,
     pub frag_image: ShaderModule,
     pub frag_glyph: ShaderModule,
+    pub frag_subpixel: ShaderModule,
 }
 
 macro_rules! create {
@@ -29,33 +30,21 @@ macro_rules! create {
 
 impl ShaderManager {
     pub fn new(device: &wgpu::Device) -> Self {
-        let vert_flat_round = create!(device, "shaders/flat_round.vert.spv");
-        let vert_round_2col = create!(device, "shaders/round_2col.vert.spv");
-        let vert_shaded_round = create!(device, "shaders/shaded_round.vert.spv");
-        let vert_shaded_square = create!(device, "shaders/shaded_square.vert.spv");
-        let vert_image = create!(device, "shaders/image.vert.spv");
-        let vert_glyph = create!(device, "shaders/glyph.vert.spv");
-
-        let frag_flat_round = create!(device, "shaders/flat_round.frag.spv");
-        let frag_round_2col = create!(device, "shaders/round_2col.frag.spv");
-        let frag_shaded_round = create!(device, "shaders/shaded_round.frag.spv");
-        let frag_shaded_square = create!(device, "shaders/shaded_square.frag.spv");
-        let frag_image = create!(device, "shaders/image.frag.spv");
-        let frag_glyph = create!(device, "shaders/glyph.frag.spv");
-
         ShaderManager {
-            vert_image,
-            vert_glyph,
-            vert_flat_round,
-            vert_round_2col,
-            vert_shaded_round,
-            vert_shaded_square,
-            frag_flat_round,
-            frag_round_2col,
-            frag_shaded_round,
-            frag_shaded_square,
-            frag_image,
-            frag_glyph,
+            vert_flat_round: create!(device, "shaders/flat_round.vert.spv"),
+            vert_round_2col: create!(device, "shaders/round_2col.vert.spv"),
+            vert_shaded_round: create!(device, "shaders/shaded_round.vert.spv"),
+            vert_shaded_square: create!(device, "shaders/shaded_square.vert.spv"),
+            vert_image: create!(device, "shaders/image.vert.spv"),
+            vert_glyph: create!(device, "shaders/glyph.vert.spv"),
+
+            frag_flat_round: create!(device, "shaders/flat_round.frag.spv"),
+            frag_round_2col: create!(device, "shaders/round_2col.frag.spv"),
+            frag_shaded_round: create!(device, "shaders/shaded_round.frag.spv"),
+            frag_shaded_square: create!(device, "shaders/shaded_square.frag.spv"),
+            frag_image: create!(device, "shaders/image.frag.spv"),
+            frag_glyph: create!(device, "shaders/glyph.frag.spv"),
+            frag_subpixel: create!(device, "shaders/subpixel.frag.spv"),
         }
     }
 }

@@ -51,6 +51,28 @@ impl Default for FontConfig {
     }
 }
 
+/// Sub-pixel font rendering control
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum SubpixelMode {
+    /// No sub-pixel rendering
+    ///
+    /// This is the default because it is the simplest, always supported and never wrong.
+    #[default]
+    None,
+    /// Horizontal RGB sub-pixels
+    ///
+    /// This is the most common LCD display type.
+    HorizontalRGB,
+}
+
+impl SubpixelMode {
+    /// Returns true if any subpixel rendering mode is enabled
+    pub fn any_subpixel(self) -> bool {
+        self != SubpixelMode::None
+    }
+}
+
 /// Font raster settings
 ///
 /// These are not used by the theme, but passed through to the rendering
@@ -72,46 +94,34 @@ pub struct RasterConfig {
     /// -   `mode == 4`: use `swash` for rastering with hinting
     #[cfg_attr(feature = "serde", serde(default = "defaults::mode"))]
     pub mode: u8,
-    /// Scale multiplier for fixed-precision
-    ///
-    /// This should be an integer `n >= 1`, e.g. `n = 4` provides four sub-pixel
-    /// steps of precision. It is also required that `n * h < (1 << 24)` where
-    /// `h` is the text height in pixels.
-    #[cfg_attr(feature = "serde", serde(default = "defaults::scale_steps"))]
-    pub scale_steps: u8,
     /// Subpixel positioning threshold
     ///
     /// Text with height `h` less than this threshold will use sub-pixel
-    /// positioning, which should make letter spacing more accurate for small
-    /// fonts (though exact behaviour depends on the font; it may be worse).
-    /// This may make rendering worse by breaking pixel alignment.
+    /// positioning (see below), which should make letter spacing more
+    /// accurate for small fonts.
     ///
-    /// Note: this feature may not be available, depending on the backend and
-    /// the mode.
-    ///
-    /// See also sub-pixel positioning steps.
+    /// Units: physical pixels per Em ("dpem"). Default value: 18.
     #[cfg_attr(feature = "serde", serde(default = "defaults::subpixel_threshold"))]
     pub subpixel_threshold: u8,
-    /// Subpixel steps
+    /// Subpixel steps (horizontal)
     ///
-    /// The number of sub-pixel positioning steps to use. 1 is the minimum and
-    /// equivalent to no sub-pixel positioning. 16 is the maximum.
+    /// The number of sub-pixel positioning steps to use on the x-axis for
+    /// horizontal text (when enabled; see [`Self::subpixel_threshold`]).
     ///
-    /// Note that since this applies to horizontal and vertical positioning, the
-    /// maximum number of rastered glyphs is multiplied by the square of this
-    /// value, though this maxmimum may not be reached in practice. Since this
-    /// feature is usually only used for small fonts this likely acceptable.
-    #[cfg_attr(feature = "serde", serde(default = "defaults::subpixel_steps"))]
-    pub subpixel_steps: u8,
+    /// Minimum: 1 (no sub-pixel positioning). Maximum: 16. Default: 3.
+    #[cfg_attr(feature = "serde", serde(default = "defaults::subpixel_x_steps"))]
+    pub subpixel_x_steps: u8,
+    /// Subpixel rendering mode
+    pub subpixel_mode: SubpixelMode,
 }
 
 impl Default for RasterConfig {
     fn default() -> Self {
         RasterConfig {
             mode: defaults::mode(),
-            scale_steps: defaults::scale_steps(),
             subpixel_threshold: defaults::subpixel_threshold(),
-            subpixel_steps: defaults::subpixel_steps(),
+            subpixel_x_steps: defaults::subpixel_x_steps(),
+            subpixel_mode: Default::default(),
         }
     }
 }
@@ -185,13 +195,10 @@ mod defaults {
     pub fn mode() -> u8 {
         4
     }
-    pub fn scale_steps() -> u8 {
-        4
-    }
     pub fn subpixel_threshold() -> u8 {
-        0
+        18
     }
-    pub fn subpixel_steps() -> u8 {
-        5
+    pub fn subpixel_x_steps() -> u8 {
+        3
     }
 }
