@@ -10,6 +10,7 @@ use super::{FontConfig, FontConfigMsg, ThemeConfig, ThemeConfigMsg};
 use crate::ConfigAction;
 use crate::config::Shortcuts;
 use crate::theme::TextClass;
+use core::f32;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell};
@@ -93,6 +94,7 @@ pub struct WindowConfig {
     pub(super) kinetic_decay_sub: f32,
     pub(super) scroll_dist: f32,
     pub(super) pan_dist_thresh: f32,
+    pub(super) double_click_dist_thresh: f32,
     pub(crate) alt_bypass: bool,
     /// Whether navigation focus is enabled for this application window
     pub(crate) nav_focus: bool,
@@ -109,6 +111,7 @@ impl WindowConfig {
             kinetic_decay_sub: f32::NAN,
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
+            double_click_dist_thresh: f32::NAN,
             alt_bypass: false,
             nav_focus: true,
         }
@@ -122,6 +125,7 @@ impl WindowConfig {
         let dpem = base.font.get_dpem(TextClass::Standard) * scale_factor;
         self.scroll_dist = base.event.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.event.pan_dist_thresh * scale_factor;
+        self.double_click_dist_thresh = base.event.double_click_dist_thresh * scale_factor;
     }
 
     /// Access base (unscaled) [`Config`]

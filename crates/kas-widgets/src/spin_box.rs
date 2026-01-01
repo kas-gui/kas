@@ -145,7 +145,8 @@ impl<A, T: SpinValue> SpinGuard<A, T> {
             SpinBtn::Up => old_value.add_step(self.step),
         };
 
-        self.value = value.clamp(self.start, self.end);
+        let value = value.clamp(self.start, self.end);
+        self.value = value;
         (value != old_value).then_some(value)
     }
 }

@@ -74,6 +74,7 @@ pub(crate) struct Mouse {
     pub(super) grab: Option<MouseGrab>,
     tooltip_source: Option<Id>,
     last_position: DVec2,
+    last_click_position: DVec2,
     pub(super) samples: velocity::Samples,
 }
 
@@ -90,6 +91,7 @@ impl Default for Mouse {
             grab: None,
             tooltip_source: None,
             last_position: DVec2::ZERO,
+            last_click_position: DVec2::ZERO,
             samples: Default::default(),
         }
     }
@@ -347,7 +349,6 @@ impl<'a> EventCx<'a> {
             self.mouse.samples.push_delta(delta);
         }
         self.mouse.last_position = position;
-        self.mouse.last_click_button = None;
 
         self.set_over(window.re(), id.clone());
 
@@ -430,12 +431,17 @@ impl<'a> EventCx<'a> {
     ) {
         if state == ElementState::Pressed {
             let now = Instant::now();
-            if Some(button) != self.mouse.last_click_button || self.mouse.last_click_timeout < now {
+            if Some(button) != self.mouse.last_click_button
+                || self.mouse.last_click_timeout < now
+                || (self.mouse.last_position - self.mouse.last_click_position).distance_l_inf()
+                    > self.config.event().double_click_dist_thresh().into()
+            {
                 self.mouse.last_click_button = Some(button);
                 self.mouse.last_click_repetitions = 0;
             }
             self.mouse.last_click_repetitions += 1;
             self.mouse.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
+            self.mouse.last_click_position = self.mouse.last_position;
         }
 
         if self

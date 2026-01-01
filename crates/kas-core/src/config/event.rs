@@ -28,6 +28,7 @@ pub enum EventConfigMsg {
     KineticGrabSub(f32),
     ScrollDistEm(f32),
     PanDistThresh(f32),
+    DoubleClickDistThresh(f32),
     MousePan(MousePan),
     MouseTextPan(MousePan),
     MouseWheelActions(bool),
@@ -47,7 +48,8 @@ pub enum EventConfigMsg {
 /// > `kinetic_decay_mul`: `f32` (unitless, applied each second) \
 /// > `kinetic_decay_sub`: `f32` (pixels per second) \
 /// > `kinetic_grab_sub`: `f32` (pixels per second) \
-/// > `pan_dist_thresh`: `f32` (pixels) \
+/// > `pan_dist_thresh`: `f32` (logical pixels) \
+/// > `double_click_dist_thresh`: `f32` (logical pixels) \
 /// > `mouse_pan`: [`MousePan`] \
 /// > `mouse_text_pan`: [`MousePan`] \
 /// > `mouse_nav_focus`: `bool` \
@@ -84,6 +86,12 @@ pub struct EventConfig {
     #[cfg_attr(feature = "serde", serde(default = "defaults::pan_dist_thresh"))]
     pub pan_dist_thresh: f32,
 
+    #[cfg_attr(
+        feature = "serde",
+        serde(default = "defaults::double_click_dist_thresh")
+    )]
+    pub double_click_dist_thresh: f32,
+
     #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_pan"))]
     pub mouse_pan: MousePan,
     #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_text_pan"))]
@@ -110,6 +118,7 @@ impl Default for EventConfig {
             kinetic_grab_sub: defaults::kinetic_grab_sub(),
             scroll_dist_em: defaults::scroll_dist_em(),
             pan_dist_thresh: defaults::pan_dist_thresh(),
+            double_click_dist_thresh: defaults::double_click_dist_thresh(),
             mouse_pan: defaults::mouse_pan(),
             mouse_text_pan: defaults::mouse_text_pan(),
             mouse_wheel_actions: defaults::mouse_wheel_actions(),
@@ -131,6 +140,7 @@ impl EventConfig {
             EventConfigMsg::KineticGrabSub(v) => self.kinetic_grab_sub = v,
             EventConfigMsg::ScrollDistEm(v) => self.scroll_dist_em = v,
             EventConfigMsg::PanDistThresh(v) => self.pan_dist_thresh = v,
+            EventConfigMsg::DoubleClickDistThresh(v) => self.double_click_dist_thresh = v,
             EventConfigMsg::MousePan(v) => self.mouse_pan = v,
             EventConfigMsg::MouseTextPan(v) => self.mouse_text_pan = v,
             EventConfigMsg::MouseWheelActions(v) => self.mouse_wheel_actions = v,
@@ -226,10 +236,23 @@ impl<'a> EventWindowConfig<'a> {
     /// start; otherwise the system should wait for the text-selection timer.
     /// We currently recommend the L-inf distance metric (max of abs of values).
     ///
-    /// Units are pixels (output is adjusted for the window's scale factor).
+    /// Units: physical pixels
     #[inline]
     pub fn pan_dist_thresh(&self) -> f32 {
         self.0.pan_dist_thresh
+    }
+
+    /// Distance threshold to interrupt a double-click
+    ///
+    /// When the distance moved by the pointer since the last button-down event
+    /// is greater than this threshold, the event is considered a fresh click;
+    /// up to this threshold the click may be considered part of a chain
+    /// (double-click, triple-click etc.).
+    ///
+    /// Units: physical pixels
+    #[inline]
+    pub(crate) fn double_click_dist_thresh(&self) -> f32 {
+        self.0.double_click_dist_thresh
     }
 
     /// Whether the mouse wheel may trigger actions such as switching to the next item in a list
@@ -326,6 +349,9 @@ mod defaults {
     }
     pub fn pan_dist_thresh() -> f32 {
         5.0
+    }
+    pub fn double_click_dist_thresh() -> f32 {
+        4.0
     }
     pub fn mouse_wheel_actions() -> bool {
         true
