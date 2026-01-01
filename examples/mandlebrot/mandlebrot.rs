@@ -102,9 +102,9 @@ impl CustomPipeBuilder for PipeBuilder {
     fn device_descriptor(_: &wgpu::Adapter) -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: None,
-            required_features: wgpu::Features::PUSH_CONSTANTS | SHADER_FLOAT64,
+            required_features: wgpu::Features::IMMEDIATES | SHADER_FLOAT64,
             required_limits: wgpu::Limits {
-                max_push_constant_size: size_of::<PushConstants>().cast(),
+                max_immediate_size: size_of::<PushConstants>().cast(),
                 ..Default::default()
             },
             ..Default::default()
@@ -122,10 +122,7 @@ impl CustomPipeBuilder for PipeBuilder {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             bind_group_layouts: &[bgl_common],
-            push_constant_ranges: &[wgpu::PushConstantRange {
-                stages: wgpu::ShaderStages::FRAGMENT,
-                range: 0..size_of::<PushConstants>().cast(),
-            }],
+            immediate_size: size_of::<PushConstants>().cast(),
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -162,7 +159,7 @@ impl CustomPipeBuilder for PipeBuilder {
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -220,11 +217,7 @@ impl CustomPipe for Pipe {
             && let Some(buffer) = tuple.1.as_ref()
         {
             rpass.set_pipeline(&self.render_pipeline);
-            rpass.set_push_constants(
-                wgpu::ShaderStages::FRAGMENT,
-                0,
-                bytemuck::bytes_of(&window.push_constants),
-            );
+            rpass.set_immediates(0, bytemuck::bytes_of(&window.push_constants));
             rpass.set_bind_group(0, bg_common, &[]);
             rpass.set_vertex_buffer(0, buffer.slice(..));
             rpass.draw(0..tuple.2, 0..1);

@@ -52,7 +52,7 @@ impl<V: bytemuck::Pod> Window<V> {
 
         if req_len <= self.buffer_size {
             let buffer = self.buffer.as_ref().unwrap();
-            let mut slice = staging_belt.write_buffer(encoder, buffer, 0, byte_len, device);
+            let mut slice = staging_belt.write_buffer(encoder, buffer, 0, byte_len);
             copy_to_slice(&mut self.passes, &mut slice);
         } else {
             // Size must be a multiple of alignment

@@ -41,7 +41,7 @@ impl Pipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("SS pipeline_layout"),
             bind_group_layouts: &[bgl_common],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -82,7 +82,7 @@ impl Pipeline {
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 

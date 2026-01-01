@@ -130,7 +130,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("atlas pipeline layout"),
             bind_group_layouts: &[bg_common, &bg_tex_layout],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -149,7 +149,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
             depth_stencil: None,
             multisample: Default::default(),
             fragment: Some(fragment),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -350,7 +350,7 @@ impl<I: bytemuck::Pod> Window<I> {
 
         if req_len <= self.buffer_size {
             let buffer = self.buffer.as_ref().unwrap();
-            let mut slice = staging_belt.write_buffer(encoder, buffer, 0, byte_len, device);
+            let mut slice = staging_belt.write_buffer(encoder, buffer, 0, byte_len);
             copy_to_slice(&mut self.passes, &mut slice);
         } else {
             // Size must be a multiple of alignment
