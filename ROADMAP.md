@@ -175,6 +175,24 @@ For more on *input data*, read the [design document](https://github.com/kas-gui/
 Add traits `Collection` and `CellCollection` representing a list/tuple of widgets.
 Revise layout macros with `.align` / `.pack` / `.margins` adapters.
 
+### 0.16.0 — September 2025
+
+Accessibility support was enabled via AccessKit, sufficient to support screen readers (excepting text input fields). This support uses a new widget method, `fn Tile::role(self, cx) -> Role` where `enum Role` describes common widget capability sets. A number of standard messages were added, with some expectations on support via the `Role` enum. Together, this allows widget tree introspection and (limited) control, even without the AccessKit dependency.
+
+Input Method Editors (IME) also received basic support.
+
+Tooltips (pop-up text on mouse hover) have been implemented.
+
+### 0.17.0 — Unreleased
+
+IME support is improved using the revised winit support for this.
+
+Added `kas-soft` software-rendering backend, providing an alternative to WGPU and enabling substantially smaller binaries.
+
+Revised per-class text support, allowing this to affect font size & style.
+
+Sub-pixel rendering support.
+
 
 Future work
 -----------
