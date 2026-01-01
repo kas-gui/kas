@@ -47,20 +47,23 @@ mod EventConfig {
         (0, 8) => "Pan distance threshold:",
         (1, 8) => self.pan_dist_thresh,
 
-        (0, 9) => "Mouse pan:",
-        (1, 9) => self.mouse_pan,
+        (0, 9) => "Double-click distance threshold:",
+        (1, 9) => self.double_click_dist_thresh,
 
-        (0, 10) => "Mouse text pan:",
-        (1, 10) => self.mouse_text_pan,
+        (0, 10) => "Mouse pan:",
+        (1, 10) => self.mouse_pan,
 
-        (1, 11) => self.mouse_wheel_actions,
+        (0, 11) => "Mouse text pan:",
+        (1, 11) => self.mouse_text_pan,
 
-        (1, 12) => self.mouse_nav_focus,
+        (1, 12) => self.mouse_wheel_actions,
 
-        (1, 13) => self.touch_nav_focus,
+        (1, 13) => self.mouse_nav_focus,
 
-        (0, 14) => "Restore default values:",
-        (1, 14) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
+        (1, 14) => self.touch_nav_focus,
+
+        (0, 15) => "Restore default values:",
+        (1, 15) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
     })]
     #[impl_default(EventConfig::new())]
     pub struct EventConfig {
@@ -83,6 +86,8 @@ mod EventConfig {
         scroll_dist_em: SpinBox<(), f32>,
         #[widget]
         pan_dist_thresh: SpinBox<(), f32>,
+        #[widget]
+        double_click_dist_thresh: SpinBox<(), f32>,
         #[widget]
         mouse_pan: ComboBox<(), MousePan>,
         #[widget]
@@ -164,7 +169,14 @@ mod EventConfig {
                     cx.config().base().event.pan_dist_thresh
                 })
                 .with_step(0.25)
-                .with_msg(EventConfigMsg::PanDistThresh),
+                .with_msg(EventConfigMsg::PanDistThresh)
+                .with_unit("px"),
+                double_click_dist_thresh: SpinBox::new(0.25..=16.0, |cx: &ConfigCx, _| {
+                    cx.config().base().event.double_click_dist_thresh
+                })
+                .with_step(0.25)
+                .with_msg(EventConfigMsg::DoubleClickDistThresh)
+                .with_unit("px"),
                 mouse_pan: ComboBox::new_msg(
                     pan_options,
                     |cx: &ConfigCx, _| cx.config().base().event.mouse_pan,
