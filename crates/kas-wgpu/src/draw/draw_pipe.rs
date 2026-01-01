@@ -55,7 +55,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let shaders = ShaderManager::new(&device);
 
         // Create staging belt and a local pool
-        let staging_belt = wgpu::util::StagingBelt::new(1024);
+        let staging_belt = wgpu::util::StagingBelt::new(device.clone(), 1024);
 
         let bgl_common = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("common bind group layout"),
@@ -267,6 +267,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                     depth_stencil_attachment: None,
                     timestamp_writes: None,
                     occlusion_query_set: None,
+                    multiview_mask: None,
                 });
                 rpass.set_scissor_rect(
                     rect.pos.0.cast(),
