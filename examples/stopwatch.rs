@@ -47,7 +47,7 @@ fn make_ui() -> impl Widget<Data = ()> {
                 cx.request_frame_timer(TIMER);
             }
         })
-        .on_timer(TIMER, |cx, timer, _| {
+        .on_timer(TIMER, |cx, _, timer, _| {
             if let Some(last) = timer.last {
                 let now = Instant::now();
                 timer.elapsed += now - last;

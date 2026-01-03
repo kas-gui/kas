@@ -341,7 +341,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
     let ui = ui
         .with_state(Data::default())
-        .on_update(|_, data, app_data: &AppData| data.disabled = app_data.disabled)
+        .on_update(|_, _, data, app_data: &AppData| data.disabled = app_data.disabled)
         .on_message(|_, data, MsgDirection| {
             data.dir = match data.dir {
                 Direction::Up => Direction::Right,
