@@ -200,11 +200,6 @@ Future work
 These items are not versioned and appear only roughly in the expected order.
 Each should be a decently sized work item (roughly one release).
 
-### Standard geometry types
-
-KAS has ad-hoc geometry types. *Possibly* it would be useful to use third-party
-types instead. See [#95](https://github.com/kas-gui/kas/issues/95).
-
 ### Context menu and undo
 
 KAS supports pop-up menus since 0.4. Context menus are a little different, in
@@ -230,19 +225,6 @@ few standard dialog boxes (e.g. file open/save), not only for consistency but
 also security (e.g. a container may not let an app explore the filesystem).
 Such dialogs should automatically use desktop-provided equivalents where
 available.
-
-### Input Method Editors and virtual keyboards
-
-Winit has at least partial support for IME now. Kas should add support for this
-(mostly this means an additional `Event` variant, one or two API calls to
-enable IME input for the current widget, and adjusting `EditField`).
-
-### Accessibility tools
-
-`AccessKit` would appear to be the defacto Rust API for accessibility tools with
-(limited) support from egui and Xilem toolkits. Widgets could support this via
-additional code in the `update` method, possibly with additional tracking to
-avoid unnecessarily replacing nodes.
 
 ### Internationalisation (i18n)
 
