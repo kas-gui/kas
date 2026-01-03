@@ -249,6 +249,10 @@ To investigate. Possibly use Servo (components), though it may not matter much.
 
 The browser should probably be integrated via a child window (see Winit's `WindowBuilder::with_parent_window`, which is not yet supported everywhere).
 
+### Improved layout support
+
+The current layout system has some issues with margins and alignment; in particular margins should be optional and internal alignment is sometimes necessary.
+
 
 External dependencies
 ----------------------
