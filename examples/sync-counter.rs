@@ -53,7 +53,7 @@ fn counter(title: &str) -> Window<Count> {
 
     let ui = ui
         .with_state(initial)
-        .on_update(|_, state, count| state.0 = *count)
+        .on_update(|_, _, state, count| state.0 = *count)
         .on_message(|_, state, SetValue(v)| state.1 = v);
     Window::new(ui, title).escapable()
 }
