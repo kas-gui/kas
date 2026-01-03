@@ -57,6 +57,24 @@ mod Sprite {
             }
         }
 
+        /// Access the current [`ImageHandle`], if any
+        ///
+        /// This handle may be used with [`DrawShared`](kas::draw::DrawShared)
+        /// methods.
+        #[inline]
+        pub fn handle(&self) -> Option<&ImageHandle> {
+            self.handle.as_ref()
+        }
+
+        /// Get the image buffer size
+        ///
+        /// This is the size of the image last assigned using [`Sprite::set`].
+        /// Initially it is [`Size::ZERO`].
+        #[inline]
+        pub fn image_size(&self) -> Size {
+            self.image_size
+        }
+
         /// Remove image (set empty)
         pub fn clear(&mut self, cx: &mut EventCx) {
             if let Some(handle) = self.handle.take() {
