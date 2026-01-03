@@ -742,16 +742,14 @@ cargo run --example gallery --features toml
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    #[allow(unused_mut)]
-    let mut builder =
-        kas::theme::MultiTheme::builder().add("simple", kas::theme::SimpleTheme::new());
+    let mut theme = kas::theme::MultiTheme::new();
+    theme.add("simple", kas::theme::SimpleTheme::new());
     #[cfg(feature = "wgpu")]
     {
-        builder = builder
-            .add("flat", kas::theme::FlatTheme::new())
-            .add("shaded", kas_wgpu::ShadedTheme::new())
+        let index = theme.add("flat", kas::theme::FlatTheme::new());
+        theme.add("shaded", kas_wgpu::ShadedTheme::new());
+        theme.set_active(index);
     }
-    let theme = builder.build();
     let mut runner = kas::runner::Runner::with_theme(theme).build(())?;
 
     // TODO: use as logo of tab
@@ -770,9 +768,13 @@ fn main() -> kas::runner::Result<()> {
             menu.entry("&Quit", Menu::Quit);
         })
         .menu("&Theme", |menu| {
-            menu.entry("&Simple", Menu::Theme("simple"))
-                .entry("&Flat", Menu::Theme("flat"))
-                .entry("S&haded", Menu::Theme("shaded"));
+            #[allow(unused)]
+            let menu = menu.entry("&Simple", Menu::Theme("simple"));
+            #[cfg(feature = "wgpu")]
+            {
+                menu.entry("&Flat", Menu::Theme("flat"))
+                    .entry("S&haded", Menu::Theme("shaded"));
+            }
         })
         .menu("&Style", |menu| {
             menu.submenu("&Colours", |mut menu| {

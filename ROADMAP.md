@@ -175,17 +175,30 @@ For more on *input data*, read the [design document](https://github.com/kas-gui/
 Add traits `Collection` and `CellCollection` representing a list/tuple of widgets.
 Revise layout macros with `.align` / `.pack` / `.margins` adapters.
 
+### 0.16.0 — September 2025
+
+Accessibility support was enabled via AccessKit, sufficient to support screen readers (excepting text input fields). This support uses a new widget method, `fn Tile::role(self, cx) -> Role` where `enum Role` describes common widget capability sets. A number of standard messages were added, with some expectations on support via the `Role` enum. Together, this allows widget tree introspection and (limited) control, even without the AccessKit dependency.
+
+Input Method Editors (IME) also received basic support.
+
+Tooltips (pop-up text on mouse hover) have been implemented.
+
+### 0.17.0 — Unreleased
+
+IME support is improved using the revised winit support for this.
+
+Added `kas-soft` software-rendering backend, providing an alternative to WGPU and enabling substantially smaller binaries.
+
+Revised per-class text support, allowing this to affect font size & style.
+
+Sub-pixel rendering support.
+
 
 Future work
 -----------
 
 These items are not versioned and appear only roughly in the expected order.
 Each should be a decently sized work item (roughly one release).
-
-### Standard geometry types
-
-KAS has ad-hoc geometry types. *Possibly* it would be useful to use third-party
-types instead. See [#95](https://github.com/kas-gui/kas/issues/95).
 
 ### Context menu and undo
 
@@ -213,19 +226,6 @@ also security (e.g. a container may not let an app explore the filesystem).
 Such dialogs should automatically use desktop-provided equivalents where
 available.
 
-### Input Method Editors and virtual keyboards
-
-Winit has at least partial support for IME now. Kas should add support for this
-(mostly this means an additional `Event` variant, one or two API calls to
-enable IME input for the current widget, and adjusting `EditField`).
-
-### Accessibility tools
-
-`AccessKit` would appear to be the defacto Rust API for accessibility tools with
-(limited) support from egui and Xilem toolkits. Widgets could support this via
-additional code in the `update` method, possibly with additional tracking to
-avoid unnecessarily replacing nodes.
-
 ### Internationalisation (i18n)
 
 [Project Fluent](https://projectfluent.org/) offers the core functionality
@@ -248,6 +248,10 @@ Integrating any video player as a child window should be possible (see Winit's
 To investigate. Possibly use Servo (components), though it may not matter much.
 
 The browser should probably be integrated via a child window (see Winit's `WindowBuilder::with_parent_window`, which is not yet supported everywhere).
+
+### Improved layout support
+
+The current layout system has some issues with margins and alignment; in particular margins should be optional and internal alignment is sometimes necessary.
 
 
 External dependencies

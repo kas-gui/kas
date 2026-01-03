@@ -79,6 +79,8 @@ Every approach has its limitations. Ours are:
 
 In development. Interfaces are not currently stable.
 
+Enough functionality should be present to develop complex GUIs, however some features are still missing (see [the Roadmap](https://github.com/kas-gui/kas/blob/master/ROADMAP.md#future-work).
+
 
 Crates and features
 -------------------

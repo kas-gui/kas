@@ -15,35 +15,29 @@ use std::collections::HashMap;
 
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
-/// Wrapper around multiple themes, supporting run-time switching
+/// Run-time switching support for pre-loaded themes
 pub struct MultiTheme<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,
     active: usize,
 }
 
-/// Builder for [`MultiTheme`]
-///
-/// Construct via [`MultiTheme::builder`].
-pub struct MultiThemeBuilder<DS> {
-    names: HashMap<String, usize>,
-    themes: Vec<DynTheme<DS>>,
-}
-
 impl<DS> MultiTheme<DS> {
-    /// Construct with builder pattern
-    pub fn builder() -> MultiThemeBuilder<DS> {
-        MultiThemeBuilder {
+    /// Construct an empty `MultiTheme`
+    ///
+    /// **At least one theme must be added before the UI starts.**.
+    pub fn new() -> MultiTheme<DS> {
+        MultiTheme {
             names: HashMap::new(),
             themes: vec![],
+            active: 0,
         }
     }
-}
 
-impl<DS> MultiThemeBuilder<DS> {
     /// Add a theme
-    #[must_use]
-    pub fn add<S: ToString, T>(mut self, name: S, theme: T) -> Self
+    ///
+    /// Returns the index of the new theme.
+    pub fn add<S: ToString, T>(&mut self, name: S, theme: T) -> usize
     where
         DS: DrawSharedImpl,
         T: ThemeDst<DS> + 'static,
@@ -51,29 +45,16 @@ impl<DS> MultiThemeBuilder<DS> {
         let index = self.themes.len();
         self.names.insert(name.to_string(), index);
         self.themes.push(Box::new(theme));
-        self
+        index
     }
 
-    /// Build
+    /// Set the active theme
     ///
-    /// Returns `None` if no themes were added.
-    pub fn try_build(self) -> Option<MultiTheme<DS>> {
-        if self.themes.is_empty() {
-            return None;
-        }
-        Some(MultiTheme {
-            names: self.names,
-            themes: self.themes,
-            active: 0,
-        })
-    }
-
-    /// Build
+    /// If this is not called, then the first theme added will be active.
     ///
-    /// Panics if no themes were added.
-    pub fn build(self) -> MultiTheme<DS> {
-        self.try_build()
-            .unwrap_or_else(|| panic!("MultiThemeBuilder: no themes added"))
+    /// An invalid index will cause the UI to panic on start.
+    pub fn set_active(&mut self, index: usize) {
+        self.active = index;
     }
 }
 
@@ -82,6 +63,14 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     type Draw<'a> = Box<dyn ThemeDraw + 'a>;
 
     fn init(&mut self, config: &RefCell<Config>) {
+        if self.active >= self.themes.len() {
+            panic!(
+                "MultiTheme: invalid index {} in list of {} themes added",
+                self.active,
+                self.themes.len()
+            );
+        }
+
         if config.borrow().theme.active_theme.is_empty() {
             for (name, index) in &self.names {
                 if *index == self.active {

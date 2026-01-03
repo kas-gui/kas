@@ -31,7 +31,7 @@ pub mod dimensions;
 pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState};
 pub use draw::{Background, DrawCx};
 pub use flat_theme::FlatTheme;
-pub use multi::{MultiTheme, MultiThemeBuilder};
+pub use multi::MultiTheme;
 pub use simple_theme::SimpleTheme;
 pub use size::SizeCx;
 pub use style::*;
