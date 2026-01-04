@@ -22,7 +22,7 @@ use syn::{parse_quote, parse2};
 /// behaviour is a panic.
 pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
-    let layout = crate::make_layout::Tree::try_parse(scope)?;
+    let layout = crate::make_layout::Tree::parse_or_dummy(scope);
     let mut have_rect_definition = layout
         .as_ref()
         .map(|tree| tree.rect(&quote! {}).is_some())

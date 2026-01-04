@@ -9,7 +9,7 @@ use impl_tools_lib::scope::Scope;
 use proc_macro_error2::emit_error;
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{ToTokens, TokenStreamExt, quote};
-use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{Expr, Ident, LitStr, Member, Meta, Token};
 use syn::{braced, bracketed, parenthesized, parse_quote, parse2, token};
@@ -51,26 +51,32 @@ impl Tree {
 
     /// Attempt to parse a layout tree from Scope item attribute
     ///
-    /// Removes the attribute if found. Fails on a syntax error.
-    pub fn try_parse(scope: &mut Scope) -> Result<Option<Self>> {
+    /// In case of error, a dummy layout is used to reduce incidental errors.
+    /// NOTE: this only works correctly using the `nightly-diagnostics` feature.
+    pub fn parse_or_dummy(scope: &mut Scope) -> Option<Self> {
         let mut layout: Option<Self> = None;
         let mut other_attrs = Vec::with_capacity(scope.attrs.len());
         for attr in scope.attrs.drain(..) {
             if *attr.path() == parse_quote! { layout } {
-                match attr.meta {
-                    Meta::List(list) => {
-                        layout = Some(parse2(list.tokens)?);
-                    }
+                layout = Some(match attr.meta {
+                    Meta::List(list) => match parse2(list.tokens) {
+                        Ok(layout) => layout,
+                        Err(err) => {
+                            emit_error!(err.span(), "parse error: {}", err);
+                            Tree(Layout::Dummy)
+                        }
+                    },
                     _ => {
-                        return Err(Error::new(attr.span(), "expected `#[layout(...)]`"));
+                        emit_error!(attr, "expected `#[layout(...)]`");
+                        Tree(Layout::Dummy)
                     }
-                };
+                });
             } else {
                 other_attrs.push(attr);
             }
         }
         scope.attrs = other_attrs;
-        Ok(layout)
+        layout
     }
 
     pub fn storage_fields(&self, children: &mut Vec<Child>) -> StorageFields {
@@ -145,6 +151,7 @@ struct ListItem<C> {
 
 #[derive(Debug)]
 enum Layout {
+    Dummy,
     Align(Box<Layout>, Align),
     Pack(Box<Layout>, Pack),
     Stretch(Box<Layout>, Stretch),
@@ -609,7 +616,7 @@ impl Layout {
                     emit_error!(expr, "not a field of self")
                 }
             }
-            Layout::Widget(_, _) | Layout::Label(_, _) => (),
+            Layout::Dummy | Layout::Widget(_, _) | Layout::Label(_, _) => (),
             Layout::List(_, _, list) | Layout::Float(list) => {
                 for item in list {
                     item.layout.validate(fields);
@@ -630,7 +637,7 @@ impl Layout {
             | Layout::WithMarginStyle(layout, _) => {
                 layout.append_fields(fields, children);
             }
-            Layout::Single(_) => (),
+            Layout::Dummy | Layout::Single(_) => (),
             Layout::Pack(layout, pack) => {
                 let stor = &pack.stor;
                 fields
@@ -707,6 +714,7 @@ impl Layout {
     /// Yield an implementation of `fn rect`, if easy
     fn rect(&self, core_path: &Toks) -> Option<Toks> {
         match self {
+            Layout::Dummy => Some(quote! { ::kas::geom::Rect::ZERO }),
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
@@ -725,6 +733,7 @@ impl Layout {
     /// Expands to a series of statements.
     fn size_rules(&self, core_path: &Toks) -> Toks {
         match self {
+            Layout::Dummy => quote! { ::kas::layout::SizeRules::EMPTY },
             Layout::Align(layout, _) => layout.size_rules(core_path),
             Layout::Pack(layout, pack) => {
                 let stor = &pack.stor;
@@ -835,6 +844,7 @@ impl Layout {
     /// Yield an implementation of `fn set_rect`
     fn set_rect(&self, core_path: &Toks) -> Toks {
         match self {
+            Layout::Dummy => quote! {},
             Layout::Align(layout, align) => {
                 let align_hints = &align.hints;
                 let inner = layout.set_rect(core_path);
@@ -923,6 +933,7 @@ impl Layout {
         toks: &mut Toks,
     ) -> Option<()> {
         Some(match self {
+            Layout::Dummy => (),
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
@@ -971,6 +982,7 @@ impl Layout {
     /// Yield an implementation of `fn draw`
     fn draw(&self, core_path: &Toks) -> Toks {
         match self {
+            Layout::Dummy => quote! {},
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
@@ -1068,7 +1080,7 @@ impl Layout {
                 }
                 Ok(())
             }
-            Layout::Label(_, _) => Ok(()),
+            Layout::Dummy | Layout::Label(_, _) => Ok(()),
         }
     }
 }
