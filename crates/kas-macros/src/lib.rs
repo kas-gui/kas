@@ -382,7 +382,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// > text wrapping.
 /// >
 /// > _MacroItem_: (`frame` | `column` | `row` | `list` | `float` |
-/// > `aligned_column` | `aligned_row` | `grid`) `!` _MacroArgs_\
+/// > `grid`) `!` _MacroArgs_\
 /// > &nbsp;&nbsp; These layout macros are natively supported in layout syntax.
 /// > They are equivalent to the like-named [macros in `kas::widgets`] aside from
 /// > name resolution.

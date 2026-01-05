@@ -28,8 +28,6 @@ mod kw {
     custom_keyword!(frame);
     custom_keyword!(list);
     custom_keyword!(grid);
-    custom_keyword!(aligned_column);
-    custom_keyword!(aligned_row);
     custom_keyword!(float);
     custom_keyword!(with_direction);
     custom_keyword!(with_style);
@@ -320,26 +318,6 @@ impl Layout {
             let _: Token![!] = input.parse()?;
             let list = parse_layout_list(input, core_gen)?;
             Ok(Layout::Float(list))
-        } else if lookahead.peek(kw::aligned_column) {
-            let _: kw::aligned_column = input.parse()?;
-            let _: Token![!] = input.parse()?;
-            let stor = core_gen.next();
-
-            let inner;
-            let _ = bracketed!(inner in input);
-            Ok(parse_grid_as_list_of_lists::<kw::row>(
-                stor, &inner, core_gen, true,
-            )?)
-        } else if lookahead.peek(kw::aligned_row) {
-            let _: kw::aligned_row = input.parse()?;
-            let _: Token![!] = input.parse()?;
-            let stor = core_gen.next();
-
-            let inner;
-            let _ = bracketed!(inner in input);
-            Ok(parse_grid_as_list_of_lists::<kw::column>(
-                stor, &inner, core_gen, false,
-            )?)
         } else if lookahead.peek(kw::grid) {
             let _: kw::grid = input.parse()?;
             let _: Token![!] = input.parse()?;
@@ -376,59 +354,6 @@ fn parse_layout_items(inner: ParseStream, core_gen: &mut NameGenerator) -> Resul
     }
 
     Ok(list)
-}
-
-fn parse_grid_as_list_of_lists<KW: Parse>(
-    stor: Ident,
-    inner: ParseStream,
-    core_gen: &mut NameGenerator,
-    row_major: bool,
-) -> Result<Layout> {
-    let (mut col, mut row) = (0, 0);
-    let mut dim = GridDimensions::default();
-    let mut infos = vec![];
-    let mut cells = vec![];
-
-    while !inner.is_empty() {
-        let _ = inner.parse::<KW>()?;
-        let _ = inner.parse::<Token![!]>()?;
-
-        let inner2;
-        let _ = bracketed!(inner2 in inner);
-
-        while !inner2.is_empty() {
-            let cell = CellInfo::new(col, row);
-            dim.update(&cell);
-            infos.push(cell);
-            cells.push(Layout::parse(&inner2, core_gen)?);
-
-            if inner2.is_empty() {
-                break;
-            }
-            let _: Token![,] = inner2.parse()?;
-
-            if row_major {
-                col += 1;
-            } else {
-                row += 1;
-            }
-        }
-
-        if inner.is_empty() {
-            break;
-        }
-        let _: Token![,] = inner.parse()?;
-
-        if row_major {
-            col = 0;
-            row += 1;
-        } else {
-            row = 0;
-            col += 1;
-        }
-    }
-
-    Ok(Layout::Grid(stor, dim, infos, cells))
 }
 
 impl Parser for Layout {

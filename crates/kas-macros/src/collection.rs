@@ -8,20 +8,18 @@
 use crate::parser::{Parser, parse_grid};
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{ToTokens, TokenStreamExt, quote};
+use syn::parenthesized;
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{Expr, Ident, LitInt, LitStr, Token};
-use syn::{bracketed, parenthesized};
 
 #[allow(non_camel_case_types)]
 mod kw {
     syn::custom_keyword!(align);
     syn::custom_keyword!(pack);
     syn::custom_keyword!(with_stretch);
-    syn::custom_keyword!(aligned_column);
-    syn::custom_keyword!(aligned_row);
     syn::custom_keyword!(column);
     syn::custom_keyword!(row);
 }
@@ -226,57 +224,9 @@ impl Parse for Collection {
 
 impl Parse for CellCollection {
     fn parse(input: ParseStream) -> Result<Self> {
-        if input.peek(kw::aligned_column) {
-            let _: kw::aligned_column = input.parse()?;
-            return Self::parse_aligned::<kw::row>(input, false);
-        } else if input.peek(kw::aligned_row) {
-            let _: kw::aligned_row = input.parse()?;
-            return Self::parse_aligned::<kw::column>(input, true);
-        }
-
         let mut names = NameGenerator::default();
         let (_, infos, items) = parse_grid::<Item>(input, &mut names)?;
         Ok(CellCollection(infos, Collection(items)))
-    }
-}
-
-impl CellCollection {
-    fn parse_aligned<Kw: Parse>(input: ParseStream, transmute: bool) -> Result<Self> {
-        let mut names = NameGenerator::default();
-        let mut cells = vec![];
-        let mut items = vec![];
-
-        let mut row = 0;
-        while !input.is_empty() {
-            let _: Kw = input.parse()?;
-            let _: Token![!] = input.parse()?;
-
-            let inner;
-            let _ = bracketed!(inner in input);
-            let mut col = 0;
-            while !inner.is_empty() {
-                let (mut a, mut b) = (col, row);
-                if transmute {
-                    (a, b) = (b, a);
-                }
-                cells.push(CellInfo::new(a, b));
-                items.push(Item::parse(&inner, &mut names)?);
-
-                if inner.is_empty() {
-                    break;
-                }
-                let _: Token![,] = inner.parse()?;
-                col += 1;
-            }
-
-            if input.is_empty() {
-                break;
-            }
-            let _: Token![,] = input.parse()?;
-            row += 1;
-        }
-
-        Ok(CellCollection(cells, Collection(items)))
     }
 }
 
