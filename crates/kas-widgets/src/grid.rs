@@ -29,12 +29,10 @@ use std::ops::{Index, IndexMut};
 /// > &nbsp;&nbsp; `(` _Column_ `,` _Row_ `)` `=>` _Item_
 /// >
 /// > _Column_, _Row_ :\
-/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..` `+` _LitInt_ ) | ( _LitInt_ `..`
-/// > _LitInt_ ) | ( _LitInt_ `..=` _LitInt_ )
+/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..=` _LitInt_ )
 ///
-/// Here, _Column_ and _Row_ are selected via an index (from 0), a range of
-/// indices, or a start + increment. For example, `2` = `2..+1` = `2..3` =
-/// `2..=2` while `5..+2` = `5..7` = `5..=6`.
+/// Here, _Column_ and _Row_ are selected via an index (from 0) or an inclusive
+/// range, for example `2` or `2..=3`.
 ///
 /// ## Stand-alone usage
 ///
@@ -65,7 +63,7 @@ use std::ops::{Index, IndexMut};
 /// let my_widget = kas_widgets::grid! {
 ///     (0, 0) => "one",
 ///     (1, 0) => "two",
-///     (0..2, 1) => "three",
+///     (0..=1, 1) => "three",
 /// };
 /// ```
 ///
@@ -164,7 +162,7 @@ mod Grid {
     /// let _grid = Grid::new(cell_collection! {
     ///     (0, 0) => "one",
     ///     (1, 0) => "two",
-    ///     (0..2, 1) => "three",
+    ///     (0..=1, 1) => "three",
     /// });
     /// ```
     #[widget]

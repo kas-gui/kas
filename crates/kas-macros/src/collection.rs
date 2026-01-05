@@ -66,18 +66,6 @@ impl Parse for CellInfo {
                 } else {
                     Err(Error::new(lit.span(), format!("expected value >= {start}")))
                 }
-            } else if input.parse::<Token![..]>().is_ok() {
-                let plus = input.parse::<Token![+]>();
-                let lit = input.parse::<LitInt>()?;
-                let n: u32 = lit.base10_parse()?;
-
-                if plus.is_ok() {
-                    Ok(start + n - 1)
-                } else if n > start {
-                    Ok(n - 1)
-                } else {
-                    Err(Error::new(lit.span(), format!("expected value > {start}")))
-                }
             } else {
                 Ok(start)
             }

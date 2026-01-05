@@ -33,7 +33,7 @@ fn grid() {
     use_widget(grid! {
         (0, 0) => "top left",
         (1, 0) => "top right",
-        (0..2, 1) => "bottom row (merged)",
+        (0..=1, 1) => "bottom row (merged)",
     });
 }
 

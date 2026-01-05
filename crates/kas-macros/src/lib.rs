@@ -626,12 +626,10 @@ pub fn collection(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `(` _Column_ `,` _Row_ `)` `=>` _Item_
 /// >
 /// > _Column_, _Row_ :\
-/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..` `+` _LitInt_ ) | ( _LitInt_ `..`
-/// > _LitInt_ ) | ( _LitInt_ `..=` _LitInt_ )
+/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..=` _LitInt_ )
 ///
-/// Here, _Column_ and _Row_ are selected via an index (from 0), a range of
-/// indices, or a start + increment. For example, `2` = `2..+1` = `2..3` =
-/// `2..=2` while `5..+2` = `5..7` = `5..=6`.
+/// Here, _Column_ and _Row_ are selected via an index (from 0) or an inclusive
+/// range, for example `2` or `2..=3`.
 ///
 /// _Item_ may be:
 ///
