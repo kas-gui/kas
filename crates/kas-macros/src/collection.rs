@@ -5,7 +5,7 @@
 
 //! Collection macro
 
-use crate::parser::{Parser, parse_grid};
+use crate::parser::{Parser, parse_grid, parse_list};
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{ToTokens, TokenStreamExt, quote};
 use syn::parenthesized;
@@ -204,20 +204,9 @@ pub struct Collection(Vec<Item>);
 pub struct CellCollection(Vec<CellInfo>, Collection);
 
 impl Parse for Collection {
-    fn parse(inner: ParseStream) -> Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let mut names = NameGenerator::default();
-
-        let mut items = vec![];
-        while !inner.is_empty() {
-            items.push(Item::parse(inner, &mut names)?);
-
-            if inner.is_empty() {
-                break;
-            }
-
-            let _: Token![,] = inner.parse()?;
-        }
-
+        let items = parse_list::<Item>(input, &mut names)?;
         Ok(Collection(items))
     }
 }

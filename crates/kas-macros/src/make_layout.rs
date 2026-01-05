@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::collection::{CellInfo, GridDimensions, NameGenerator};
-use crate::parser::{Parser, parse_grid};
+use crate::parser::{Parser, parse_grid, parse_list};
 use crate::widget_args::{Child, ChildIdent};
 use impl_tools_lib::scope::Scope;
 use proc_macro_error2::emit_error;
@@ -338,22 +338,7 @@ impl Layout {
 fn parse_layout_list(input: ParseStream, core_gen: &mut NameGenerator) -> Result<Vec<Layout>> {
     let inner;
     let _ = bracketed!(inner in input);
-    parse_layout_items(&inner, core_gen)
-}
-
-fn parse_layout_items(inner: ParseStream, core_gen: &mut NameGenerator) -> Result<Vec<Layout>> {
-    let mut list = vec![];
-    while !inner.is_empty() {
-        list.push(Layout::parse(inner, core_gen)?);
-
-        if inner.is_empty() {
-            break;
-        }
-
-        let _: Token![,] = inner.parse()?;
-    }
-
-    Ok(list)
+    parse_list::<Layout>(&inner, core_gen)
 }
 
 impl Parser for Layout {
