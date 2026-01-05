@@ -20,50 +20,25 @@ mod EventConfig {
     /// TODO: support undo and/or revert to saved values.
     #[widget]
     #[layout(grid! {
-        (0, 0) => "Hover delay:",
-        (1, 0) => self.menu_delay,
-
-        (0, 1) => "Menu delay:",
-        (1, 1) => self.menu_delay,
-
-        (0, 2) => "Touch-selection delay:",
-        (1, 2) => self.touch_select_delay,
-
-        (0, 3) => "Kinetic scrolling timeout:",
-        (1, 3) => self.kinetic_timeout,
-
-        (0, 4) => "Kinetic decay (relative):",
-        (1, 4) => self.kinetic_decay_mul,
-
-        (0, 5) => "Kinetic decay (absolute):",
-        (1, 5) => self.kinetic_decay_sub,
-
-        (0, 6) => "Kinetic decay when grabbed:",
-        (1, 6) => self.kinetic_grab_sub,
-
-        (0, 7) => "Scroll wheel distance:",
-        (1, 7) => self.scroll_dist_em,
-
-        (0, 8) => "Pan distance threshold:",
-        (1, 8) => self.pan_dist_thresh,
-
-        (0, 9) => "Double-click distance threshold:",
-        (1, 9) => self.double_click_dist_thresh,
-
-        (0, 10) => "Mouse pan:",
-        (1, 10) => self.mouse_pan,
-
-        (0, 11) => "Mouse text pan:",
-        (1, 11) => self.mouse_text_pan,
-
+        row!["Hover delay:", self.menu_delay],
+        row!["Menu delay:", self.menu_delay],
+        row!["Touch-selection delay:", self.touch_select_delay],
+        row!["Kinetic scrolling timeout:", self.kinetic_timeout],
+        row!["Kinetic decay (relative):", self.kinetic_decay_mul],
+        row!["Kinetic decay (absolute):", self.kinetic_decay_sub],
+        row!["Kinetic decay when grabbed:", self.kinetic_grab_sub],
+        row!["Scroll wheel distance:", self.scroll_dist_em],
+        row!["Pan distance threshold:", self.pan_dist_thresh],
+        row!["Double-click distance threshold:", self.double_click_dist_thresh],
+        row!["Mouse pan:", self.mouse_pan],
+        row!["Mouse text pan:", self.mouse_text_pan],
         (1, 12) => self.mouse_wheel_actions,
-
         (1, 13) => self.mouse_nav_focus,
-
         (1, 14) => self.touch_nav_focus,
-
-        (0, 15) => "Restore default values:",
-        (1, 15) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
+        row![
+            "Restore default values:",
+            Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
+        ],
     })]
     #[impl_default(EventConfig::new())]
     pub struct EventConfig {
