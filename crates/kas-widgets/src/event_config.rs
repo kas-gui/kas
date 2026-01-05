@@ -32,9 +32,9 @@ mod EventConfig {
         row!["Double-click distance threshold:", self.double_click_dist_thresh],
         row!["Mouse pan:", self.mouse_pan],
         row!["Mouse text pan:", self.mouse_text_pan],
-        (1, 12) => self.mouse_wheel_actions,
-        (1, 13) => self.mouse_nav_focus,
-        (1, 14) => self.touch_nav_focus,
+        row![_, self.mouse_wheel_actions],
+        row![_, self.mouse_nav_focus],
+        row![_, self.touch_nav_focus],
         row![
             "Restore default values:",
             Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),

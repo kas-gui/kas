@@ -459,10 +459,14 @@ fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> 
                 let col = dim.cols;
                 let mut row = 0;
                 while !inner2.is_empty() {
-                    let layout = Layout::parse(&inner2, core_gen)?;
-                    let cell = CellInfo::new(col, row);
-                    dim.update(&cell);
-                    cells.push(ListItem { cell, layout });
+                    if let Ok(_) = inner2.parse::<Token![_]>() {
+                        // empty item
+                    } else {
+                        let layout = Layout::parse(&inner2, core_gen)?;
+                        let cell = CellInfo::new(col, row);
+                        dim.update(&cell);
+                        cells.push(ListItem { cell, layout });
+                    }
                     row += 1;
 
                     if inner2.is_empty() {
@@ -482,10 +486,14 @@ fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> 
                 let mut col = 0;
                 let row = dim.rows;
                 while !inner2.is_empty() {
-                    let layout = Layout::parse(&inner2, core_gen)?;
-                    let cell = CellInfo::new(col, row);
-                    dim.update(&cell);
-                    cells.push(ListItem { cell, layout });
+                    if let Ok(_) = inner2.parse::<Token![_]>() {
+                        // empty item
+                    } else {
+                        let layout = Layout::parse(&inner2, core_gen)?;
+                        let cell = CellInfo::new(col, row);
+                        dim.update(&cell);
+                        cells.push(ListItem { cell, layout });
+                    }
                     col += 1;
 
                     if inner2.is_empty() {
