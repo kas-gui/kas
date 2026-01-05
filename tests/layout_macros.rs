@@ -1,6 +1,6 @@
 use kas::Widget;
 use kas::layout::AlignHints;
-use kas::widgets::{aligned_column, aligned_row, column, float, grid, list, row};
+use kas::widgets::{column, float, grid, list, row};
 
 fn use_widget<W: Widget<Data = ()>>(_: W) {}
 
@@ -33,14 +33,14 @@ fn grid() {
     use_widget(grid! {
         (0, 0) => "top left",
         (1, 0) => "top right",
-        (0..2, 1) => "bottom row (merged)",
+        (0..=1, 1) => "bottom row (merged)",
     });
 }
 
 #[test]
 fn aligned_column() {
     #[rustfmt::skip]
-    use_widget(aligned_column![
+    use_widget(grid![
         row!["one", "two"],
         row!["three", "four"],
     ]);
@@ -48,7 +48,5 @@ fn aligned_column() {
 
 #[test]
 fn aligned_row() {
-    use_widget(aligned_row![column!["one", "two"], column![
-        "three", "four"
-    ],]);
+    use_widget(grid![column!["one", "two"], column!["three", "four"],]);
 }

@@ -142,7 +142,7 @@ fn widgets() -> Page<AppData> {
 Пример текста на нескольких языках.
 טקסט לדוגמא במספר שפות.";
 
-    let widgets = aligned_column![
+    let widgets = grid! {
         row!["ScrollLabel", ScrollLabel::new(text).map_any()],
         row![
             "EditBox",
@@ -230,7 +230,7 @@ fn widgets() -> Page<AppData> {
                 .map_any()
         ],
         row!["Child window", popup_edit_box],
-    ];
+    };
 
     let ui = widgets
         .with_state(data)

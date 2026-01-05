@@ -4,12 +4,13 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::collection::{CellInfo, GridDimensions, NameGenerator};
+use crate::parser::{Parser, parse_grid, parse_list};
 use crate::widget_args::{Child, ChildIdent};
 use impl_tools_lib::scope::Scope;
 use proc_macro_error2::emit_error;
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{ToTokens, TokenStreamExt, quote};
-use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{Expr, Ident, LitStr, Member, Meta, Token};
 use syn::{braced, bracketed, parenthesized, parse_quote, parse2, token};
@@ -27,8 +28,6 @@ mod kw {
     custom_keyword!(frame);
     custom_keyword!(list);
     custom_keyword!(grid);
-    custom_keyword!(aligned_column);
-    custom_keyword!(aligned_row);
     custom_keyword!(float);
     custom_keyword!(with_direction);
     custom_keyword!(with_style);
@@ -51,26 +50,32 @@ impl Tree {
 
     /// Attempt to parse a layout tree from Scope item attribute
     ///
-    /// Removes the attribute if found. Fails on a syntax error.
-    pub fn try_parse(scope: &mut Scope) -> Result<Option<Self>> {
+    /// In case of error, a dummy layout is used to reduce incidental errors.
+    /// NOTE: this only works correctly using the `nightly-diagnostics` feature.
+    pub fn parse_or_dummy(scope: &mut Scope) -> Option<Self> {
         let mut layout: Option<Self> = None;
         let mut other_attrs = Vec::with_capacity(scope.attrs.len());
         for attr in scope.attrs.drain(..) {
             if *attr.path() == parse_quote! { layout } {
-                match attr.meta {
-                    Meta::List(list) => {
-                        layout = Some(parse2(list.tokens)?);
-                    }
+                layout = Some(match attr.meta {
+                    Meta::List(list) => match parse2(list.tokens) {
+                        Ok(layout) => layout,
+                        Err(err) => {
+                            emit_error!(err.span(), "parse error: {}", err);
+                            Tree(Layout::Dummy)
+                        }
+                    },
                     _ => {
-                        return Err(Error::new(attr.span(), "expected `#[layout(...)]`"));
+                        emit_error!(attr, "expected `#[layout(...)]`");
+                        Tree(Layout::Dummy)
                     }
-                };
+                });
             } else {
                 other_attrs.push(attr);
             }
         }
         scope.attrs = other_attrs;
-        Ok(layout)
+        layout
     }
 
     pub fn storage_fields(&self, children: &mut Vec<Child>) -> StorageFields {
@@ -138,13 +143,8 @@ impl Tree {
 }
 
 #[derive(Debug)]
-struct ListItem<C> {
-    cell: C,
-    layout: Layout,
-}
-
-#[derive(Debug)]
 enum Layout {
+    Dummy,
     Align(Box<Layout>, Align),
     Pack(Box<Layout>, Pack),
     Stretch(Box<Layout>, Stretch),
@@ -152,9 +152,9 @@ enum Layout {
     Single(ExprMember),
     Widget(Ident, Expr),
     Frame(Ident, Box<Layout>, Expr, Expr),
-    List(Ident, Direction, Vec<ListItem<()>>),
-    Float(Vec<ListItem<()>>),
-    Grid(Ident, GridDimensions, Vec<ListItem<CellInfo>>),
+    List(Ident, Direction, Vec<Layout>),
+    Float(Vec<Layout>),
+    Grid(Ident, GridDimensions, Vec<CellInfo>, Vec<Layout>),
     Label(Ident, LitStr),
 }
 
@@ -318,26 +318,6 @@ impl Layout {
             let _: Token![!] = input.parse()?;
             let list = parse_layout_list(input, core_gen)?;
             Ok(Layout::Float(list))
-        } else if lookahead.peek(kw::aligned_column) {
-            let _: kw::aligned_column = input.parse()?;
-            let _: Token![!] = input.parse()?;
-            let stor = core_gen.next();
-
-            let inner;
-            let _ = bracketed!(inner in input);
-            Ok(parse_grid_as_list_of_lists::<kw::row>(
-                stor, &inner, core_gen, true,
-            )?)
-        } else if lookahead.peek(kw::aligned_row) {
-            let _: kw::aligned_row = input.parse()?;
-            let _: Token![!] = input.parse()?;
-            let stor = core_gen.next();
-
-            let inner;
-            let _ = bracketed!(inner in input);
-            Ok(parse_grid_as_list_of_lists::<kw::column>(
-                stor, &inner, core_gen, false,
-            )?)
         } else if lookahead.peek(kw::grid) {
             let _: kw::grid = input.parse()?;
             let _: Token![!] = input.parse()?;
@@ -345,7 +325,8 @@ impl Layout {
 
             let inner;
             let _ = braced!(inner in input);
-            Ok(parse_grid(stor, &inner, core_gen)?)
+            let (dim, infos, items) = parse_grid::<Layout>(&inner, core_gen)?;
+            Ok(Layout::Grid(stor, dim, infos, items))
         } else {
             let ident = core_gen.next();
             let expr = input.parse()?;
@@ -354,121 +335,18 @@ impl Layout {
     }
 }
 
-fn parse_layout_list(
-    input: ParseStream,
-    core_gen: &mut NameGenerator,
-) -> Result<Vec<ListItem<()>>> {
+fn parse_layout_list(input: ParseStream, core_gen: &mut NameGenerator) -> Result<Vec<Layout>> {
     let inner;
     let _ = bracketed!(inner in input);
-    parse_layout_items(&inner, core_gen)
+    parse_list::<Layout>(&inner, core_gen)
 }
 
-fn parse_layout_items(
-    inner: ParseStream,
-    core_gen: &mut NameGenerator,
-) -> Result<Vec<ListItem<()>>> {
-    let mut list = vec![];
-    while !inner.is_empty() {
-        list.push(ListItem {
-            cell: (),
-            layout: Layout::parse(inner, core_gen)?,
-        });
+impl Parser for Layout {
+    type Output = Self;
 
-        if inner.is_empty() {
-            break;
-        }
-
-        let _: Token![,] = inner.parse()?;
+    fn parse(input: ParseStream, core_gen: &mut NameGenerator) -> Result<Self::Output> {
+        Layout::parse(input, core_gen)
     }
-
-    Ok(list)
-}
-
-fn parse_grid_as_list_of_lists<KW: Parse>(
-    stor: Ident,
-    inner: ParseStream,
-    core_gen: &mut NameGenerator,
-    row_major: bool,
-) -> Result<Layout> {
-    let (mut col, mut row) = (0, 0);
-    let mut dim = GridDimensions::default();
-    let mut cells = vec![];
-
-    while !inner.is_empty() {
-        let _ = inner.parse::<KW>()?;
-        let _ = inner.parse::<Token![!]>()?;
-
-        let inner2;
-        let _ = bracketed!(inner2 in inner);
-
-        while !inner2.is_empty() {
-            let cell = CellInfo::new(col, row);
-            dim.update(&cell);
-            let layout = Layout::parse(&inner2, core_gen)?;
-            cells.push(ListItem { cell, layout });
-
-            if inner2.is_empty() {
-                break;
-            }
-            let _: Token![,] = inner2.parse()?;
-
-            if row_major {
-                col += 1;
-            } else {
-                row += 1;
-            }
-        }
-
-        if inner.is_empty() {
-            break;
-        }
-        let _: Token![,] = inner.parse()?;
-
-        if row_major {
-            col = 0;
-            row += 1;
-        } else {
-            row = 0;
-            col += 1;
-        }
-    }
-
-    Ok(Layout::Grid(stor, dim, cells))
-}
-
-fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> Result<Layout> {
-    let mut dim = GridDimensions::default();
-    let mut cells = vec![];
-    while !inner.is_empty() {
-        let cell = inner.parse()?;
-        dim.update(&cell);
-        let _: Token![=>] = inner.parse()?;
-
-        let layout;
-        let require_comma;
-        if inner.peek(syn::token::Brace) {
-            let inner2;
-            let _ = braced!(inner2 in inner);
-            layout = Layout::parse(&inner2, core_gen)?;
-            require_comma = false;
-        } else {
-            layout = Layout::parse(inner, core_gen)?;
-            require_comma = true;
-        }
-        cells.push(ListItem { cell, layout });
-
-        if inner.is_empty() {
-            break;
-        }
-
-        if let Err(e) = inner.parse::<Token![,]>() {
-            if require_comma {
-                return Err(e);
-            }
-        }
-    }
-
-    Ok(Layout::Grid(stor, dim, cells))
 }
 
 impl Parse for ExprMember {
@@ -609,15 +487,15 @@ impl Layout {
                     emit_error!(expr, "not a field of self")
                 }
             }
-            Layout::Widget(_, _) | Layout::Label(_, _) => (),
+            Layout::Dummy | Layout::Widget(_, _) | Layout::Label(_, _) => (),
             Layout::List(_, _, list) | Layout::Float(list) => {
                 for item in list {
-                    item.layout.validate(fields);
+                    item.validate(fields);
                 }
             }
-            Layout::Grid(_, _, list) => {
+            Layout::Grid(_, _, _, list) => {
                 for item in list {
-                    item.layout.validate(fields);
+                    item.validate(fields);
                 }
             }
         }
@@ -630,7 +508,7 @@ impl Layout {
             | Layout::WithMarginStyle(layout, _) => {
                 layout.append_fields(fields, children);
             }
-            Layout::Single(_) => (),
+            Layout::Dummy | Layout::Single(_) => (),
             Layout::Pack(layout, pack) => {
                 let stor = &pack.stor;
                 fields
@@ -671,15 +549,15 @@ impl Layout {
                     quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
                 for item in list {
-                    item.layout.append_fields(fields, children);
+                    item.append_fields(fields, children);
                 }
             }
             Layout::Float(list) => {
                 for item in list {
-                    item.layout.append_fields(fields, children);
+                    item.append_fields(fields, children);
                 }
             }
-            Layout::Grid(stor, dim, list) => {
+            Layout::Grid(stor, dim, _, list) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 fields
                     .ty_toks
@@ -689,7 +567,7 @@ impl Layout {
                     .append_all(quote! { #stor: Default::default(), });
 
                 for item in list {
-                    item.layout.append_fields(fields, children);
+                    item.append_fields(fields, children);
                 }
             }
             Layout::Label(ident, text) => {
@@ -707,6 +585,7 @@ impl Layout {
     /// Yield an implementation of `fn rect`, if easy
     fn rect(&self, core_path: &Toks) -> Option<Toks> {
         match self {
+            Layout::Dummy => Some(quote! { ::kas::geom::Rect::ZERO }),
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
@@ -716,7 +595,7 @@ impl Layout {
                 Some(quote! { ::kas::Layout::rect(&#core_path.#stor) })
             }
             Layout::Frame(stor, _, _, _) => Some(quote! { #core_path.#stor.rect }),
-            Layout::List(_, _, _) | Layout::Float(_) | Layout::Grid(_, _, _) => None,
+            Layout::List(_, _, _) | Layout::Float(_) | Layout::Grid(_, _, _, _) => None,
         }
     }
 
@@ -725,6 +604,7 @@ impl Layout {
     /// Expands to a series of statements.
     fn size_rules(&self, core_path: &Toks) -> Toks {
         match self {
+            Layout::Dummy => quote! { ::kas::layout::SizeRules::EMPTY },
             Layout::Align(layout, _) => layout.size_rules(core_path),
             Layout::Pack(layout, pack) => {
                 let stor = &pack.stor;
@@ -783,7 +663,7 @@ impl Layout {
                     let mut solver = ::kas::layout::RowSolver::new(axis, dim, &mut #core_path.#stor);
                 };
                 for (index, item) in list.iter().enumerate() {
-                    let inner = item.layout.size_rules(core_path);
+                    let inner = item.size_rules(core_path);
                     toks.append_all(quote!{{
                         ::kas::layout::RulesSolver::for_child(&mut solver, &mut #core_path.#stor, #index, |axis| {
                             let cx = &mut *cx;
@@ -801,7 +681,7 @@ impl Layout {
                     let mut rules = SizeRules::EMPTY;
                 };
                 for item in list {
-                    let inner = item.layout.size_rules(core_path);
+                    let inner = item.size_rules(core_path);
                     toks.append_all(quote! {
                         rules = rules.max({ #inner });
                     });
@@ -809,14 +689,13 @@ impl Layout {
                 toks.append_all(quote! { rules });
                 toks
             }
-            Layout::Grid(stor, dim, list) => {
+            Layout::Grid(stor, dim, infos, items) => {
                 let mut toks = quote! {
                     let dim = #dim;
                     let mut solver = ::kas::layout::GridSolver::<Vec<_>, Vec<_>, _>::new(axis, dim, &mut #core_path.#stor);
                 };
-                for item in list {
-                    let inner = item.layout.size_rules(core_path);
-                    let cell = &item.cell;
+                for (cell, layout) in infos.iter().zip(items.iter()) {
+                    let inner = layout.size_rules(core_path);
                     toks.append_all(quote!{{
                         ::kas::layout::RulesSolver::for_child(&mut solver, &mut #core_path.#stor, #cell, |axis| {
                             let cx = &mut *cx;
@@ -835,6 +714,7 @@ impl Layout {
     /// Yield an implementation of `fn set_rect`
     fn set_rect(&self, core_path: &Toks) -> Toks {
         match self {
+            Layout::Dummy => quote! {},
             Layout::Align(layout, align) => {
                 let align_hints = &align.hints;
                 let inner = layout.set_rect(core_path);
@@ -882,7 +762,7 @@ impl Layout {
                     let mut setter = ::kas::layout::RowSetter::<_, Vec<i32>, _>::new(rect, dim, &mut #core_path.#stor);
                 };
                 for (index, item) in list.iter().enumerate() {
-                    let inner = item.layout.set_rect(core_path);
+                    let inner = item.set_rect(core_path);
                     toks.append_all(quote!{{
                         let rect = ::kas::layout::RulesSetter::child_rect(&mut setter, &mut #core_path.#stor, #index);
                         #inner
@@ -893,18 +773,17 @@ impl Layout {
             Layout::Float(list) => {
                 let mut toks = Toks::new();
                 for item in list {
-                    toks.append_all(item.layout.set_rect(core_path));
+                    toks.append_all(item.set_rect(core_path));
                 }
                 toks
             }
-            Layout::Grid(stor, dim, list) => {
+            Layout::Grid(stor, dim, infos, items) => {
                 let mut toks = quote! {
                     let dim = #dim;
                     let mut setter = ::kas::layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, dim, &mut #core_path.#stor);
                 };
-                for item in list {
-                    let inner = item.layout.set_rect(core_path);
-                    let cell = &item.cell;
+                for (cell, item) in infos.iter().zip(items.iter()) {
+                    let inner = item.set_rect(core_path);
                     toks.append_all(quote!{{
                         let rect = ::kas::layout::RulesSetter::child_rect(&mut setter, &mut #core_path.#stor, #cell);
                         #inner
@@ -923,6 +802,7 @@ impl Layout {
         toks: &mut Toks,
     ) -> Option<()> {
         Some(match self {
+            Layout::Dummy => (),
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
@@ -957,12 +837,12 @@ impl Layout {
             }
             Layout::List(_, _, list) | Layout::Float(list) => {
                 for item in list {
-                    item.layout.try_probe_recurse(core_path, children, toks);
+                    item.try_probe_recurse(core_path, children, toks);
                 }
             }
-            Layout::Grid(_, _, list) => {
+            Layout::Grid(_, _, _, list) => {
                 for item in list {
-                    item.layout.try_probe_recurse(core_path, children, toks);
+                    item.try_probe_recurse(core_path, children, toks);
                 }
             }
         })
@@ -971,6 +851,7 @@ impl Layout {
     /// Yield an implementation of `fn draw`
     fn draw(&self, core_path: &Toks) -> Toks {
         match self {
+            Layout::Dummy => quote! {},
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
@@ -991,14 +872,14 @@ impl Layout {
             Layout::List(_, _, list) | Layout::Float(list) => {
                 let mut toks = Toks::new();
                 for item in list {
-                    toks.append_all(item.layout.draw(core_path));
+                    toks.append_all(item.draw(core_path));
                 }
                 toks
             }
-            Layout::Grid(_, _, list) => {
+            Layout::Grid(_, _, _, list) => {
                 let mut toks = Toks::new();
                 for item in list {
-                    toks.append_all(item.layout.draw(core_path));
+                    toks.append_all(item.draw(core_path));
                 }
                 toks
             }
@@ -1046,7 +927,7 @@ impl Layout {
             Layout::List(_, dir, list) => {
                 let start = output.len();
                 for item in list {
-                    item.layout.nav_next(children.clone(), output)?;
+                    item.nav_next(children.clone(), output)?;
                 }
                 match dir {
                     _ if output.len() <= start + 1 => Ok(()),
@@ -1055,20 +936,20 @@ impl Layout {
                     Direction::Expr(_) => Err((dir.span(), "`list(dir)` with non-static `dir`")),
                 }
             }
-            Layout::Grid(_, _, list) => {
+            Layout::Grid(_, _, _, list) => {
                 // TODO: sort using CellInfo?
                 for item in list {
-                    item.layout.nav_next(children.clone(), output)?;
+                    item.nav_next(children.clone(), output)?;
                 }
                 Ok(())
             }
             Layout::Float(list) => {
                 for item in list {
-                    item.layout.nav_next(children.clone(), output)?;
+                    item.nav_next(children.clone(), output)?;
                 }
                 Ok(())
             }
-            Layout::Label(_, _) => Ok(()),
+            Layout::Dummy | Layout::Label(_, _) => Ok(()),
         }
     }
 }
