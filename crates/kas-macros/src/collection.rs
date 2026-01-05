@@ -5,6 +5,7 @@
 
 //! Collection macro
 
+use crate::parser::{Parser, parse_grid};
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{ToTokens, TokenStreamExt, quote};
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -12,7 +13,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{Expr, Ident, LitInt, LitStr, Token};
-use syn::{braced, bracketed, parenthesized};
+use syn::{bracketed, parenthesized};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -193,6 +194,14 @@ impl Item {
     }
 }
 
+impl Parser for Item {
+    type Output = Self;
+
+    fn parse(input: ParseStream, core_gen: &mut NameGenerator) -> Result<Self::Output> {
+        Item::parse(input, core_gen)
+    }
+}
+
 pub struct Collection(Vec<Item>);
 pub struct CellCollection(Vec<CellInfo>, Collection);
 
@@ -226,38 +235,8 @@ impl Parse for CellCollection {
         }
 
         let mut names = NameGenerator::default();
-
-        let mut cells = vec![];
-        let mut items = vec![];
-        while !input.is_empty() {
-            cells.push(input.parse()?);
-            let _: Token![=>] = input.parse()?;
-
-            let item;
-            let require_comma;
-            if input.peek(syn::token::Brace) {
-                let inner;
-                let _ = braced!(inner in input);
-                item = Item::parse(&inner, &mut names)?;
-                require_comma = false;
-            } else {
-                item = Item::parse(input, &mut names)?;
-                require_comma = true;
-            }
-            items.push(item);
-
-            if input.is_empty() {
-                break;
-            }
-
-            if let Err(e) = input.parse::<Token![,]>() {
-                if require_comma {
-                    return Err(e);
-                }
-            }
-        }
-
-        Ok(CellCollection(cells, Collection(items)))
+        let (_, infos, items) = parse_grid::<Item>(input, &mut names)?;
+        Ok(CellCollection(infos, Collection(items)))
     }
 }
 

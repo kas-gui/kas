@@ -18,6 +18,7 @@ use syn::spanned::Spanned;
 mod collection;
 mod extends;
 mod make_layout;
+mod parser;
 mod scroll_traits;
 mod visitors;
 mod widget;

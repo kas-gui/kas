@@ -4,6 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::collection::{CellInfo, GridDimensions, NameGenerator};
+use crate::parser::{Parser, parse_grid};
 use crate::widget_args::{Child, ChildIdent};
 use impl_tools_lib::scope::Scope;
 use proc_macro_error2::emit_error;
@@ -11,7 +12,7 @@ use proc_macro2::{Span, TokenStream as Toks};
 use quote::{ToTokens, TokenStreamExt, quote};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{Error, Expr, Ident, LitStr, Member, Meta, Token};
+use syn::{Expr, Ident, LitStr, Member, Meta, Token};
 use syn::{braced, bracketed, parenthesized, parse_quote, parse2, token};
 
 #[allow(non_camel_case_types)]
@@ -430,124 +431,12 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
     Ok(Layout::Grid(stor, dim, infos, cells))
 }
 
-trait Parser {
-    type Output;
-
-    fn parse(input: ParseStream, core_gen: &mut NameGenerator) -> Result<Self::Output>;
-}
-
 impl Parser for Layout {
     type Output = Self;
 
     fn parse(input: ParseStream, core_gen: &mut NameGenerator) -> Result<Self::Output> {
         Layout::parse(input, core_gen)
     }
-}
-
-fn parse_grid<P: Parser>(
-    inner: ParseStream,
-    core_gen: &mut NameGenerator,
-) -> Result<(GridDimensions, Vec<CellInfo>, Vec<P::Output>)> {
-    let mut dim = GridDimensions::default();
-    let mut infos = vec![];
-    let mut items = vec![];
-    while !inner.is_empty() {
-        let mut require_comma = true;
-        if inner.peek2(Token![!]) {
-            let lookahead = inner.lookahead1();
-            if lookahead.peek(kw::column) {
-                let _: kw::column = inner.parse()?;
-                let _: Token![!] = inner.parse()?;
-
-                let inner2;
-                let _ = bracketed!(inner2 in inner);
-                let col = dim.cols;
-                let mut row = 0;
-                while !inner2.is_empty() {
-                    if let Ok(_) = inner2.parse::<Token![_]>() {
-                        // empty item
-                    } else {
-                        let layout = P::parse(&inner2, core_gen)?;
-                        let cell = CellInfo::new(col, row);
-                        dim.update(&cell);
-                        infos.push(cell);
-                        items.push(layout);
-                    }
-                    row += 1;
-
-                    if inner2.is_empty() {
-                        break;
-                    }
-
-                    if let Err(e) = inner2.parse::<Token![,]>() {
-                        return Err(e);
-                    }
-                }
-            } else if lookahead.peek(kw::row) {
-                let _: kw::row = inner.parse()?;
-                let _: Token![!] = inner.parse()?;
-
-                let inner2;
-                let _ = bracketed!(inner2 in inner);
-                let mut col = 0;
-                let row = dim.rows;
-                while !inner2.is_empty() {
-                    if let Ok(_) = inner2.parse::<Token![_]>() {
-                        // empty item
-                    } else {
-                        let layout = P::parse(&inner2, core_gen)?;
-                        let cell = CellInfo::new(col, row);
-                        dim.update(&cell);
-                        infos.push(cell);
-                        items.push(layout);
-                    }
-                    col += 1;
-
-                    if inner2.is_empty() {
-                        break;
-                    }
-
-                    if let Err(e) = inner2.parse::<Token![,]>() {
-                        return Err(e);
-                    }
-                }
-            } else {
-                let ident: Ident = inner.parse()?;
-                let tok: Token![!] = inner.parse()?;
-                let span = ident.span();
-                let span = span.join(tok.span).unwrap_or(span);
-                return Err(Error::new(span, "expected: `column!` or `row!`"));
-            }
-        } else {
-            let cell = inner.parse()?;
-            dim.update(&cell);
-            let _: Token![=>] = inner.parse()?;
-
-            let layout;
-            if inner.peek(syn::token::Brace) {
-                let inner2;
-                let _ = braced!(inner2 in inner);
-                layout = P::parse(&inner2, core_gen)?;
-                require_comma = false;
-            } else {
-                layout = P::parse(inner, core_gen)?;
-            }
-            infos.push(cell);
-            items.push(layout);
-        }
-
-        if inner.is_empty() {
-            break;
-        }
-
-        if let Err(e) = inner.parse::<Token![,]>() {
-            if require_comma {
-                return Err(e);
-            }
-        }
-    }
-
-    Ok((dim, infos, items))
 }
 
 impl Parse for ExprMember {
