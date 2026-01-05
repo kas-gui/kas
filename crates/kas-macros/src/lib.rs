@@ -617,19 +617,33 @@ pub fn collection(input: TokenStream) -> TokenStream {
 /// # Syntax
 ///
 /// > _Collection_ :\
-/// > &nbsp;&nbsp; `collection!` `[` _ItemArms_<sup>\?</sup> `]`
+/// > &nbsp;&nbsp; `cell_collection!` `{` _ItemArms_<sup>\?</sup> `}`
 /// >
 /// > _ItemArms_ :\
 /// > &nbsp;&nbsp; (_ItemArm_ `,`)<sup>\*</sup> _ItemArm_ `,`<sup>\?</sup>
 /// >
 /// > _ItemArm_ :\
+/// > &nbsp;&nbsp; _Cell_ | _RowMacro_ | _ColumnMacro_
+/// >
+/// > _Cell_ :\
 /// > &nbsp;&nbsp; `(` _Column_ `,` _Row_ `)` `=>` _Item_
 /// >
 /// > _Column_, _Row_ :\
 /// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..=` _LitInt_ )
+/// >
+/// > _RowMacro_ :\
+/// > &npsb;&nbsp; `row!` `[` (_Item_ `,` | `_` `,`)* _Item_ `]`
+/// >
+/// > _ColumnMacro_ :\
+/// > &npsb;&nbsp; `column!` `[` (_Item_ `,` | `_` `,`)* _Item_ `]`
 ///
 /// Here, _Column_ and _Row_ are selected via an index (from 0) or an inclusive
 /// range, for example `2` or `2..=3`.
+///
+/// A `row!` macro resolves to a list of cells whose column index is one larger
+/// than maximum prior column index and whose row indices count from 0.
+/// As a special case, `_` may be used to skip a cell (infer an empty cell).
+/// A `column!` macro functions similarly.
 ///
 /// _Item_ may be:
 ///
