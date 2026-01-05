@@ -346,7 +346,8 @@ impl Layout {
 
             let inner;
             let _ = braced!(inner in input);
-            Ok(parse_grid(stor, &inner, core_gen)?)
+            let (dim, infos, items) = parse_grid::<Layout>(&inner, core_gen)?;
+            Ok(Layout::Grid(stor, dim, infos, items))
         } else {
             let ident = core_gen.next();
             let expr = input.parse()?;
@@ -429,10 +430,27 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
     Ok(Layout::Grid(stor, dim, infos, cells))
 }
 
-fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> Result<Layout> {
+trait Parser {
+    type Output;
+
+    fn parse(input: ParseStream, core_gen: &mut NameGenerator) -> Result<Self::Output>;
+}
+
+impl Parser for Layout {
+    type Output = Self;
+
+    fn parse(input: ParseStream, core_gen: &mut NameGenerator) -> Result<Self::Output> {
+        Layout::parse(input, core_gen)
+    }
+}
+
+fn parse_grid<P: Parser>(
+    inner: ParseStream,
+    core_gen: &mut NameGenerator,
+) -> Result<(GridDimensions, Vec<CellInfo>, Vec<P::Output>)> {
     let mut dim = GridDimensions::default();
     let mut infos = vec![];
-    let mut cells = vec![];
+    let mut items = vec![];
     while !inner.is_empty() {
         let mut require_comma = true;
         if inner.peek2(Token![!]) {
@@ -449,11 +467,11 @@ fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> 
                     if let Ok(_) = inner2.parse::<Token![_]>() {
                         // empty item
                     } else {
-                        let layout = Layout::parse(&inner2, core_gen)?;
+                        let layout = P::parse(&inner2, core_gen)?;
                         let cell = CellInfo::new(col, row);
                         dim.update(&cell);
                         infos.push(cell);
-                        cells.push(layout);
+                        items.push(layout);
                     }
                     row += 1;
 
@@ -477,11 +495,11 @@ fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> 
                     if let Ok(_) = inner2.parse::<Token![_]>() {
                         // empty item
                     } else {
-                        let layout = Layout::parse(&inner2, core_gen)?;
+                        let layout = P::parse(&inner2, core_gen)?;
                         let cell = CellInfo::new(col, row);
                         dim.update(&cell);
                         infos.push(cell);
-                        cells.push(layout);
+                        items.push(layout);
                     }
                     col += 1;
 
@@ -509,13 +527,13 @@ fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> 
             if inner.peek(syn::token::Brace) {
                 let inner2;
                 let _ = braced!(inner2 in inner);
-                layout = Layout::parse(&inner2, core_gen)?;
+                layout = P::parse(&inner2, core_gen)?;
                 require_comma = false;
             } else {
-                layout = Layout::parse(inner, core_gen)?;
+                layout = P::parse(inner, core_gen)?;
             }
             infos.push(cell);
-            cells.push(layout);
+            items.push(layout);
         }
 
         if inner.is_empty() {
@@ -529,7 +547,7 @@ fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> 
         }
     }
 
-    Ok(Layout::Grid(stor, dim, infos, cells))
+    Ok((dim, infos, items))
 }
 
 impl Parse for ExprMember {
