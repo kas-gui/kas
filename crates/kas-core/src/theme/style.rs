@@ -136,19 +136,22 @@ impl SelectionStyle {
 /// Fonts are chosen from available (system) fonts depending on the `TextClass`
 /// and [configuration](crate::config::FontConfig).
 /// `TextClass` may affect other font properties, including size and weight.
+///
+/// Some classes by default appear identical to [`TextClass::Standard`] but may
+/// be configured otherwise by the user.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash, linearize::Linearize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TextClass {
     /// The standard UI font
+    ///
+    /// By default this matches the system UI font.
     Standard,
     /// Label UI font
     ///
     /// This text class should be used by short labels such as those found on
     /// buttons, menus and other UI controls.
     ///
-    /// According to user preference, this may appear identical to
-    /// [`TextClass::Standard`] or may be distinct, e.g. using a larger font
-    /// size or heavier weight.
+    /// Its appearance is normally identical to [`TextClass::Standard`].
     Label,
     /// Small UI font
     ///
@@ -157,5 +160,19 @@ pub enum TextClass {
     /// Editable text
     ///
     /// This text class should be preferred for editable text.
+    ///
+    /// Its appearance is normally identical to [`TextClass::Standard`].
     Editor,
+    /// Serif font
+    ///
+    /// This class may be used where a Serif font is specifically preferred,
+    /// for example in an editor where it is important to be able to distinguish
+    /// all letters.
+    Serif,
+    /// Sans-serif Font
+    ///
+    /// Its appearance is normally identical to [`TextClass::Standard`].
+    SansSerif,
+    /// Monospace font
+    Monospace,
 }

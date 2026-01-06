@@ -188,8 +188,12 @@ mod defaults {
     }
 
     pub fn fonts() -> BTreeMap<TextClass, FontSelector> {
-        let list = [(TextClass::Editor, FamilySelector::SERIF.into())];
-        list.iter().cloned().collect()
+        let list = [
+            (TextClass::Serif, FamilySelector::SERIF.into()),
+            (TextClass::SansSerif, FamilySelector::SANS_SERIF.into()),
+            (TextClass::Monospace, FamilySelector::MONOSPACE.into()),
+        ];
+        list.into_iter().collect()
     }
 
     pub fn mode() -> u8 {
