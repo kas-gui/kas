@@ -195,6 +195,25 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS> {
                 let d = Vec2(q.b.0, q.a.1);
                 self.draw.line(c, d, f, col);
             }
+            MarkStyle::Plus => {
+                let size = Size::splat(self.w.dims.mark);
+                let offset = Offset::conv((rect.size - size) / 2);
+                let q = Quad::conv(Rect::new(rect.pos + offset, size));
+
+                let f = self.w.dims.mark_line;
+                let mid = q.center();
+                self.draw.line(Vec2(mid.0, q.a.1), Vec2(mid.0, q.b.1), f, col);
+                self.draw.line(Vec2(q.a.0, mid.1), Vec2(q.b.0, mid.1), f, col);
+            }
+            MarkStyle::Minus => {
+                let size = Size::splat(self.w.dims.mark);
+                let offset = Offset::conv((rect.size - size) / 2);
+                let q = Quad::conv(Rect::new(rect.pos + offset, size));
+
+                let f = self.w.dims.mark_line;
+                let mid = q.center();
+                self.draw.line(Vec2(q.a.0, mid.1), Vec2(q.b.0, mid.1), f, col);
+            }
         }
     }
 }

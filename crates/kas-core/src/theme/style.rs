@@ -55,6 +55,10 @@ pub enum MarkStyle {
     Chevron(Direction),
     /// A cross rotated 45°
     X,
+    /// Plus (+) symbol
+    Plus,
+    /// Minus (-) symbol
+    Minus,
 }
 
 /// Various features which may be sized and drawn

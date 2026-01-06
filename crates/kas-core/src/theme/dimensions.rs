@@ -249,15 +249,16 @@ impl<D: 'static> ThemeSize for Window<D> {
             Feature::Separator => {
                 return SizeRules::fixed(self.dims.frame);
             }
-            Feature::Mark(MarkStyle::Chevron(dir)) => {
-                let w = match dir.is_vertical() == axis_is_vertical {
-                    true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
-                    false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
+            Feature::Mark(style) => {
+                let w = match style {
+                    MarkStyle::Chevron(dir) => match dir.is_vertical() == axis_is_vertical {
+                        true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
+                        false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
+                    }
+                    MarkStyle::X | MarkStyle::Plus | MarkStyle::Minus => {
+                        self.dims.mark + i32::conv_ceil(self.dims.mark_line)
+                    }
                 };
-                return SizeRules::fixed(w).with_margin(self.dims.m_tiny);
-            }
-            Feature::Mark(MarkStyle::X) => {
-                let w = self.dims.mark + i32::conv_ceil(self.dims.mark_line);
                 return SizeRules::fixed(w).with_margin(self.dims.m_tiny);
             }
             Feature::CheckBox | Feature::RadioBox => {
