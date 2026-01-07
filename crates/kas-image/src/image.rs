@@ -179,7 +179,7 @@ mod Image {
                         }
                     };
 
-                    match draw.image_upload(&handle, size, &image, kas::draw::ImageFormat::Rgba8) {
+                    match draw.image_upload(&handle, &image, kas::draw::ImageFormat::Rgba8) {
                         Ok(_) => cx.redraw(),
                         Err(err) => log::warn!("Image: image upload failed: {err}"),
                     };

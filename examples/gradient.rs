@@ -54,15 +54,7 @@ async fn render_gradient(color1: Color, color2: Color, size: Size) -> NewBuffer 
         }
     }
 
-    println!("rerendered");
-
     NewBuffer { buffer, size }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum RenderStatus {
-    Idle,
-    InProgress(Size)
 }
 
 #[impl_self]
@@ -91,7 +83,7 @@ mod Gradient {
         blue2: SpinBox<u8, u8>,
         #[widget]
         sprite: Sprite,
-        status: RenderStatus
+        rendering: bool
     }
 
     impl Self {
@@ -112,7 +104,7 @@ mod Gradient {
                     .with_logical_size(size)
                     .with_stretch(Stretch::Maximize)
                     .with_fixed_aspect_ratio(false),
-                status: RenderStatus::Idle,
+                rendering: false,
             }
         }
 
@@ -121,16 +113,14 @@ mod Gradient {
                 self.id(),
                 render_gradient(self.color1, self.color2, self.sprite.rect().size)
             );
-            self.status = RenderStatus::InProgress(self.sprite.rect().size);
+            self.rendering = true;
         }
     }
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut SizeCx<'_>, rect: Rect, hints: AlignHints) {
             kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
-            let new_size = self.sprite.rect().size;
-            if self.sprite.image_size() != new_size
-            && self.status != RenderStatus::InProgress(new_size) {
+            if self.sprite.image_size() != self.sprite.rect().size && !self.rendering {
                 self.rerender(cx);
             }
         }
@@ -141,13 +131,14 @@ mod Gradient {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
             if let Some(NewBuffer { buffer, size }) = cx.try_pop() {
+                self.rendering = false;
+
                 let draw = cx.draw_shared();
                 if let Some(handle) = self.sprite.handle()
                     && draw.image_size(handle) == Some(size)
                 {
                     if let Ok(action) = draw.image_upload(
                         handle,
-                        size,
                         &buffer[..],
                         kas::draw::ImageFormat::Rgba8
                     ) {
@@ -157,7 +148,6 @@ mod Gradient {
                     if let Ok(handle) = draw.image_alloc(size) {
                         if let Ok(action) = draw.image_upload(
                             &handle,
-                            size,
                             &buffer[..],
                             kas::draw::ImageFormat::Rgba8
                         ) {
@@ -167,7 +157,9 @@ mod Gradient {
                     }
                 }
 
-                self.status = RenderStatus::Idle;
+                if self.sprite.image_size() != self.sprite.rect().size {
+                    self.rerender(cx);
+                }
             }
 
             if let Some(SetColor(first, component)) = cx.try_pop() {

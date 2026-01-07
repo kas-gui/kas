@@ -35,37 +35,6 @@ mod Sprite {
             Self::default()
         }
 
-        /// Allocate a buffer (if required)
-        ///
-        /// If the `Sprite` has an image buffer of the correct size (see
-        /// [`Self::handle`]), this method does nothing. Otherwise, it attempts
-        /// to allocate a new buffer according to the widget's current size,
-        /// replacing the existing buffer.
-        ///
-        /// Allocation failure is possible, hence it is possible for
-        /// [`Self::handle`] to return [`None`] after calling this method.
-        ///
-        /// Returns the [`Size`] of the buffer, if (previously or newly)
-        /// allocated.
-        pub fn allocate(&mut self, cx: &mut EventCx) -> Option<Size> {
-            let size = self.rect().size;
-            let draw = cx.draw_shared();
-
-            if let Some(handle) = self.handle.take() {
-                if let Some(alloc_size) = draw.image_size(&handle) {
-                    if size == alloc_size {
-                        self.handle = Some(handle);
-                        return Some(size);
-                    }
-                }
-
-                draw.image_free(handle);
-            }
-
-            self.handle = draw.image_alloc(size).ok();
-            self.handle.as_ref().map(|_| size)
-        }
-
         /// Assign a pre-allocated image
         ///
         /// Returns `true` on success. On error, `self` is unchanged.
