@@ -263,12 +263,12 @@ impl<I: bytemuck::Pod> Allocator for Pipeline<I> {
     /// Allocate space within a texture atlas
     ///
     /// Fails if `size` is zero in any dimension.
-    fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+    fn allocate(&mut self, size: Size) -> Result<Allocation, AllocError> {
         if size.0 == 0 || size.1 == 0 {
             return Err(AllocError);
         }
 
-        let (atlas, alloc, tex_size) = self.allocate_space((size.0.cast(), size.1.cast()))?;
+        let (atlas, alloc, tex_size) = self.allocate_space((size.0, size.1))?;
 
         let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
 

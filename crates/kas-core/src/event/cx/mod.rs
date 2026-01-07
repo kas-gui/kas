@@ -24,7 +24,7 @@ use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{ActionMoved, ActionResize, ConfigAction, HasId, Id, Node, WindowAction};
+use crate::{ActionClose, ActionMoved, ActionRedraw, ActionResize, ConfigAction, HasId, Id, Node};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
@@ -104,8 +104,9 @@ pub struct EventState {
     // Optional new target for selection focus. bool is true if this also gains key focus.
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
-    pub(crate) action: WindowAction,
-    action_moved: ActionMoved,
+    action_moved: Option<ActionMoved>,
+    pub(crate) action_redraw: Option<ActionRedraw>,
+    action_close: Option<ActionClose>,
 }
 
 impl EventState {
@@ -145,8 +146,9 @@ impl EventState {
             pending_update: None,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
-            action: WindowAction::empty(),
-            action_moved: ActionMoved(false),
+            action_moved: None,
+            action_redraw: None,
+            action_close: None,
         }
     }
 
@@ -164,7 +166,12 @@ impl EventState {
     /// [`Id`] identifiers and call widgets' [`Events::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub(crate) fn full_configure(&mut self, sizer: &dyn ThemeSize, node: Node) -> ActionResize {
+    #[must_use]
+    pub(crate) fn full_configure(
+        &mut self,
+        sizer: &dyn ThemeSize,
+        node: Node,
+    ) -> Option<ActionResize> {
         let id = Id::ROOT.make_child(self.window_id.get().cast());
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
@@ -176,7 +183,7 @@ impl EventState {
         cx.configure(node, id);
         let resize = cx.resize;
         // Ignore cx.redraw: we can assume a redraw will happen
-        self.action_moved = ActionMoved(true);
+        self.action_moved = Some(ActionMoved);
         resize
     }
 
@@ -184,13 +191,14 @@ impl EventState {
     ///
     /// Invokes the given closure on this [`EventCx`].
     #[inline]
+    #[must_use]
     pub(crate) fn with<'a, F: FnOnce(&mut EventCx)>(
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         f: F,
-    ) -> ActionResize {
+    ) -> Option<ActionResize> {
         let mut cx = EventCx {
             runner,
             window,
@@ -198,13 +206,12 @@ impl EventState {
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
-            resize_window: ActionResize::default(),
+            resize_window: None,
         };
         f(&mut cx);
-        let resize = cx.resize | cx.resize_window;
-        if cx.redraw {
-            self.action |= WindowAction::REDRAW;
-        }
+        let resize = cx.resize.or(cx.resize_window);
+        let redraw = cx.redraw;
+        self.action_redraw = self.action_redraw.or(redraw);
         resize
     }
 
@@ -296,12 +303,15 @@ impl EventState {
     }
 
     /// Notify that a widget must be redrawn
+    ///
+    /// This method is designed to support partial redraws though these are not
+    /// currently implemented. See also [`Self::action_redraw`].
     #[inline]
     pub fn redraw(&mut self, id: impl HasId) {
         // NOTE: redraws are fast enough not to bother handling locally
         let _ = id;
 
-        self.action |= WindowAction::REDRAW;
+        self.action_redraw = Some(ActionRedraw);
     }
 
     /// Redraw `id` if not `None`
@@ -317,25 +327,27 @@ impl EventState {
     /// This updates the widget(s) under mouse and touch events.
     #[inline]
     pub fn region_moved(&mut self) {
-        self.action_moved = ActionMoved(true);
-    }
-
-    /// Notify that a [`WindowAction`] should happen for the whole window
-    #[inline]
-    pub fn window_action(&mut self, action: impl Into<WindowAction>) {
-        self.action |= action.into();
+        self.action_moved = Some(ActionMoved);
     }
 
     /// Request that the window be closed
     #[inline]
     pub fn close_own_window(&mut self) {
-        self.action |= WindowAction::CLOSE;
+        self.action_close = Some(ActionClose);
     }
 
-    /// Notify of an [`ActionMoved`]
+    /// Notify of an [`ActionMoved`] or `Option<ActionMoved>`
     #[inline]
-    pub fn action_moved(&mut self, action: ActionMoved) {
-        self.action_moved |= action;
+    pub fn action_moved(&mut self, action: impl Into<Option<ActionMoved>>) {
+        self.action_moved = self.action_moved.or(action.into());
+    }
+
+    /// Notify of an [`ActionRedraw`] or `Option<ActionRedraw>`
+    ///
+    /// This will force a redraw of the whole window. See also [`Self::redraw`].
+    #[inline]
+    pub fn action_redraw(&mut self, action: impl Into<Option<ActionRedraw>>) {
+        self.action_redraw = self.action_redraw.or(action.into());
     }
 
     /// Request update to widget `id`
@@ -362,7 +374,7 @@ pub struct EventCx<'a> {
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
-    resize_window: ActionResize,
+    resize_window: Option<ActionResize>,
 }
 
 impl<'a> Deref for EventCx<'a> {
@@ -408,7 +420,7 @@ impl<'a> EventCx<'a> {
 
     /// Check for clean flags pre-recursion
     fn pre_recursion(&self) {
-        debug_assert!(!*self.resize);
+        debug_assert!(self.resize.is_none());
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
     }
@@ -417,7 +429,7 @@ impl<'a> EventCx<'a> {
     fn post_recursion(&mut self) {
         self.last_child = None;
         self.scroll = Scroll::None;
-        self.resize_window |= self.resize;
-        self.resize.clear();
+        self.resize_window = self.resize_window.or(self.resize);
+        self.resize = None;
     }
 }

@@ -330,14 +330,20 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     }
 
     #[inline]
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
+    fn image_alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
         self.images.alloc(size)
     }
 
     #[inline]
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
+    fn image_upload(
+        &mut self,
+        id: ImageId,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<(), UploadError> {
         self.images
-            .upload(&self.device, &self.queue, id, data, format);
+            .upload(&self.device, &self.queue, id, size, data, format)
     }
 
     #[inline]
@@ -346,7 +352,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     }
 
     #[inline]
-    fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
+    fn image_size(&self, id: ImageId) -> Option<Size> {
         self.images.image_size(id)
     }
 

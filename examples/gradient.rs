@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use kas::prelude::*;
 use kas::widgets::SpinBox;
 use kas::image::Sprite;
@@ -59,6 +61,12 @@ async fn render_gradient(color1: Color, color2: Color, size: Size) -> NewBuffer 
     NewBuffer { buffer, size }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RenderStatus {
+    Idle,
+    InProgress(Size)
+}
+
 #[impl_self]
 mod Gradient {
     #[widget]
@@ -84,7 +92,8 @@ mod Gradient {
         #[widget(&self.color2.blue)]
         blue2: SpinBox<u8, u8>,
         #[widget]
-        sprite: Sprite
+        sprite: Sprite,
+        status: RenderStatus
     }
 
     impl Self {
@@ -104,18 +113,28 @@ mod Gradient {
                 sprite: Sprite::new()
                     .with_logical_size(size)
                     .with_stretch(Stretch::Maximize)
-                    .with_fixed_aspect_ratio(false)
+                    .with_fixed_aspect_ratio(false),
+                status: RenderStatus::Idle,
             }
+        }
+
+        fn rerender(&mut self, event: &mut EventState) {
+            event.send_spawn(
+                self.id(),
+                render_gradient(self.color1, self.color2, self.sprite.rect().size)
+            );
+            self.status = RenderStatus::InProgress(self.sprite.rect().size);
         }
     }
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut SizeCx<'_>, rect: Rect, hints: AlignHints) {
             kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
-            cx.send_spawn(
-                self.id(),
-                render_gradient(self.color1, self.color2, self.sprite.rect().size)
-            );
+            let new_size = self.sprite.rect().size;
+            if self.sprite.image_size() != new_size
+            && self.status != RenderStatus::InProgress(new_size) {
+                self.rerender(cx);
+            }
         }
     }
 
@@ -128,13 +147,29 @@ mod Gradient {
                 if let Some(handle) = self.sprite.handle()
                     && draw.image_size(handle) == Some(size)
                 {
-                    draw.image_upload(handle, &buffer[..], kas::draw::ImageFormat::Rgba8);
+                    if let Ok(action) = draw.image_upload(
+                        handle,
+                        size,
+                        &buffer[..],
+                        kas::draw::ImageFormat::Rgba8
+                    ) {
+                        cx.action_redraw(action);
+                    }
                 } else {
-                    if let Ok(handle) = draw.image_alloc((size.0 as u32, size.1 as u32)) {
-                        draw.image_upload(&handle, &buffer[..], kas::draw::ImageFormat::Rgba8);
-                        self.sprite.set(cx, handle);
+                    if let Ok(handle) = draw.image_alloc(size) {
+                        if let Ok(action) = draw.image_upload(
+                            &handle,
+                            size,
+                            &buffer[..],
+                            kas::draw::ImageFormat::Rgba8
+                        ) {
+                            self.sprite.set(cx, handle);
+                            cx.action_redraw(action);
+                        }
                     }
                 }
+
+                self.status = RenderStatus::Idle;
             }
 
             if let Some(SetColor(first, component)) = cx.try_pop() {
@@ -148,10 +183,7 @@ mod Gradient {
                 }
 
                 cx.update(self.as_node(&()));
-                cx.send_spawn(
-                    self.id(),
-                    render_gradient(self.color1, self.color2, self.sprite.rect().size)
-                );
+                self.rerender(cx);
             }
         }
     }

@@ -51,15 +51,15 @@ fn calc_ui() -> Window<()> {
         (0, 1) => key_button("&7"),
         (1, 1) => key_button("&8"),
         (2, 1) => key_button("&9"),
-        (3, 1..3) => key_button("&+"),
+        (3, 1..=2) => key_button("&+"),
         (0, 2) => key_button("&4"),
         (1, 2) => key_button("&5"),
         (2, 2) => key_button("&6"),
         (0, 3) => key_button("&1"),
         (1, 3) => key_button("&2"),
         (2, 3) => key_button("&3"),
-        (3, 3..5) => key_button_with("&=", NamedKey::Enter.into()),
-        (0..2, 4) => key_button("&0"),
+        (3, 3..=4) => key_button_with("&=", NamedKey::Enter.into()),
+        (0..=1, 4) => key_button("&0"),
         (2, 4) => key_button("&."),
     };
     let buttons = Frame::new(buttons).with_style(FrameStyle::None).map_any();

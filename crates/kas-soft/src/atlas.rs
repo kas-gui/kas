@@ -11,7 +11,9 @@ use std::collections::HashMap;
 
 use kas::autoimpl;
 use kas::cast::traits::*;
-use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, color};
+use kas::draw::{
+    AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, UploadError, color,
+};
 use kas::geom::{Coord, Offset, Quad, Rect, Size, Vec2};
 use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, SpriteType, UnpreparedSprite};
 
@@ -128,12 +130,12 @@ impl<F: Format> Allocator for Atlases<F> {
     /// Allocate space within a texture atlas
     ///
     /// Fails if `size` is zero in any dimension.
-    fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+    fn allocate(&mut self, size: Size) -> Result<Allocation, AllocError> {
         if size.0 == 0 || size.1 == 0 {
             return Err(AllocError);
         }
 
-        let (atlas, alloc, tex_size) = self.allocate_space((size.0.cast(), size.1.cast()))?;
+        let (atlas, alloc, tex_size) = self.allocate_space((size.0, size.1))?;
 
         let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
 
@@ -234,7 +236,7 @@ impl<I: Format> AtlasWindow<I> {
 
 #[derive(Debug)]
 struct Image {
-    size: (u32, u32),
+    size: Size,
     alloc: Allocation,
 }
 
@@ -571,7 +573,7 @@ impl Shared {
     }
 
     /// Allocate an image
-    pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
+    pub fn alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
         let alloc = self.atlas_rgba.allocate(size)?;
         let image = Image { size, alloc };
@@ -580,16 +582,29 @@ impl Shared {
     }
 
     /// Upload an image
-    pub fn upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
+    pub fn upload(
+        &mut self,
+        id: ImageId,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<(), UploadError> {
         match format {
             ImageFormat::Rgba8 => (),
         }
 
-        if let Some(image) = self.images.get_mut(&id) {
-            let atlas = image.alloc.atlas.cast();
-            let origin = image.alloc.origin;
-            self.atlas_rgba.upload(atlas, origin, image.size, data);
+        let Some(image) = self.images.get_mut(&id) else {
+            return Err(UploadError::Missing);
+        };
+        if size != image.size {
+            return Err(UploadError::Size);
         }
+
+        let atlas = image.alloc.atlas.cast();
+        let origin = image.alloc.origin;
+        self.atlas_rgba
+            .upload(atlas, origin, image.size.cast(), data);
+        Ok(())
     }
 
     /// Free an image allocation
@@ -600,7 +615,7 @@ impl Shared {
     }
 
     /// Query image size
-    pub fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
+    pub fn image_size(&self, id: ImageId) -> Option<Size> {
         self.images.get(&id).map(|im| im.size)
     }
 
@@ -641,16 +656,16 @@ impl SpriteAllocator for Shared {
     }
 
     fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_mask.allocate(size)
+        self.atlas_mask.allocate(size.cast())
     }
 
     fn alloc_rgba_mask(&mut self, mut size: (u32, u32)) -> Result<Allocation, AllocError> {
         size.0 += 2; // allow for correct filtering
-        self.atlas_rgba_mask.allocate(size)
+        self.atlas_rgba_mask.allocate(size.cast())
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_rgba.allocate(size)
+        self.atlas_rgba.allocate(size.cast())
     }
 }
 

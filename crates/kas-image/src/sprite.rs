@@ -62,7 +62,7 @@ mod Sprite {
                 draw.image_free(handle);
             }
 
-            self.handle = draw.image_alloc(size.cast()).ok();
+            self.handle = draw.image_alloc(size).ok();
             self.handle.as_ref().map(|_| size)
         }
 
@@ -95,6 +95,15 @@ mod Sprite {
         #[inline]
         pub fn handle(&self) -> Option<&ImageHandle> {
             self.handle.as_ref()
+        }
+
+        /// Get the image buffer size
+        ///
+        /// This is the size of the image last assigned using [`Sprite::set`].
+        /// Initially it is [`Size::ZERO`].
+        #[inline]
+        pub fn image_size(&self) -> Size {
+            self.image_size
         }
 
         /// Remove image (set empty)

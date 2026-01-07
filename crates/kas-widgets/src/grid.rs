@@ -20,26 +20,38 @@ use std::ops::{Index, IndexMut};
 /// # Syntax
 ///
 /// > _Collection_ :\
-/// > &nbsp;&nbsp; `collection!` `[` _ItemArms_<sup>\?</sup> `]`
+/// > &nbsp;&nbsp; `grid!` `{` _ItemArms_<sup>\?</sup> `}`
 /// >
 /// > _ItemArms_ :\
 /// > &nbsp;&nbsp; (_ItemArm_ `,`)<sup>\*</sup> _ItemArm_ `,`<sup>\?</sup>
 /// >
 /// > _ItemArm_ :\
+/// > &nbsp;&nbsp; _Cell_ | _RowMacro_ | _ColumnMacro_
+/// >
+/// > _Cell_ :\
 /// > &nbsp;&nbsp; `(` _Column_ `,` _Row_ `)` `=>` _Item_
 /// >
 /// > _Column_, _Row_ :\
-/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..` `+` _LitInt_ ) | ( _LitInt_ `..`
-/// > _LitInt_ ) | ( _LitInt_ `..=` _LitInt_ )
+/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..=` _LitInt_ )
+/// >
+/// > _RowMacro_ :\
+/// > &npsb;&nbsp; `row!` `[` (_Item_ `,` | `_` `,`)* _Item_ `]`
+/// >
+/// > _ColumnMacro_ :\
+/// > &npsb;&nbsp; `column!` `[` (_Item_ `,` | `_` `,`)* _Item_ `]`
 ///
-/// Here, _Column_ and _Row_ are selected via an index (from 0), a range of
-/// indices, or a start + increment. For example, `2` = `2..+1` = `2..3` =
-/// `2..=2` while `5..+2` = `5..7` = `5..=6`.
+/// Here, _Column_ and _Row_ are selected via an index (from 0) or an inclusive
+/// range, for example `2` or `2..=3`.
+///
+/// A `row!` macro resolves to a list of cells whose column index is one larger
+/// than maximum prior column index and whose row indices count from 0.
+/// As a special case, `_` may be used to skip a cell (infer an empty cell).
+/// A `column!` macro functions similarly.
 ///
 /// ## Stand-alone usage
 ///
-/// When used as a stand-alone macro, `grid! [/* ... */]` is just syntactic
-/// sugar for `Grid::new(kas::cell_collection! [/* ... */])`.
+/// When used as a stand-alone macro, `grid! { /* ... */ }` is just syntactic
+/// sugar for `Grid::new(kas::cell_collection! { /* ... */ })`.
 ///
 /// In this case, _Item_ may be:
 ///
@@ -65,7 +77,7 @@ use std::ops::{Index, IndexMut};
 /// let my_widget = kas_widgets::grid! {
 ///     (0, 0) => "one",
 ///     (1, 0) => "two",
-///     (0..2, 1) => "three",
+///     (0..=1, 1) => "three",
 /// };
 /// ```
 ///
@@ -75,57 +87,8 @@ use std::ops::{Index, IndexMut};
 /// [`with_stretch`]: crate::AdaptWidget::with_stretch
 #[macro_export]
 macro_rules! grid {
-    ( $( ($cc:expr, $rr:expr) => $ee:expr ),* ) => {
-        $crate::Grid::new( ::kas::cell_collection! [ $( ($cc, $rr) => $ee ),* ] )
-    };
-    ( $( ($cc:expr, $rr:expr) => $ee:expr ),+ , ) => {
-        $crate::Grid::new( ::kas::cell_collection! [ $( ($cc, $rr) => $ee ),+ ] )
-    };
-}
-
-/// Define a [`Grid`] as a sequence of rows
-///
-/// This is just special convenience syntax for defining a [`Grid`]. See also
-/// [`grid!`] documentation.
-///
-/// # Example
-///
-/// ```
-/// let my_widget = kas_widgets::aligned_column! [
-///     row!["one", "two"],
-///     row!["three", "four"],
-/// ];
-/// ```
-#[macro_export]
-macro_rules! aligned_column {
-    () => {
-        $crate::Grid::new(::kas::cell_collection! [])
-    };
-    ($(row![$($ee:expr),* $(,)?]),+ $(,)?) => {
-        $crate::Grid::new(::kas::cell_collection![aligned_column $(row![$($ee),*]),+])
-    };
-}
-
-/// Define a [`Grid`] as a sequence of columns
-///
-/// This is just special convenience syntax for defining a [`Grid`]. See also
-/// [`grid!`] documentation.
-///
-/// # Example
-///
-/// ```
-/// let my_widget = kas_widgets::aligned_row! [
-///     column!["one", "two"],
-///     column!["three", "four"],
-/// ];
-/// ```
-#[macro_export]
-macro_rules! aligned_row {
-    () => {
-        $crate::Grid::new(::kas::cell_collection! [])
-    };
-    ($(column![$($ee:expr),* $(,)?]),+ $(,)?) => {
-        $crate::Grid::new(::kas::cell_collection![aligned_row $(column![$($ee),*]),+])
+    ( $($tt:tt)* ) => {
+        $crate::Grid::new( ::kas::cell_collection! { $($tt)* } )
     };
 }
 
@@ -164,7 +127,7 @@ mod Grid {
     /// let _grid = Grid::new(cell_collection! {
     ///     (0, 0) => "one",
     ///     (1, 0) => "two",
-    ///     (0..2, 1) => "three",
+    ///     (0..=1, 1) => "three",
     /// });
     /// ```
     #[widget]

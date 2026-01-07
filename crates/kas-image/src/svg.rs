@@ -299,11 +299,11 @@ mod Svg {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(pixmap) = cx.try_pop::<Pixmap>() {
-                let size = (pixmap.width(), pixmap.height());
+                let size = (pixmap.width(), pixmap.height()).cast();
                 let ds = cx.draw_shared();
 
                 if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h))
-                    && im_size != Size::conv(size)
+                    && im_size != size
                     && let Some(handle) = self.image.take()
                 {
                     ds.image_free(handle);
@@ -314,10 +314,12 @@ mod Svg {
                 }
 
                 if let Some(handle) = self.image.as_ref() {
-                    ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
+                    match ds.image_upload(handle, size, pixmap.data(), ImageFormat::Rgba8) {
+                        Ok(_) => cx.redraw(),
+                        Err(err) => log::warn!("Svg: image upload failed: {err}"),
+                    }
                 }
 
-                cx.redraw();
                 self.inner = match std::mem::take(&mut self.inner) {
                     State::None => State::None,
                     State::Initial(source) | State::Rendering(source) | State::Ready(source, _) => {
@@ -325,9 +327,8 @@ mod Svg {
                     }
                 };
 
-                let own_size: (u32, u32) = self.rect().size.cast();
-                if size != own_size
-                    && let Some(fut) = self.inner.resize(own_size)
+                if size != self.rect().size
+                    && let Some(fut) = self.inner.resize(self.rect().size.cast())
                 {
                     cx.send_spawn(self.id(), fut);
                 }

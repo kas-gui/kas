@@ -43,12 +43,12 @@ mod draw_rounded;
 mod draw_shared;
 
 use crate::cast::Cast;
-use crate::geom::Quad;
+use crate::geom::{Quad, Size};
 #[allow(unused)] use crate::theme::DrawCx;
 
 pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
-pub use draw_shared::{AllocError, ImageFormat, ImageHandle, ImageId};
+pub use draw_shared::{AllocError, ImageFormat, ImageHandle, ImageId, UploadError};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
 use std::time::{Duration, Instant};
 
@@ -73,7 +73,7 @@ pub struct Allocation {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub trait Allocator {
-    fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError>;
+    fn allocate(&mut self, size: Size) -> Result<Allocation, AllocError>;
     fn deallocate(&mut self, atlas: u32, alloc: u32);
 }
 

@@ -315,14 +315,15 @@ pub trait Events: Widget + Sized {
     /// locally and should implement this method to do so
     /// (thus avoiding the need for a full-window resize).
     ///
-    /// Return `ActionResize(true)` if further resizing is needed, or
-    /// `ActionResize(false)` if resizing is complete.
+    /// Return `Some(ActionResize)` if further resizing is needed, or `None` if
+    /// resizing is complete.
     ///
-    /// The default implementation simply returns `ActionResize(true)`.
+    /// The default implementation simply returns `Some(ActionResize)`.
     #[inline]
-    fn handle_resize(&mut self, cx: &mut ConfigCx, data: &Self::Data) -> ActionResize {
+    #[must_use]
+    fn handle_resize(&mut self, cx: &mut ConfigCx, data: &Self::Data) -> Option<ActionResize> {
         let _ = (cx, data);
-        ActionResize(true)
+        Some(ActionResize)
     }
 
     /// Handler for scrolling

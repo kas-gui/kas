@@ -456,12 +456,12 @@ mod ScrollRegion {
                 .update_offset(cx, data, self.inner.rect(), offset);
         }
 
-        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
+        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> Option<ActionResize> {
             let _ = self.size_rules(&mut cx.size_cx(), AxisInfo::new(false, None));
             let width = self.rect().size.0;
             let _ = self.size_rules(&mut cx.size_cx(), AxisInfo::new(true, Some(width)));
             self.set_rect(&mut cx.size_cx(), self.rect(), self.hints);
-            ActionResize(false)
+            None
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &Self::Data, scroll: Scroll) {

@@ -8,7 +8,7 @@
 use crate::event::EventState;
 use crate::text::format::FormattableText;
 use crate::theme::{SizeCx, Text, ThemeSize};
-use crate::{ActionResize, Id, Node};
+use crate::{ActionRedraw, ActionResize, Id, Node};
 use std::any::TypeId;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
@@ -23,8 +23,8 @@ use std::ops::{Deref, DerefMut};
 pub struct ConfigCx<'a> {
     pub(super) theme: &'a dyn ThemeSize,
     pub(crate) state: &'a mut EventState,
-    pub(crate) resize: ActionResize,
-    pub(crate) redraw: bool,
+    pub(crate) resize: Option<ActionResize>,
+    pub(crate) redraw: Option<ActionRedraw>,
 }
 
 impl<'a> ConfigCx<'a> {
@@ -35,8 +35,8 @@ impl<'a> ConfigCx<'a> {
         ConfigCx {
             theme: sh,
             state: ev,
-            resize: ActionResize(false),
-            redraw: false,
+            resize: None,
+            redraw: None,
         }
     }
 
@@ -64,7 +64,7 @@ impl<'a> ConfigCx<'a> {
         // (Except redraw: this doesn't matter.)
         let start_resize = std::mem::take(&mut self.resize);
         widget._configure(self, id);
-        self.resize |= start_resize;
+        self.resize = self.resize.or(start_resize);
     }
 
     /// Update a widget
@@ -77,7 +77,7 @@ impl<'a> ConfigCx<'a> {
         // (Except redraw: this doesn't matter.)
         let start_resize = std::mem::take(&mut self.resize);
         widget._update(self);
-        self.resize |= start_resize;
+        self.resize = self.resize.or(start_resize);
     }
 
     /// Configure a text object
@@ -126,7 +126,7 @@ impl<'a> ConfigCx<'a> {
     /// during the traversal unwind if possible.
     #[inline]
     pub fn redraw(&mut self) {
-        self.redraw = true;
+        self.redraw = Some(ActionRedraw);
     }
 
     /// Require that the current widget (and its descendants) be resized
@@ -136,7 +136,7 @@ impl<'a> ConfigCx<'a> {
     /// during the traversal unwind if possible.
     #[inline]
     pub fn resize(&mut self) {
-        self.resize = ActionResize(true);
+        self.resize = Some(ActionResize);
     }
 }
 

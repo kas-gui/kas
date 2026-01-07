@@ -168,18 +168,22 @@ mod Image {
                     // TODO(opt): we converted to RGBA8 since this is the only format common
                     // to both the image and wgpu crates. It may not be optimal however.
                     // It also assumes that the image colour space is sRGB.
-                    let size = image.dimensions();
+                    let size = image.dimensions().cast();
 
                     let draw = cx.draw_shared();
-                    match draw.image_alloc(size) {
-                        Ok(handle) => {
-                            draw.image_upload(&handle, &image, kas::draw::ImageFormat::Rgba8);
-                            self.raw.set(cx, handle);
-                        }
+                    let handle = match draw.image_alloc(size) {
+                        Ok(handle) => handle,
                         Err(err) => {
-                            warn_about_error("Failed to allocate image", &err);
+                            log::warn!("Image: allocate failed: {err}");
+                            return;
                         }
-                    }
+                    };
+
+                    match draw.image_upload(&handle, size, &image, kas::draw::ImageFormat::Rgba8) {
+                        Ok(_) => cx.redraw(),
+                        Err(err) => log::warn!("Image: image upload failed: {err}"),
+                    };
+                    self.raw.set(cx, handle);
                 } else {
                     self.raw.clear(cx);
                 }

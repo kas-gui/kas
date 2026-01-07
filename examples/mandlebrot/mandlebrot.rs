@@ -438,7 +438,7 @@ mod MandlebrotUI {
         (0, 1) => self.iters_label.align(AlignHints::CENTER),
         (0, 2) => self.slider,
         // extra col span allows use of Label's margin
-        (1..5, 1..4) => self.mbrot,
+        (1..=4, 1..=3) => self.mbrot,
     })]
     struct MandlebrotUI {
         core: widget_core!(),

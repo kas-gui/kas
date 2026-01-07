@@ -18,9 +18,9 @@ fn main() -> kas::runner::Result<()> {
     let ui = grid! {
         (1, 0) => "Layout demo",
         (2, 0) => CheckBox::new(|_, _| true),
-        (0..3, 1) => ScrollLabel::new(LIPSUM),
+        (0..=2, 1) => ScrollLabel::new(LIPSUM),
         (0, 2) => "abc אבג def".align(AlignHints::CENTER),
-        (1..3, 3) => ScrollLabel::new(CRASIT).align(AlignHints::STRETCH),
+        (1..=2, 3) => ScrollLabel::new(CRASIT).align(AlignHints::STRETCH),
         (0, 3) => EditBox::text("A small\nsample\nof text").with_multi_line(true),
     };
     let window = Window::new(ui, "Layout demo").escapable();

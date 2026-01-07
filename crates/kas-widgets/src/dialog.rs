@@ -290,7 +290,7 @@ struct MsgClose(bool);
 mod TextEdit {
     #[widget]
     #[layout(grid! {
-        (0..3, 0) => self.edit,
+        (0..=2, 0) => self.edit,
         (0, 1) => Filler::maximize(),
         (1, 1) => Button::label_msg("&Cancel", MsgClose(false)),
         (2, 1) => Button::label_msg("&Save", MsgClose(true)),

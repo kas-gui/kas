@@ -18,6 +18,7 @@ use syn::spanned::Spanned;
 mod collection;
 mod extends;
 mod make_layout;
+mod parser;
 mod scroll_traits;
 mod visitors;
 mod widget;
@@ -381,7 +382,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// > text wrapping.
 /// >
 /// > _MacroItem_: (`frame` | `column` | `row` | `list` | `float` |
-/// > `aligned_column` | `aligned_row` | `grid`) `!` _MacroArgs_\
+/// > `grid`) `!` _MacroArgs_\
 /// > &nbsp;&nbsp; These layout macros are natively supported in layout syntax.
 /// > They are equivalent to the like-named [macros in `kas::widgets`] aside from
 /// > name resolution.
@@ -617,21 +618,33 @@ pub fn collection(input: TokenStream) -> TokenStream {
 /// # Syntax
 ///
 /// > _Collection_ :\
-/// > &nbsp;&nbsp; `collection!` `[` _ItemArms_<sup>\?</sup> `]`
+/// > &nbsp;&nbsp; `cell_collection!` `{` _ItemArms_<sup>\?</sup> `}`
 /// >
 /// > _ItemArms_ :\
 /// > &nbsp;&nbsp; (_ItemArm_ `,`)<sup>\*</sup> _ItemArm_ `,`<sup>\?</sup>
 /// >
 /// > _ItemArm_ :\
+/// > &nbsp;&nbsp; _Cell_ | _RowMacro_ | _ColumnMacro_
+/// >
+/// > _Cell_ :\
 /// > &nbsp;&nbsp; `(` _Column_ `,` _Row_ `)` `=>` _Item_
 /// >
 /// > _Column_, _Row_ :\
-/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..` `+` _LitInt_ ) | ( _LitInt_ `..`
-/// > _LitInt_ ) | ( _LitInt_ `..=` _LitInt_ )
+/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..=` _LitInt_ )
+/// >
+/// > _RowMacro_ :\
+/// > &npsb;&nbsp; `row!` `[` (_Item_ `,` | `_` `,`)* _Item_ `]`
+/// >
+/// > _ColumnMacro_ :\
+/// > &npsb;&nbsp; `column!` `[` (_Item_ `,` | `_` `,`)* _Item_ `]`
 ///
-/// Here, _Column_ and _Row_ are selected via an index (from 0), a range of
-/// indices, or a start + increment. For example, `2` = `2..+1` = `2..3` =
-/// `2..=2` while `5..+2` = `5..7` = `5..=6`.
+/// Here, _Column_ and _Row_ are selected via an index (from 0) or an inclusive
+/// range, for example `2` or `2..=3`.
+///
+/// A `row!` macro resolves to a list of cells whose column index is one larger
+/// than maximum prior column index and whose row indices count from 0.
+/// As a special case, `_` may be used to skip a cell (infer an empty cell).
+/// A `column!` macro functions similarly.
 ///
 /// _Item_ may be:
 ///

@@ -41,7 +41,7 @@ pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) {
             cx.update(node);
         }
 
-        if *cx.resize && widget.status().is_sized() {
+        if cx.resize.is_some() && widget.status().is_sized() {
             cx.resize = widget.handle_resize(cx, data);
         }
     }
@@ -96,7 +96,7 @@ pub fn _send<W: Events>(
                 );
             }
 
-            if *cx.resize {
+            if cx.resize.is_some() {
                 debug_assert!(widget.status().is_sized());
                 cx.resize = widget.handle_resize(cx, data);
             }
@@ -144,7 +144,7 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
             );
         }
 
-        if *cx.resize && widget.status().is_sized() {
+        if cx.resize.is_some() && widget.status().is_sized() {
             cx.resize = widget.handle_resize(cx, data);
         }
 

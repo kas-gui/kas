@@ -10,14 +10,14 @@ use std::collections::HashMap;
 use std::mem::size_of;
 
 use super::{ShaderManager, atlases};
-use kas::cast::Conv;
-use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId};
-use kas::geom::{Quad, Vec2};
+use kas::cast::{Cast, Conv};
+use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, UploadError};
+use kas::geom::{Quad, Size, Vec2};
 use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, SpriteType, UnpreparedSprite};
 
 #[derive(Debug)]
 struct Image {
-    size: (u32, u32),
+    size: Size,
     alloc: Allocation,
 }
 
@@ -29,7 +29,7 @@ impl Image {
         data: &[u8],
     ) {
         // TODO(opt): use StagingBelt for upload (when supported)? Or our own equivalent.
-        let size = self.size;
+        let size: (u32, u32) = self.size.cast();
         assert!(!data.is_empty());
         assert_eq!(data.len(), 4 * usize::conv(size.0) * usize::conv(size.1));
         queue.write_texture(
@@ -233,7 +233,7 @@ impl Images {
     }
 
     /// Allocate an image
-    pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
+    pub fn alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
         let alloc = self.atlas_rgba.allocate(size)?;
         let image = Image { size, alloc };
@@ -247,9 +247,10 @@ impl Images {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         id: ImageId,
+        size: Size,
         data: &[u8],
         format: ImageFormat,
-    ) {
+    ) -> Result<(), UploadError> {
         // The atlas pipe allocates textures lazily. Ensure ours is ready:
         self.atlas_rgba.prepare(device);
 
@@ -257,9 +258,15 @@ impl Images {
             ImageFormat::Rgba8 => (),
         }
 
-        if let Some(image) = self.images.get_mut(&id) {
-            image.upload(&self.atlas_rgba, queue, data);
+        let Some(image) = self.images.get_mut(&id) else {
+            return Err(UploadError::Missing);
+        };
+        if size != image.size {
+            return Err(UploadError::Size);
         }
+
+        image.upload(&self.atlas_rgba, queue, data);
+        Ok(())
     }
 
     /// Free an image allocation
@@ -270,7 +277,7 @@ impl Images {
     }
 
     /// Query image size
-    pub fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
+    pub fn image_size(&self, id: ImageId) -> Option<Size> {
         self.images.get(&id).map(|im| im.size)
     }
 
@@ -389,18 +396,18 @@ impl SpriteAllocator for Images {
     }
 
     fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_mask.allocate(size)
+        self.atlas_mask.allocate(size.cast())
     }
 
     fn alloc_rgba_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
         self.atlas_rgba_mask
             .as_mut()
             .expect("subpixel rendering feature is unavailable")
-            .allocate(size)
+            .allocate(size.cast())
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_rgba.allocate(size)
+        self.atlas_rgba.allocate(size.cast())
     }
 }
 

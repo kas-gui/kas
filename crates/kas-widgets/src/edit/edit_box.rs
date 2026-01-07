@@ -180,20 +180,20 @@ mod EditBox {
                 return;
             };
 
-            if action.0 {
-                cx.action_moved(action);
+            if let Some(moved) = action {
+                cx.action_moved(moved);
                 self.update_scroll_offset(cx);
             }
         }
 
-        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
+        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> Option<ActionResize> {
             let size = self.inner.rect().size;
             let axis = AxisInfo::new(false, Some(size.1));
             let mut resize = self.inner.size_rules(&mut cx.size_cx(), axis).min_size() > size.0;
             let axis = AxisInfo::new(true, Some(size.0));
             resize |= self.inner.size_rules(&mut cx.size_cx(), axis).min_size() > size.1;
             self.update_content_size(cx);
-            ActionResize(resize)
+            resize.then_some(ActionResize)
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {

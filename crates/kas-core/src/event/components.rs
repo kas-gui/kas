@@ -197,10 +197,11 @@ impl ScrollComponent {
     /// -   `content_size`: size of scroll region on the inside (usually larger)
     ///
     /// Returns an [`ActionMoved`] indicating whether the scroll offset changed.
-    pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> ActionMoved {
+    #[must_use]
+    pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> Option<ActionMoved> {
         let max_offset = (Offset::conv(content_size) - Offset::conv(window_size)).max(Offset::ZERO);
         if max_offset == self.max_offset {
-            return ActionMoved(false);
+            return None;
         }
         self.max_offset = max_offset;
         self.set_offset(self.offset)
@@ -212,14 +213,15 @@ impl ScrollComponent {
     ///
     /// Also cancels any kinetic scrolling, but only if `offset` is not equal
     /// to the current offset.
-    pub fn set_offset(&mut self, offset: Offset) -> ActionMoved {
+    #[must_use]
+    pub fn set_offset(&mut self, offset: Offset) -> Option<ActionMoved> {
         let offset = offset.clamp(Offset::ZERO, self.max_offset);
         if offset == self.offset {
-            ActionMoved(false)
+            None
         } else {
             self.kinetic.stop();
             self.offset = offset;
-            ActionMoved(true)
+            Some(ActionMoved)
         }
     }
 
@@ -231,7 +233,13 @@ impl ScrollComponent {
     /// -   `window_rect`: the rect of the scroll window
     ///
     /// Sets [`Scroll::Rect`] to ensure correct scrolling of parents.
-    pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> ActionMoved {
+    #[must_use]
+    pub fn focus_rect(
+        &mut self,
+        cx: &mut EventCx,
+        rect: Rect,
+        window_rect: Rect,
+    ) -> Option<ActionMoved> {
         let action = self.self_focus_rect(rect, window_rect);
         cx.set_scroll(Scroll::Rect(rect - self.offset));
         action
@@ -243,7 +251,8 @@ impl ScrollComponent {
     /// [`EventCx::set_scroll`], thus will not affect ancestors.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    pub fn self_focus_rect(&mut self, rect: Rect, window_rect: Rect) -> ActionMoved {
+    #[must_use]
+    pub fn self_focus_rect(&mut self, rect: Rect, window_rect: Rect) -> Option<ActionMoved> {
         self.kinetic.stop();
         let max_vis = rect.pos - window_rect.pos;
         let extra_size = Offset::conv(rect.size) - Offset::conv(window_rect.size);
