@@ -11,37 +11,14 @@ use std::ops::{BitOr, BitOrAssign, Deref};
 
 /// Action: widget has moved/opened/closed
 ///
-/// When the state is `true`, this indicates that the following should happen:
+/// This action indicates that the following should happen:
 ///
 /// -   Re-probe which widget is under the mouse / any touch instance / any
 ///     other location picker since widgets may have moved
 /// -   Redraw the window
 #[must_use]
 #[derive(Copy, Clone, Debug, Default)]
-pub struct ActionMoved(pub bool);
-
-impl BitOr for ActionMoved {
-    type Output = Self;
-    #[inline]
-    fn bitor(self, rhs: Self) -> Self {
-        ActionMoved(self.0 | rhs.0)
-    }
-}
-
-impl BitOrAssign for ActionMoved {
-    #[inline]
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-
-impl Deref for ActionMoved {
-    type Target = bool;
-    #[inline]
-    fn deref(&self) -> &bool {
-        &self.0
-    }
-}
+pub struct ActionMoved;
 
 /// Action: widget must be resized
 #[must_use]

@@ -318,7 +318,7 @@ impl<'a> EventCx<'a> {
             self.action |= WindowAction::REDRAW;
         }
 
-        if self.action_moved.0 {
+        if self.action_moved.is_some() {
             let over = node.try_probe(self.mouse.last_position.cast_nearest());
             self.set_over(node, over);
         }

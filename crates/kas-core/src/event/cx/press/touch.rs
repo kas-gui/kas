@@ -271,7 +271,7 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        if self.action_moved.0 {
+        if self.action_moved.is_some() {
             for grab in self.touch.touch_grab.iter_mut() {
                 grab.over = node.try_probe(grab.last_position.cast_nearest());
             }

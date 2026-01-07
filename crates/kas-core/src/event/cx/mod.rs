@@ -105,7 +105,7 @@ pub struct EventState {
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
     pub(crate) action: WindowAction,
-    action_moved: ActionMoved,
+    action_moved: Option<ActionMoved>,
 }
 
 impl EventState {
@@ -146,7 +146,7 @@ impl EventState {
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
             action: WindowAction::empty(),
-            action_moved: ActionMoved(false),
+            action_moved: None,
         }
     }
 
@@ -176,7 +176,7 @@ impl EventState {
         cx.configure(node, id);
         let resize = cx.resize;
         // Ignore cx.redraw: we can assume a redraw will happen
-        self.action_moved = ActionMoved(true);
+        self.action_moved = Some(ActionMoved);
         resize
     }
 
@@ -317,7 +317,7 @@ impl EventState {
     /// This updates the widget(s) under mouse and touch events.
     #[inline]
     pub fn region_moved(&mut self) {
-        self.action_moved = ActionMoved(true);
+        self.action_moved = Some(ActionMoved);
     }
 
     /// Notify that a [`WindowAction`] should happen for the whole window
@@ -332,10 +332,10 @@ impl EventState {
         self.action |= WindowAction::CLOSE;
     }
 
-    /// Notify of an [`ActionMoved`]
+    /// Notify of an [`ActionMoved`] or `Option<ActionMoved>`
     #[inline]
-    pub fn action_moved(&mut self, action: ActionMoved) {
-        self.action_moved |= action;
+    pub fn action_moved(&mut self, action: impl Into<Option<ActionMoved>>) {
+        self.action_moved = self.action_moved.or(action.into());
     }
 
     /// Request update to widget `id`

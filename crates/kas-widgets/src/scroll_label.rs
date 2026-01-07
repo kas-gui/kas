@@ -541,8 +541,8 @@ mod ScrollText {
                 return;
             };
 
-            if action.0 {
-                cx.action_moved(action);
+            if let Some(moved) = action {
+                cx.action_moved(moved);
                 self.vert_bar.set_value(cx, self.scroll.offset().1);
             }
         }

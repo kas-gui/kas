@@ -116,8 +116,7 @@ impl EventState {
             }
 
             // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
-            if cx.action_moved.0 {
-                cx.action_moved.0 = false;
+            if cx.action_moved.take().is_some() {
                 cx.action.insert(WindowAction::REDRAW);
             }
         });

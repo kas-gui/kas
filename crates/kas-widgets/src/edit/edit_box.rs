@@ -180,8 +180,8 @@ mod EditBox {
                 return;
             };
 
-            if action.0 {
-                cx.action_moved(action);
+            if let Some(moved) = action {
+                cx.action_moved(moved);
                 self.update_scroll_offset(cx);
             }
         }
