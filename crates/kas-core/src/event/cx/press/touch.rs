@@ -9,7 +9,7 @@ use super::{GrabMode, Press, PressSource, velocity};
 use crate::config::EventWindowConfig;
 use crate::event::{Event, EventCx, EventState, FocusSource, NavAdvance, PressStart};
 use crate::geom::{Affine, DVec2, Vec2};
-use crate::{Id, Node, WindowAction};
+use crate::{ActionRedraw, Id, Node};
 use cast::{Cast, CastApprox, CastFloat, Conv};
 use smallvec::SmallVec;
 use winit::event::FingerId;
@@ -33,19 +33,19 @@ pub(super) struct TouchGrab {
 }
 
 impl TouchGrab {
-    fn flush_click_move(&mut self) -> WindowAction {
+    fn flush_click_move(&mut self) -> Option<ActionRedraw> {
         if self.mode == GrabMode::Click {
             if self.start_id == self.over {
                 if self.depress != self.over {
                     self.depress = self.over.clone();
-                    return WindowAction::REDRAW;
+                    return Some(ActionRedraw);
                 }
             } else if self.depress.is_some() {
                 self.depress = None;
-                return WindowAction::REDRAW;
+                return Some(ActionRedraw);
             }
         }
-        WindowAction::empty()
+        None
     }
 }
 
@@ -241,7 +241,7 @@ impl EventState {
         );
         self.opt_redraw(grab.depress.clone());
         self.touch.remove_pan_grab(grab.pan_grab);
-        self.window_action(grab.flush_click_move());
+        self.action_redraw(grab.flush_click_move());
         grab
     }
 }
@@ -250,8 +250,8 @@ impl<'a> EventCx<'a> {
     pub(in crate::event::cx) fn touch_handle_pending(&mut self, mut node: Node<'_>) {
         let mut i = 0;
         while i < self.touch.touch_grab.len() {
-            let action = self.touch.touch_grab[i].flush_click_move();
-            self.state.action |= action;
+            let redraw = self.touch.touch_grab[i].flush_click_move();
+            self.action_redraw(redraw);
 
             if self.touch.touch_grab[i].cancel {
                 let grab = self.remove_touch(i);
@@ -271,7 +271,7 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        if self.action_moved.0 {
+        if self.action_moved.is_some() {
             for grab in self.touch.touch_grab.iter_mut() {
                 grab.over = node.try_probe(grab.last_position.cast_nearest());
             }

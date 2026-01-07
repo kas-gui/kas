@@ -12,7 +12,7 @@ use crate::event::{
 use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::WindowErased;
 use crate::window::WindowWidget;
-use crate::{Id, Node, TileExt, WindowAction};
+use crate::{ActionRedraw, Id, Node, TileExt};
 use cast::{CastApprox, CastFloat};
 use std::time::{Duration, Instant};
 use winit::cursor::CursorIcon;
@@ -152,8 +152,8 @@ impl Mouse {
         self.over.clone()
     }
 
-    fn update_grab(&mut self) -> (bool, bool) {
-        let (mut cancel, mut redraw) = (false, false);
+    fn update_grab(&mut self) -> (bool, Option<ActionRedraw>) {
+        let (mut cancel, mut redraw) = (false, None);
         if let Some(grab) = self.grab.as_mut() {
             cancel = grab.cancel;
             if let GrabDetails::Click = grab.details {
@@ -161,11 +161,11 @@ impl Mouse {
                 if grab.start_id == over {
                     if grab.depress.as_ref() != over {
                         grab.depress = over.cloned();
-                        redraw = true;
+                        redraw = Some(ActionRedraw);
                     }
                 } else if grab.depress.is_some() {
                     grab.depress = None;
-                    redraw = true;
+                    redraw = Some(ActionRedraw);
                 }
             }
         }
@@ -313,12 +313,9 @@ impl<'a> EventCx<'a> {
         if cancel {
             self.remove_mouse_grab(node.re(), false);
         }
+        self.action_redraw(redraw);
 
-        if redraw {
-            self.action |= WindowAction::REDRAW;
-        }
-
-        if self.action_moved.0 {
+        if self.action_moved.is_some() {
             let over = node.try_probe(self.mouse.last_position.cast_nearest());
             self.set_over(node, over);
         }

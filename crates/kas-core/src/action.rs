@@ -7,76 +7,34 @@
 
 #[allow(unused)]
 use crate::event::{ConfigCx, EventCx, EventState};
-use std::ops::{BitOr, BitOrAssign, Deref};
 
 /// Action: widget has moved/opened/closed
 ///
-/// When the state is `true`, this indicates that the following should happen:
+/// This action indicates that the following should happen:
 ///
 /// -   Re-probe which widget is under the mouse / any touch instance / any
 ///     other location picker since widgets may have moved
 /// -   Redraw the window
 #[must_use]
-#[derive(Copy, Clone, Debug, Default)]
-pub struct ActionMoved(pub bool);
-
-impl BitOr for ActionMoved {
-    type Output = Self;
-    #[inline]
-    fn bitor(self, rhs: Self) -> Self {
-        ActionMoved(self.0 | rhs.0)
-    }
-}
-
-impl BitOrAssign for ActionMoved {
-    #[inline]
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-
-impl Deref for ActionMoved {
-    type Target = bool;
-    #[inline]
-    fn deref(&self) -> &bool {
-        &self.0
-    }
-}
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ActionMoved;
 
 /// Action: widget must be resized
+///
+/// This type implies that either a local or full-window resize is required.
 #[must_use]
-#[derive(Copy, Clone, Debug, Default)]
-pub struct ActionResize(pub bool);
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ActionResize;
 
-impl ActionResize {
-    #[inline]
-    pub(crate) fn clear(&mut self) {
-        self.0 = false;
-    }
-}
+/// Action: content must be redrawn
+#[must_use]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ActionRedraw;
 
-impl BitOr for ActionResize {
-    type Output = Self;
-    #[inline]
-    fn bitor(self, rhs: Self) -> Self {
-        ActionResize(self.0 | rhs.0)
-    }
-}
-
-impl BitOrAssign for ActionResize {
-    #[inline]
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-
-impl Deref for ActionResize {
-    type Target = bool;
-    #[inline]
-    fn deref(&self) -> &bool {
-        &self.0
-    }
-}
+/// Action: close window
+#[must_use]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct ActionClose;
 
 bitflags! {
     /// Action: configuration data updates must be applied
@@ -92,31 +50,10 @@ bitflags! {
     }
 }
 
-bitflags! {
-    /// Action required after processing
-    ///
-    /// Some methods operate directly on a context ([`ConfigCx`] or [`EventCx`])
-    /// while others don't reqiure a context but do require that some *action*
-    /// is performed afterwards. This enum is used to convey that action.
-    ///
-    /// A `WindowAction` produced at run-time should be passed to a context, usually
-    /// via [`EventState::action`] (to associate the `WindowAction` with a widget)
-    /// or [`EventState::window_action`] (if no particular widget is relevant).
-    ///
-    /// A `WindowAction` produced before starting the GUI may be discarded, for
-    /// example: `let _ = runner.config_mut().font.set_size(24.0);`.
-    ///
-    /// Two `WindowAction` values may be combined via bit-or (`a | b`).
-    #[must_use]
-    #[derive(Copy, Clone, Debug, Default)]
-    pub struct WindowAction: u32 {
-        /// The whole window requires redrawing
-        ///
-        /// See also [`EventState::redraw`].
-        const REDRAW = 1 << 0;
-        /// The current window should be closed
-        ///
-        /// See also [`EventState::exit`] which closes the UI (all windows).
-        const CLOSE = 1 << 30;
-    }
+/// Set of actions which may affect a window
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct WindowActions {
+    pub resize: Option<ActionResize>,
+    pub redraw: Option<ActionRedraw>,
+    pub close: Option<ActionClose>,
 }

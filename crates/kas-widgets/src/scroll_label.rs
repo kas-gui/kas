@@ -541,13 +541,13 @@ mod ScrollText {
                 return;
             };
 
-            if action.0 {
-                cx.action_moved(action);
+            if let Some(moved) = action {
+                cx.action_moved(moved);
                 self.vert_bar.set_value(cx, self.scroll.offset().1);
             }
         }
 
-        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> ActionResize {
+        fn handle_resize(&mut self, cx: &mut ConfigCx, _: &Self::Data) -> Option<ActionResize> {
             let size = self.text.rect().size;
             let axis = AxisInfo::new(false, Some(size.1));
             let mut resize = self.text.size_rules(&mut cx.size_cx(), axis).min_size() > size.0;
@@ -556,7 +556,7 @@ mod ScrollText {
             self.text
                 .set_rect(&mut cx.size_cx(), self.text.rect(), Default::default());
             self.update_content_size(cx);
-            ActionResize(resize)
+            resize.then_some(ActionResize)
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
