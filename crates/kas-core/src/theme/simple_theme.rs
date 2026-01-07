@@ -180,7 +180,7 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS> {
                     p3 = Vec2(q.b.0, y1);
                 };
 
-                let f = self.w.dims.mark_line;
+                let f = self.w.dims.diagonal_mark_line;
                 self.draw.line(p1, p2, f, col);
                 self.draw.line(p2, p3, f, col);
             }
@@ -189,7 +189,7 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS> {
                 let offset = Offset::conv((rect.size - size) / 2);
                 let q = Quad::conv(Rect::new(rect.pos + offset, size));
 
-                let f = self.w.dims.mark_line;
+                let f = self.w.dims.diagonal_mark_line;
                 self.draw.line(q.a, q.b, f, col);
                 let c = Vec2(q.a.0, q.b.1);
                 let d = Vec2(q.b.0, q.a.1);
