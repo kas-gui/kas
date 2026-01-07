@@ -122,7 +122,6 @@ pub trait DrawShared {
     fn image_upload(
         &mut self,
         handle: &ImageHandle,
-        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) -> Result<ActionRedraw, UploadError>;
@@ -149,12 +148,11 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     fn image_upload(
         &mut self,
         handle: &ImageHandle,
-        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) -> Result<ActionRedraw, UploadError> {
         self.draw
-            .image_upload(handle.0, size, data, format)
+            .image_upload(handle.0, data, format)
             .map(|_| ActionRedraw)
     }
 
@@ -195,7 +193,6 @@ pub trait DrawSharedImpl: Any {
     fn image_upload(
         &mut self,
         id: ImageId,
-        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) -> Result<(), UploadError>;
