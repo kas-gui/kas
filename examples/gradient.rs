@@ -1,5 +1,3 @@
-use std::ops::{Deref, DerefMut};
-
 use kas::prelude::*;
 use kas::widgets::SpinBox;
 use kas::image::Sprite;
