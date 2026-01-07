@@ -16,20 +16,25 @@ use crate::event::{ConfigCx, EventCx, EventState};
 ///     other location picker since widgets may have moved
 /// -   Redraw the window
 #[must_use]
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct ActionMoved;
 
 /// Action: widget must be resized
 ///
 /// This type implies that either a local or full-window resize is required.
 #[must_use]
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct ActionResize;
 
 /// Action: content must be redrawn
 #[must_use]
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct ActionRedraw;
+
+/// Action: close window
+#[must_use]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct ActionClose;
 
 bitflags! {
     /// Action: configuration data updates must be applied
@@ -45,38 +50,10 @@ bitflags! {
     }
 }
 
-bitflags! {
-    /// Action required after processing
-    ///
-    /// Some methods operate directly on a context ([`ConfigCx`] or [`EventCx`])
-    /// while others don't reqiure a context but do require that some *action*
-    /// is performed afterwards. This enum is used to convey that action.
-    ///
-    /// A `WindowAction` produced at run-time should be passed to a context, usually
-    /// via [`EventState::action`] (to associate the `WindowAction` with a widget)
-    /// or [`EventState::window_action`] (if no particular widget is relevant).
-    ///
-    /// A `WindowAction` produced before starting the GUI may be discarded, for
-    /// example: `let _ = runner.config_mut().font.set_size(24.0);`.
-    ///
-    /// Two `WindowAction` values may be combined via bit-or (`a | b`).
-    #[must_use]
-    #[derive(Copy, Clone, Debug, Default)]
-    pub struct WindowAction: u32 {
-        /// The whole window requires redrawing
-        ///
-        /// See also [`EventState::redraw`].
-        const REDRAW = 1 << 0;
-        /// The current window should be closed
-        ///
-        /// See also [`EventState::exit`] which closes the UI (all windows).
-        const CLOSE = 1 << 30;
-    }
-}
-
-impl From<ActionRedraw> for WindowAction {
-    #[inline]
-    fn from(_: ActionRedraw) -> Self {
-        WindowAction::REDRAW
-    }
+/// Set of actions which may affect a window
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct WindowActions {
+    pub resize: Option<ActionResize>,
+    pub redraw: Option<ActionRedraw>,
+    pub close: Option<ActionClose>,
 }

@@ -13,7 +13,7 @@ use crate::theme::ThemeSize;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
-use crate::{ActionResize, Id, Node, WindowAction};
+use crate::{ActionRedraw, Id, Node, WindowActions};
 use winit::event::{ButtonSource, ElementState, PointerKind, PointerSource};
 use winit::window::ResizeDirection;
 
@@ -65,7 +65,7 @@ impl EventState {
         theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         mut node: Node,
-    ) -> (Option<ActionResize>, WindowAction) {
+    ) -> WindowActions {
         if !self.pending_send_targets.is_empty() {
             runner.set_send_targets(&mut self.pending_send_targets);
         }
@@ -118,7 +118,7 @@ impl EventState {
 
             // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
             if cx.action_moved.take().is_some() {
-                cx.action.insert(WindowAction::REDRAW);
+                cx.action_redraw(ActionRedraw);
             }
         });
 
@@ -126,7 +126,11 @@ impl EventState {
             window.set_pointer_icon(icon);
         }
 
-        (resize, std::mem::take(&mut self.action))
+        WindowActions {
+            resize,
+            redraw: self.action_redraw.take(),
+            close: self.action_close.take(),
+        }
     }
 
     /// Application suspended. Clean up temporary state.

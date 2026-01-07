@@ -24,7 +24,7 @@ use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{ActionMoved, ActionResize, ConfigAction, HasId, Id, Node, WindowAction};
+use crate::{ActionClose, ActionMoved, ActionRedraw, ActionResize, ConfigAction, HasId, Id, Node};
 use key::PendingSelFocus;
 use nav::PendingNavFocus;
 
@@ -104,8 +104,9 @@ pub struct EventState {
     // Optional new target for selection focus. bool is true if this also gains key focus.
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
-    pub(crate) action: WindowAction,
     action_moved: Option<ActionMoved>,
+    pub(crate) action_redraw: Option<ActionRedraw>,
+    action_close: Option<ActionClose>,
 }
 
 impl EventState {
@@ -145,8 +146,9 @@ impl EventState {
             pending_update: None,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
-            action: WindowAction::empty(),
             action_moved: None,
+            action_redraw: None,
+            action_close: None,
         }
     }
 
@@ -208,9 +210,8 @@ impl EventState {
         };
         f(&mut cx);
         let resize = cx.resize.or(cx.resize_window);
-        if let Some(action) = cx.redraw {
-            self.action |= action.into();
-        }
+        let redraw = cx.redraw;
+        self.action_redraw = self.action_redraw.or(redraw);
         resize
     }
 
@@ -302,12 +303,15 @@ impl EventState {
     }
 
     /// Notify that a widget must be redrawn
+    ///
+    /// This method is designed to support partial redraws though these are not
+    /// currently implemented. See also [`Self::action_redraw`].
     #[inline]
     pub fn redraw(&mut self, id: impl HasId) {
         // NOTE: redraws are fast enough not to bother handling locally
         let _ = id;
 
-        self.action |= WindowAction::REDRAW;
+        self.action_redraw = Some(ActionRedraw);
     }
 
     /// Redraw `id` if not `None`
@@ -326,22 +330,24 @@ impl EventState {
         self.action_moved = Some(ActionMoved);
     }
 
-    /// Notify that a [`WindowAction`] should happen for the whole window
-    #[inline]
-    pub fn window_action(&mut self, action: impl Into<WindowAction>) {
-        self.action |= action.into();
-    }
-
     /// Request that the window be closed
     #[inline]
     pub fn close_own_window(&mut self) {
-        self.action |= WindowAction::CLOSE;
+        self.action_close = Some(ActionClose);
     }
 
     /// Notify of an [`ActionMoved`] or `Option<ActionMoved>`
     #[inline]
     pub fn action_moved(&mut self, action: impl Into<Option<ActionMoved>>) {
         self.action_moved = self.action_moved.or(action.into());
+    }
+
+    /// Notify of an [`ActionRedraw`] or `Option<ActionRedraw>`
+    ///
+    /// This will force a redraw of the whole window. See also [`Self::redraw`].
+    #[inline]
+    pub fn action_redraw(&mut self, action: impl Into<Option<ActionRedraw>>) {
+        self.action_redraw = self.action_redraw.or(action.into());
     }
 
     /// Request update to widget `id`
