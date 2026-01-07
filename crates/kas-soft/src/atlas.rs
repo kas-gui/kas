@@ -128,12 +128,12 @@ impl<F: Format> Allocator for Atlases<F> {
     /// Allocate space within a texture atlas
     ///
     /// Fails if `size` is zero in any dimension.
-    fn allocate(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
+    fn allocate(&mut self, size: Size) -> Result<Allocation, AllocError> {
         if size.0 == 0 || size.1 == 0 {
             return Err(AllocError);
         }
 
-        let (atlas, alloc, tex_size) = self.allocate_space((size.0.cast(), size.1.cast()))?;
+        let (atlas, alloc, tex_size) = self.allocate_space((size.0, size.1))?;
 
         let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
 
@@ -571,10 +571,13 @@ impl Shared {
     }
 
     /// Allocate an image
-    pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
+    pub fn alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
         let alloc = self.atlas_rgba.allocate(size)?;
-        let image = Image { size, alloc };
+        let image = Image {
+            size: size.cast(),
+            alloc,
+        };
         self.images.insert(id, image);
         Ok(id)
     }
@@ -641,16 +644,16 @@ impl SpriteAllocator for Shared {
     }
 
     fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_mask.allocate(size)
+        self.atlas_mask.allocate(size.cast())
     }
 
     fn alloc_rgba_mask(&mut self, mut size: (u32, u32)) -> Result<Allocation, AllocError> {
         size.0 += 2; // allow for correct filtering
-        self.atlas_rgba_mask.allocate(size)
+        self.atlas_rgba_mask.allocate(size.cast())
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_rgba.allocate(size)
+        self.atlas_rgba.allocate(size.cast())
     }
 }
 

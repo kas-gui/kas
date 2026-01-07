@@ -330,7 +330,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     }
 
     #[inline]
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
+    fn image_alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
         self.images.alloc(size)
     }
 

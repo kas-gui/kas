@@ -93,7 +93,7 @@ pub trait DrawShared {
     /// Allocate an image
     ///
     /// Use [`SharedState::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageHandle, AllocError>;
+    fn image_alloc(&mut self, size: Size) -> Result<ImageHandle, AllocError>;
 
     /// Upload an image to the GPU
     ///
@@ -117,7 +117,7 @@ pub trait DrawShared {
 
 impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     #[inline]
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageHandle, AllocError> {
+    fn image_alloc(&mut self, size: Size) -> Result<ImageHandle, AllocError> {
         self.draw
             .image_alloc(size)
             .map(|id| ImageHandle(id, Rc::new(())))
@@ -156,7 +156,7 @@ pub trait DrawSharedImpl: Any {
     /// Allocate an image
     ///
     /// Use [`DrawSharedImpl::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError>;
+    fn image_alloc(&mut self, size: Size) -> Result<ImageId, AllocError>;
 
     /// Upload an image to the GPU
     ///

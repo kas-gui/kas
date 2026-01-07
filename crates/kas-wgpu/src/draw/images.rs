@@ -10,9 +10,9 @@ use std::collections::HashMap;
 use std::mem::size_of;
 
 use super::{ShaderManager, atlases};
-use kas::cast::Conv;
+use kas::cast::{Cast, Conv};
 use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId};
-use kas::geom::{Quad, Vec2};
+use kas::geom::{Quad, Size, Vec2};
 use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, SpriteType, UnpreparedSprite};
 
 #[derive(Debug)]
@@ -233,10 +233,13 @@ impl Images {
     }
 
     /// Allocate an image
-    pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
+    pub fn alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
         let alloc = self.atlas_rgba.allocate(size)?;
-        let image = Image { size, alloc };
+        let image = Image {
+            size: size.cast(),
+            alloc,
+        };
         self.images.insert(id, image);
         Ok(id)
     }
@@ -389,18 +392,18 @@ impl SpriteAllocator for Images {
     }
 
     fn alloc_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_mask.allocate(size)
+        self.atlas_mask.allocate(size.cast())
     }
 
     fn alloc_rgba_mask(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
         self.atlas_rgba_mask
             .as_mut()
             .expect("subpixel rendering feature is unavailable")
-            .allocate(size)
+            .allocate(size.cast())
     }
 
     fn alloc_rgba(&mut self, size: (u32, u32)) -> Result<Allocation, AllocError> {
-        self.atlas_rgba.allocate(size)
+        self.atlas_rgba.allocate(size.cast())
     }
 }
 
