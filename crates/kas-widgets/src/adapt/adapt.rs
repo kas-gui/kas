@@ -45,10 +45,11 @@ mod Adapt {
         state: W::Data,
         #[widget(&self.state)]
         inner: W,
-        configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W::Data)>>,
-        update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W::Data, &A)>>,
-        timer_handlers: LinearMap<TimerHandle, Box<dyn Fn(&mut AdaptEventCx, &mut W::Data, &A)>>,
-        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W::Data, &A)>>,
+        configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &mut W::Data)>>,
+        update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &mut W::Data, &A)>>,
+        timer_handlers:
+            LinearMap<TimerHandle, Box<dyn Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A)>>,
+        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A)>>,
     }
 
     impl Self {
@@ -69,7 +70,7 @@ mod Adapt {
         /// Add a handler to be called on configuration
         pub fn on_configure<F>(mut self, handler: F) -> Self
         where
-            F: Fn(&mut AdaptConfigCx, &mut W::Data) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W, &mut W::Data) + 'static,
         {
             debug_assert!(self.configure_handler.is_none());
             self.configure_handler = Some(Box::new(handler));
@@ -81,7 +82,7 @@ mod Adapt {
         /// Children will be updated after the handler is called.
         pub fn on_update<F>(mut self, handler: F) -> Self
         where
-            F: Fn(&mut AdaptConfigCx, &mut W::Data, &A) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W, &mut W::Data, &A) + 'static,
         {
             debug_assert!(self.update_handler.is_none());
             self.update_handler = Some(Box::new(handler));
@@ -95,7 +96,7 @@ mod Adapt {
         /// of [`EventState::send_async`](kas::event::EventState::send_async).
         pub fn on_timer<H>(mut self, timer_id: TimerHandle, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &mut W::Data, &A) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + 'static,
         {
             debug_assert!(self.timer_handlers.get(&timer_id).is_none());
             self.timer_handlers.insert(timer_id, Box::new(handler));
@@ -113,7 +114,7 @@ mod Adapt {
             M: Debug + 'static,
             H: Fn(&mut AdaptEventCx, &mut W::Data, M) + 'static,
         {
-            self.on_messages(move |cx, state, _data| {
+            self.on_messages(move |cx, _, state, _data| {
                 if let Some(m) = cx.try_pop() {
                     handler(cx, state, m);
                 }
@@ -123,7 +124,7 @@ mod Adapt {
         /// Add a generic message handler
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &mut W::Data, &A) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + 'static,
         {
             self.message_handlers.push(Box::new(handler));
             self
@@ -136,14 +137,14 @@ mod Adapt {
         fn configure(&mut self, cx: &mut ConfigCx) {
             if let Some(handler) = self.configure_handler.as_ref() {
                 let mut cx = AdaptConfigCx::new(cx, self.id());
-                handler(&mut cx, &mut self.state);
+                handler(&mut cx, &mut self.inner, &mut self.state);
             }
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             if let Some(handler) = self.update_handler.as_ref() {
                 let mut cx = AdaptConfigCx::new(cx, self.id());
-                handler(&mut cx, &mut self.state, data);
+                handler(&mut cx, &mut self.inner, &mut self.state, data);
             }
         }
 
@@ -152,7 +153,7 @@ mod Adapt {
                 Event::Timer(timer_id) => {
                     if let Some(handler) = self.timer_handlers.get(&timer_id) {
                         let mut cx = AdaptEventCx::new(cx, self.id());
-                        handler(&mut cx, &mut self.state, data);
+                        handler(&mut cx, &mut self.inner, &mut self.state, data);
                         cx.update(self.as_node(data));
                         Used
                     } else {
@@ -167,7 +168,7 @@ mod Adapt {
             let count = cx.msg_op_count();
             let mut cx = AdaptEventCx::new(cx, self.id());
             for handler in self.message_handlers.iter() {
-                handler(&mut cx, &mut self.state, data);
+                handler(&mut cx, &mut self.inner, &mut self.state, data);
             }
             if cx.msg_op_count() != count {
                 cx.update(self.as_node(data));

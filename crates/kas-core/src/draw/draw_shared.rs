@@ -7,7 +7,7 @@
 
 use super::color::Rgba;
 use super::{DrawImpl, PassId};
-use crate::cast::Cast;
+use crate::ActionRedraw;
 use crate::config::RasterConfig;
 use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
@@ -62,6 +62,17 @@ pub enum ImageFormat {
 #[error("failed to allocate: size too large or zero-sized")]
 pub struct AllocError;
 
+/// Upload failed
+#[derive(Error, Debug)]
+pub enum UploadError {
+    /// No allocation found for the [`ImageId`] used
+    #[error("image_upload: allocation not found")]
+    Missing,
+    /// Size of the uploaded image is wrong
+    #[error("image_upload: size does not match the allocation")]
+    Size,
+}
+
 /// Shared draw state
 ///
 /// A single [`SharedState`] instance is shared by all windows and draw contexts.
@@ -93,17 +104,28 @@ pub trait DrawShared {
     /// Allocate an image
     ///
     /// Use [`SharedState::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageHandle, AllocError>;
+    fn image_alloc(&mut self, size: Size) -> Result<ImageHandle, AllocError>;
 
     /// Upload an image to the GPU
     ///
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
     ///
-    /// `handle` must refer to an allocation of some size `(w, h)`, such that
-    /// `data.len() == b * w * h` where `b` is the number of bytes per pixel,
-    /// according to `format`. Data must be in row-major order.
-    fn image_upload(&mut self, handle: &ImageHandle, data: &[u8], format: ImageFormat);
+    /// `handle` must refer to an allocation of some size matching `size`.
+    ///
+    /// The image `data` must have `data.len() == b * w * h` where
+    /// `(w, h) == size.cast()` and `b` is the number of bytes per pixel
+    /// (according to `format`). Data must be in row-major order.
+    ///
+    /// On success, this returns an [`ActionRedraw`] to indicate that any
+    /// widgets using this image will require a redraw.
+    fn image_upload(
+        &mut self,
+        handle: &ImageHandle,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<ActionRedraw, UploadError>;
 
     /// Potentially free an image
     ///
@@ -117,15 +139,23 @@ pub trait DrawShared {
 
 impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     #[inline]
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageHandle, AllocError> {
+    fn image_alloc(&mut self, size: Size) -> Result<ImageHandle, AllocError> {
         self.draw
             .image_alloc(size)
             .map(|id| ImageHandle(id, Rc::new(())))
     }
 
     #[inline]
-    fn image_upload(&mut self, handle: &ImageHandle, data: &[u8], format: ImageFormat) {
-        self.draw.image_upload(handle.0, data, format);
+    fn image_upload(
+        &mut self,
+        handle: &ImageHandle,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<ActionRedraw, UploadError> {
+        self.draw
+            .image_upload(handle.0, size, data, format)
+            .map(|_| ActionRedraw)
     }
 
     #[inline]
@@ -137,7 +167,7 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
 
     #[inline]
     fn image_size(&self, handle: &ImageHandle) -> Option<Size> {
-        self.draw.image_size(handle.0).map(|size| size.cast())
+        self.draw.image_size(handle.0)
     }
 }
 
@@ -156,19 +186,25 @@ pub trait DrawSharedImpl: Any {
     /// Allocate an image
     ///
     /// Use [`DrawSharedImpl::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError>;
+    fn image_alloc(&mut self, size: Size) -> Result<ImageId, AllocError>;
 
     /// Upload an image to the GPU
     ///
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat);
+    fn image_upload(
+        &mut self,
+        id: ImageId,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<(), UploadError>;
 
     /// Free an image allocation
     fn image_free(&mut self, id: ImageId);
 
     /// Query an image's size
-    fn image_size(&self, id: ImageId) -> Option<(u32, u32)>;
+    fn image_size(&self, id: ImageId) -> Option<Size>;
 
     /// Draw the image in the given `rect`
     fn draw_image(&self, draw: &mut Self::Draw, pass: PassId, id: ImageId, rect: Quad);

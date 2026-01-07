@@ -7,7 +7,9 @@
 
 use super::{atlas, basic};
 use kas::cast::Cast;
-use kas::draw::{AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, WindowCommon};
+use kas::draw::{
+    AllocError, DrawImpl, DrawSharedImpl, PassId, PassType, UploadError, WindowCommon,
+};
 use kas::draw::{ImageFormat, ImageId, color};
 use kas::geom::{Quad, Size, Vec2};
 use kas::prelude::{Offset, Rect};
@@ -151,13 +153,19 @@ impl DrawSharedImpl for Shared {
     }
 
     #[inline]
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
+    fn image_alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
         self.images.alloc(size)
     }
 
     #[inline]
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
-        self.images.upload(id, data, format);
+    fn image_upload(
+        &mut self,
+        id: ImageId,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<(), UploadError> {
+        self.images.upload(id, size, data, format)
     }
 
     #[inline]
@@ -166,7 +174,7 @@ impl DrawSharedImpl for Shared {
     }
 
     #[inline]
-    fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
+    fn image_size(&self, id: ImageId) -> Option<Size> {
         self.images.image_size(id)
     }
 
