@@ -26,6 +26,11 @@ pub struct ActionMoved;
 #[derive(Copy, Clone, Debug, Default)]
 pub struct ActionResize;
 
+/// Action: content must be redrawn
+#[must_use]
+#[derive(Copy, Clone, Debug, Default)]
+pub struct ActionRedraw;
+
 bitflags! {
     /// Action: configuration data updates must be applied
     #[must_use]
@@ -66,5 +71,12 @@ bitflags! {
         ///
         /// See also [`EventState::exit`] which closes the UI (all windows).
         const CLOSE = 1 << 30;
+    }
+}
+
+impl From<ActionRedraw> for WindowAction {
+    #[inline]
+    fn from(_: ActionRedraw) -> Self {
+        WindowAction::REDRAW
     }
 }

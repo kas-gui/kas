@@ -569,7 +569,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         cx.update(self.widget.as_node(data));
         if cx.resize.is_some() {
             self.apply_size(data, false, true);
-        } else if cx.redraw {
+        } else if cx.redraw.is_some() {
             window.request_redraw();
         }
 

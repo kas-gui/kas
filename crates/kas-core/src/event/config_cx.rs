@@ -8,7 +8,7 @@
 use crate::event::EventState;
 use crate::text::format::FormattableText;
 use crate::theme::{SizeCx, Text, ThemeSize};
-use crate::{ActionResize, Id, Node};
+use crate::{ActionRedraw, ActionResize, Id, Node};
 use std::any::TypeId;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
@@ -24,7 +24,7 @@ pub struct ConfigCx<'a> {
     pub(super) theme: &'a dyn ThemeSize,
     pub(crate) state: &'a mut EventState,
     pub(crate) resize: Option<ActionResize>,
-    pub(crate) redraw: bool,
+    pub(crate) redraw: Option<ActionRedraw>,
 }
 
 impl<'a> ConfigCx<'a> {
@@ -36,7 +36,7 @@ impl<'a> ConfigCx<'a> {
             theme: sh,
             state: ev,
             resize: None,
-            redraw: false,
+            redraw: None,
         }
     }
 
@@ -126,7 +126,7 @@ impl<'a> ConfigCx<'a> {
     /// during the traversal unwind if possible.
     #[inline]
     pub fn redraw(&mut self) {
-        self.redraw = true;
+        self.redraw = Some(ActionRedraw);
     }
 
     /// Require that the current widget (and its descendants) be resized

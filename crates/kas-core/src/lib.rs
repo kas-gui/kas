@@ -28,7 +28,7 @@ pub mod widgets;
 pub mod window;
 
 pub use crate::core::*;
-pub use action::{ActionMoved, ActionResize, ConfigAction, WindowAction};
+pub use action::{ActionMoved, ActionRedraw, ActionResize, ConfigAction, WindowAction};
 pub use kas_macros::{autoimpl, extends, impl_default};
 pub use kas_macros::{cell_collection, collection, impl_anon, impl_scope, impl_self};
 pub use kas_macros::{layout, widget, widget_index};

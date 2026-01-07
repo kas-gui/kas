@@ -208,8 +208,8 @@ impl EventState {
         };
         f(&mut cx);
         let resize = cx.resize.or(cx.resize_window);
-        if cx.redraw {
-            self.action |= WindowAction::REDRAW;
+        if let Some(action) = cx.redraw {
+            self.action |= action.into();
         }
         resize
     }
