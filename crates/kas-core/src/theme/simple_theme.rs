@@ -202,8 +202,12 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS> {
 
                 let f = self.w.dims.mark_line;
                 let mid = q.center();
-                self.draw.line(Vec2(mid.0, q.a.1), Vec2(mid.0, q.b.1), f, col);
-                self.draw.line(Vec2(q.a.0, mid.1), Vec2(q.b.0, mid.1), f, col);
+                let north = Vec2(mid.0, q.a.1);
+                let south = Vec2(mid.0, q.b.1);
+                let west = Vec2(q.a.0, mid.1);
+                let east = Vec2(q.b.0, mid.1);
+                self.draw.line(north, south, f, col);
+                self.draw.line(west, east, f, col);
             }
             MarkStyle::Minus => {
                 let size = Size::splat(self.w.dims.mark);
@@ -212,7 +216,9 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS> {
 
                 let f = self.w.dims.mark_line;
                 let mid = q.center();
-                self.draw.line(Vec2(q.a.0, mid.1), Vec2(q.b.0, mid.1), f, col);
+                let west = Vec2(q.a.0, mid.1);
+                let east = Vec2(q.b.0, mid.1);
+                self.draw.line(west, east, f, col);
             }
         }
     }

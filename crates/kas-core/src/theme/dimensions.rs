@@ -258,7 +258,7 @@ impl<D: 'static> ThemeSize for Window<D> {
                     MarkStyle::Chevron(dir) => match dir.is_vertical() == axis_is_vertical {
                         true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
                         false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
-                    }
+                    },
                     MarkStyle::X | MarkStyle::Plus | MarkStyle::Minus => {
                         self.dims.mark + i32::conv_ceil(self.dims.mark_line)
                     }
