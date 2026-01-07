@@ -156,8 +156,8 @@ impl DrawSharedImpl for Shared {
     }
 
     #[inline]
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
-        self.images.upload(id, data, format);
+    fn image_upload(&mut self, id: ImageId, size: Size, data: &[u8], format: ImageFormat) {
+        self.images.upload(id, size, data, format);
     }
 
     #[inline]

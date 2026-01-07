@@ -583,7 +583,7 @@ impl Shared {
     }
 
     /// Upload an image
-    pub fn upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
+    pub fn upload(&mut self, id: ImageId, size: Size, data: &[u8], format: ImageFormat) {
         match format {
             ImageFormat::Rgba8 => (),
         }

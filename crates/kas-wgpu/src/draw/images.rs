@@ -250,6 +250,7 @@ impl Images {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         id: ImageId,
+        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) {

@@ -100,10 +100,12 @@ pub trait DrawShared {
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
     ///
-    /// `handle` must refer to an allocation of some size `(w, h)`, such that
-    /// `data.len() == b * w * h` where `b` is the number of bytes per pixel,
-    /// according to `format`. Data must be in row-major order.
-    fn image_upload(&mut self, handle: &ImageHandle, data: &[u8], format: ImageFormat);
+    /// `handle` must refer to an allocation of some size matching `size`.
+    ///
+    /// The image `data` must have `data.len() == b * w * h` where
+    /// `(w, h) == size.cast()` and `b` is the number of bytes per pixel
+    /// (according to `format`). Data must be in row-major order.
+    fn image_upload(&mut self, handle: &ImageHandle, size: Size, data: &[u8], format: ImageFormat);
 
     /// Potentially free an image
     ///
@@ -124,8 +126,8 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     }
 
     #[inline]
-    fn image_upload(&mut self, handle: &ImageHandle, data: &[u8], format: ImageFormat) {
-        self.draw.image_upload(handle.0, data, format);
+    fn image_upload(&mut self, handle: &ImageHandle, size: Size, data: &[u8], format: ImageFormat) {
+        self.draw.image_upload(handle.0, size, data, format);
     }
 
     #[inline]
@@ -162,7 +164,7 @@ pub trait DrawSharedImpl: Any {
     ///
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat);
+    fn image_upload(&mut self, id: ImageId, size: Size, data: &[u8], format: ImageFormat);
 
     /// Free an image allocation
     fn image_free(&mut self, id: ImageId);
