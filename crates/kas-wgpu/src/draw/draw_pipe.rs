@@ -352,7 +352,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     }
 
     #[inline]
-    fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
+    fn image_size(&self, id: ImageId) -> Option<Size> {
         self.images.image_size(id)
     }
 

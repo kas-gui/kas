@@ -236,7 +236,7 @@ impl<I: Format> AtlasWindow<I> {
 
 #[derive(Debug)]
 struct Image {
-    size: (u32, u32),
+    size: Size,
     alloc: Allocation,
 }
 
@@ -576,10 +576,7 @@ impl Shared {
     pub fn alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
         let alloc = self.atlas_rgba.allocate(size)?;
-        let image = Image {
-            size: size.cast(),
-            alloc,
-        };
+        let image = Image { size, alloc };
         self.images.insert(id, image);
         Ok(id)
     }
@@ -599,13 +596,14 @@ impl Shared {
         let Some(image) = self.images.get_mut(&id) else {
             return Err(UploadError::Missing);
         };
-        if size != image.size.cast() {
+        if size != image.size {
             return Err(UploadError::Size);
         }
 
         let atlas = image.alloc.atlas.cast();
         let origin = image.alloc.origin;
-        self.atlas_rgba.upload(atlas, origin, image.size, data);
+        self.atlas_rgba
+            .upload(atlas, origin, image.size.cast(), data);
         Ok(())
     }
 
@@ -617,7 +615,7 @@ impl Shared {
     }
 
     /// Query image size
-    pub fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
+    pub fn image_size(&self, id: ImageId) -> Option<Size> {
         self.images.get(&id).map(|im| im.size)
     }
 

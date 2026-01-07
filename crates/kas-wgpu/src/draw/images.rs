@@ -17,7 +17,7 @@ use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, SpriteType, Unprep
 
 #[derive(Debug)]
 struct Image {
-    size: (u32, u32),
+    size: Size,
     alloc: Allocation,
 }
 
@@ -29,7 +29,7 @@ impl Image {
         data: &[u8],
     ) {
         // TODO(opt): use StagingBelt for upload (when supported)? Or our own equivalent.
-        let size = self.size;
+        let size: (u32, u32) = self.size.cast();
         assert!(!data.is_empty());
         assert_eq!(data.len(), 4 * usize::conv(size.0) * usize::conv(size.1));
         queue.write_texture(
@@ -236,10 +236,7 @@ impl Images {
     pub fn alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
         let alloc = self.atlas_rgba.allocate(size)?;
-        let image = Image {
-            size: size.cast(),
-            alloc,
-        };
+        let image = Image { size, alloc };
         self.images.insert(id, image);
         Ok(id)
     }
@@ -264,7 +261,7 @@ impl Images {
         let Some(image) = self.images.get_mut(&id) else {
             return Err(UploadError::Missing);
         };
-        if size != image.size.cast() {
+        if size != image.size {
             return Err(UploadError::Size);
         }
 
@@ -280,7 +277,7 @@ impl Images {
     }
 
     /// Query image size
-    pub fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
+    pub fn image_size(&self, id: ImageId) -> Option<Size> {
         self.images.get(&id).map(|im| im.size)
     }
 

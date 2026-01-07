@@ -8,7 +8,6 @@
 use super::color::Rgba;
 use super::{DrawImpl, PassId};
 use crate::ActionRedraw;
-use crate::cast::Cast;
 use crate::config::RasterConfig;
 use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
@@ -168,7 +167,7 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
 
     #[inline]
     fn image_size(&self, handle: &ImageHandle) -> Option<Size> {
-        self.draw.image_size(handle.0).map(|size| size.cast())
+        self.draw.image_size(handle.0)
     }
 }
 
@@ -205,7 +204,7 @@ pub trait DrawSharedImpl: Any {
     fn image_free(&mut self, id: ImageId);
 
     /// Query an image's size
-    fn image_size(&self, id: ImageId) -> Option<(u32, u32)>;
+    fn image_size(&self, id: ImageId) -> Option<Size>;
 
     /// Draw the image in the given `rect`
     fn draw_image(&self, draw: &mut Self::Draw, pass: PassId, id: ImageId, rect: Quad);
