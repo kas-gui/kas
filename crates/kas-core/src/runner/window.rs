@@ -123,7 +123,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut theme = shared.theme.new_window(config);
 
         let mut node = self.widget.as_node(data);
-        let _: ActionResize = self.ev_state.full_configure(theme.size(), node.re());
+        let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node.re());
 
         let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
         let mut solve_cache = SolveCache::default();
@@ -182,7 +182,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
             // Update text size which is assigned during configure
             let mut node = self.widget.as_node(data);
-            let _: ActionResize = self.ev_state.full_configure(theme.size(), node.re());
+            let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node.re());
 
             let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
             solve_cache.find_constraints(node, &mut cx);
@@ -360,10 +360,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             }
             WindowEvent::RedrawRequested => return self.do_draw(shared, data).is_err(),
             event => {
-                let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
-                    cx.handle_winit(&mut self.widget, data, event);
-                });
-                (*resize, *resize, false)
+                let resize = self
+                    .ev_state
+                    .with(shared, theme.size(), window, |cx| {
+                        cx.handle_winit(&mut self.widget, data, event);
+                    })
+                    .is_some();
+                (resize, resize, false)
             }
         };
         if apply_size {
@@ -385,7 +388,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let (resize, action) =
             self.ev_state
                 .flush_pending(shared, theme.size(), window, self.widget.as_node(data));
-        if *resize {
+        if resize.is_some() {
             self.apply_size(data, false, true);
         }
 
@@ -507,7 +510,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
                 cx.update_timer(widget);
             });
-            if *resize {
+            if resize.is_some() {
                 self.apply_size(data, false, true);
             }
         } else {
@@ -545,10 +548,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        let resize: ActionResize = self
+        let resize: Option<ActionResize> = self
             .ev_state
             .full_configure(theme.size(), self.widget.as_node(data));
-        if *resize {
+        if resize.is_some() {
             self.apply_size(data, false, true);
         }
 
@@ -564,7 +567,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let size = theme.size();
         let mut cx = ConfigCx::new(&size, &mut self.ev_state);
         cx.update(self.widget.as_node(data));
-        if *cx.resize {
+        if cx.resize.is_some() {
             self.apply_size(data, false, true);
         } else if cx.redraw {
             window.request_redraw();
@@ -628,7 +631,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
             cx.frame_update(widget);
         });
-        if *resize {
+        if resize.is_some() {
             self.apply_size(data, false, true);
         }
         let Some((ref mut theme, ref mut window)) = self.theme_and_window else {

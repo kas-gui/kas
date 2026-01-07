@@ -23,7 +23,7 @@ use std::ops::{Deref, DerefMut};
 pub struct ConfigCx<'a> {
     pub(super) theme: &'a dyn ThemeSize,
     pub(crate) state: &'a mut EventState,
-    pub(crate) resize: ActionResize,
+    pub(crate) resize: Option<ActionResize>,
     pub(crate) redraw: bool,
 }
 
@@ -35,7 +35,7 @@ impl<'a> ConfigCx<'a> {
         ConfigCx {
             theme: sh,
             state: ev,
-            resize: ActionResize(false),
+            resize: None,
             redraw: false,
         }
     }
@@ -64,7 +64,7 @@ impl<'a> ConfigCx<'a> {
         // (Except redraw: this doesn't matter.)
         let start_resize = std::mem::take(&mut self.resize);
         widget._configure(self, id);
-        self.resize |= start_resize;
+        self.resize = self.resize.or(start_resize);
     }
 
     /// Update a widget
@@ -77,7 +77,7 @@ impl<'a> ConfigCx<'a> {
         // (Except redraw: this doesn't matter.)
         let start_resize = std::mem::take(&mut self.resize);
         widget._update(self);
-        self.resize |= start_resize;
+        self.resize = self.resize.or(start_resize);
     }
 
     /// Configure a text object
@@ -136,7 +136,7 @@ impl<'a> ConfigCx<'a> {
     /// during the traversal unwind if possible.
     #[inline]
     pub fn resize(&mut self) {
-        self.resize = ActionResize(true);
+        self.resize = Some(ActionResize);
     }
 }
 

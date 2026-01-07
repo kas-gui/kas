@@ -58,13 +58,14 @@ impl EventState {
     }
 
     /// Handle all pending items before event loop sleeps
+    #[must_use]
     pub(crate) fn flush_pending<'a>(
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         mut node: Node,
-    ) -> (ActionResize, WindowAction) {
+    ) -> (Option<ActionResize>, WindowAction) {
         if !self.pending_send_targets.is_empty() {
             runner.set_send_targets(&mut self.pending_send_targets);
         }

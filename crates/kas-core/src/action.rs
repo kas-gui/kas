@@ -7,7 +7,6 @@
 
 #[allow(unused)]
 use crate::event::{ConfigCx, EventCx, EventState};
-use std::ops::{BitOr, BitOrAssign, Deref};
 
 /// Action: widget has moved/opened/closed
 ///
@@ -21,39 +20,11 @@ use std::ops::{BitOr, BitOrAssign, Deref};
 pub struct ActionMoved;
 
 /// Action: widget must be resized
+///
+/// This type implies that either a local or full-window resize is required.
 #[must_use]
 #[derive(Copy, Clone, Debug, Default)]
-pub struct ActionResize(pub bool);
-
-impl ActionResize {
-    #[inline]
-    pub(crate) fn clear(&mut self) {
-        self.0 = false;
-    }
-}
-
-impl BitOr for ActionResize {
-    type Output = Self;
-    #[inline]
-    fn bitor(self, rhs: Self) -> Self {
-        ActionResize(self.0 | rhs.0)
-    }
-}
-
-impl BitOrAssign for ActionResize {
-    #[inline]
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-
-impl Deref for ActionResize {
-    type Target = bool;
-    #[inline]
-    fn deref(&self) -> &bool {
-        &self.0
-    }
-}
+pub struct ActionResize;
 
 bitflags! {
     /// Action: configuration data updates must be applied

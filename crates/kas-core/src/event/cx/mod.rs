@@ -164,7 +164,12 @@ impl EventState {
     /// [`Id`] identifiers and call widgets' [`Events::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub(crate) fn full_configure(&mut self, sizer: &dyn ThemeSize, node: Node) -> ActionResize {
+    #[must_use]
+    pub(crate) fn full_configure(
+        &mut self,
+        sizer: &dyn ThemeSize,
+        node: Node,
+    ) -> Option<ActionResize> {
         let id = Id::ROOT.make_child(self.window_id.get().cast());
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
@@ -184,13 +189,14 @@ impl EventState {
     ///
     /// Invokes the given closure on this [`EventCx`].
     #[inline]
+    #[must_use]
     pub(crate) fn with<'a, F: FnOnce(&mut EventCx)>(
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         f: F,
-    ) -> ActionResize {
+    ) -> Option<ActionResize> {
         let mut cx = EventCx {
             runner,
             window,
@@ -198,10 +204,10 @@ impl EventState {
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
-            resize_window: ActionResize::default(),
+            resize_window: None,
         };
         f(&mut cx);
-        let resize = cx.resize | cx.resize_window;
+        let resize = cx.resize.or(cx.resize_window);
         if cx.redraw {
             self.action |= WindowAction::REDRAW;
         }
@@ -362,7 +368,7 @@ pub struct EventCx<'a> {
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
-    resize_window: ActionResize,
+    resize_window: Option<ActionResize>,
 }
 
 impl<'a> Deref for EventCx<'a> {
@@ -408,7 +414,7 @@ impl<'a> EventCx<'a> {
 
     /// Check for clean flags pre-recursion
     fn pre_recursion(&self) {
-        debug_assert!(!*self.resize);
+        debug_assert!(self.resize.is_none());
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
     }
@@ -417,7 +423,7 @@ impl<'a> EventCx<'a> {
     fn post_recursion(&mut self) {
         self.last_child = None;
         self.scroll = Scroll::None;
-        self.resize_window |= self.resize;
-        self.resize.clear();
+        self.resize_window = self.resize_window.or(self.resize);
+        self.resize = None;
     }
 }
