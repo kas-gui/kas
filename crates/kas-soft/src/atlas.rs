@@ -90,11 +90,11 @@ impl<F: Format> Atlases<F> {
         }
     }
 
-    fn upload(&mut self, atlas: u32, origin: (u32, u32), size: (u32, u32), data: &[u8]) {
+    fn upload(&mut self, atlas: u32, origin: (u32, u32), size: (u32, u32), data: &[u8]) -> Result<(), UploadError> {
         let atlas: usize = atlas.cast();
         let Some(atlas) = self.atlases.get_mut(atlas) else {
             log::warn!("upload: unknown atlas {atlas} of {}", self.atlases.len());
-            return;
+            return Err(UploadError::Missing);
         };
 
         let (tx, ty): (usize, usize) = origin.cast();
@@ -106,7 +106,7 @@ impl<F: Format> Atlases<F> {
             log::error!(
                 "upload: image of size {w}x{h} with origin {tx},{ty} not within bounds of texture {tw}x{th}"
             );
-            return;
+            return Err(UploadError::Size);
         }
 
         let bytes = size_of::<F::C>();
@@ -115,7 +115,7 @@ impl<F: Format> Atlases<F> {
                 "upload: bad data length (received {} bytes for image of size {w}x{h})",
                 data.len()
             );
-            return;
+            return Err(UploadError::Size);
         }
 
         for (i, row) in data.chunks_exact(bytes * w).enumerate() {
@@ -123,6 +123,8 @@ impl<F: Format> Atlases<F> {
             let w = w + F::EXTRA_WIDTH;
             F::copy_texture_slice(row, &mut atlas.tex[ti..ti + w]);
         }
+
+        Ok(())
     }
 }
 
@@ -585,7 +587,6 @@ impl Shared {
     pub fn upload(
         &mut self,
         id: ImageId,
-        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) -> Result<(), UploadError> {
@@ -596,15 +597,11 @@ impl Shared {
         let Some(image) = self.images.get_mut(&id) else {
             return Err(UploadError::Missing);
         };
-        if size != image.size {
-            return Err(UploadError::Size);
-        }
 
         let atlas = image.alloc.atlas.cast();
         let origin = image.alloc.origin;
         self.atlas_rgba
-            .upload(atlas, origin, image.size.cast(), data);
-        Ok(())
+            .upload(atlas, origin, image.size.cast(), data)
     }
 
     /// Free an image allocation
@@ -628,7 +625,7 @@ impl Shared {
     }
 
     /// Write to textures
-    pub fn prepare(&mut self, text: &mut kas::text::raster::State) {
+    pub fn prepare(&mut self, text: &mut kas::text::raster::State) -> Result<(),UploadError> {
         let unprepared = text.unprepared_sprites();
         if !unprepared.is_empty() {
             log::trace!("prepare: uploading {} sprites", unprepared.len());
@@ -645,8 +642,10 @@ impl Shared {
                 SpriteType::Mask => self.atlas_mask.upload(atlas, origin, size, &data),
                 SpriteType::RgbaMask => self.atlas_rgba_mask.upload(atlas, origin, size, &data),
                 SpriteType::Bitmap => self.atlas_rgba.upload(atlas, origin, size, &data),
-            }
+            }?;
         }
+
+        Ok(())
     }
 }
 

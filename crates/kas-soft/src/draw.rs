@@ -161,11 +161,10 @@ impl DrawSharedImpl for Shared {
     fn image_upload(
         &mut self,
         id: ImageId,
-        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) -> Result<(), UploadError> {
-        self.images.upload(id, size, data, format)
+        self.images.upload(id, data, format)
     }
 
     #[inline]
