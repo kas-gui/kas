@@ -7,6 +7,7 @@
 
 use super::color::Rgba;
 use super::{DrawImpl, PassId};
+use crate::ActionRedraw;
 use crate::cast::Cast;
 use crate::config::RasterConfig;
 use crate::geom::{Quad, Size, Vec2};
@@ -62,6 +63,17 @@ pub enum ImageFormat {
 #[error("failed to allocate: size too large or zero-sized")]
 pub struct AllocError;
 
+/// Upload failed
+#[derive(Error, Debug)]
+pub enum UploadError {
+    /// No allocation found for the [`ImageId`] used
+    #[error("image_upload: allocation not found")]
+    Missing,
+    /// Size of the uploaded image is wrong
+    #[error("image_upload: size does not match the allocation")]
+    Size,
+}
+
 /// Shared draw state
 ///
 /// A single [`SharedState`] instance is shared by all windows and draw contexts.
@@ -105,7 +117,16 @@ pub trait DrawShared {
     /// The image `data` must have `data.len() == b * w * h` where
     /// `(w, h) == size.cast()` and `b` is the number of bytes per pixel
     /// (according to `format`). Data must be in row-major order.
-    fn image_upload(&mut self, handle: &ImageHandle, size: Size, data: &[u8], format: ImageFormat);
+    ///
+    /// On success, this returns an [`ActionRedraw`] to indicate that any
+    /// widgets using this image will require a redraw.
+    fn image_upload(
+        &mut self,
+        handle: &ImageHandle,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<ActionRedraw, UploadError>;
 
     /// Potentially free an image
     ///
@@ -126,8 +147,16 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     }
 
     #[inline]
-    fn image_upload(&mut self, handle: &ImageHandle, size: Size, data: &[u8], format: ImageFormat) {
-        self.draw.image_upload(handle.0, size, data, format);
+    fn image_upload(
+        &mut self,
+        handle: &ImageHandle,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<ActionRedraw, UploadError> {
+        self.draw
+            .image_upload(handle.0, size, data, format)
+            .map(|_| ActionRedraw)
     }
 
     #[inline]
@@ -164,7 +193,13 @@ pub trait DrawSharedImpl: Any {
     ///
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
-    fn image_upload(&mut self, id: ImageId, size: Size, data: &[u8], format: ImageFormat);
+    fn image_upload(
+        &mut self,
+        id: ImageId,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<(), UploadError>;
 
     /// Free an image allocation
     fn image_free(&mut self, id: ImageId);

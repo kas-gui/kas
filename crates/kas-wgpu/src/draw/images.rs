@@ -11,7 +11,7 @@ use std::mem::size_of;
 
 use super::{ShaderManager, atlases};
 use kas::cast::{Cast, Conv};
-use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId};
+use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, UploadError};
 use kas::geom::{Quad, Size, Vec2};
 use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, SpriteType, UnpreparedSprite};
 
@@ -253,7 +253,7 @@ impl Images {
         size: Size,
         data: &[u8],
         format: ImageFormat,
-    ) {
+    ) -> Result<(), UploadError> {
         // The atlas pipe allocates textures lazily. Ensure ours is ready:
         self.atlas_rgba.prepare(device);
 
@@ -261,9 +261,15 @@ impl Images {
             ImageFormat::Rgba8 => (),
         }
 
-        if let Some(image) = self.images.get_mut(&id) {
-            image.upload(&self.atlas_rgba, queue, data);
+        let Some(image) = self.images.get_mut(&id) else {
+            return Err(UploadError::Missing);
+        };
+        if size != image.size.cast() {
+            return Err(UploadError::Size);
         }
+
+        image.upload(&self.atlas_rgba, queue, data);
+        Ok(())
     }
 
     /// Free an image allocation

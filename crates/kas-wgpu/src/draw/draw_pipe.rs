@@ -335,9 +335,15 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     }
 
     #[inline]
-    fn image_upload(&mut self, id: ImageId, size: Size, data: &[u8], format: ImageFormat) {
+    fn image_upload(
+        &mut self,
+        id: ImageId,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<(), UploadError> {
         self.images
-            .upload(&self.device, &self.queue, id, size, data, format);
+            .upload(&self.device, &self.queue, id, size, data, format)
     }
 
     #[inline]

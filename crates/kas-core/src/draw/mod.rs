@@ -48,7 +48,7 @@ use crate::geom::{Quad, Size};
 
 pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
-pub use draw_shared::{AllocError, ImageFormat, ImageHandle, ImageId};
+pub use draw_shared::{AllocError, ImageFormat, ImageHandle, ImageId, UploadError};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
 use std::time::{Duration, Instant};
 

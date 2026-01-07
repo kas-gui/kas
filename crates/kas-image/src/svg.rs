@@ -314,10 +314,12 @@ mod Svg {
                 }
 
                 if let Some(handle) = self.image.as_ref() {
-                    ds.image_upload(handle, size, pixmap.data(), ImageFormat::Rgba8);
+                    match ds.image_upload(handle, size, pixmap.data(), ImageFormat::Rgba8) {
+                        Ok(_) => cx.redraw(),
+                        Err(err) => log::warn!("Svg: image upload failed: {err}"),
+                    }
                 }
 
-                cx.redraw();
                 self.inner = match std::mem::take(&mut self.inner) {
                     State::None => State::None,
                     State::Initial(source) | State::Rendering(source) | State::Ready(source, _) => {

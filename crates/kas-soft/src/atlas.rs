@@ -11,7 +11,9 @@ use std::collections::HashMap;
 
 use kas::autoimpl;
 use kas::cast::traits::*;
-use kas::draw::{AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, color};
+use kas::draw::{
+    AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, UploadError, color,
+};
 use kas::geom::{Coord, Offset, Quad, Rect, Size, Vec2};
 use kas::text::raster::{RenderQueue, Sprite, SpriteAllocator, SpriteType, UnpreparedSprite};
 
@@ -583,16 +585,28 @@ impl Shared {
     }
 
     /// Upload an image
-    pub fn upload(&mut self, id: ImageId, size: Size, data: &[u8], format: ImageFormat) {
+    pub fn upload(
+        &mut self,
+        id: ImageId,
+        size: Size,
+        data: &[u8],
+        format: ImageFormat,
+    ) -> Result<(), UploadError> {
         match format {
             ImageFormat::Rgba8 => (),
         }
 
-        if let Some(image) = self.images.get_mut(&id) {
-            let atlas = image.alloc.atlas.cast();
-            let origin = image.alloc.origin;
-            self.atlas_rgba.upload(atlas, origin, image.size, data);
+        let Some(image) = self.images.get_mut(&id) else {
+            return Err(UploadError::Missing);
+        };
+        if size != image.size.cast() {
+            return Err(UploadError::Size);
         }
+
+        let atlas = image.alloc.atlas.cast();
+        let origin = image.alloc.origin;
+        self.atlas_rgba.upload(atlas, origin, image.size, data);
+        Ok(())
     }
 
     /// Free an image allocation
