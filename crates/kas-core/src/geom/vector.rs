@@ -65,6 +65,12 @@ impl Quad {
         self.b - self.a
     }
 
+    /// Get the center
+    #[inline]
+    pub fn center(&self) -> Vec2 {
+        (self.a + self.b) * 0.5
+    }
+
     /// Swizzle coordinates: x from first, y from second point
     #[inline]
     pub fn ab(&self) -> Vec2 {

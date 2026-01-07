@@ -92,6 +92,7 @@ pub struct Dimensions {
     pub scale: f32,
     pub dpem: StaticMap<TextClass, f32>,
     pub mark_line: f32,
+    pub diagonal_mark_line: f32,
     pub min_line_len_em: f32,
     pub m_inner: u16,
     pub m_tiny: u16,
@@ -126,10 +127,13 @@ impl Dimensions {
         let shadow_size = params.shadow_size * scale;
         let shadow_offset = shadow_size * params.shadow_rel_offset;
 
+        let mark_line = (1.6 * scale).round().max(1.0);
+
         Dimensions {
             scale,
             dpem: StaticMap::from_fn(|class| scale * font.get_dpem(class)),
-            mark_line: (1.6 * scale).round().max(1.0),
+            mark_line,
+            diagonal_mark_line: mark_line / f32::sqrt(2.0),
             min_line_len_em: 8.0,
             m_inner: (params.m_inner * scale).cast_nearest(),
             m_tiny: (params.m_tiny * scale).cast_nearest(),
@@ -249,15 +253,16 @@ impl<D: 'static> ThemeSize for Window<D> {
             Feature::Separator => {
                 return SizeRules::fixed(self.dims.frame);
             }
-            Feature::Mark(MarkStyle::Chevron(dir)) => {
-                let w = match dir.is_vertical() == axis_is_vertical {
-                    true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
-                    false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
+            Feature::Mark(style) => {
+                let w = match style {
+                    MarkStyle::Chevron(dir) => match dir.is_vertical() == axis_is_vertical {
+                        true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
+                        false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
+                    },
+                    MarkStyle::X | MarkStyle::Plus | MarkStyle::Minus => {
+                        self.dims.mark + i32::conv_ceil(self.dims.mark_line)
+                    }
                 };
-                return SizeRules::fixed(w).with_margin(self.dims.m_tiny);
-            }
-            Feature::Mark(MarkStyle::X) => {
-                let w = self.dims.mark + i32::conv_ceil(self.dims.mark_line);
                 return SizeRules::fixed(w).with_margin(self.dims.m_tiny);
             }
             Feature::CheckBox | Feature::RadioBox => {
