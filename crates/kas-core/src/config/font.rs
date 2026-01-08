@@ -31,7 +31,7 @@ pub struct FontConfig {
     /// Changing this at run-tme is not currently supported.
     ///
     /// TODO: read/write support.
-    #[cfg_attr(feature = "serde", serde(skip, default))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::fonts"))]
     fonts: BTreeMap<TextClass, FontSelector>,
 
     /// Text glyph rastering settings
@@ -188,8 +188,12 @@ mod defaults {
     }
 
     pub fn fonts() -> BTreeMap<TextClass, FontSelector> {
-        let list = [(TextClass::Editor, FamilySelector::SERIF.into())];
-        list.iter().cloned().collect()
+        let list = [
+            (TextClass::Serif, FamilySelector::SERIF.into()),
+            (TextClass::SansSerif, FamilySelector::SANS_SERIF.into()),
+            (TextClass::Monospace, FamilySelector::MONOSPACE.into()),
+        ];
+        list.into_iter().collect()
     }
 
     pub fn mode() -> u8 {
