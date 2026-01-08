@@ -31,7 +31,7 @@ pub struct FontConfig {
     /// Changing this at run-tme is not currently supported.
     ///
     /// TODO: read/write support.
-    #[cfg_attr(feature = "serde", serde(skip, default = "defaults::fonts"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::fonts"))]
     fonts: BTreeMap<TextClass, FontSelector>,
 
     /// Text glyph rastering settings
