@@ -134,7 +134,7 @@ mod AccessLabel {
                 && draw.access_key(&self.target, key)
             {
                 // Stop on first successful binding and draw
-                draw.text_with_effects(rect.pos, rect, &self.text, effects);
+                draw.text_with_effects(rect.pos, rect, &self.text, &[], effects);
             } else {
                 draw.text(rect, &self.text);
             }

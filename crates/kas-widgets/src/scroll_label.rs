@@ -69,9 +69,9 @@ mod SelectableText {
             let pos = self.rect().pos - offset;
 
             if self.selection.is_empty() {
-                draw.text_pos(pos, rect, &self.text);
+                draw.text_with_position(pos, rect, &self.text);
             } else {
-                draw.text_selected(pos, rect, &self.text, self.selection.range());
+                draw.text_with_selection(pos, rect, &self.text, self.selection.range());
             }
         }
     }

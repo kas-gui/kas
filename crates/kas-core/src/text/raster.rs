@@ -542,8 +542,8 @@ impl State {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
-        effects: &[Effect],
         colors: &[Rgba],
+        effects: &[Effect],
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
         // Optimisation: use cheaper TextDisplay::runs method

@@ -235,7 +235,7 @@ pub trait DrawSharedImpl: Any {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
-        effects: &[Effect],
         colors: &[Rgba],
+        effects: &[Effect],
     );
 }

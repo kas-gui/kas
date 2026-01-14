@@ -9,7 +9,7 @@ use winit::keyboard::Key;
 
 use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, ThemeSize};
 use crate::dir::Direction;
-use crate::draw::color::{ParseError, Rgb};
+use crate::draw::color::{ParseError, Rgb, Rgba};
 use crate::draw::{Draw, DrawIface, DrawRounded, DrawShared, DrawSharedImpl, ImageId, PassType};
 use crate::event::EventState;
 #[allow(unused)] use crate::event::{Command, ConfigCx};
@@ -274,63 +274,106 @@ impl<'a> DrawCx<'a> {
         self.h.selection(rect, style);
     }
 
-    /// Draw text with effects
+    /// Draw text
     ///
-    /// Text is drawn from `rect.pos` and clipped to `rect`.
+    /// Text is clipped to `rect`.
     ///
-    /// This method supports a number of text effects: bold, emphasis, text
-    /// size, underline and strikethrough.
+    /// This is a convenience method over [`Self::text_with_effects`].
     ///
     /// The `text` should be prepared before calling this method.
     pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
-        self.text_pos(rect.pos, rect, text);
+        self.text_with_position(rect.pos, rect, text);
+    }
+
+    /// Draw text with specified color
+    ///
+    /// Text is clipped to `rect` and drawn using `color`.
+    ///
+    /// This is a convenience method over [`Self::text_with_effects`].
+    ///
+    /// The `text` should be prepared before calling this method.
+    pub fn text_with_color<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, color: Rgba) {
+        let effects = text.effect_tokens();
+        self.text_with_effects(rect.pos, rect, text, &[color], effects);
     }
 
     /// Draw text with effects and an offset
     ///
-    /// Text is drawn from `pos` and clipped to `rect`.
+    /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
+    /// the text is not scrolled.
     ///
-    /// This method supports a number of text effects: bold, emphasis, text
-    /// size, underline and strikethrough.
+    /// This is a convenience method over [`Self::text_with_effects`].
     ///
     /// The `text` should be prepared before calling this method.
-    pub fn text_pos<T: FormattableText>(&mut self, pos: Coord, rect: Rect, text: &Text<T>) {
+    pub fn text_with_position<T: FormattableText>(
+        &mut self,
+        pos: Coord,
+        rect: Rect,
+        text: &Text<T>,
+    ) {
         let effects = text.effect_tokens();
-        self.text_with_effects(pos, rect, text, effects);
+        self.text_with_effects(pos, rect, text, &[], effects);
     }
 
     /// Draw text with a given effect list
     ///
-    /// Text is drawn from `pos` and clipped to `rect`.
+    /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
+    /// the text is not scrolled.
     ///
-    /// This method supports a number of text effects: bold, emphasis, text
-    /// size, underline and strikethrough.
+    /// If `colors` is empty, it is replaced with a single theme-defined color.
+    /// Text is then drawn using `colors[0]` except as specified by effects.
     ///
-    /// This method is similar to [`Self::text_pos`] except that an effect list
-    /// is passed explicitly instead of inferred from `text`.
+    /// The list of `effects` (if not empty) controls render effects:
+    /// [`Effect::e`] is an index into `colors` while [`Effect::flags`] controls
+    /// underline and strikethrough. [`Effect::start`] is the text index at
+    /// which this effect first takes effect, and must effects must be ordered
+    /// such that the sequence of [`Effect::start`] values is strictly
+    /// increasing. [`Effect::default()`] is used if `effects` is empty or while
+    /// `index < effects.first().unwrap().start`.
+    ///
+    /// Text objects may embed their own list of effects, accessible using
+    /// [`Text::effect_tokens`]. It is always valid to disregard these
+    /// and use a custom `effects` list or empty list.
     pub fn text_with_effects<T: FormattableText>(
         &mut self,
         pos: Coord,
         rect: Rect,
         text: &Text<T>,
+        colors: &[Rgba],
         effects: &[Effect],
     ) {
         if let Ok(display) = text.display() {
             if effects.is_empty() {
                 // Use the faster and simpler implementation when we don't have effects
-                self.h.text(&self.id, pos, rect, display);
+                self.h
+                    .text(&self.id, pos, rect, display, colors.get(0).cloned());
             } else {
-                self.h.text_effects(&self.id, pos, rect, display, effects);
+                if cfg!(debug_assertions) {
+                    let num_colors = if colors.is_empty() { 1 } else { colors.len() };
+                    let mut i = 0;
+                    let mut first = false;
+                    for effect in effects {
+                        if !first {
+                            assert!(effect.start > i);
+                        }
+                        i = effect.start;
+                        first = false;
+
+                        assert!(usize::from(effect.e) < num_colors);
+                    }
+                }
+
+                self.h
+                    .text_effects(&self.id, pos, rect, display, colors, effects);
             }
         }
     }
 
-    /// Draw some text using the standard font, with a subset selected
+    /// Draw some text with a selection
     ///
-    /// Other than visually highlighting the selection, this method behaves
-    /// identically to [`Self::text`]. It is likely to be replaced in the
-    /// future by a higher-level API.
-    pub fn text_selected<T: FormattableText>(
+    /// Text is drawn like [`Self::text_with_position`] except that the subset
+    /// identified by `range` is highlighted using theme-defined colors.
+    pub fn text_with_selection<T: FormattableText>(
         &mut self,
         pos: Coord,
         rect: Rect,
@@ -338,7 +381,7 @@ impl<'a> DrawCx<'a> {
         range: Range<usize>,
     ) {
         if range.is_empty() {
-            return self.text_pos(pos, rect, text);
+            return self.text_with_position(pos, rect, text);
         }
 
         let Ok(display) = text.display() else {
@@ -514,7 +557,7 @@ pub trait ThemeDraw {
     /// Draw text
     ///
     /// The `text` should be prepared before calling this method.
-    fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay);
+    fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, color: Option<Rgba>);
 
     /// Draw text with effects
     ///
@@ -532,10 +575,11 @@ pub trait ThemeDraw {
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
+        colors: &[Rgba],
         effects: &[Effect],
     );
 
-    /// Method used to implement [`DrawCx::text_selected`]
+    /// Method used to implement [`DrawCx::text_with_selection`]
     fn text_selected_range(
         &mut self,
         id: &Id,
@@ -614,6 +658,6 @@ mod test {
         let _scale = draw.size_cx().scale_factor();
 
         let text = crate::theme::Text::new("sample", TextClass::Label, false);
-        draw.text_selected(Coord::ZERO, Rect::ZERO, &text, 0..6)
+        draw.text_with_selection(Coord::ZERO, Rect::ZERO, &text, 0..6)
     }
 }

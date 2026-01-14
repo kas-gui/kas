@@ -80,8 +80,8 @@ impl Extends {
                 (#base).selection(rect, style);
             }
 
-            fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay) {
-                (#base).text(id, pos, rect, text);
+            fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, color: Option<Rgba>) {
+                (#base).text(id, pos, rect, text, color);
             }
 
             fn text_effects(
@@ -90,9 +90,10 @@ impl Extends {
                 pos: Coord,
                 rect: Rect,
                 text: &TextDisplay,
+                colors: &[Rgba],
                 effects: &[::kas::text::Effect],
             ) {
-                (#base).text_effects(id, pos, rect, text, effects);
+                (#base).text_effects(id, pos, rect, text, colors, effects);
             }
 
             fn text_selected_range(

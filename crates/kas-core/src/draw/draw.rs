@@ -240,8 +240,8 @@ pub trait Draw {
         pos: Vec2,
         bounding_box: Quad,
         text: &TextDisplay,
-        effects: &[Effect],
         colors: &[Rgba],
+        effects: &[Effect],
     );
 }
 
@@ -304,12 +304,12 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
-        effects: &[Effect],
         colors: &[Rgba],
+        effects: &[Effect],
     ) {
         self.shared
             .draw
-            .draw_text_effects(self.draw, self.pass, pos, bb, text, effects, colors);
+            .draw_text_effects(self.draw, self.pass, pos, bb, text, colors, effects);
     }
 }
 
