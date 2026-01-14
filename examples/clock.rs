@@ -21,7 +21,7 @@ use kas::draw::color::Rgba;
 use kas::event::TimerHandle;
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
-use kas::text::Text;
+use kas::theme::{Text, TextClass};
 
 const TIMER: TimerHandle = TimerHandle::new(0, true);
 
@@ -30,8 +30,6 @@ mod Clock {
     #[widget]
     struct Clock {
         core: widget_core!(),
-        date_rect: Quad,
-        time_rect: Quad,
         now: DateTime<Local>,
         date: Text<String>,
         time: Text<String>,
@@ -45,7 +43,7 @@ mod Clock {
                 .build(axis)
         }
 
-        fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);
@@ -57,18 +55,18 @@ mod Clock {
             let text_height = text_size.1 as f32;
 
             self.date.set_font_size(text_height * 0.5);
-            self.date.set_bounds(text_size.cast());
             self.time.set_font_size(text_height * 0.7);
-            self.time.set_bounds(text_size.cast());
 
             let time_pos = pos + Offset(0, size.1 * 5 / 8);
             let date_pos = pos + Offset(0, size.1 / 8);
-            self.date_rect = Rect::new(date_pos, text_size).cast();
-            self.time_rect = Rect::new(time_pos, text_size).cast();
+            self.date
+                .set_rect(cx, Rect::new(date_pos, text_size), AlignHints::CENTER);
+            self.time
+                .set_rect(cx, Rect::new(time_pos, text_size), AlignHints::CENTER);
         }
 
-        fn draw(&self, mut draw: DrawCx) {
-            let colors = draw.colors();
+        fn draw(&self, mut cx: DrawCx) {
+            let colors = cx.colors();
             let col_back = Rgba::ga(0.0, 0.5);
             let col_face = colors.accent_soft.desaturate(0.6);
             let col_time = Rgba::grey(1.0);
@@ -78,7 +76,7 @@ mod Clock {
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
-            let draw = draw.draw_rounded().unwrap();
+            let draw = cx.draw_rounded().unwrap();
 
             let rect = self.rect();
             let quad = Quad::conv(rect);
@@ -98,13 +96,6 @@ mod Clock {
                 draw.rounded_line(centre + v * (r - l), centre + v * r, w, col_face);
             }
 
-            if let Ok(text) = self.date.display() {
-                draw.text(self.date_rect.a, self.date_rect, text, col_date);
-            }
-            if let Ok(text) = self.time.display() {
-                draw.text(self.time_rect.a, self.time_rect, text, col_time);
-            }
-
             let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
                 let v = Vec2(t.sin(), -t.cos());
                 draw.rounded_line(centre + v * r1, centre + v * r2, w, col);
@@ -118,6 +109,9 @@ mod Clock {
             line_seg(a_hour, 0.0, half * 0.55, half * 0.03, col_hands);
             line_seg(a_min, 0.0, half * 0.8, half * 0.02, col_hands);
             line_seg(a_sec, 0.0, half * 0.9, half * 0.01, col_secs);
+
+            cx.text_with_color(self.date.rect(), &self.date, col_date);
+            cx.text_with_color(self.time.rect(), &self.time, col_time);
         }
     }
 
@@ -125,8 +119,6 @@ mod Clock {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            self.date.set_align(AlignPair::CENTER.into());
-            self.time.set_align(AlignPair::CENTER.into());
             cx.request_timer(self.id(), TIMER, Duration::ZERO);
         }
 
@@ -137,9 +129,9 @@ mod Clock {
                     let date = self.now.format("%Y-%m-%d").to_string();
                     let time = self.now.format("%H:%M:%S").to_string();
                     self.date.set_text(date);
-                    self.date.prepare().expect("not configured");
+                    self.date.prepare();
                     self.time.set_text(time);
-                    self.time.prepare().expect("not configured");
+                    self.time.prepare();
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
                     cx.request_timer(self.id(), TIMER, Duration::from_nanos(ns as u64));
@@ -155,11 +147,9 @@ mod Clock {
         fn new() -> Self {
             Clock {
                 core: Default::default(),
-                date_rect: Quad::ZERO,
-                time_rect: Quad::ZERO,
                 now: Local::now(),
-                date: Text::new("0000-00-00".to_string()),
-                time: Text::new("00:00:00".to_string()),
+                date: Text::new("0000-00-00".to_string(), TextClass::Label, false),
+                time: Text::new("00:00:00".to_string(), TextClass::Label, false),
             }
         }
     }
