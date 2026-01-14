@@ -125,22 +125,6 @@ impl<T: FormattableText> Text<T> {
         }
     }
 
-    /// Replace the [`TextDisplay`]
-    ///
-    /// This may be used with [`Self::new`] to reconstruct an object which was
-    /// disolved [`into_parts`][Self::into_parts].
-    #[inline]
-    pub fn with_display(mut self, display: TextDisplay) -> Self {
-        self.display = display;
-        self
-    }
-
-    /// Decompose into parts
-    #[inline]
-    pub fn into_parts(self) -> (TextDisplay, T) {
-        (self.display, self.text)
-    }
-
     /// Set text class (inline)
     ///
     /// `TextClass::Edit(false)` has special handling: line wrapping is disabled
