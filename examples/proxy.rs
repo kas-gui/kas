@@ -89,7 +89,7 @@ mod ColourSquare {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.loading_text.set_align((Align::Center, Align::Center));
-            cx.text_configure(&mut self.loading_text);
+            self.loading_text.configure(&mut cx.size_cx());
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &AppData) {

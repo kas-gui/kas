@@ -18,6 +18,7 @@ use crate::config::{Config, WindowConfig};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
+use crate::text::fonts::FontSelector;
 
 crate::impl_scope! {
     /// Parameterisation of [`Dimensions`]
@@ -201,6 +202,10 @@ impl<D: 'static> ThemeSize for Window<D> {
         self.dims.scale
     }
 
+    fn font(&self, class: TextClass) -> FontSelector {
+        self.config.borrow().font.get_font_selector(class)
+    }
+
     fn dpem(&self, class: TextClass) -> f32 {
         self.dims.dpem[class]
     }
@@ -338,16 +343,6 @@ impl<D: 'static> ThemeSize for Window<D> {
             }
             FrameStyle::EditBox => FrameRules::new_sym(self.dims.frame, 0, outer),
         }
-    }
-
-    fn text_configure(&self, text: &mut dyn SizableText, class: TextClass) {
-        let dpem = self.dims.dpem[class];
-        self.text_configure_with_dpem(text, class, dpem);
-    }
-
-    fn text_configure_with_dpem(&self, text: &mut dyn SizableText, class: TextClass, dpem: f32) {
-        let font = self.config.borrow().font.get_font_selector(class);
-        text.set_font(font, dpem);
     }
 
     fn text_rules(&self, text: &mut dyn SizableText, wrap: bool, axis: AxisInfo) -> SizeRules {

@@ -24,24 +24,18 @@ use std::num::NonZeroUsize;
 /// -   A [`TextDisplay`]
 /// -   A [`FontSelector`]
 /// -   Type-setting configuration. Values have reasonable defaults:
-///     -   The font is derived from the [`TextClass`] by
-///         [`ConfigCx::text_configure`]. Otherwise, the default font will be
-///         the first loaded font: see [`crate::text::fonts`].
+///     -   The font is derived from the [`TextClass`] by [`Self::configure`],
+///         otherwise using [`FontSelector::default()`].
 ///     -   The font size is derived from the [`TextClass`] by
-///         [`ConfigCx::text_configure`]. Otherwise, the default font size is
-///         16px (the web default).
+///         [`Self::configure`], otherwise using a default size of 16px.
 ///     -   Default text direction and alignment is inferred from the text.
 ///
 /// This struct tracks the [`TextDisplay`]'s
 /// [state of preparation][TextDisplay#status-of-preparation] and will perform
-/// steps as required. Normal usage of this struct is as follows:
-/// -   Configure by calling [`ConfigCx::text_configure`]
-/// -   (Optionally) check size requirements by calling [`SizeCx::text_rules`]
-/// -   Set the size and prepare by calling [`Self::set_rect`]
-/// -   Draw by calling [`DrawCx::text`] (and/or other text methods)
-///
-/// The size according to [`Self::rect`] may be adjusted to that of
-/// the text; see [`Self::set_align`].
+/// steps as required. Typical usage of this struct is as follows:
+/// -   Construct with some text and [`TextClass`]
+/// -   Configure by calling [`Self::configure`]
+/// -   Size and draw using [`Layout`] methods
 #[derive(Clone, Debug)]
 pub struct Text<T: FormattableText> {
     rect: Rect,
@@ -165,6 +159,30 @@ impl<T: FormattableText> Text<T> {
         &mut self.text
     }
 
+    /// Set the font and font size (dpem) according to configuration
+    ///
+    /// Font selection depends on the [`TextClass`], [theme configuration] and
+    /// the loaded [fonts][crate::text::fonts]. Font size depends on the
+    /// [`TextClass`], [theme configuration] and scale factor.
+    ///
+    /// Alternatively, one may call [`Self::set_font`] and
+    /// [`Self::set_font_size`] or use the default values (without respecting
+    /// [theme configuration]).
+    ///
+    /// [theme configuration]: crate::config::ThemeConfig
+    pub fn configure(&mut self, cx: &mut SizeCx) {
+        let font = cx.font(self.class);
+        let dpem = cx.dpem(self.class);
+        if font != self.font {
+            self.font = font;
+            self.dpem = dpem;
+            self.set_max_status(Status::New);
+        } else if dpem != self.dpem {
+            self.dpem = dpem;
+            self.set_max_status(Status::ResizeLevelRuns);
+        }
+    }
+
     /// Force full repreparation of text
     ///
     /// This may be required after calling [`Self::text_mut`].
@@ -241,18 +259,19 @@ impl<T: FormattableText> Text<T> {
         self.wrap = wrap;
     }
 
-    /// Get the default font
+    /// Get the font selector
     #[inline]
     pub fn font(&self) -> FontSelector {
         self.font
     }
 
-    /// Set the default [`FontSelector`]
+    /// Set the font selector
     ///
-    /// This is derived from the [`TextClass`] by [`ConfigCx::text_configure`].
+    /// Typically, [`Self::configure`] is called to set the font selector from
+    /// the [`TextClass`] and configuration. This method sets the font selector
+    /// directly.
     ///
-    /// This `font` is used by all unformatted texts and by any formatted
-    /// texts which don't immediately set formatting.
+    /// Note that effect tokens may further affect the font selector.
     ///
     /// It is necessary to [`prepare`][Self::prepare] the text after calling this.
     #[inline]
@@ -263,19 +282,19 @@ impl<T: FormattableText> Text<T> {
         }
     }
 
-    /// Get the default font size (pixels)
+    /// Get the font size (pixels)
     #[inline]
     pub fn font_size(&self) -> f32 {
         self.dpem
     }
 
-    /// Set the default font size (pixels)
+    /// Set the font size (pixels)
     ///
-    /// This is derived from the [`TextClass`] by [`ConfigCx::text_configure`].
+    /// Typically, [`Self::configure`] is called to set the font size from
+    /// the [`TextClass`] and configuration. This method sets the font size
+    /// directly.
     ///
-    /// This is a scaling factor used to convert font sizes, with units
-    /// `pixels/Em`. Equivalently, this is the line-height in pixels.
-    /// See [`crate::text::fonts`] documentation.
+    /// Note that effect tokens may further affect the font size.
     ///
     /// To calculate this from text size in Points, use `dpem = dpp * pt_size`
     /// where the dots-per-point is usually `dpp = scale_factor * 96.0 / 72.0`
@@ -690,9 +709,6 @@ pub trait SizableText {
     /// Get the text class
     fn class(&self) -> TextClass;
 
-    /// Set font face and size
-    fn set_font(&mut self, font: FontSelector, dpem: f32);
-
     /// Measure required width, up to some `max_width`
     fn measure_width(&mut self, max_width: f32) -> f32;
 
@@ -704,17 +720,6 @@ impl<T: FormattableText> SizableText for Text<T> {
     #[inline]
     fn class(&self) -> TextClass {
         self.class
-    }
-
-    fn set_font(&mut self, font: FontSelector, dpem: f32) {
-        if font != self.font {
-            self.font = font;
-            self.dpem = dpem;
-            self.set_max_status(Status::New);
-        } else if dpem != self.dpem {
-            self.dpem = dpem;
-            self.set_max_status(Status::ResizeLevelRuns);
-        }
     }
 
     fn measure_width(&mut self, max_width: f32) -> f32 {

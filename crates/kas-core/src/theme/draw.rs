@@ -281,8 +281,7 @@ impl<'a> DrawCx<'a> {
     /// This method supports a number of text effects: bold, emphasis, text
     /// size, underline and strikethrough.
     ///
-    /// [`ConfigCx::text_configure`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    /// The `text` should be prepared before calling this method.
     pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
         self.text_pos(rect.pos, rect, text);
     }
@@ -294,8 +293,7 @@ impl<'a> DrawCx<'a> {
     /// This method supports a number of text effects: bold, emphasis, text
     /// size, underline and strikethrough.
     ///
-    /// [`ConfigCx::text_configure`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    /// The `text` should be prepared before calling this method.
     pub fn text_pos<T: FormattableText>(&mut self, pos: Coord, rect: Rect, text: &Text<T>) {
         let effects = text.effect_tokens();
         self.text_with_effects(pos, rect, text, effects);
@@ -355,8 +353,7 @@ impl<'a> DrawCx<'a> {
     ///
     /// The text cursor is draw from `rect.pos` and clipped to `rect`.
     ///
-    /// [`ConfigCx::text_configure`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    /// The `text` should be prepared before calling this method.
     pub fn text_cursor<T: FormattableText>(
         &mut self,
         pos: Coord,
@@ -516,8 +513,7 @@ pub trait ThemeDraw {
 
     /// Draw text
     ///
-    /// [`ConfigCx::text_configure`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    /// The `text` should be prepared before calling this method.
     fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay);
 
     /// Draw text with effects
@@ -529,8 +525,7 @@ pub trait ThemeDraw {
     /// If `effects` is empty or all [`Effect::flags`] are default then it is
     /// equivalent (and faster) to call [`Self::text`] instead.
     ///
-    /// [`ConfigCx::text_configure`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    /// The `text` should be prepared before calling this method.
     fn text_effects(
         &mut self,
         id: &Id,
@@ -552,8 +547,7 @@ pub trait ThemeDraw {
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
-    /// [`ConfigCx::text_configure`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    /// The `text` should be prepared before calling this method.
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize);
 
     /// Draw UI element: check box

@@ -11,7 +11,7 @@ use crate::dir::Directional;
 use crate::event::EventState;
 use crate::geom::Rect;
 use crate::layout::{AlignPair, AxisInfo, FrameRules, LogicalBuilder, Margins, SizeRules};
-use crate::text::format::FormattableText;
+use crate::text::{fonts::FontSelector, format::FormattableText};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)]
@@ -77,6 +77,11 @@ impl<'a> SizeCx<'a> {
     /// Build [`SizeRules`] from the input size in logical pixels
     pub fn logical(&self, width: f32, height: f32) -> LogicalBuilder {
         LogicalBuilder::new((width, height), self.scale_factor())
+    }
+
+    /// Get the configured font selector for `class`
+    pub fn font(&self, class: TextClass) -> FontSelector {
+        self.w.font(class)
     }
 
     /// Get the default font size for `class`
@@ -186,8 +191,7 @@ impl<'a> SizeCx<'a> {
     /// wish to adjust the result.
     ///
     /// Note: this method partially prepares the `text` object. It is not
-    /// required to call this method but it is required to call
-    /// [`ConfigCx::text_configure`] before text display for correct results.
+    /// required to call this method.
     pub fn text_rules<T: FormattableText>(&self, text: &mut Text<T>, axis: AxisInfo) -> SizeRules {
         let wrap = text.wrap();
         self.w.text_rules(text, wrap, axis)
@@ -199,6 +203,9 @@ impl<'a> SizeCx<'a> {
 pub trait ThemeSize {
     /// Get the scale factor
     fn scale_factor(&self) -> f32;
+
+    /// Get the configured font selector for `class`
+    fn font(&self, class: TextClass) -> FontSelector;
 
     /// Get the default font size for `class`
     ///
@@ -233,14 +240,6 @@ pub trait ThemeSize {
 
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
-
-    /// Set font and font size from `class`
-    fn text_configure(&self, text: &mut dyn SizableText, class: TextClass);
-
-    /// Set font from `class`, using a custom font size
-    ///
-    /// The default font size is available using [`Self::dpem`].
-    fn text_configure_with_dpem(&self, text: &mut dyn SizableText, class: TextClass, dpem: f32);
 
     /// Get [`SizeRules`] for a text element
     ///
