@@ -33,7 +33,7 @@ mod Label {
     #[derive(Debug)]
     #[widget]
     #[layout(self.text)]
-    pub struct Label<T: FormattableText + 'static> {
+    pub struct Label<T: FormattableText + 'static = String> {
         core: widget_core!(),
         text: Text<T>,
     }

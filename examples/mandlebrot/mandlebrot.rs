@@ -443,13 +443,13 @@ mod MandlebrotUI {
     struct MandlebrotUI {
         core: widget_core!(),
         #[widget(&self.loc)]
-        label: Text<String, String>,
+        label: Text<String>,
         #[widget]
         title: Label<&'static str>,
         #[widget]
         buttons: TitleBarButtons,
         #[widget(&self.iters)]
-        iters_label: Reserve<Text<i32, String>>,
+        iters_label: Reserve<Text<i32>>,
         #[widget(&self.iters)]
         slider: Slider<i32, i32, kas::dir::Up>,
         #[widget(&self.iters)]
