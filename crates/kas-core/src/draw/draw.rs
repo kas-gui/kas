@@ -218,8 +218,8 @@ pub trait Draw {
     ///
     /// Text is drawn from `pos` and clipped to `bounding_box`.
     ///
-    /// The `text` object must be configured and prepared prior to calling this
-    /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
+    /// The `text` display must be prepared prior to calling this method.
+    /// Typically this is done using a [`crate::theme::Text`] object.
     fn text(&mut self, pos: Vec2, bounding_box: Quad, text: &TextDisplay, col: Rgba);
 
     /// Draw text with effects
@@ -233,8 +233,8 @@ pub trait Draw {
     /// Text colour lookup uses index `e` and is essentially:
     /// `colors.get(e).unwrap_or(Rgba::BLACK)`.
     ///
-    /// The `text` object must be configured and prepared prior to calling this
-    /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
+    /// The `text` display must be prepared prior to calling this method.
+    /// Typically this is done using a [`crate::theme::Text`] object.
     fn text_effects(
         &mut self,
         pos: Vec2,
