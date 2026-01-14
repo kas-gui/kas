@@ -5,13 +5,15 @@
 
 //! Theme-applied Text element
 
+use cast::CastFloat;
+
 use super::TextClass;
 #[allow(unused)] use super::{DrawCx, SizeCx};
 use crate::Layout;
 use crate::cast::Cast;
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::geom::{Rect, Vec2};
-use crate::layout::{AlignHints, AxisInfo, SizeRules};
+use crate::layout::{AlignHints, AxisInfo, SizeRules, Stretch};
 use crate::text::fonts::FontSelector;
 use crate::text::format::FormattableText;
 use crate::text::*;
@@ -63,7 +65,26 @@ impl<T: FormattableText> Layout for Text<T> {
     }
 
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-        cx.text_rules(self, axis)
+        let rules = if axis.is_horizontal() {
+            if self.wrap {
+                let (min, ideal) = cx.wrapped_line_len(self.class, self.dpem);
+                let bound: i32 = self.measure_width(ideal.cast()).cast_ceil();
+                SizeRules::new(bound.min(min), bound.min(ideal), Stretch::Filler)
+            } else {
+                let bound: i32 = self.measure_width(f32::INFINITY).cast_ceil();
+                SizeRules::new(bound, bound, Stretch::Filler)
+            }
+        } else {
+            let wrap_width = self
+                .wrap
+                .then(|| axis.other().map(|w| w.cast()))
+                .flatten()
+                .unwrap_or(f32::INFINITY);
+            let bound: i32 = self.measure_height(wrap_width, None).cast_ceil();
+            SizeRules::new(bound, bound, Stretch::Filler)
+        };
+
+        rules.with_margins(cx.text_margins().extract(axis))
     }
 
     fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, hints: AlignHints) {
@@ -701,32 +722,5 @@ impl Text<String> {
     pub fn swap_string(&mut self, string: &mut String) {
         std::mem::swap(&mut self.text, string);
         self.set_max_status(Status::New);
-    }
-}
-
-/// Required functionality on [`Text`] objects for sizing by the theme
-pub trait SizableText {
-    /// Get the text class
-    fn class(&self) -> TextClass;
-
-    /// Measure required width, up to some `max_width`
-    fn measure_width(&mut self, max_width: f32) -> f32;
-
-    /// Measure required vertical height, wrapping as configured
-    fn measure_height(&mut self, wrap_width: f32) -> f32;
-}
-
-impl<T: FormattableText> SizableText for Text<T> {
-    #[inline]
-    fn class(&self) -> TextClass {
-        self.class
-    }
-
-    fn measure_width(&mut self, max_width: f32) -> f32 {
-        Text::measure_width(self, max_width)
-    }
-
-    fn measure_height(&mut self, wrap_width: f32) -> f32 {
-        Text::measure_height(self, wrap_width, None)
     }
 }

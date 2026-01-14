@@ -35,7 +35,7 @@ pub use multi::MultiTheme;
 pub use simple_theme::SimpleTheme;
 pub use size::SizeCx;
 pub use style::*;
-pub use text::{SizableText, Text};
+pub use text::Text;
 pub use theme_dst::ThemeDst;
 pub use traits::{Theme, Window};
 
