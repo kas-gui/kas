@@ -82,7 +82,7 @@ impl<T: FormattableText> Layout for Text<T> {
             }
         }
         self.rect = rect;
-        self.prepare();
+        self.rewrap();
     }
 
     fn draw(&self, mut draw: DrawCx) {
@@ -474,6 +474,17 @@ impl<T: FormattableText> Text<T> {
 
         self.prepare_runs();
         debug_assert!(self.status >= Status::LevelRuns);
+        self.rewrap();
+        true
+    }
+
+    /// Re-wrap
+    ///
+    /// This is a partial form of re-preparation
+    fn rewrap(&mut self) {
+        if self.status < Status::LevelRuns {
+            return;
+        }
 
         if self.status == Status::LevelRuns {
             let align_width = self.rect.size.0.cast();
@@ -488,7 +499,6 @@ impl<T: FormattableText> Text<T> {
         }
 
         self.status = Status::Ready;
-        true
     }
 
     /// Re-prepare, requesting a redraw or resize as required
