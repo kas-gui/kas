@@ -46,7 +46,7 @@ use std::default::Default;
 /// struct MyDriver;
 /// impl<Key> Driver<Key, f32> for MyDriver {
 ///     const TAB_NAVIGABLE: bool = false;
-///     type Widget = Text<f32, String>;
+///     type Widget = Text<f32>;
 ///
 ///     fn make(&mut self, _: &Key) -> Self::Widget {
 ///         Text::new_gen(|_, data: &f32| data.to_string())
@@ -116,7 +116,7 @@ macro_rules! impl_via_to_string {
     ($t:ty) => {
         impl<Key> Driver<Key, $t> for View {
             const TAB_NAVIGABLE: bool = false;
-            type Widget = Text<$t, String>;
+            type Widget = Text<$t>;
 
             fn make(&mut self, _: &Key) -> Self::Widget {
                 Text::new_gen(|_, data: &$t| data.to_string())

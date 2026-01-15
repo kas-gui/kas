@@ -33,7 +33,7 @@ mod Label {
     #[derive(Debug)]
     #[widget]
     #[layout(self.text)]
-    pub struct Label<T: FormattableText + 'static> {
+    pub struct Label<T: FormattableText + 'static = String> {
         core: widget_core!(),
         text: Text<T>,
     }
@@ -133,7 +133,7 @@ mod Label {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.text);
+            self.text.configure(&mut cx.size_cx());
         }
     }
 

@@ -207,8 +207,8 @@ impl DrawSharedImpl for Shared {
         pos: Vec2,
         bb: Quad,
         text: &text::TextDisplay,
-        effects: &[text::Effect],
         colors: &[color::Rgba],
+        effects: &[text::Effect],
     ) {
         let time = std::time::Instant::now();
         self.text.text_effects(
@@ -218,8 +218,8 @@ impl DrawSharedImpl for Shared {
             pos,
             bb,
             text,
-            effects,
             colors,
+            effects,
             |quad, col| {
                 draw.basic.rect(pass, quad, col);
             },

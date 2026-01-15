@@ -386,8 +386,8 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
-        effects: &[Effect],
         colors: &[Rgba],
+        effects: &[Effect],
     ) {
         let time = std::time::Instant::now();
         self.text.text_effects(
@@ -397,8 +397,8 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
             pos,
             bb,
             text,
-            effects,
             colors,
+            effects,
             |quad, col| {
                 draw.shaded_square.rect(pass, quad, col);
             },

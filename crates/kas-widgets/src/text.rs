@@ -9,6 +9,9 @@ use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::theme::{self, TextClass};
 
+// NOTE: Text maintains a copy of the (formatted) string internally. Most
+// importantly this allows change detection.
+
 #[impl_self]
 mod Text {
     /// A text label (derived from data)
@@ -28,7 +31,7 @@ mod Text {
     /// default.
     #[widget]
     #[layout(self.text)]
-    pub struct Text<A, T: Default + FormattableText + 'static> {
+    pub struct Text<A, T: Default + FormattableText + 'static = String> {
         core: widget_core!(),
         text: theme::Text<T>,
         text_fn: Box<dyn Fn(&ConfigCx, &A, &mut T) -> bool>,
@@ -181,7 +184,7 @@ mod Text {
         type Data = A;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.text);
+            self.text.configure(&mut cx.size_cx());
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {

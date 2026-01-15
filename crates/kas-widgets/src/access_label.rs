@@ -134,7 +134,7 @@ mod AccessLabel {
                 && draw.access_key(&self.target, key)
             {
                 // Stop on first successful binding and draw
-                draw.text_with_effects(rect.pos, rect, &self.text, effects);
+                draw.text_with_effects(rect.pos, rect, &self.text, &[], effects);
             } else {
                 draw.text(rect, &self.text);
             }
@@ -156,7 +156,7 @@ mod AccessLabel {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.target = self.id();
-            cx.text_configure(&mut self.text);
+            self.text.configure(&mut cx.size_cx());
         }
     }
 }

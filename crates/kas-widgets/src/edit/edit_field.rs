@@ -167,9 +167,9 @@ mod EditField {
                         flags: Default::default(),
                     },
                 ];
-                draw.text_with_effects(pos, rect, &self.text, &effects);
+                draw.text_with_effects(pos, rect, &self.text, &[], &effects);
             } else {
-                draw.text_selected(pos, rect, &self.text, self.selection.range());
+                draw.text_with_selection(pos, rect, &self.text, self.selection.range());
             }
 
             if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
@@ -208,7 +208,7 @@ mod EditField {
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.text);
+            self.text.configure(&mut cx.size_cx());
             G::configure(self, cx);
         }
 

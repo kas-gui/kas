@@ -6,8 +6,7 @@
 //! Configuration context
 
 use crate::event::EventState;
-use crate::text::format::FormattableText;
-use crate::theme::{SizeCx, Text, ThemeSize};
+use crate::theme::{SizeCx, ThemeSize};
 use crate::{ActionRedraw, ActionResize, Id, Node};
 use std::any::TypeId;
 use std::fmt::Debug;
@@ -78,36 +77,6 @@ impl<'a> ConfigCx<'a> {
         let start_resize = std::mem::take(&mut self.resize);
         widget._update(self);
         self.resize = self.resize.or(start_resize);
-    }
-
-    /// Configure a text object
-    ///
-    /// Font selection depends on the [`TextClass`], [theme configuration] and
-    /// the loaded [fonts][crate::text::fonts]. Font size depends on the
-    /// [`TextClass`], [theme configuration] and scale factor.
-    ///
-    /// [`TextClass`]: crate::theme::TextClass
-    /// [theme configuration]: crate::config::ThemeConfig
-    #[inline]
-    pub fn text_configure<T: FormattableText>(&self, text: &mut Text<T>) {
-        let class = text.class();
-        self.theme.text_configure(text, class);
-    }
-
-    /// Configure a text object with custom font size
-    ///
-    /// Font selection depends on the [`TextClass`], [theme configuration] and
-    /// the loaded [fonts][crate::text::fonts].
-    ///
-    /// Font size must be specified in `dpem`: physical pixels per font Em.
-    /// The default font size is available through [`SizeCx::dpem`].
-    ///
-    /// [`TextClass`]: crate::theme::TextClass
-    /// [theme configuration]: crate::config::ThemeConfig
-    #[inline]
-    pub fn text_configure_with_dpem<T: FormattableText>(&self, text: &mut Text<T>, dpem: f32) {
-        let class = text.class();
-        self.theme.text_configure_with_dpem(text, class, dpem);
     }
 
     /// Set a target for messages of a specific type when sent to `Id::default()`

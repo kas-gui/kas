@@ -15,7 +15,7 @@
 
 pub use kas_text::{
     Align, DPU, Direction, Effect, EffectFlags, Line, MarkerPos, MarkerPosIter, NotReady,
-    OwningVecIter, Status, Text, TextDisplay, Vec2, fonts, format,
+    OwningVecIter, Status, TextDisplay, Vec2, fonts, format,
 };
 
 /// Glyph rastering

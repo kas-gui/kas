@@ -390,7 +390,7 @@ mod SpinBox {
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.unit);
+            self.unit.configure(&mut cx.size_cx());
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {

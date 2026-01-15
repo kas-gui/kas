@@ -5,13 +5,13 @@
 
 //! "Handle" types used by themes
 
-use super::{Feature, FrameStyle, MarginStyle, SizableText, Text, TextClass};
+use super::{Feature, FrameStyle, MarginStyle, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
 use crate::event::EventState;
 use crate::geom::Rect;
-use crate::layout::{AlignPair, AxisInfo, FrameRules, LogicalBuilder, Margins, SizeRules};
-use crate::text::format::FormattableText;
+use crate::layout::{AlignPair, FrameRules, LogicalBuilder, Margins, SizeRules};
+use crate::text::fonts::FontSelector;
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)]
@@ -45,6 +45,7 @@ impl<'a> SizeCx<'a> {
     /// Construct from [`EventState`] and a [`ThemeSize`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[inline]
     pub fn new(ev: &'a mut EventState, w: &'a dyn ThemeSize) -> Self {
         SizeCx { ev, w }
     }
@@ -70,13 +71,21 @@ impl<'a> SizeCx<'a> {
     /// This value may change during a program's execution (e.g. when a window
     /// is moved to a different monitor); in this case all widgets will be
     /// resized via [`crate::Layout::size_rules`].
+    #[inline]
     pub fn scale_factor(&self) -> f32 {
         self.w.scale_factor()
     }
 
     /// Build [`SizeRules`] from the input size in logical pixels
+    #[inline]
     pub fn logical(&self, width: f32, height: f32) -> LogicalBuilder {
         LogicalBuilder::new((width, height), self.scale_factor())
+    }
+
+    /// Get the configured font selector for `class`
+    #[inline]
+    pub fn font(&self, class: TextClass) -> FontSelector {
+        self.w.font(class)
     }
 
     /// Get the default font size for `class`
@@ -88,18 +97,27 @@ impl<'a> SizeCx<'a> {
     ///
     /// This method returns the size of 1 Em in physical pixels, derived from
     /// the font size in use by the theme and the screen's scale factor.
+    #[inline]
     pub fn dpem(&self, class: TextClass) -> f32 {
         self.w.dpem(class)
+    }
+
+    /// Get the `(min, ideal)` line length for text which wraps
+    #[inline]
+    pub fn wrapped_line_len(&self, class: TextClass, dpem: f32) -> (i32, i32) {
+        self.w.wrapped_line_len(class, dpem)
     }
 
     /// The smallest reasonable size for a visible (non-frame) component
     ///
     /// This is used as a suggestion by some heuristics.
+    #[inline]
     pub fn min_element_size(&self) -> i32 {
         self.w.min_element_size()
     }
 
     /// The minimum size of a scrollable area
+    #[inline]
     pub fn min_scroll_size(&self, axis: impl Directional, class: Option<TextClass>) -> i32 {
         let class = class.unwrap_or(TextClass::Standard);
         self.w.min_scroll_size(axis.is_vertical(), class)
@@ -110,6 +128,7 @@ impl<'a> SizeCx<'a> {
     /// This is the length in line with the control. The size on the opposite
     /// axis is assumed to be equal to the feature size as reported by
     /// [`Self::feature`].
+    #[inline]
     pub fn grip_len(&self) -> i32 {
         self.w.grip_len()
     }
@@ -117,46 +136,55 @@ impl<'a> SizeCx<'a> {
     /// The width of a vertical scroll bar
     ///
     /// This value is also available through [`Self::feature`].
+    #[inline]
     pub fn scroll_bar_width(&self) -> i32 {
         self.w.scroll_bar_width()
     }
 
     /// Get margin size
+    #[inline]
     pub fn margins(&self, style: MarginStyle) -> Margins {
         self.w.margins(style)
     }
 
     /// Get margins for [`MarginStyle::Inner`]
+    #[inline]
     pub fn inner_margins(&self) -> Margins {
         self.w.margins(MarginStyle::Inner)
     }
 
     /// Get margins for [`MarginStyle::Tiny`]
+    #[inline]
     pub fn tiny_margins(&self) -> Margins {
         self.w.margins(MarginStyle::Tiny)
     }
 
     /// Get margins for [`MarginStyle::Small`]
+    #[inline]
     pub fn small_margins(&self) -> Margins {
         self.w.margins(MarginStyle::Small)
     }
 
     /// Get margins for [`MarginStyle::Large`]
+    #[inline]
     pub fn large_margins(&self) -> Margins {
         self.w.margins(MarginStyle::Large)
     }
 
     /// Get margins for [`MarginStyle::Text`]
+    #[inline]
     pub fn text_margins(&self) -> Margins {
         self.w.margins(MarginStyle::Text)
     }
 
     /// Size rules for a feature
+    #[inline]
     pub fn feature(&self, feature: Feature, axis: impl Directional) -> SizeRules {
         self.w.feature(feature, axis.is_vertical())
     }
 
     /// Size of a frame around another element
+    #[inline]
     pub fn frame(&self, style: FrameStyle, axis: impl Directional) -> FrameRules {
         self.w.frame(style, axis.is_vertical())
     }
@@ -169,29 +197,6 @@ impl<'a> SizeCx<'a> {
     pub fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
         self.w.align_feature(feature, rect, align)
     }
-
-    /// Get [`SizeRules`] for a text element
-    ///
-    /// The [`TextClass`] is used to select a font and controls whether line
-    /// wrapping is enabled.
-    ///
-    /// Horizontal size without wrapping is simply the size the text.
-    /// Horizontal size with wrapping is bounded to some width dependant on the
-    /// theme, and may have non-zero [`Stretch`] depending on the size.
-    ///
-    /// Vertical size is the size of the text with or without wrapping, but with
-    /// the minimum at least the height of one line of text.
-    ///
-    /// Widgets with editable text contents or internal scrolling enabled may
-    /// wish to adjust the result.
-    ///
-    /// Note: this method partially prepares the `text` object. It is not
-    /// required to call this method but it is required to call
-    /// [`ConfigCx::text_configure`] before text display for correct results.
-    pub fn text_rules<T: FormattableText>(&self, text: &mut Text<T>, axis: AxisInfo) -> SizeRules {
-        let wrap = text.wrap();
-        self.w.text_rules(text, wrap, axis)
-    }
 }
 
 /// Theme sizing implementation
@@ -200,10 +205,16 @@ pub trait ThemeSize {
     /// Get the scale factor
     fn scale_factor(&self) -> f32;
 
+    /// Get the configured font selector for `class`
+    fn font(&self, class: TextClass) -> FontSelector;
+
     /// Get the default font size for `class`
     ///
     /// Units are physical pixels per Em.
     fn dpem(&self, class: TextClass) -> f32;
+
+    /// Get the `(min, ideal)` line length for text which wraps
+    fn wrapped_line_len(&self, class: TextClass, dpem: f32) -> (i32, i32);
 
     /// The smallest reasonable size for a visible (non-frame) component
     ///
@@ -233,17 +244,4 @@ pub trait ThemeSize {
 
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
-
-    /// Set font and font size from `class`
-    fn text_configure(&self, text: &mut dyn SizableText, class: TextClass);
-
-    /// Set font from `class`, using a custom font size
-    ///
-    /// The default font size is available using [`Self::dpem`].
-    fn text_configure_with_dpem(&self, text: &mut dyn SizableText, class: TextClass, dpem: f32);
-
-    /// Get [`SizeRules`] for a text element
-    ///
-    /// Parameter `wrap`: whether long lines automatically wrap.
-    fn text_rules(&self, text: &mut dyn SizableText, wrap: bool, axis: AxisInfo) -> SizeRules;
 }

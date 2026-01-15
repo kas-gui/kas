@@ -348,13 +348,15 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         }
     }
 
-    fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay) {
+    fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, color: Option<Rgba>) {
         let bb = Quad::conv(rect);
-        let col = if self.ev.is_disabled(id) {
-            self.cols.text_disabled
-        } else {
-            self.cols.text
-        };
+        let col = color.unwrap_or_else(|| {
+            if self.ev.is_disabled(id) {
+                self.cols.text_disabled
+            } else {
+                self.cols.text
+            }
+        });
         self.draw.text(pos.cast(), bb, text, col);
     }
 
@@ -364,16 +366,22 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
+        colors: &[Rgba],
         effects: &[Effect],
     ) {
         let bb = Quad::conv(rect);
-        let col = if self.ev.is_disabled(id) {
-            self.cols.text_disabled
-        } else {
-            self.cols.text
-        };
+        let col;
+        let mut colors = colors;
+        if colors.is_empty() {
+            col = [if self.ev.is_disabled(id) {
+                self.cols.text_disabled
+            } else {
+                self.cols.text
+            }];
+            colors = &col;
+        }
         self.draw
-            .text_effects(pos.cast(), bb, text, effects, &[col]);
+            .text_effects(pos.cast(), bb, text, colors, effects);
     }
 
     fn text_selected_range(
@@ -420,7 +428,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
             },
         ];
         let colors = [col, sel_col];
-        self.draw.text_effects(pos, bb, text, &effects, &colors);
+        self.draw.text_effects(pos, bb, text, &colors, &effects);
     }
 
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {

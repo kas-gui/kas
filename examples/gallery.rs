@@ -108,7 +108,7 @@ fn widgets() -> Page<AppData> {
         #[layout(row! [self.text, Button::label_msg("&Edit", MsgEdit)])]
         struct {
             core: widget_core!(),
-            #[widget] text: Text<Data, String> = format_text!(data: &Data, "{}", &data.text),
+            #[widget] text: Text<Data> = format_text!(data: &Data, "{}", &data.text),
             #[widget(&())] popup: Popup<TextEdit> = Popup::new(TextEdit::new("", true), Direction::Down),
         }
         impl Events for Self {
