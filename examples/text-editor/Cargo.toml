@@ -13,7 +13,7 @@ publish = false
 kas = { version = "0.16.0", features = ["wgpu"], path = "../.." }
 env_logger = "0.11"
 log = "0.4"
-rfd = "0.15.4"
+rfd = "0.17.2"
 
 [[bin]]
 name = "text-editor"
