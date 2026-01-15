@@ -16,13 +16,24 @@ pub use guard::*;
 use std::fmt::Debug;
 use std::ops::Range;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 enum LastEdit {
     #[default]
     None,
-    Insert,
-    Delete,
+    KeyInput(bool),
+    Ime,
+    Delete(bool),
     Paste,
+    Set,
+}
+
+impl LastEdit {
+    fn is_mergable(self) -> bool {
+        match self {
+            LastEdit::KeyInput(true) | LastEdit::Delete(true) => true,
+            _ => false,
+        }
+    }
 }
 
 enum EditAction {
