@@ -119,6 +119,7 @@ mod Editor {
                     }
                 };
 
+                self.editor.clear(cx);
                 self.editor.set_string(cx, text);
                 self.editor.guard_mut().edited = false;
             } else if let Some(Saved(result)) = cx.try_pop() {
@@ -157,6 +158,7 @@ mod Editor {
         fn do_action(&mut self, cx: &mut EventCx<'_>, action: EditorAction) {
             match action {
                 EditorAction::New => {
+                    self.editor.clear(cx);
                     self.editor.set_string(cx, String::new());
                     self.editor.guard_mut().edited = false;
                     self.file = None;

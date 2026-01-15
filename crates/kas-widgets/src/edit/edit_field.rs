@@ -266,7 +266,8 @@ mod EditField {
                 },
                 Event::Key(event, false) if event.state == ElementState::Pressed => {
                     if let Some(text) = &event.text {
-                        let used = self.received_text(cx, text, LastEdit::KeyInput(true));
+                        self.save_undo_state(LastEdit::KeyInput(true));
+                        let used = self.received_text(cx, text);
                         G::edit(self, cx, data);
                         used
                     } else {
@@ -473,11 +474,13 @@ mod EditField {
             }
 
             if let Some(SetValueText(string)) = cx.try_pop() {
+                self.pre_commit();
                 self.set_string(cx, string);
                 G::edit(self, cx, data);
                 G::activate(self, cx, data);
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
-                self.received_text(cx, &text, LastEdit::Set);
+                self.pre_commit();
+                self.replace_selection(cx, &text);
                 G::edit(self, cx, data);
                 G::activate(self, cx, data);
             }
@@ -528,7 +531,27 @@ mod EditField {
             self.text.clone_string()
         }
 
+        /// Clear text contents and undo history
+        #[inline]
+        pub fn clear(&mut self, cx: &mut EventState) {
+            self.old_state = None;
+            self.last_edit = LastEdit::None;
+            self.set_string(cx, String::new());
+        }
+
+        /// Commit outstanding changes to the undo history
+        ///
+        /// Call this *before* changing the text with `set_str` or `set_string`
+        /// to commit changes to the undo history.
+        #[inline]
+        pub fn pre_commit(&mut self) {
+            self.save_undo_state(LastEdit::Set);
+        }
+
         /// Set text contents from a `str`
+        ///
+        /// This does not interact with undo history; see also [`Self::clear`],
+        /// [`Self::pre_commit`].
         ///
         /// Returns `true` if the text may have changed.
         #[inline]
@@ -543,11 +566,11 @@ mod EditField {
 
         /// Set text contents from a `String`
         ///
-        /// This method does not call action handlers on the [`EditGuard`].
+        /// This does not interact with undo history; see also [`Self::clear`],
+        /// [`Self::pre_commit`].
         ///
         /// Returns `true` if the text is ready and may have changed.
         pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
-            self.save_undo_state(LastEdit::Set);
             if !self.text.set_string(string) || !self.text.prepare() {
                 return false;
             }
@@ -568,9 +591,12 @@ mod EditField {
 
         /// Replace selected text
         ///
+        /// This does not interact with undo history; see also [`Self::clear`],
+        /// [`Self::pre_commit`].
+        ///
         /// This method does not call action handlers on the [`EditGuard`].
         pub fn replace_selection(&mut self, cx: &mut EventCx, text: &str) {
-            self.received_text(cx, text, LastEdit::Set);
+            self.received_text(cx, text);
         }
 
         /// Enable IME if not already enabled
@@ -958,12 +984,11 @@ impl<G: EditGuard> EditField<G> {
         0..end
     }
 
-    fn received_text(&mut self, cx: &mut EventCx, text: &str, source: LastEdit) -> IsUsed {
+    fn received_text(&mut self, cx: &mut EventCx, text: &str) -> IsUsed {
         if !self.editable {
             return Unused;
         }
 
-        self.save_undo_state(source);
         let index = self.selection.edit_index();
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
