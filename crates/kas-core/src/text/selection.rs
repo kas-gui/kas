@@ -190,4 +190,21 @@ impl SelectionHelper {
         self.sel = start;
         self.edit = end;
     }
+
+    /// Adjust all indices for a deletion from the source text
+    pub fn delete_range(&mut self, range: Range<usize>) {
+        let len = range.len();
+        let adjust = |index: usize| -> usize {
+            if index >= range.end {
+                index - len
+            } else if index > range.start {
+                range.start
+            } else {
+                index
+            }
+        };
+        self.edit = adjust(self.edit);
+        self.sel = adjust(self.sel);
+        self.anchor = adjust(self.anchor);
+    }
 }

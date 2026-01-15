@@ -355,6 +355,7 @@ mod EditField {
                             let start = end - before_bytes;
                             if self.as_str().is_char_boundary(start) {
                                 self.text.replace_range(start..end, "");
+                                self.selection.delete_range(start..end);
                             } else {
                                 log::warn!("buggy IME tried to delete range not at char boundary");
                             }
