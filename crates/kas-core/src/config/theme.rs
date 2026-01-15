@@ -168,18 +168,8 @@ impl ThemeConfig {
 mod defaults {
     use super::*;
 
-    #[cfg(not(feature = "dark-light"))]
     pub fn default_scheme() -> String {
         "light".to_string()
-    }
-
-    #[cfg(feature = "dark-light")]
-    pub fn default_scheme() -> String {
-        use dark_light::Mode;
-        match dark_light::detect() {
-            Ok(Mode::Dark) => "dark".to_string(),
-            _ => "light".to_string(),
-        }
     }
 
     pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {
