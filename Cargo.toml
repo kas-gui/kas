@@ -38,7 +38,7 @@ stable = ["default", "view", "image-default-formats", "canvas", "svg", "markdown
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics", "kas-core/nightly"]
 # Additional, less recommendation-worthy features
-experimental = ["dark-light", "unsafe_node"]
+experimental = ["unsafe_node"]
 
 # Enable dynamic linking (faster linking via an extra run-time dependency):
 dynamic = ["dep:kas-dylib"]
@@ -115,11 +115,6 @@ webp = ["image", "kas-image/webp"]
 svg = ["dep:kas-image", "kas-image/svg", "kas-dylib?/image"]
 # Enable Canvas widget
 canvas = ["dep:kas-image", "kas-image/canvas", "kas-dylib?/image"]
-
-# Automatically detect usage of dark theme
-#
-# Not a default dependency; see https://github.com/emilk/egui/issues/2388
-dark-light = ["kas-core/dark-light"]
 
 # Support spawning async tasks
 spawn = ["kas-core/spawn"]
