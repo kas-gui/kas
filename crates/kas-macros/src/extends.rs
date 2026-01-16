@@ -8,28 +8,29 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{Expr, ImplItem, ImplItemFn, ItemImpl, Token, parse_quote};
+use syn::{Expr, ImplItem, ImplItemFn, ItemImpl, parse_quote};
 
 #[allow(non_camel_case_types)]
 mod kw {
     syn::custom_keyword!(ThemeDraw);
-    syn::custom_keyword!(base);
+    syn::custom_keyword!(using);
 }
 
-pub struct Extends {
-    base: Expr,
+pub enum Extends {
+    ThemeDraw { base: Expr },
 }
 
 impl Parse for Extends {
-    fn parse(content: ParseStream) -> Result<Extends> {
-        let _ = content.parse::<kw::ThemeDraw>()?;
-        let _ = content.parse::<Token![,]>()?;
-        let _ = content.parse::<kw::base>()?;
-        let _ = content.parse::<Token![=]>()?;
-
-        Ok(Extends {
-            base: content.parse()?,
-        })
+    fn parse(input: ParseStream) -> Result<Extends> {
+        let lookahead = input.lookahead1();
+        if lookahead.peek(kw::ThemeDraw) {
+            let _ = input.parse::<kw::ThemeDraw>()?;
+            let _ = input.parse::<kw::using>()?;
+            let base = input.parse()?;
+            Ok(Extends::ThemeDraw { base })
+        } else {
+            Err(lookahead.error())
+        }
     }
 }
 
@@ -46,10 +47,9 @@ impl Parse for Methods {
     }
 }
 
-impl Extends {
-    fn methods_theme_draw(self) -> Vec<ImplItemFn> {
-        let base = self.base;
-        let methods: Methods = parse_quote! {
+impl Methods {
+    fn theme_draw(base: &Expr) -> Self {
+        parse_quote! {
             fn new_pass<'_gen_a>(
                 &mut self,
                 rect: ::kas::geom::Rect,
@@ -152,16 +152,19 @@ impl Extends {
             fn image(&mut self, id: ImageId, rect: Rect) {
                 (#base).image(id, rect);
             }
-        };
-        methods.0
+        }
     }
+}
 
+impl Extends {
     pub fn extend(self, item: TokenStream) -> Result<TokenStream> {
         let mut impl_: ItemImpl = syn::parse2(item)?;
 
-        let mut methods = self.methods_theme_draw();
-        methods.retain(|method| {
-            let name = method.sig.ident.to_string();
+        let mut methods = match &self {
+            Extends::ThemeDraw { base } => Methods::theme_draw(base).0,
+        };
+        methods.retain(|item| {
+            let name = item.sig.ident.to_string();
             impl_.items.iter().all(
                 |item| !matches!(item, ImplItem::Fn(ImplItemFn { sig, .. }) if sig.ident == name),
             )
