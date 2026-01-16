@@ -7,10 +7,12 @@
 
 mod edit_box;
 mod edit_field;
+mod editor;
 mod guard;
 
 pub use edit_box::EditBox;
 pub use edit_field::EditField;
+use editor::Editor;
 pub use guard::*;
 
 use std::fmt::Debug;
