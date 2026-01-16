@@ -339,7 +339,7 @@ impl<'a> EventCx<'a> {
         }
 
         if event.state == ElementState::Pressed && !is_synthetic {
-            self.start_key_event(widget, event.logical_key, event.physical_key);
+            self.start_key_event(widget, event.key_without_modifiers, event.physical_key);
         } else if event.state == ElementState::Released
             && self.key_depress.remove(&event.physical_key).is_some()
         {

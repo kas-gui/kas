@@ -275,7 +275,7 @@ mod EditField {
                         let opt_cmd = cx
                             .config()
                             .shortcuts()
-                            .try_match(cx.modifiers(), &event.logical_key);
+                            .try_match(cx.modifiers(), &event.key_without_modifiers);
                         if let Some(cmd) = opt_cmd {
                             match self.control_key(cx, data, cmd, Some(event.physical_key)) {
                                 Ok(r) => r,
