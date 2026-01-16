@@ -24,7 +24,7 @@ pub use kas_text::{
 pub mod raster;
 
 mod selection;
-pub use selection::SelectionHelper;
+pub use selection::{CursorRange, SelectionHelper};
 
 mod string;
 pub use string::AccessString;

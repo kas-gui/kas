@@ -457,7 +457,7 @@ mod SpinBox {
                 SpinGuard::edit(&mut self.edit, cx, data);
                 self.edit.guard.parsed
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
-                self.edit.replace_selection(cx, &text);
+                self.edit.replace_selected_text(cx, &text);
                 SpinGuard::edit(&mut self.edit, cx, data);
                 self.edit.guard.parsed
             } else {

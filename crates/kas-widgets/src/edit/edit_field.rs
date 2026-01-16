@@ -12,7 +12,7 @@ use kas::event::{Ime, ImePurpose, ImeSurroundingText, TimerHandle};
 use kas::geom::Vec2;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
-use kas::text::{Effect, EffectFlags, NotReady, SelectionHelper};
+use kas::text::{CursorRange, Effect, EffectFlags, NotReady, SelectionHelper};
 use kas::theme::{Text, TextClass};
 use std::fmt::{Debug, Display};
 use std::ops::Range;
@@ -187,8 +187,7 @@ mod EditField {
             Role::TextInput {
                 text: self.text.as_str(),
                 multi_line: self.multi_line(),
-                cursor: self.selection.edit_index(),
-                sel_index: self.selection.sel_index(),
+                cursor: self.cursor_range(),
             }
         }
     }
@@ -311,7 +310,7 @@ mod EditField {
                             self.selection.set_sel_index_only(edit_range.start + start);
                             self.selection.set_edit_index(edit_range.start + end);
                         } else {
-                            self.selection.set_all(edit_range.start + text.len());
+                            self.selection.set_cursor(edit_range.start + text.len());
                         }
 
                         self.current = CurrentAction::ImePreedit {
@@ -330,7 +329,7 @@ mod EditField {
                         };
 
                         self.text.replace_range(edit_range.clone(), text);
-                        self.selection.set_all(edit_range.start + text.len());
+                        self.selection.set_cursor(edit_range.start + text.len());
 
                         self.current = CurrentAction::ImePreedit {
                             edit_range: self.selection.range().cast(),
@@ -404,7 +403,7 @@ mod EditField {
 
                         self.text
                             .replace_range(index..index, &content[range.clone()]);
-                        self.selection.set_all(index + range.len());
+                        self.selection.set_cursor(index + range.len());
                         self.edit_x_coord = None;
                         self.prepare_text(cx, false);
 
@@ -480,7 +479,7 @@ mod EditField {
                 G::activate(self, cx, data);
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
                 self.pre_commit();
-                self.replace_selection(cx, &text);
+                self.replace_selected_text(cx, &text);
                 G::edit(self, cx, data);
                 G::activate(self, cx, data);
             }
@@ -576,6 +575,7 @@ mod EditField {
             }
 
             self.selection.set_max_len(self.text.str_len());
+            self.edit_x_coord = None;
             cx.redraw(&self);
             self.set_error_state(cx, false);
 
@@ -595,8 +595,21 @@ mod EditField {
         /// [`Self::pre_commit`].
         ///
         /// This method does not call action handlers on the [`EditGuard`].
-        pub fn replace_selection(&mut self, cx: &mut EventCx, text: &str) {
+        pub fn replace_selected_text(&mut self, cx: &mut EventCx, text: &str) {
             self.received_text(cx, text);
+        }
+
+        /// Access the cursor index / selection range
+        #[inline]
+        pub fn cursor_range(&self) -> CursorRange {
+            *self.selection
+        }
+
+        /// Set the cursor index / range
+        #[inline]
+        pub fn set_cursor_range(&mut self, range: impl Into<CursorRange>) {
+            self.edit_x_coord = None;
+            self.selection = range.into().into();
         }
 
         /// Enable IME if not already enabled
@@ -628,7 +641,7 @@ mod EditField {
             if self.current.is_ime() {
                 let action = std::mem::replace(&mut self.current, CurrentAction::None);
                 if let CurrentAction::ImePreedit { edit_range } = action {
-                    self.selection.set_all(edit_range.start.cast());
+                    self.selection.set_cursor(edit_range.start.cast());
                     self.text.replace_range(edit_range.cast(), "");
                 }
             }
@@ -738,7 +751,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
         EditField {
             editable: true,
             text: Text::new(text, TextClass::Editor, false),
-            selection: SelectionHelper::new(len, len),
+            selection: SelectionHelper::from(len),
             ..Default::default()
         }
     }
@@ -816,7 +829,7 @@ impl<G: EditGuard> EditField<G> {
         let text = text.to_string();
         let len = text.len();
         self.text.set_string(text);
-        self.selection.set_all(len);
+        self.selection.set_cursor(len);
         self
     }
 
@@ -994,10 +1007,10 @@ impl<G: EditGuard> EditField<G> {
         let have_sel = selection.start < selection.end;
         if have_sel {
             self.text.replace_range(selection.clone(), text);
-            self.selection.set_all(selection.start + text.len());
+            self.selection.set_cursor(selection.start + text.len());
         } else {
             self.text.insert_str(index, text);
-            self.selection.set_all(index + text.len());
+            self.selection.set_cursor(index + text.len());
         }
         self.edit_x_coord = None;
 
@@ -1273,13 +1286,13 @@ impl<G: EditGuard> EditField<G> {
                     index..index
                 };
                 self.text.replace_range(range, s);
-                self.selection.set_all(index + s.len());
+                self.selection.set_cursor(index + s.len());
                 self.edit_x_coord = None;
                 EditAction::Edit
             }
             Action::Delete(sel) => {
                 self.text.replace_range(sel.clone(), "");
-                self.selection.set_all(sel.start);
+                self.selection.set_cursor(sel.start);
                 self.edit_x_coord = None;
                 EditAction::Edit
             }

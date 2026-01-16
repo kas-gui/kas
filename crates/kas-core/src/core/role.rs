@@ -13,6 +13,7 @@ use crate::geom::Offset;
 use crate::layout::GridCellInfo;
 #[allow(unused)]
 use crate::messages::{DecrementStep, IncrementStep, SetValueF64};
+use crate::text::CursorRange;
 #[allow(unused)] use crate::{Layout, Tile};
 
 /// Describes a widget's purpose and capabilities
@@ -144,13 +145,8 @@ pub enum Role<'a> {
         text: &'a str,
         /// Whether the text input supports multi-line text
         multi_line: bool,
-        /// The cursor index within `contents`
-        cursor: usize,
-        /// The selection index. Equals `cursor` if the selection is empty.
-        /// May be less than or greater than `cursor`. (Aside: some toolkits
-        /// call this the selection anchor but Kas does not; see
-        /// [`kas::text::SelectionHelper`].)
-        sel_index: usize,
+        /// The cursor index and selection range
+        cursor: CursorRange,
     },
     /// A gripable handle
     ///
