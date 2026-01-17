@@ -96,7 +96,8 @@ fn widgets() -> Page<AppData> {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) {
             // 7a is the colour of *magic*!
-            edit.set_error_state(cx, edit.as_str().len() % (7 + 1) == 0);
+            let is_err = edit.as_str().len() % (7 + 1) == 0;
+            edit.set_error_state(cx, is_err);
         }
     }
 

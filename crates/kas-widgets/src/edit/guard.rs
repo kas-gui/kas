@@ -5,7 +5,7 @@
 
 //! The [`EditField`] and [`EditBox`] widgets, plus supporting items
 
-use super::EditField;
+use super::{EditField, Editor};
 use kas::prelude::*;
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
@@ -39,8 +39,8 @@ pub trait EditGuard: Sized {
     ///
     /// Note that this method may be called during editing as a result of a
     /// message sent by [`Self::edit`] or another cause. It is recommended to
-    /// ignore updates for editable widgets with key focus
-    /// ([`EditField::has_edit_focus`]) to avoid overwriting user input;
+    /// ignore updates for editable widgets with
+    /// [key focus](Editor::has_edit_focus) to avoid overwriting user input;
     /// [`Self::focus_lost`] may update the content instead.
     /// For read-only fields this is not recommended (but `has_edit_focus` will
     /// not be true anyway).
@@ -237,7 +237,8 @@ mod ParseGuard {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
             edit.guard.parsed = edit.as_str().parse().ok();
-            edit.set_error_state(cx, edit.guard.parsed.is_none());
+            let is_err = edit.guard.parsed.is_none();
+            edit.set_error_state(cx, is_err);
         }
 
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {

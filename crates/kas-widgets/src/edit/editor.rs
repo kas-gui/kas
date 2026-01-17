@@ -10,7 +10,7 @@ use kas::event::components::TextInput;
 use kas::event::{ImePurpose, ImeSurroundingText, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::SelectionHelper;
+use kas::text::{CursorRange, SelectionHelper};
 use kas::theme::{Text, TextClass};
 
 /// Editor component
@@ -230,5 +230,93 @@ impl Editor {
             let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
             cx.set_scroll(Scroll::Rect(Rect { pos, size }));
         }
+    }
+}
+
+/// API for use by `EditGuard` implementations
+impl Editor {
+    /// Get a reference to the widget's identifier
+    #[inline]
+    pub fn id_ref(&self) -> &Id {
+        &self.id
+    }
+
+    /// Get the widget's identifier
+    #[inline]
+    pub fn id(&self) -> Id {
+        self.id.clone()
+    }
+
+    /// Get text contents
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.text.as_str()
+    }
+
+    /// Get the text contents as a `String`
+    #[inline]
+    pub fn clone_string(&self) -> String {
+        self.text.clone_string()
+    }
+
+    /// Access the cursor index / selection range
+    #[inline]
+    pub fn cursor_range(&self) -> CursorRange {
+        *self.selection
+    }
+
+    /// Set the cursor index / range
+    #[inline]
+    pub fn set_cursor_range(&mut self, range: impl Into<CursorRange>) {
+        self.edit_x_coord = None;
+        self.selection = range.into().into();
+    }
+
+    /// Get whether this `EditField` is editable
+    #[inline]
+    pub fn is_editable(&self) -> bool {
+        self.editable
+    }
+
+    /// Set whether this `EditField` is editable
+    #[inline]
+    pub fn set_editable(&mut self, editable: bool) {
+        self.editable = editable;
+    }
+
+    /// True if the editor uses multi-line mode
+    #[inline]
+    pub fn multi_line(&self) -> bool {
+        self.text.wrap()
+    }
+
+    /// Get the text class used
+    #[inline]
+    pub fn class(&self) -> TextClass {
+        self.text.class()
+    }
+
+    /// Get whether the widget has edit focus
+    ///
+    /// This is true when the widget is editable and has keyboard focus.
+    #[inline]
+    pub fn has_edit_focus(&self) -> bool {
+        self.editable && self.has_key_focus
+    }
+
+    /// Get whether the input state is erroneous
+    #[inline]
+    pub fn has_error(&self) -> bool {
+        self.error_state
+    }
+
+    /// Set the error state
+    ///
+    /// When true, the input field's background is drawn red.
+    /// This state is cleared by [`Self::set_string`].
+    // TODO: possibly change type to Option<String> and display the error
+    pub fn set_error_state(&mut self, cx: &mut EventState, error_state: bool) {
+        self.error_state = error_state;
+        cx.redraw(&self.id);
     }
 }

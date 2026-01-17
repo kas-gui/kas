@@ -59,9 +59,9 @@ mod EditField {
     /// ### Messages
     ///
     /// [`SetValueText`] may be used to replace the entire text and
-    /// [`ReplaceSelectedText`] may be used to replace selected text, where
-    /// [`Self::is_editable`]. This triggers the action handlers
-    /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
+    /// [`ReplaceSelectedText`] may be used to replace selected text when this
+    /// widget is [editable](Editor::is_editable)]. This triggers the action
+    /// handlers [`EditGuard::edit`] followed by [`EditGuard::activate`].
     ///
     /// ### Special behaviour
     ///
@@ -514,18 +514,6 @@ mod EditField {
             }
         }
 
-        /// Get text contents
-        #[inline]
-        pub fn as_str(&self) -> &str {
-            self.text.as_str()
-        }
-
-        /// Get the text contents as a `String`
-        #[inline]
-        pub fn clone_string(&self) -> String {
-            self.text.clone_string()
-        }
-
         /// Clear text contents and undo history
         ///
         /// This method does not call any [`EditGuard`] actions; consider also
@@ -611,19 +599,6 @@ mod EditField {
         #[inline]
         pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
             G::edit(self, cx, data);
-        }
-
-        /// Access the cursor index / selection range
-        #[inline]
-        pub fn cursor_range(&self) -> CursorRange {
-            *self.selection
-        }
-
-        /// Set the cursor index / range
-        #[inline]
-        pub fn set_cursor_range(&mut self, range: impl Into<CursorRange>) {
-            self.edit_x_coord = None;
-            self.selection = range.into().into();
         }
     }
 }
@@ -723,18 +698,6 @@ impl<G: EditGuard> EditField<G> {
         self
     }
 
-    /// Get whether this `EditField` is editable
-    #[inline]
-    pub fn is_editable(&self) -> bool {
-        self.editable
-    }
-
-    /// Set whether this `EditField` is editable
-    #[inline]
-    pub fn set_editable(&mut self, editable: bool) {
-        self.editable = editable;
-    }
-
     /// Set whether this `EditField` uses multi-line mode
     ///
     /// This method does two things:
@@ -752,26 +715,12 @@ impl<G: EditGuard> EditField<G> {
         self
     }
 
-    /// True if the editor uses multi-line mode
-    ///
-    /// See also: [`Self::with_multi_line`]
-    #[inline]
-    pub fn multi_line(&self) -> bool {
-        self.text.wrap()
-    }
-
     /// Set the text class used
     #[inline]
     #[must_use]
     pub fn with_class(mut self, class: TextClass) -> Self {
         self.text.set_class(class);
         self
-    }
-
-    /// Get the text class used
-    #[inline]
-    pub fn class(&self) -> TextClass {
-        self.text.class()
     }
 
     /// Adjust the height allocation
@@ -800,30 +749,6 @@ impl<G: EditGuard> EditField<G> {
     pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
         self.set_width_em(min_em, ideal_em);
         self
-    }
-
-    /// Get whether the widget has edit focus
-    ///
-    /// This is true when the widget is editable and has keyboard focus.
-    #[inline]
-    pub fn has_edit_focus(&self) -> bool {
-        self.editable && self.has_key_focus
-    }
-
-    /// Get whether the input state is erroneous
-    #[inline]
-    pub fn has_error(&self) -> bool {
-        self.error_state
-    }
-
-    /// Set the error state
-    ///
-    /// When true, the input field's background is drawn red.
-    /// This state is cleared by [`Self::set_string`].
-    // TODO: possibly change type to Option<String> and display the error
-    pub fn set_error_state(&mut self, cx: &mut EventState, error_state: bool) {
-        self.error_state = error_state;
-        cx.redraw(self);
     }
 
     /// Request key focus, if we don't have it or IME
