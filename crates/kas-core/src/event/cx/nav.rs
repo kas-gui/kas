@@ -209,9 +209,8 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if self.sel_focus.is_some() {
-            self.clear_key_focus();
-            self.clear_ime_focus();
+        if let Some(id) = self.sel_focus.clone() {
+            self.clear_sel_socus_on(&id);
         }
 
         if let Some(old) = self.nav_focus.take() {

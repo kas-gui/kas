@@ -66,41 +66,25 @@ impl EventState {
         if self.key_focus { self.sel_focus.clone() } else { None }
     }
 
-    pub(super) fn clear_key_focus(&mut self) {
-        if self.key_focus {
-            if let Some(ref mut pending) = self.pending_sel_focus {
-                if pending.target == self.sel_focus {
-                    pending.key_focus = false;
-                }
-            } else {
-                self.pending_sel_focus = Some(PendingSelFocus {
-                    target: None,
-                    key_focus: false,
-                    source: FocusSource::Synthetic,
-                });
-            }
-        }
-    }
-
     /// Clear sel, key and ime focus on target
     pub(super) fn clear_sel_socus_on(&mut self, target: &Id) {
-        if let Some(id) = self.sel_focus.as_ref()
+        if let Some(pending) = self.pending_sel_focus.as_mut() {
+            if let Some(id) = pending.target.as_ref()
+                && target.is_ancestor_of(id)
+            {
+                pending.target = None;
+                pending.key_focus = false;
+            } else {
+                // We have a new focus target, hence the old one will be cleared
+            }
+        } else if let Some(id) = self.sel_focus.as_ref()
             && target.is_ancestor_of(id)
         {
-            if let Some(pending) = self.pending_sel_focus.as_mut() {
-                if pending.target.as_ref() == Some(id) {
-                    pending.target = None;
-                    pending.key_focus = false;
-                } else {
-                    // We have a new focus target, hence the old one will be cleared
-                }
-            } else {
-                self.pending_sel_focus = Some(PendingSelFocus {
-                    target: None,
-                    key_focus: false,
-                    source: FocusSource::Synthetic,
-                });
-            }
+            self.pending_sel_focus = Some(PendingSelFocus {
+                target: None,
+                key_focus: false,
+                source: FocusSource::Synthetic,
+            });
         }
     }
 
@@ -114,7 +98,7 @@ impl EventState {
     /// The `source` parameter is used by [`Event::SelFocus`].
     ///
     /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
-    /// navigation focus but not IME focus (see [`EventCx::request_ime_focus`]).
+    /// navigation focus. It also clears IME focus.
     #[inline]
     pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
         if self.nav_focus.as_ref() != Some(&target) {
@@ -210,6 +194,26 @@ impl EventState {
             self.ime_cursor_area = rect;
         }
     }
+
+    /// Explicitly clear Input Method Editor focus on `target`
+    ///
+    /// This method may be used to disable IME focus while retaining selection
+    /// focus. IME focus is lost automatically when selection focus is lost.
+    #[inline]
+    pub fn cancel_ime_focus(&mut self, target: &Id) {
+        if self.pending_sel_focus.is_some() {
+            // IME focus will be cancelled
+        } else if self.ime_is_enabled
+            && let Some(id) = self.sel_focus.as_ref()
+            && target.is_ancestor_of(id)
+        {
+            self.pending_sel_focus = Some(PendingSelFocus {
+                target: Some(id.clone()),
+                key_focus: self.key_focus,
+                source: FocusSource::Synthetic,
+            });
+        }
+    }
 }
 
 impl<'a> EventCx<'a> {
@@ -288,17 +292,6 @@ impl<'a> EventCx<'a> {
         match self.window.ime_request(req) {
             Ok(()) => (),
             Err(e) => log::warn!("Unexpected IME error: {e}"),
-        }
-    }
-
-    /// Explicitly clear Input Method Editor focus on `target`
-    ///
-    /// This method may be used to disable IME focus while retaining selection
-    /// focus. IME focus is lost automatically when selection focus is lost.
-    #[inline]
-    pub fn cancel_ime_focus(&mut self, target: &Id) {
-        if self.ime_is_enabled && self.sel_focus.as_ref() == Some(target) {
-            self.clear_ime_focus();
         }
     }
 
@@ -485,9 +478,7 @@ impl<'a> EventCx<'a> {
         log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
 
         if let Some(id) = self.sel_focus.clone() {
-            if target_is_new {
-                self.clear_ime_focus();
-            }
+            self.clear_ime_focus();
 
             if old_key_focus && (!key_focus || target_is_new) {
                 // If widget has key focus, this is lost

@@ -8,7 +8,7 @@
 use super::*;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{CursorIcon, ElementState, FocusSource, PhysicalKey, Scroll};
-use kas::event::{Ime, ImePurpose, ImeSurroundingText, TimerHandle};
+use kas::event::{Ime, ImePurpose, ImeSurroundingText};
 use kas::geom::Vec2;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
@@ -19,8 +19,6 @@ use std::fmt::{Debug, Display};
 use std::ops::Range;
 use std::str::FromStr;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
-
-const TIMER_RESTART_IME: TimerHandle = TimerHandle::new(1, true);
 
 #[impl_self]
 mod EditField {
@@ -381,20 +379,12 @@ mod EditField {
                         Used
                     }
                 },
-                Event::Timer(TIMER_RESTART_IME) => {
-                    if self.current.is_ime() {
-                        self.clear_ime();
-                        cx.cancel_ime_focus(self.id_ref());
-                        self.enable_ime(cx);
-                    }
-                    Used
-                }
                 Event::PressStart(press) if press.is_tertiary() => {
                     press.grab_click(self.id()).complete(cx)
                 }
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     self.set_cursor_from_coord(cx, press.coord);
-                    self.cancel_selection_and_restart_ime(cx);
+                    self.cancel_selection_and_ime(cx);
 
                     if let Some(content) = cx.get_primary() {
                         self.save_undo_state(Some(EditOp::Clipboard));
@@ -569,6 +559,8 @@ mod EditField {
         ///
         /// Returns `true` if the text is ready and may have changed.
         pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
+            self.cancel_selection_and_ime(cx);
+
             if !self.text.set_string(string) || !self.text.prepare() {
                 return false;
             }
@@ -577,14 +569,6 @@ mod EditField {
             self.edit_x_coord = None;
             cx.redraw(&self);
             self.set_error_state(cx, false);
-
-            // NOTE: we would call self.cancel_selection_and_restart_ime() if we had an EventCx
-            if self.current == CurrentAction::Selection {
-                self.input_handler.stop_selecting();
-                self.current = CurrentAction::None;
-            } else if self.current.is_ime() {
-                cx.request_timer(self.id(), TIMER_RESTART_IME, Default::default());
-            }
             true
         }
 
@@ -621,21 +605,24 @@ mod EditField {
             }
         }
 
-        /// Cancel on-going selection action; restart on-going IME action
+        /// Cancel on-going selection and IME actions
         ///
         /// This should be called if e.g. key-input interrupts the current
         /// action.
-        fn cancel_selection_and_restart_ime(&mut self, cx: &mut EventCx) {
+        fn cancel_selection_and_ime(&mut self, cx: &mut EventState) {
             if self.current == CurrentAction::Selection {
                 self.input_handler.stop_selecting();
                 self.current = CurrentAction::None;
             } else if self.current.is_ime() {
                 self.clear_ime();
                 cx.cancel_ime_focus(self.id_ref());
-                self.enable_ime(cx);
             }
         }
 
+        /// Clean up IME state
+        ///
+        /// One should also call [`EventCx::cancel_ime_focus`] unless this is
+        /// implied.
         fn clear_ime(&mut self) {
             if self.current.is_ime() {
                 let action = std::mem::replace(&mut self.current, CurrentAction::None);
@@ -1002,6 +989,7 @@ impl<G: EditGuard> EditField<G> {
         if !self.editable {
             return Unused;
         }
+        self.cancel_selection_and_ime(cx);
 
         let index = self.selection.edit_index();
         let selection = self.selection.range();
@@ -1016,7 +1004,6 @@ impl<G: EditGuard> EditField<G> {
         self.edit_x_coord = None;
 
         self.prepare_text(cx, false);
-        self.cancel_selection_and_restart_ime(cx);
         Used
     }
 
@@ -1240,7 +1227,7 @@ impl<G: EditGuard> EditField<G> {
         }
 
         if !matches!(action, Action::None) {
-            self.cancel_selection_and_restart_ime(cx);
+            self.cancel_selection_and_ime(cx);
         }
 
         let edit_action = match action {
