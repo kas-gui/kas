@@ -171,8 +171,7 @@ mod EditBox {
             {
                 self.pre_commit();
                 self.set_string(cx, string);
-                G::edit(&mut self.inner, cx, data);
-                G::activate(&mut self.inner, cx, data);
+                self.inner.call_guard_edit(cx, data);
                 return;
             } else if let Some(&ReplaceSelectedText(_)) = cx.try_peek() {
                 self.inner.handle_messages(cx, data);

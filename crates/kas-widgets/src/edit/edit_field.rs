@@ -520,6 +520,9 @@ mod EditField {
         }
 
         /// Clear text contents and undo history
+        ///
+        /// This method does not call any [`EditGuard`] actions; consider also
+        /// calling [`Self::call_guard_edit`].
         #[inline]
         pub fn clear(&mut self, cx: &mut EventState) {
             self.last_edit = Some(EditOp::Initial);
@@ -541,6 +544,9 @@ mod EditField {
         /// This does not interact with undo history; see also [`Self::clear`],
         /// [`Self::pre_commit`].
         ///
+        /// This method does not call any [`EditGuard`] actions; consider also
+        /// calling [`Self::call_guard_edit`].
+        ///
         /// Returns `true` if the text may have changed.
         #[inline]
         pub fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
@@ -556,6 +562,9 @@ mod EditField {
         ///
         /// This does not interact with undo history; see also [`Self::clear`],
         /// [`Self::pre_commit`].
+        ///
+        /// This method does not call any [`EditGuard`] actions; consider also
+        /// calling [`Self::call_guard_edit`].
         ///
         /// Returns `true` if the text is ready and may have changed.
         pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
@@ -577,9 +586,23 @@ mod EditField {
         /// This does not interact with undo history; see also [`Self::clear`],
         /// [`Self::pre_commit`].
         ///
-        /// This method does not call action handlers on the [`EditGuard`].
+        /// This method does not call any [`EditGuard`] actions; consider also
+        /// calling [`Self::call_guard_edit`].
+        #[inline]
         pub fn replace_selected_text(&mut self, cx: &mut EventCx, text: &str) {
             self.received_text(cx, text);
+        }
+
+        /// Call the [`EditGuard`]'s `activate` method
+        #[inline]
+        pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {
+            G::activate(self, cx, data);
+        }
+
+        /// Call the [`EditGuard`]'s `edit` method
+        #[inline]
+        pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
+            G::edit(self, cx, data);
         }
 
         /// Access the cursor index / selection range
