@@ -156,7 +156,8 @@ impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
 
     fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
         edit.guard.value = (edit.guard.state_fn)(cx, data);
-        edit.set_string(cx, edit.guard.value.to_string());
+        let text = edit.guard.value.to_string();
+        edit.set_string(cx, text);
     }
 
     fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
@@ -164,7 +165,8 @@ impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
             edit.guard.value = value;
             cx.push(ValueMsg(value));
         } else {
-            edit.set_string(cx, edit.guard.value.to_string());
+            let text = edit.guard.value.to_string();
+            edit.set_string(cx, text);
         }
     }
 

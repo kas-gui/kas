@@ -259,6 +259,48 @@ impl Editor {
         self.text.clone_string()
     }
 
+    /// Set text contents from a `str`
+    ///
+    /// This does not interact with undo history; see also [`Self::clear`],
+    /// [`Self::pre_commit`].
+    ///
+    /// This method does not call any [`EditGuard`] actions; consider also
+    /// calling [`EditField::call_guard_edit`].
+    ///
+    /// Returns `true` if the text may have changed.
+    #[inline]
+    pub fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
+        if self.text.as_str() != text {
+            self.set_string(cx, text.to_string());
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Set text contents from a `String`
+    ///
+    /// This does not interact with undo history; see also [`Self::clear`],
+    /// [`Self::pre_commit`].
+    ///
+    /// This method does not call any [`EditGuard`] actions; consider also
+    /// calling [`EditField::call_guard_edit`].
+    ///
+    /// Returns `true` if the text is ready and may have changed.
+    pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
+        self.cancel_selection_and_ime(cx);
+
+        if !self.text.set_string(string) || !self.text.prepare() {
+            return false;
+        }
+
+        let len = self.text.str_len();
+        self.selection.set_max_len(len);
+        self.edit_x_coord = None;
+        self.set_error_state(cx, false);
+        true
+    }
+
     /// Access the cursor index / selection range
     #[inline]
     pub fn cursor_range(&self) -> CursorRange {
