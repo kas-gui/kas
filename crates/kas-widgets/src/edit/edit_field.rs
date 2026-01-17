@@ -223,8 +223,8 @@ mod EditField {
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
             match event {
                 Event::NavFocus(source) if source == FocusSource::Key => {
-                    if !self.has_key_focus && !self.input_handler.is_selecting() {
-                        cx.request_key_focus(self.id(), source);
+                    if !self.input_handler.is_selecting() {
+                        self.request_key_focus(cx, source);
                     }
                     Used
                 }
@@ -411,7 +411,7 @@ mod EditField {
                         G::edit(self, cx, data);
                     }
 
-                    cx.request_key_focus(self.id(), FocusSource::Pointer);
+                    self.request_key_focus(cx, FocusSource::Pointer);
                     Used
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
@@ -435,9 +435,7 @@ mod EditField {
                             self.selection.expand(&self.text, repeats >= 3);
                         }
 
-                        if !self.has_key_focus {
-                            cx.request_key_focus(self.id(), FocusSource::Pointer);
-                        }
+                        self.request_key_focus(cx, FocusSource::Pointer);
                         Used
                     }
                     TextInputAction::PressMove { coord, repeats } => {
@@ -460,7 +458,7 @@ mod EditField {
                         self.current = CurrentAction::None;
 
                         self.set_primary(cx);
-                        cx.request_key_focus(self.id(), FocusSource::Pointer);
+                        self.request_key_focus(cx, FocusSource::Pointer);
                         self.enable_ime(cx);
                         Used
                     }
@@ -945,6 +943,13 @@ impl<G: EditGuard> EditField<G> {
         cx.redraw(self);
     }
 
+    /// Request key focus, if we don't have it or IME
+    fn request_key_focus(&self, cx: &mut EventState, source: FocusSource) {
+        if !self.has_key_focus && !self.current.is_ime() {
+            cx.request_key_focus(self.id(), source);
+        }
+    }
+
     /// Call before an edit to (potentially) commit current state based on last_edit
     ///
     /// Call with [`None`] to force commit of any uncommitted changes.
@@ -1230,8 +1235,8 @@ impl<G: EditGuard> EditField<G> {
 
         // We can receive some commands without key focus as a result of
         // selection focus. Request focus on edit actions (like Command::Cut).
-        if !self.has_key_focus && !matches!(action, Action::None | Action::Deselect) {
-            cx.request_key_focus(self.id(), FocusSource::Synthetic);
+        if !matches!(action, Action::None | Action::Deselect) {
+            self.request_key_focus(cx, FocusSource::Synthetic);
         }
 
         if !matches!(action, Action::None) {
