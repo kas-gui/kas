@@ -197,12 +197,12 @@ mod EditField {
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.editor.id = self.id();
             self.text.configure(&mut cx.size_cx());
-            G::configure(self, cx);
+            self.guard.configure(&mut self.editor, cx);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
             let size = self.content_size();
-            G::update(self, cx, data);
+            self.guard.update(&mut self.editor, cx, data);
             if size != self.content_size() {
                 cx.resize();
             }
@@ -230,14 +230,14 @@ mod EditField {
                 Event::KeyFocus => {
                     self.has_key_focus = true;
                     self.set_view_offset_from_cursor(cx);
-                    G::focus_gained(self, cx, data);
+                    self.guard.focus_gained(&mut self.editor, cx, data);
                     self.enable_ime(cx);
                     Used
                 }
                 Event::LostKeyFocus => {
                     self.has_key_focus = false;
                     cx.redraw();
-                    G::focus_lost(self, cx, data);
+                    self.guard.focus_lost(&mut self.editor, cx, data);
                     Used
                 }
                 Event::LostSelFocus => {
@@ -507,7 +507,7 @@ mod EditField {
         /// Call the [`EditGuard`]'s `activate` method
         #[inline]
         pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {
-            G::activate(self, cx, data);
+            self.guard.activate(&mut self.editor, cx, data);
         }
 
         /// Call the [`EditGuard`]'s `edit` method
@@ -516,7 +516,7 @@ mod EditField {
         #[inline]
         pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
             self.set_error_state(cx, false);
-            G::edit(self, cx, data);
+            self.guard.edit(&mut self.editor, cx, data);
         }
     }
 }
@@ -688,7 +688,7 @@ impl<G: EditGuard> EditField<G> {
             CmdAction::Used | CmdAction::Cursor => Used,
             CmdAction::Activate => {
                 cx.depress_with_key(&self, code);
-                G::activate(self, cx, data)
+                self.guard.activate(&mut self.editor, cx, data)
             }
             CmdAction::Edit => {
                 self.call_guard_edit(cx, data);

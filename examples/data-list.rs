@@ -20,7 +20,7 @@
 //! is still fast.
 
 use kas::prelude::*;
-use kas::widgets::edit::{EditBox, EditField, EditGuard};
+use kas::widgets::edit::{EditBox, EditGuard, Editor};
 use kas::widgets::{Button, Label, List, RadioButton, ScrollRegion, Separator, Text};
 use kas::widgets::{column, row};
 
@@ -81,13 +81,13 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = Data;
 
-    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> IsUsed {
-        cx.push(SelectEntry(edit.guard.0));
+    fn activate(&mut self, _: &mut Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
+        cx.push(SelectEntry(self.0));
         Used
     }
 
-    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {
-        if data.active == edit.guard.0 {
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
+        if data.active == self.0 {
             cx.push(Control::UpdateCurrent(edit.clone_string()));
         }
     }

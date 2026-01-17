@@ -13,7 +13,9 @@
 use kas::prelude::*;
 use kas::view::clerk::{Clerk, GeneratorChanges, IndexedGenerator, Len};
 use kas::view::{Driver, ListView};
-use kas::widgets::{column, *};
+use kas::widgets::edit::{EditBox, EditGuard, Editor};
+use kas::widgets::{Button, CheckButton, Label, RadioButton, ScrollRegion, Separator, Text};
+use kas::widgets::{column, row};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -97,19 +99,19 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = MyItem;
 
-    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &MyItem) {
+    fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &MyItem) {
         if !edit.has_edit_focus() {
             edit.set_string(cx, data.1.to_string());
         }
     }
 
-    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &MyItem) -> IsUsed {
-        cx.push(Control::Select(edit.guard.0));
+    fn activate(&mut self, _: &mut Editor, cx: &mut EventCx, _: &MyItem) -> IsUsed {
+        cx.push(Control::Select(self.0));
         Used
     }
 
-    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &MyItem) {
-        cx.push(Control::Update(edit.guard.0, edit.clone_string()));
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &MyItem) {
+        cx.push(Control::Update(self.0, edit.clone_string()));
     }
 }
 

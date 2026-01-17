@@ -6,7 +6,7 @@
 //! A simple text editor
 
 use kas::prelude::*;
-use kas::widgets::{Button, EditBox, EditField, EditGuard, Filler, column, dialog, row};
+use kas::widgets::{Button, EditBox, Filler, column, dialog, edit, row};
 use rfd::FileHandle;
 
 #[autoimpl(Clone, Debug, PartialEq, Eq)]
@@ -43,11 +43,11 @@ fn menus() -> impl Widget<Data = ()> {
 struct Guard {
     edited: bool,
 }
-impl EditGuard for Guard {
+impl edit::EditGuard for Guard {
     type Data = ();
 
-    fn edit(edit: &mut EditField<Self>, _: &mut EventCx<'_>, _: &Self::Data) {
-        edit.guard.edited = true;
+    fn edit(&mut self, _: &mut edit::Editor, _: &mut EventCx<'_>, _: &Self::Data) {
+        self.edited = true;
     }
 }
 
