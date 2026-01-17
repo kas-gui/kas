@@ -13,6 +13,7 @@ use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, TextClass};
 use std::fmt::{Debug, Display};
+use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 #[impl_self]
@@ -294,6 +295,20 @@ mod EditBox {
         pub fn guard_mut(&mut self) -> &mut G {
             &mut self.inner.guard
         }
+    }
+}
+
+impl<G: EditGuard> Deref for EditBox<G> {
+    type Target = Editor;
+
+    fn deref(&self) -> &Editor {
+        self.inner.deref()
+    }
+}
+
+impl<G: EditGuard> DerefMut for EditBox<G> {
+    fn deref_mut(&mut self) -> &mut Editor {
+        self.inner.deref_mut()
     }
 }
 
