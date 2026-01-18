@@ -7,12 +7,13 @@
 
 use super::*;
 use kas::event::components::TextInput;
-use kas::event::{ImePurpose, ImeSurroundingText, Scroll};
+use kas::event::{FocusSource, ImePurpose, ImeSurroundingText, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::{CursorRange, SelectionHelper};
+use kas::text::{CursorRange, NotReady, SelectionHelper};
 use kas::theme::{Text, TextClass};
 use kas::util::UndoStack;
+use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 /// Editor component
 #[autoimpl(Debug)]
@@ -25,7 +26,7 @@ pub struct Editor {
     pub(super) selection: SelectionHelper,
     pub(super) edit_x_coord: Option<f32>,
     last_edit: Option<EditOp>,
-    pub(super) undo_stack: UndoStack<(String, CursorRange)>,
+    undo_stack: UndoStack<(String, CursorRange)>,
     pub(super) has_key_focus: bool,
     pub(super) current: CurrentAction,
     pub(super) error_state: bool,
@@ -255,6 +256,312 @@ impl Editor {
 
         self.prepare_and_scroll(cx, false);
         Used
+    }
+
+    /// Request key focus, if we don't have it or IME
+    pub(super) fn request_key_focus(&self, cx: &mut EventState, source: FocusSource) {
+        if !self.has_key_focus && !self.current.is_ime_enabled() {
+            cx.request_key_focus(self.id(), source);
+        }
+    }
+
+    pub(super) fn trim_paste(&self, text: &str) -> Range<usize> {
+        let mut end = text.len();
+        if !self.multi_line() {
+            // We cut the content short on control characters and
+            // ignore them (preventing line-breaks and ignoring any
+            // actions such as recursive-paste).
+            for (i, c) in text.char_indices() {
+                if c < '\u{20}' || ('\u{7f}'..='\u{9f}').contains(&c) {
+                    end = i;
+                    break;
+                }
+            }
+        }
+        0..end
+    }
+
+    /// Drive action of a [`Command`]
+    pub(super) fn cmd_action(
+        &mut self,
+        cx: &mut EventCx,
+        cmd: Command,
+    ) -> Result<CmdAction, NotReady> {
+        let editable = self.editable;
+        let mut shift = cx.modifiers().shift_key();
+        let mut buf = [0u8; 4];
+        let cursor = self.selection.edit_index();
+        let len = self.text.str_len();
+        let multi_line = self.multi_line();
+        let selection = self.selection.range();
+        let have_sel = selection.end > selection.start;
+        let string;
+
+        enum Action<'a> {
+            None,
+            Deselect,
+            Activate,
+            Insert(&'a str, EditOp),
+            Delete(Range<usize>, EditOp),
+            Move(usize, Option<f32>),
+            UndoRedo(bool),
+        }
+
+        let action = match cmd {
+            Command::Escape | Command::Deselect if !selection.is_empty() => Action::Deselect,
+            Command::Activate => Action::Activate,
+            Command::Enter if shift || !multi_line => Action::Activate,
+            Command::Enter if editable && multi_line => {
+                Action::Insert('\n'.encode_utf8(&mut buf), EditOp::KeyInput)
+            }
+            // NOTE: we might choose to optionally handle Tab in the future,
+            // but without some workaround it prevents keyboard navigation.
+            // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), EditOp::Insert),
+            Command::Left | Command::Home if !shift && have_sel => {
+                Action::Move(selection.start, None)
+            }
+            Command::Left if cursor > 0 => {
+                let mut cursor = GraphemeCursor::new(cursor, len, true);
+                cursor
+                    .prev_boundary(self.text.text(), 0)
+                    .unwrap()
+                    .map(|index| Action::Move(index, None))
+                    .unwrap_or(Action::None)
+            }
+            Command::Right | Command::End if !shift && have_sel => {
+                Action::Move(selection.end, None)
+            }
+            Command::Right if cursor < len => {
+                let mut cursor = GraphemeCursor::new(cursor, len, true);
+                cursor
+                    .next_boundary(self.text.text(), 0)
+                    .unwrap()
+                    .map(|index| Action::Move(index, None))
+                    .unwrap_or(Action::None)
+            }
+            Command::WordLeft if cursor > 0 => {
+                let mut iter = self.text.text()[0..cursor].split_word_bound_indices();
+                let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
+                while self.text.text()[p..]
+                    .chars()
+                    .next()
+                    .map(|c| c.is_whitespace())
+                    .unwrap_or(false)
+                {
+                    if let Some((index, _)) = iter.next_back() {
+                        p = index;
+                    } else {
+                        break;
+                    }
+                }
+                Action::Move(p, None)
+            }
+            Command::WordRight if cursor < len => {
+                let mut iter = self.text.text()[cursor..]
+                    .split_word_bound_indices()
+                    .skip(1);
+                let mut p = iter.next().map(|(index, _)| cursor + index).unwrap_or(len);
+                while self.text.text()[p..]
+                    .chars()
+                    .next()
+                    .map(|c| c.is_whitespace())
+                    .unwrap_or(false)
+                {
+                    if let Some((index, _)) = iter.next() {
+                        p = cursor + index;
+                    } else {
+                        break;
+                    }
+                }
+                Action::Move(p, None)
+            }
+            // Avoid use of unused navigation keys (e.g. by ScrollComponent):
+            Command::Left | Command::Right | Command::WordLeft | Command::WordRight => Action::None,
+            Command::Up | Command::Down if multi_line => {
+                let x = match self.edit_x_coord {
+                    Some(x) => x,
+                    None => self
+                        .text
+                        .text_glyph_pos(cursor)?
+                        .next_back()
+                        .map(|r| r.pos.0)
+                        .unwrap_or(0.0),
+                };
+                let mut line = self.text.find_line(cursor)?.map(|r| r.0).unwrap_or(0);
+                // We can tolerate invalid line numbers here!
+                line = match cmd {
+                    Command::Up => line.wrapping_sub(1),
+                    Command::Down => line.wrapping_add(1),
+                    _ => unreachable!(),
+                };
+                const HALF: usize = usize::MAX / 2;
+                let nearest_end = match line {
+                    0..=HALF => len,
+                    _ => 0,
+                };
+                self.text
+                    .line_index_nearest(line, x)?
+                    .map(|index| Action::Move(index, Some(x)))
+                    .unwrap_or(Action::Move(nearest_end, None))
+            }
+            Command::Home if cursor > 0 => {
+                let index = self.text.find_line(cursor)?.map(|r| r.1.start).unwrap_or(0);
+                Action::Move(index, None)
+            }
+            Command::End if cursor < len => {
+                let index = self.text.find_line(cursor)?.map(|r| r.1.end).unwrap_or(len);
+                Action::Move(index, None)
+            }
+            Command::DocHome if cursor > 0 => Action::Move(0, None),
+            Command::DocEnd if cursor < len => Action::Move(len, None),
+            // Avoid use of unused navigation keys (e.g. by ScrollComponent):
+            Command::Home | Command::End | Command::DocHome | Command::DocEnd => Action::None,
+            Command::PageUp | Command::PageDown if multi_line => {
+                let mut v = self
+                    .text
+                    .text_glyph_pos(cursor)?
+                    .next_back()
+                    .map(|r| r.pos.into())
+                    .unwrap_or(Vec2::ZERO);
+                if let Some(x) = self.edit_x_coord {
+                    v.0 = x;
+                }
+                const FACTOR: f32 = 2.0 / 3.0;
+                let mut h_dist = f32::conv(self.text.rect().size.1) * FACTOR;
+                if cmd == Command::PageUp {
+                    h_dist *= -1.0;
+                }
+                v.1 += h_dist;
+                Action::Move(self.text.text_index_nearest(v)?, Some(v.0))
+            }
+            Command::Delete | Command::DelBack if editable && have_sel => {
+                Action::Delete(selection.clone(), EditOp::Delete)
+            }
+            Command::Delete if editable => GraphemeCursor::new(cursor, len, true)
+                .next_boundary(self.text.text(), 0)
+                .unwrap()
+                .map(|next| Action::Delete(cursor..next, EditOp::Delete))
+                .unwrap_or(Action::None),
+            Command::DelBack if editable => {
+                // We always delete one code-point, not one grapheme cluster:
+                let prev = self.text.text()[0..cursor]
+                    .char_indices()
+                    .next_back()
+                    .map(|(i, _)| i)
+                    .unwrap_or(0);
+                Action::Delete(prev..cursor, EditOp::Delete)
+            }
+            Command::DelWord if editable => {
+                let next = self.text.text()[cursor..]
+                    .split_word_bound_indices()
+                    .nth(1)
+                    .map(|(index, _)| cursor + index)
+                    .unwrap_or(len);
+                Action::Delete(cursor..next, EditOp::Delete)
+            }
+            Command::DelWordBack if editable => {
+                let prev = self.text.text()[0..cursor]
+                    .split_word_bound_indices()
+                    .next_back()
+                    .map(|(index, _)| index)
+                    .unwrap_or(0);
+                Action::Delete(prev..cursor, EditOp::Delete)
+            }
+            Command::SelectAll => {
+                self.selection.set_sel_index(0);
+                shift = true; // hack
+                Action::Move(len, None)
+            }
+            Command::Cut if editable && have_sel => {
+                cx.set_clipboard((self.text.text()[selection.clone()]).into());
+                Action::Delete(selection.clone(), EditOp::Clipboard)
+            }
+            Command::Copy if have_sel => {
+                cx.set_clipboard((self.text.text()[selection.clone()]).into());
+                Action::None
+            }
+            Command::Paste if editable => {
+                if let Some(content) = cx.get_clipboard() {
+                    let range = self.trim_paste(&content);
+                    string = content;
+                    Action::Insert(&string[range], EditOp::Clipboard)
+                } else {
+                    Action::None
+                }
+            }
+            Command::Undo | Command::Redo if editable => Action::UndoRedo(cmd == Command::Redo),
+            _ => return Ok(CmdAction::Unused),
+        };
+
+        // We can receive some commands without key focus as a result of
+        // selection focus. Request focus on edit actions (like Command::Cut).
+        if !matches!(action, Action::None | Action::Deselect) {
+            self.request_key_focus(cx, FocusSource::Synthetic);
+        }
+
+        if !matches!(action, Action::None) {
+            self.cancel_selection_and_ime(cx);
+        }
+
+        let edit_op = match action {
+            Action::None => return Ok(CmdAction::Used),
+            Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
+            Action::Activate | Action::UndoRedo(_) => None,
+            Action::Insert(_, edit) | Action::Delete(_, edit) => Some(edit),
+        };
+        self.save_undo_state(edit_op);
+
+        Ok(match action {
+            Action::None => unreachable!(),
+            Action::Deselect => {
+                self.selection.set_empty();
+                cx.redraw();
+                CmdAction::Cursor
+            }
+            Action::Activate => CmdAction::Activate,
+            Action::Insert(s, _) => {
+                let mut index = cursor;
+                let range = if have_sel {
+                    index = selection.start;
+                    selection.clone()
+                } else {
+                    index..index
+                };
+                self.text.replace_range(range, s);
+                self.selection.set_cursor(index + s.len());
+                self.edit_x_coord = None;
+                CmdAction::Edit
+            }
+            Action::Delete(sel, _) => {
+                self.text.replace_range(sel.clone(), "");
+                self.selection.set_cursor(sel.start);
+                self.edit_x_coord = None;
+                CmdAction::Edit
+            }
+            Action::Move(index, x_coord) => {
+                self.selection.set_edit_index(index);
+                if !shift {
+                    self.selection.set_empty();
+                } else {
+                    self.set_primary(cx);
+                }
+                self.edit_x_coord = x_coord;
+                cx.redraw();
+                CmdAction::Cursor
+            }
+            Action::UndoRedo(redo) => {
+                if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
+                    if self.text.set_str(text) {
+                        self.edit_x_coord = None;
+                        self.error_state = false;
+                    }
+                    self.selection = (*cursor).into();
+                    CmdAction::Edit
+                } else {
+                    CmdAction::Used
+                }
+            }
+        })
     }
 
     /// Set cursor position. It is assumed that the text has not changed.

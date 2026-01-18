@@ -51,9 +51,16 @@ impl EditOp {
     }
 }
 
-enum EditAction {
-    None,
+enum CmdAction {
+    /// Key not used, no action
+    Unused,
+    /// Key used, no action
+    Used,
+    /// Cursor and/or selection changed
+    Cursor,
+    /// Enter key in single-line editor
     Activate,
+    /// Text was edited by key command
     Edit,
 }
 
