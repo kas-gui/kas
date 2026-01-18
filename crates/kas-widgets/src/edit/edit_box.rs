@@ -272,6 +272,17 @@ mod EditBox {
             }
         }
 
+        /// Replace selected text
+        ///
+        /// This does not interact with undo history or call action handlers on the
+        /// guard.
+        #[inline]
+        pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
+            if self.inner.replace_selected_text(cx, text) {
+                self.update_content_size(cx);
+            }
+        }
+
         /// Access the edit guard
         #[inline]
         pub fn guard(&self) -> &G {

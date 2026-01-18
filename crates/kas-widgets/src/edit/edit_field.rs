@@ -324,7 +324,7 @@ mod EditField {
                             edit_range: edit_range.cast(),
                         };
                         self.edit_x_coord = None;
-                        self.prepare_text(cx, false);
+                        self.prepare_and_scroll(cx, false);
                         Used
                     }
                     Ime::Commit { text } => {
@@ -342,7 +342,7 @@ mod EditField {
                             edit_range: self.selection.range().cast(),
                         };
                         self.edit_x_coord = None;
-                        self.prepare_text(cx, false);
+                        self.prepare_and_scroll(cx, false);
                         G::edit(self, cx, data);
                         Used
                     }
@@ -402,7 +402,7 @@ mod EditField {
                             .replace_range(index..index, &content[range.clone()]);
                         self.selection.set_cursor(index + range.len());
                         self.edit_x_coord = None;
-                        self.prepare_text(cx, false);
+                        self.prepare_and_scroll(cx, false);
 
                         G::edit(self, cx, data);
                     }
@@ -532,18 +532,6 @@ mod EditField {
         #[inline]
         pub fn pre_commit(&mut self) {
             self.save_undo_state(Some(EditOp::Synthetic));
-        }
-
-        /// Replace selected text
-        ///
-        /// This does not interact with undo history; see also [`Self::clear`],
-        /// [`Self::pre_commit`].
-        ///
-        /// This method does not call any [`EditGuard`] actions; consider also
-        /// calling [`Self::call_guard_edit`].
-        #[inline]
-        pub fn replace_selected_text(&mut self, cx: &mut EventCx, text: &str) {
-            self.received_text(cx, text);
         }
 
         /// Call the [`EditGuard`]'s `activate` method
@@ -730,23 +718,6 @@ impl<G: EditGuard> EditField<G> {
             .try_push((self.clone_string(), self.cursor_range()));
     }
 
-    fn prepare_text(&mut self, cx: &mut EventCx, force_set_offset: bool) {
-        let size = self.content_size();
-        if self.text.prepare() {
-            self.text.ensure_no_left_overhang();
-            cx.redraw();
-        }
-
-        let mut set_offset = force_set_offset;
-        if size != self.content_size() {
-            cx.resize();
-            set_offset = true;
-        }
-        if set_offset {
-            self.set_view_offset_from_cursor(cx);
-        }
-    }
-
     fn trim_paste(&self, text: &str) -> Range<usize> {
         let mut end = text.len();
         if !self.multi_line() {
@@ -761,28 +732,6 @@ impl<G: EditGuard> EditField<G> {
             }
         }
         0..end
-    }
-
-    fn received_text(&mut self, cx: &mut EventCx, text: &str) -> IsUsed {
-        if !self.editable {
-            return Unused;
-        }
-        self.cancel_selection_and_ime(cx);
-
-        let index = self.selection.edit_index();
-        let selection = self.selection.range();
-        let have_sel = selection.start < selection.end;
-        if have_sel {
-            self.text.replace_range(selection.clone(), text);
-            self.selection.set_cursor(selection.start + text.len());
-        } else {
-            self.text.insert_str(index, text);
-            self.selection.set_cursor(index + text.len());
-        }
-        self.edit_x_coord = None;
-
-        self.prepare_text(cx, false);
-        Used
     }
 
     fn control_key(
@@ -1073,7 +1022,7 @@ impl<G: EditGuard> EditField<G> {
             }
         };
 
-        self.prepare_text(cx, force_set_offset);
+        self.prepare_and_scroll(cx, force_set_offset);
 
         Ok(match result {
             EditAction::None => Used,

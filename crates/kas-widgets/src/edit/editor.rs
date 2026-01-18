@@ -191,7 +191,55 @@ impl Editor {
         }
     }
 
-    // Set cursor position. It is assumed that the text has not changed.
+    /// Prepare text
+    ///
+    /// Updates the view offset (scroll position) if the content size changes or
+    /// `force_set_offset`. Requests redraw and resize as appropriate.
+    pub(super) fn prepare_and_scroll(&mut self, cx: &mut EventCx, force_set_offset: bool) {
+        let bb = self.text.bounding_box();
+        if self.text.prepare() {
+            self.text.ensure_no_left_overhang();
+            cx.redraw();
+        }
+
+        let mut set_offset = force_set_offset;
+        if bb != self.text.bounding_box() {
+            cx.resize();
+            set_offset = true;
+        }
+        if set_offset {
+            self.set_view_offset_from_cursor(cx);
+        }
+    }
+
+    /// Insert `text` at the cursor position
+    ///
+    /// Committing undo state is the responsibility of the caller.
+    pub(super) fn received_text(&mut self, cx: &mut EventCx, text: &str) -> IsUsed {
+        if !self.editable {
+            return Unused;
+        }
+        self.cancel_selection_and_ime(cx);
+
+        let index = self.selection.edit_index();
+        let selection = self.selection.range();
+        let have_sel = selection.start < selection.end;
+        if have_sel {
+            self.text.replace_range(selection.clone(), text);
+            self.selection.set_cursor(selection.start + text.len());
+        } else {
+            self.text.insert_str(index, text);
+            self.selection.set_cursor(index + text.len());
+        }
+        self.edit_x_coord = None;
+
+        self.prepare_and_scroll(cx, false);
+        Used
+    }
+
+    /// Set cursor position. It is assumed that the text has not changed.
+    ///
+    /// Committing undo state is the responsibility of the caller.
     pub(super) fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
         let rel_pos = (coord - self.pos).cast();
         if let Ok(index) = self.text.text_index_nearest(rel_pos) {
@@ -280,8 +328,8 @@ impl Editor {
 
     /// Set text contents from a `String`
     ///
-    /// This does not interact with undo history; see also [`Self::clear`],
-    /// [`Self::pre_commit`].
+    /// This does not interact with undo history or call action handlers on the
+    /// guard.
     ///
     /// This method does not call any [`EditGuard`] actions; consider also
     /// calling [`EditField::call_guard_edit`].
@@ -290,7 +338,7 @@ impl Editor {
     pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
         self.cancel_selection_and_ime(cx);
 
-        if !self.text.set_string(string) || !self.text.prepare() {
+        if !self.text.set_string(string) {
             return false;
         }
 
@@ -298,7 +346,35 @@ impl Editor {
         self.selection.set_max_len(len);
         self.edit_x_coord = None;
         self.set_error_state(cx, false);
-        true
+        self.text.prepare()
+    }
+
+    /// Replace selected text
+    ///
+    /// This does not interact with undo history or call action handlers on the
+    /// guard.
+    ///
+    /// This method does not call any [`EditGuard`] actions; consider also
+    /// calling [`EditField::call_guard_edit`].
+    ///
+    /// Returns `true` if the text is ready and may have changed.
+    #[inline]
+    pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) -> bool {
+        self.cancel_selection_and_ime(cx);
+
+        let index = self.selection.edit_index();
+        let selection = self.selection.range();
+        let have_sel = selection.start < selection.end;
+        if have_sel {
+            self.text.replace_range(selection.clone(), text);
+            self.selection.set_cursor(selection.start + text.len());
+        } else {
+            self.text.insert_str(index, text);
+            self.selection.set_cursor(index + text.len());
+        }
+        self.edit_x_coord = None;
+        self.set_error_state(cx, false);
+        self.text.prepare()
     }
 
     /// Access the cursor index / selection range
@@ -308,6 +384,9 @@ impl Editor {
     }
 
     /// Set the cursor index / range
+    ///
+    /// This does not interact with undo history or call action handlers on the
+    /// guard.
     #[inline]
     pub fn set_cursor_range(&mut self, range: impl Into<CursorRange>) {
         self.edit_x_coord = None;
