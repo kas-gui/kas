@@ -171,7 +171,7 @@ mod Image {
                     let size = image.dimensions().cast();
 
                     let draw = cx.draw_shared();
-                    let handle = match draw.image_alloc(size) {
+                    let handle = match draw.image_alloc(kas::draw::ImageFormat::Rgba8, size) {
                         Ok(handle) => handle,
                         Err(err) => {
                             log::warn!("Image: allocate failed: {err}");
@@ -179,7 +179,7 @@ mod Image {
                         }
                     };
 
-                    match draw.image_upload(&handle, &image, kas::draw::ImageFormat::Rgba8) {
+                    match draw.image_upload(&handle, &image) {
                         Ok(_) => cx.redraw(),
                         Err(err) => log::warn!("Image: image upload failed: {err}"),
                     };

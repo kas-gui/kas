@@ -579,25 +579,20 @@ impl Shared {
     }
 
     /// Allocate an image
-    pub fn alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
-        let id = self.next_image_id();
-        let alloc = self.atlas_rgba.allocate(size)?;
-        let image = Image { size, alloc };
-        self.images.insert(id, image);
-        Ok(id)
+    pub fn alloc(&mut self, format: ImageFormat, size: Size) -> Result<ImageId, AllocError> {
+        Ok(match format {
+            ImageFormat::Rgba8 => {
+                let id = self.next_image_id();
+                let alloc = self.atlas_rgba.allocate(size)?;
+                let image = Image { size, alloc };
+                self.images.insert(id, image);
+                id
+            }
+        })
     }
 
     /// Upload an image
-    pub fn upload(
-        &mut self,
-        id: ImageId,
-        data: &[u8],
-        format: ImageFormat,
-    ) -> Result<(), UploadError> {
-        match format {
-            ImageFormat::Rgba8 => (),
-        }
-
+    pub fn upload(&mut self, id: ImageId, data: &[u8]) -> Result<(), UploadError> {
         let Some(image) = self.images.get_mut(&id) else {
             return Err(UploadError::ImageId(id));
         };
