@@ -346,7 +346,7 @@ impl<'a> DrawCx<'a> {
             if effects.is_empty() {
                 // Use the faster and simpler implementation when we don't have effects
                 self.h
-                    .text(&self.id, pos, rect, display, colors.get(0).cloned());
+                    .text(&self.id, pos, rect, display, colors.first().cloned());
             } else {
                 if cfg!(debug_assertions) {
                     let num_colors = if colors.is_empty() { 1 } else { colors.len() };

@@ -26,6 +26,7 @@ impl<DS> MultiTheme<DS> {
     /// Construct an empty `MultiTheme`
     ///
     /// **At least one theme must be added before the UI starts.**.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> MultiTheme<DS> {
         MultiTheme {
             names: HashMap::new(),
