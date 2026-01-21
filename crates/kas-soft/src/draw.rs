@@ -153,19 +153,13 @@ impl DrawSharedImpl for Shared {
     }
 
     #[inline]
-    fn image_alloc(&mut self, size: Size) -> Result<ImageId, AllocError> {
-        self.images.alloc(size)
+    fn image_alloc(&mut self, format: ImageFormat, size: Size) -> Result<ImageId, AllocError> {
+        self.images.alloc(format, size)
     }
 
     #[inline]
-    fn image_upload(
-        &mut self,
-        id: ImageId,
-        size: Size,
-        data: &[u8],
-        format: ImageFormat,
-    ) -> Result<(), UploadError> {
-        self.images.upload(id, size, data, format)
+    fn image_upload(&mut self, id: ImageId, data: &[u8]) -> Result<(), UploadError> {
+        self.images.upload(id, data)
     }
 
     #[inline]

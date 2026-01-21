@@ -77,9 +77,7 @@ pub fn parse_grid<P: Parser>(
                         break;
                     }
 
-                    if let Err(e) = inner.parse::<Token![,]>() {
-                        return Err(e);
-                    }
+                    inner.parse::<Token![,]>()?;
                 }
             } else if lookahead.peek(kw::row) {
                 let _: kw::row = input.parse()?;
@@ -105,9 +103,7 @@ pub fn parse_grid<P: Parser>(
                         break;
                     }
 
-                    if let Err(e) = inner.parse::<Token![,]>() {
-                        return Err(e);
-                    }
+                    inner.parse::<Token![,]>()?;
                 }
             } else {
                 let ident: Ident = input.parse()?;

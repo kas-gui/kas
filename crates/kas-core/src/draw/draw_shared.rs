@@ -65,12 +65,18 @@ pub struct AllocError;
 /// Upload failed
 #[derive(Error, Debug)]
 pub enum UploadError {
+    /// Image atlas not found
+    #[error("image_upload: unknown atlas {0}")]
+    AtlasIndex(u32),
     /// No allocation found for the [`ImageId`] used
-    #[error("image_upload: allocation not found")]
-    Missing,
-    /// Size of the uploaded image is wrong
-    #[error("image_upload: size does not match the allocation")]
-    Size,
+    #[error("image_upload: allocation not found: {0:?}")]
+    ImageId(ImageId),
+    /// Image not within bounds of texture
+    #[error("image_upload: texture coordinates not within bounds")]
+    TextureCoordinates,
+    /// Wrong data length
+    #[error("image_upload: bad data length (received {0} bytes)")]
+    DataLen(u32),
 }
 
 /// Shared draw state
@@ -104,27 +110,23 @@ pub trait DrawShared {
     /// Allocate an image
     ///
     /// Use [`SharedState::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: Size) -> Result<ImageHandle, AllocError>;
+    fn image_alloc(&mut self, format: ImageFormat, size: Size) -> Result<ImageHandle, AllocError>;
 
     /// Upload an image to the GPU
     ///
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
     ///
-    /// `handle` must refer to an allocation of some size matching `size`.
-    ///
-    /// The image `data` must have `data.len() == b * w * h` where
-    /// `(w, h) == size.cast()` and `b` is the number of bytes per pixel
-    /// (according to `format`). Data must be in row-major order.
+    /// The `handle` must point to an existing allocation of size `(w, h)` and
+    /// with image format `format` with `b` bytes-per-pixel such that
+    /// `data.len() == b * w * h`. Data must be in row-major order.
     ///
     /// On success, this returns an [`ActionRedraw`] to indicate that any
     /// widgets using this image will require a redraw.
     fn image_upload(
         &mut self,
         handle: &ImageHandle,
-        size: Size,
         data: &[u8],
-        format: ImageFormat,
     ) -> Result<ActionRedraw, UploadError>;
 
     /// Potentially free an image
@@ -139,9 +141,9 @@ pub trait DrawShared {
 
 impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     #[inline]
-    fn image_alloc(&mut self, size: Size) -> Result<ImageHandle, AllocError> {
+    fn image_alloc(&mut self, format: ImageFormat, size: Size) -> Result<ImageHandle, AllocError> {
         self.draw
-            .image_alloc(size)
+            .image_alloc(format, size)
             .map(|id| ImageHandle(id, Rc::new(())))
     }
 
@@ -149,13 +151,9 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     fn image_upload(
         &mut self,
         handle: &ImageHandle,
-        size: Size,
         data: &[u8],
-        format: ImageFormat,
     ) -> Result<ActionRedraw, UploadError> {
-        self.draw
-            .image_upload(handle.0, size, data, format)
-            .map(|_| ActionRedraw)
+        self.draw.image_upload(handle.0, data).map(|_| ActionRedraw)
     }
 
     #[inline]
@@ -186,19 +184,13 @@ pub trait DrawSharedImpl: Any {
     /// Allocate an image
     ///
     /// Use [`DrawSharedImpl::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: Size) -> Result<ImageId, AllocError>;
+    fn image_alloc(&mut self, format: ImageFormat, size: Size) -> Result<ImageId, AllocError>;
 
     /// Upload an image to the GPU
     ///
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
-    fn image_upload(
-        &mut self,
-        id: ImageId,
-        size: Size,
-        data: &[u8],
-        format: ImageFormat,
-    ) -> Result<(), UploadError>;
+    fn image_upload(&mut self, id: ImageId, data: &[u8]) -> Result<(), UploadError>;
 
     /// Free an image allocation
     fn image_free(&mut self, id: ImageId);
