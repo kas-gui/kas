@@ -90,11 +90,15 @@ impl<F: Format> Atlases<F> {
         }
     }
 
-    fn upload(&mut self, atlas: u32, origin: (u32, u32), size: (u32, u32), data: &[u8]) {
-        let atlas: usize = atlas.cast();
-        let Some(atlas) = self.atlases.get_mut(atlas) else {
-            log::warn!("upload: unknown atlas {atlas} of {}", self.atlases.len());
-            return;
+    fn upload(
+        &mut self,
+        atlas: u32,
+        origin: (u32, u32),
+        size: (u32, u32),
+        data: &[u8],
+    ) -> Result<(), UploadError> {
+        let Some(atlas) = self.atlases.get_mut(usize::conv(atlas)) else {
+            return Err(UploadError::AtlasIndex(atlas));
         };
 
         let (tx, ty): (usize, usize) = origin.cast();
@@ -103,19 +107,19 @@ impl<F: Format> Atlases<F> {
         let (tw, th): (usize, usize) = (tex_size.width.cast(), tex_size.height.cast());
         assert_eq!(atlas.tex.len(), tw * th);
         if tx + w > tw || ty + h > th {
-            log::error!(
-                "upload: image of size {w}x{h} with origin {tx},{ty} not within bounds of texture {tw}x{th}"
-            );
-            return;
+            // log::error!(
+            //     "upload: image of size {w}x{h} with origin {tx},{ty} not within bounds of texture {tw}x{th}"
+            // );
+            return Err(UploadError::TextureCoordinates);
         }
 
         let bytes = size_of::<F::C>();
         if data.len() != bytes * w * h {
-            log::error!(
-                "upload: bad data length (received {} bytes for image of size {w}x{h})",
-                data.len()
-            );
-            return;
+            // log::error!(
+            //     "upload: bad data length (received {} bytes for image of size {w}x{h})",
+            //     data.len()
+            // );
+            return Err(UploadError::DataLen(data.len().cast()));
         }
 
         for (i, row) in data.chunks_exact(bytes * w).enumerate() {
@@ -123,6 +127,8 @@ impl<F: Format> Atlases<F> {
             let w = w + F::EXTRA_WIDTH;
             F::copy_texture_slice(row, &mut atlas.tex[ti..ti + w]);
         }
+
+        Ok(())
     }
 }
 
@@ -594,17 +600,13 @@ impl Shared {
         }
 
         let Some(image) = self.images.get_mut(&id) else {
-            return Err(UploadError::Missing);
+            return Err(UploadError::ImageId(id));
         };
-        if size != image.size {
-            return Err(UploadError::Size);
-        }
 
         let atlas = image.alloc.atlas.cast();
         let origin = image.alloc.origin;
         self.atlas_rgba
-            .upload(atlas, origin, image.size.cast(), data);
-        Ok(())
+            .upload(atlas, origin, image.size.cast(), data)
     }
 
     /// Free an image allocation
@@ -641,10 +643,14 @@ impl Shared {
             data,
         } in unprepared.drain(..)
         {
-            match ty {
+            let result = match ty {
                 SpriteType::Mask => self.atlas_mask.upload(atlas, origin, size, &data),
                 SpriteType::RgbaMask => self.atlas_rgba_mask.upload(atlas, origin, size, &data),
                 SpriteType::Bitmap => self.atlas_rgba.upload(atlas, origin, size, &data),
+            };
+
+            if let Err(err) = result {
+                log::warn!("Sprite upload failed: {err}");
             }
         }
     }

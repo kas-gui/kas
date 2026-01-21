@@ -65,12 +65,18 @@ pub struct AllocError;
 /// Upload failed
 #[derive(Error, Debug)]
 pub enum UploadError {
+    /// Image atlas not found
+    #[error("image_upload: unknown atlas {0}")]
+    AtlasIndex(u32),
     /// No allocation found for the [`ImageId`] used
-    #[error("image_upload: allocation not found")]
-    Missing,
-    /// Size of the uploaded image is wrong
-    #[error("image_upload: size does not match the allocation")]
-    Size,
+    #[error("image_upload: allocation not found: {0:?}")]
+    ImageId(ImageId),
+    /// Image not within bounds of texture
+    #[error("image_upload: texture coordinates not within bounds")]
+    TextureCoordinates,
+    /// Wrong data length
+    #[error("image_upload: bad data length (received {0} bytes)")]
+    DataLen(u32),
 }
 
 /// Shared draw state

@@ -27,11 +27,13 @@ impl Image {
         atlas_rgba: &atlases::Pipeline<InstanceRgba>,
         queue: &wgpu::Queue,
         data: &[u8],
-    ) {
+    ) -> Result<(), UploadError> {
         // TODO(opt): use StagingBelt for upload (when supported)? Or our own equivalent.
         let size: (u32, u32) = self.size.cast();
-        assert!(!data.is_empty());
-        assert_eq!(data.len(), 4 * usize::conv(size.0) * usize::conv(size.1));
+        if data.len() != 4 * usize::conv(size.0) * usize::conv(size.1) {
+            return Err(UploadError::DataLen(data.len().cast()));
+        }
+
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: atlas_rgba.get_texture(self.alloc.atlas),
@@ -55,6 +57,7 @@ impl Image {
                 depth_or_array_layers: 1,
             },
         );
+        Ok(())
     }
 }
 
@@ -259,14 +262,10 @@ impl Images {
         }
 
         let Some(image) = self.images.get_mut(&id) else {
-            return Err(UploadError::Missing);
+            return Err(UploadError::ImageId(id));
         };
-        if size != image.size {
-            return Err(UploadError::Size);
-        }
 
-        image.upload(&self.atlas_rgba, queue, data);
-        Ok(())
+        image.upload(&self.atlas_rgba, queue, data)
     }
 
     /// Free an image allocation
