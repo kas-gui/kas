@@ -117,18 +117,15 @@ pub trait DrawShared {
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
     ///
-    /// `handle` must refer to an allocation of some size matching `size`.
-    ///
-    /// The image `data` must have `data.len() == b * w * h` where
-    /// `(w, h) == size.cast()` and `b` is the number of bytes per pixel
-    /// (according to `format`). Data must be in row-major order.
+    /// The `handle` must point to an existing allocation of size `(w, h)` such
+    /// that `data.len() == b * w * h` where `b` is the number of bytes per
+    /// pixel (according to `format`). Data must be in row-major order.
     ///
     /// On success, this returns an [`ActionRedraw`] to indicate that any
     /// widgets using this image will require a redraw.
     fn image_upload(
         &mut self,
         handle: &ImageHandle,
-        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) -> Result<ActionRedraw, UploadError>;
@@ -155,12 +152,11 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     fn image_upload(
         &mut self,
         handle: &ImageHandle,
-        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) -> Result<ActionRedraw, UploadError> {
         self.draw
-            .image_upload(handle.0, size, data, format)
+            .image_upload(handle.0, data, format)
             .map(|_| ActionRedraw)
     }
 
@@ -201,7 +197,6 @@ pub trait DrawSharedImpl: Any {
     fn image_upload(
         &mut self,
         id: ImageId,
-        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) -> Result<(), UploadError>;

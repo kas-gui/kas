@@ -314,7 +314,7 @@ mod Svg {
                 }
 
                 if let Some(handle) = self.image.as_ref() {
-                    match ds.image_upload(handle, size, pixmap.data(), ImageFormat::Rgba8) {
+                    match ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8) {
                         Ok(_) => cx.redraw(),
                         Err(err) => log::warn!("Svg: image upload failed: {err}"),
                     }

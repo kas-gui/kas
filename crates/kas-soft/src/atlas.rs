@@ -591,7 +591,6 @@ impl Shared {
     pub fn upload(
         &mut self,
         id: ImageId,
-        size: Size,
         data: &[u8],
         format: ImageFormat,
     ) -> Result<(), UploadError> {
