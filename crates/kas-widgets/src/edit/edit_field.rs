@@ -14,6 +14,7 @@ use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::text::{CursorRange, Effect, EffectFlags, NotReady, SelectionHelper};
 use kas::theme::{Text, TextClass};
+use kas::util::UndoStack;
 use std::fmt::{Debug, Display};
 use std::ops::Range;
 use std::str::FromStr;
@@ -77,8 +78,8 @@ mod EditField {
         text: Text<String>,
         selection: SelectionHelper,
         edit_x_coord: Option<f32>,
-        old_state: Option<(String, usize, usize)>,
         last_edit: Option<EditOp>,
+        undo_stack: UndoStack<(String, CursorRange)>,
         has_key_focus: bool,
         current: CurrentAction,
         error_state: bool,
@@ -508,8 +509,8 @@ mod EditField {
                 text: Text::new(String::new(), TextClass::Editor, false),
                 selection: Default::default(),
                 edit_x_coord: None,
-                old_state: None,
                 last_edit: Some(EditOp::Initial),
+                undo_stack: UndoStack::new(),
                 has_key_focus: false,
                 current: CurrentAction::None,
                 error_state: false,
@@ -533,8 +534,8 @@ mod EditField {
         /// Clear text contents and undo history
         #[inline]
         pub fn clear(&mut self, cx: &mut EventState) {
-            self.old_state = None;
             self.last_edit = Some(EditOp::Initial);
+            self.undo_stack.clear();
             self.set_string(cx, String::new());
         }
 
@@ -948,22 +949,15 @@ impl<G: EditGuard> EditField<G> {
     ///
     /// Call with [`None`] to force commit of any uncommitted changes.
     fn save_undo_state(&mut self, edit: Option<EditOp>) {
-        if self.last_edit.is_none() {
-            // Don't commit "None" edits
-            self.last_edit = edit;
-            return;
-        } else if let Some(op) = edit
+        if let Some(op) = edit
             && op.try_merge(&mut self.last_edit)
         {
             return;
         }
 
-        self.old_state = Some((
-            self.text.clone_string(),
-            self.selection.edit_index(),
-            self.selection.sel_index(),
-        ));
         self.last_edit = edit;
+        self.undo_stack
+            .try_push((self.clone_string(), self.cursor_range()));
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx, force_set_offset: bool) {
@@ -1045,7 +1039,7 @@ impl<G: EditGuard> EditField<G> {
             Insert(&'a str, EditOp),
             Delete(Range<usize>, EditOp),
             Move(usize, Option<f32>),
-            Undo,
+            UndoRedo(bool),
         }
 
         let action = match cmd {
@@ -1230,20 +1224,7 @@ impl<G: EditGuard> EditField<G> {
                     Action::None
                 }
             }
-            Command::Undo | Command::Redo if editable => {
-                // TODO: maintain full edit history (externally?)
-                if let Some((state, c2, sel)) = self.old_state.as_mut() {
-                    self.text.swap_string(state);
-                    self.selection.set_edit_index(*c2);
-                    *c2 = cursor;
-                    let index = *sel;
-                    *sel = self.selection.sel_index();
-                    self.selection.set_sel_index(index);
-                    self.edit_x_coord = None;
-                    self.last_edit = None;
-                }
-                Action::Undo
-            }
+            Command::Undo | Command::Redo if editable => Action::UndoRedo(cmd == Command::Redo),
             _ => return Ok(Unused),
         };
 
@@ -1260,7 +1241,7 @@ impl<G: EditGuard> EditField<G> {
         let edit_action = match action {
             Action::None => return Ok(Used),
             Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
-            Action::Activate | Action::Undo => None,
+            Action::Activate | Action::UndoRedo(_) => None,
             Action::Insert(_, edit) | Action::Delete(_, edit) => Some(edit),
         };
         self.save_undo_state(edit_action);
@@ -1308,7 +1289,18 @@ impl<G: EditGuard> EditField<G> {
                 cx.redraw();
                 EditAction::None
             }
-            Action::Undo => EditAction::Edit,
+            Action::UndoRedo(redo) => {
+                if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
+                    if self.text.set_str(text) {
+                        self.edit_x_coord = None;
+                        self.error_state = false;
+                    }
+                    self.selection = (*cursor).into();
+                    EditAction::Edit
+                } else {
+                    return Ok(Used);
+                }
+            }
         };
 
         self.prepare_text(cx, force_set_offset);

@@ -15,7 +15,7 @@ use unicode_segmentation::UnicodeSegmentation;
 ///
 /// This is essentially a pair of indices: the selection index and the edit
 /// index.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CursorRange {
     sel: usize,
     edit: usize,

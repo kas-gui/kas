@@ -679,6 +679,22 @@ impl Text<String> {
         self.set_max_status(Status::New);
     }
 
+    /// Set text to a raw `&str`
+    ///
+    /// Returns `true` when new `text` contents do not match old contents. In
+    /// this case the new `text` is assigned, but the caller must also call
+    /// [`Text::prepare`] afterwards.
+    #[inline]
+    pub fn set_str(&mut self, text: &str) -> bool {
+        if self.text.as_str() == text {
+            return false; // no change
+        }
+
+        self.text = text.to_string();
+        self.set_max_status(Status::New);
+        true
+    }
+
     /// Set text to a raw `String`
     ///
     /// Returns `true` when new `text` contents do not match old contents. In
