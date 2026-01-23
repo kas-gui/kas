@@ -6,7 +6,7 @@
 //! Utilities
 
 use crate::geom::Coord;
-use crate::{ChildIndices, Id, Tile, TileExt};
+use crate::{ChildIndices, Id, Tile, TileExt, autoimpl};
 use std::{error::Error, fmt, path::Path};
 
 enum IdentifyContents<'a> {
@@ -182,6 +182,84 @@ pub fn nav_next(reverse: bool, from: Option<usize>, indices: ChildIndices) -> Op
         match reverse {
             false => Some(first),
             true => Some(last),
+        }
+    }
+}
+
+/// A stack of undo states
+///
+/// Typically `T` will be either `State` or `(Id, State)`.
+#[autoimpl(Default)]
+#[derive(Clone, Debug)]
+pub struct UndoStack<T> {
+    states: Vec<T>,
+    head: usize,
+}
+
+impl<T: PartialEq> UndoStack<T> {
+    /// Construct a new instance (const)
+    #[inline]
+    pub const fn new() -> Self {
+        UndoStack {
+            states: vec![],
+            head: 0,
+        }
+    }
+
+    /// Clear all history
+    #[inline]
+    pub fn clear(&mut self) {
+        self.states.clear();
+        self.head = 0;
+    }
+
+    /// Push a new state
+    ///
+    /// Tries pushing a new state, failing if the new state is identical to the current one.
+    ///
+    /// On success this discards all states ahead of the current state (due to usage of undo).
+    pub fn try_push(&mut self, state: T) {
+        if self.head > 0 && self.states.get(self.head - 1) == Some(&state) {
+            return;
+        }
+
+        self.states.truncate(self.head);
+        self.states.push(state);
+        self.head = self.states.len();
+    }
+
+    /// Apply undo (or redo if `redo`), yielding the appropriate committed state (if any)
+    pub fn undo_or_redo(&mut self, redo: bool) -> Option<&T> {
+        let h = self.head;
+        let len = self.states.len();
+        let j = if redo && h < len {
+            h + 1
+        } else if !redo && h > 1 {
+            h - 1
+        } else {
+            return None;
+        };
+
+        self.head = j;
+        Some(&self.states[j - 1])
+    }
+}
+
+impl<K: Eq, S> UndoStack<(K, S)> {
+    /// Clear historical states for `key`
+    ///
+    /// Typically used for `K` = [`Id`].
+    pub fn clear_for_key(&mut self, key: K) {
+        let mut i = 0;
+        while i < self.states.len() {
+            if self.states[i].0 == key {
+                self.states.remove(i);
+                if i <= self.head {
+                    self.head -= 1;
+                }
+            } else {
+                i += 1;
+            }
         }
     }
 }

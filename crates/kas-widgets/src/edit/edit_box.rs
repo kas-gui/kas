@@ -169,9 +169,9 @@ mod EditBox {
             } else if self.is_editable()
                 && let Some(SetValueText(string)) = cx.try_pop()
             {
+                self.pre_commit();
                 self.set_string(cx, string);
-                G::edit(&mut self.inner, cx, data);
-                G::activate(&mut self.inner, cx, data);
+                self.inner.call_guard_edit(cx, data);
                 return;
             } else if let Some(&ReplaceSelectedText(_)) = cx.try_peek() {
                 self.inner.handle_messages(cx, data);
@@ -244,7 +244,25 @@ mod EditBox {
             self.inner.clone_string()
         }
 
+        /// Clear text contents and undo history
+        #[inline]
+        pub fn clear(&mut self, cx: &mut EventState) {
+            self.inner.clear(cx);
+        }
+
+        /// Commit outstanding changes to the undo history
+        ///
+        /// Call this *before* changing the text with `set_str` or `set_string`
+        /// to commit changes to the undo history.
+        #[inline]
+        pub fn pre_commit(&mut self) {
+            self.inner.pre_commit();
+        }
+
         // Set text contents from a `str`
+        ///
+        /// This does not interact with undo history; see also [`Self::clear`],
+        /// [`Self::pre_commit`].
         #[inline]
         pub fn set_str(&mut self, cx: &mut EventState, text: &str) {
             if self.inner.set_str(cx, text) {
@@ -253,6 +271,9 @@ mod EditBox {
         }
 
         /// Set text contents from a `String`
+        ///
+        /// This does not interact with undo history; see also [`Self::clear`],
+        /// [`Self::pre_commit`].
         ///
         /// This method does not call action handlers on the [`EditGuard`].
         #[inline]

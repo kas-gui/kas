@@ -8,18 +8,17 @@
 use super::*;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{CursorIcon, ElementState, FocusSource, PhysicalKey, Scroll};
-use kas::event::{Ime, ImePurpose, ImeSurroundingText, TimerHandle};
+use kas::event::{Ime, ImePurpose, ImeSurroundingText};
 use kas::geom::Vec2;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
-use kas::text::{Effect, EffectFlags, NotReady, SelectionHelper};
+use kas::text::{CursorRange, Effect, EffectFlags, NotReady, SelectionHelper};
 use kas::theme::{Text, TextClass};
+use kas::util::UndoStack;
 use std::fmt::{Debug, Display};
 use std::ops::Range;
 use std::str::FromStr;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
-
-const TIMER_RESTART_IME: TimerHandle = TimerHandle::new(1, true);
 
 #[impl_self]
 mod EditField {
@@ -77,8 +76,8 @@ mod EditField {
         text: Text<String>,
         selection: SelectionHelper,
         edit_x_coord: Option<f32>,
-        old_state: Option<(String, usize, usize)>,
-        last_edit: LastEdit,
+        last_edit: Option<EditOp>,
+        undo_stack: UndoStack<(String, CursorRange)>,
         has_key_focus: bool,
         current: CurrentAction,
         error_state: bool,
@@ -187,8 +186,7 @@ mod EditField {
             Role::TextInput {
                 text: self.text.as_str(),
                 multi_line: self.multi_line(),
-                cursor: self.selection.edit_index(),
-                sel_index: self.selection.sel_index(),
+                cursor: self.cursor_range(),
             }
         }
     }
@@ -223,8 +221,8 @@ mod EditField {
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
             match event {
                 Event::NavFocus(source) if source == FocusSource::Key => {
-                    if !self.has_key_focus && !self.input_handler.is_selecting() {
-                        cx.request_key_focus(self.id(), source);
+                    if !self.input_handler.is_selecting() {
+                        self.request_key_focus(cx, source);
                     }
                     Used
                 }
@@ -254,8 +252,11 @@ mod EditField {
                 }
                 Event::LostSelFocus => {
                     // NOTE: we can assume that we will receive Ime::Disabled if IME is active
+                    if !self.selection.is_empty() {
+                        self.save_undo_state(None);
+                        self.selection.set_empty();
+                    }
                     self.input_handler.stop_selecting();
-                    self.selection.set_empty();
                     cx.redraw();
                     Used
                 }
@@ -265,6 +266,7 @@ mod EditField {
                 },
                 Event::Key(event, false) if event.state == ElementState::Pressed => {
                     if let Some(text) = &event.text {
+                        self.save_undo_state(Some(EditOp::KeyInput));
                         let used = self.received_text(cx, text);
                         G::edit(self, cx, data);
                         used
@@ -272,7 +274,7 @@ mod EditField {
                         let opt_cmd = cx
                             .config()
                             .shortcuts()
-                            .try_match(cx.modifiers(), &event.logical_key);
+                            .try_match(cx.modifiers(), &event.key_without_modifiers);
                         if let Some(cmd) = opt_cmd {
                             match self.control_key(cx, data, cmd, Some(event.physical_key)) {
                                 Ok(r) => r,
@@ -295,6 +297,7 @@ mod EditField {
                         Used
                     }
                     Ime::Preedit { text, cursor } => {
+                        self.save_undo_state(None);
                         let mut edit_range = match self.current.clone() {
                             CurrentAction::ImeStart if cursor.is_some() => self.selection.range(),
                             CurrentAction::ImeStart => return Used,
@@ -308,7 +311,7 @@ mod EditField {
                             self.selection.set_sel_index_only(edit_range.start + start);
                             self.selection.set_edit_index(edit_range.start + end);
                         } else {
-                            self.selection.set_all(edit_range.start + text.len());
+                            self.selection.set_cursor(edit_range.start + text.len());
                         }
 
                         self.current = CurrentAction::ImePreedit {
@@ -319,6 +322,7 @@ mod EditField {
                         Used
                     }
                     Ime::Commit { text } => {
+                        self.save_undo_state(Some(EditOp::Ime));
                         let edit_range = match self.current.clone() {
                             CurrentAction::ImeStart => self.selection.range(),
                             CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
@@ -326,7 +330,7 @@ mod EditField {
                         };
 
                         self.text.replace_range(edit_range.clone(), text);
-                        self.selection.set_all(edit_range.start + text.len());
+                        self.selection.set_cursor(edit_range.start + text.len());
 
                         self.current = CurrentAction::ImePreedit {
                             edit_range: self.selection.range().cast(),
@@ -340,6 +344,7 @@ mod EditField {
                         before_bytes,
                         after_bytes,
                     } => {
+                        self.save_undo_state(None);
                         let edit_range = match self.current.clone() {
                             CurrentAction::ImeStart => self.selection.range(),
                             CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
@@ -351,6 +356,7 @@ mod EditField {
                             let start = end - before_bytes;
                             if self.as_str().is_char_boundary(start) {
                                 self.text.replace_range(start..end, "");
+                                self.selection.delete_range(start..end);
                             } else {
                                 log::warn!("buggy IME tried to delete range not at char boundary");
                             }
@@ -373,38 +379,29 @@ mod EditField {
                         Used
                     }
                 },
-                Event::Timer(TIMER_RESTART_IME) => {
-                    if self.current.is_ime() {
-                        self.clear_ime();
-                        cx.cancel_ime_focus(self.id_ref());
-                        self.enable_ime(cx);
-                    }
-                    Used
-                }
                 Event::PressStart(press) if press.is_tertiary() => {
                     press.grab_click(self.id()).complete(cx)
                 }
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     self.set_cursor_from_coord(cx, press.coord);
-                    self.cancel_selection_and_restart_ime(cx);
-                    self.selection.set_empty();
+                    self.cancel_selection_and_ime(cx);
 
                     if let Some(content) = cx.get_primary() {
-                        self.save_undo_state(LastEdit::Paste);
+                        self.save_undo_state(Some(EditOp::Clipboard));
 
                         let index = self.selection.edit_index();
                         let range = self.trim_paste(&content);
 
                         self.text
                             .replace_range(index..index, &content[range.clone()]);
-                        self.selection.set_all(index + range.len());
+                        self.selection.set_cursor(index + range.len());
                         self.edit_x_coord = None;
                         self.prepare_text(cx, false);
 
                         G::edit(self, cx, data);
                     }
 
-                    cx.request_key_focus(self.id(), FocusSource::Pointer);
+                    self.request_key_focus(cx, FocusSource::Pointer);
                     Used
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
@@ -419,6 +416,7 @@ mod EditField {
                             self.clear_ime();
                             cx.cancel_ime_focus(self.id_ref());
                         }
+                        self.save_undo_state(Some(EditOp::Cursor));
                         self.current = CurrentAction::Selection;
 
                         self.set_cursor_from_coord(cx, coord);
@@ -427,9 +425,7 @@ mod EditField {
                             self.selection.expand(&self.text, repeats >= 3);
                         }
 
-                        if !self.has_key_focus {
-                            cx.request_key_focus(self.id(), FocusSource::Pointer);
-                        }
+                        self.request_key_focus(cx, FocusSource::Pointer);
                         Used
                     }
                     TextInputAction::PressMove { coord, repeats } => {
@@ -452,7 +448,7 @@ mod EditField {
                         self.current = CurrentAction::None;
 
                         self.set_primary(cx);
-                        cx.request_key_focus(self.id(), FocusSource::Pointer);
+                        self.request_key_focus(cx, FocusSource::Pointer);
                         self.enable_ime(cx);
                         Used
                     }
@@ -466,11 +462,13 @@ mod EditField {
             }
 
             if let Some(SetValueText(string)) = cx.try_pop() {
+                self.pre_commit();
                 self.set_string(cx, string);
                 G::edit(self, cx, data);
                 G::activate(self, cx, data);
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
-                self.received_text(cx, &text);
+                self.pre_commit();
+                self.replace_selected_text(cx, &text);
                 G::edit(self, cx, data);
                 G::activate(self, cx, data);
             }
@@ -499,8 +497,8 @@ mod EditField {
                 text: Text::new(String::new(), TextClass::Editor, false),
                 selection: Default::default(),
                 edit_x_coord: None,
-                old_state: None,
-                last_edit: Default::default(),
+                last_edit: Some(EditOp::Initial),
+                undo_stack: UndoStack::new(),
                 has_key_focus: false,
                 current: CurrentAction::None,
                 error_state: false,
@@ -521,7 +519,33 @@ mod EditField {
             self.text.clone_string()
         }
 
+        /// Clear text contents and undo history
+        ///
+        /// This method does not call any [`EditGuard`] actions; consider also
+        /// calling [`Self::call_guard_edit`].
+        #[inline]
+        pub fn clear(&mut self, cx: &mut EventState) {
+            self.last_edit = Some(EditOp::Initial);
+            self.undo_stack.clear();
+            self.set_string(cx, String::new());
+        }
+
+        /// Commit outstanding changes to the undo history
+        ///
+        /// Call this *before* changing the text with `set_str` or `set_string`
+        /// to commit changes to the undo history.
+        #[inline]
+        pub fn pre_commit(&mut self) {
+            self.save_undo_state(Some(EditOp::Synthetic));
+        }
+
         /// Set text contents from a `str`
+        ///
+        /// This does not interact with undo history; see also [`Self::clear`],
+        /// [`Self::pre_commit`].
+        ///
+        /// This method does not call any [`EditGuard`] actions; consider also
+        /// calling [`Self::call_guard_edit`].
         ///
         /// Returns `true` if the text may have changed.
         #[inline]
@@ -536,33 +560,62 @@ mod EditField {
 
         /// Set text contents from a `String`
         ///
-        /// This method does not call action handlers on the [`EditGuard`].
+        /// This does not interact with undo history; see also [`Self::clear`],
+        /// [`Self::pre_commit`].
+        ///
+        /// This method does not call any [`EditGuard`] actions; consider also
+        /// calling [`Self::call_guard_edit`].
         ///
         /// Returns `true` if the text is ready and may have changed.
         pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
+            self.cancel_selection_and_ime(cx);
+
             if !self.text.set_string(string) || !self.text.prepare() {
                 return false;
             }
 
             self.selection.set_max_len(self.text.str_len());
+            self.edit_x_coord = None;
             cx.redraw(&self);
             self.set_error_state(cx, false);
-
-            // NOTE: we would call self.cancel_selection_and_restart_ime() if we had an EventCx
-            if self.current == CurrentAction::Selection {
-                self.input_handler.stop_selecting();
-                self.current = CurrentAction::None;
-            } else if self.current.is_ime() {
-                cx.request_timer(self.id(), TIMER_RESTART_IME, Default::default());
-            }
             true
         }
 
         /// Replace selected text
         ///
-        /// This method does not call action handlers on the [`EditGuard`].
-        pub fn replace_selection(&mut self, cx: &mut EventCx, text: &str) {
+        /// This does not interact with undo history; see also [`Self::clear`],
+        /// [`Self::pre_commit`].
+        ///
+        /// This method does not call any [`EditGuard`] actions; consider also
+        /// calling [`Self::call_guard_edit`].
+        #[inline]
+        pub fn replace_selected_text(&mut self, cx: &mut EventCx, text: &str) {
             self.received_text(cx, text);
+        }
+
+        /// Call the [`EditGuard`]'s `activate` method
+        #[inline]
+        pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {
+            G::activate(self, cx, data);
+        }
+
+        /// Call the [`EditGuard`]'s `edit` method
+        #[inline]
+        pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
+            G::edit(self, cx, data);
+        }
+
+        /// Access the cursor index / selection range
+        #[inline]
+        pub fn cursor_range(&self) -> CursorRange {
+            *self.selection
+        }
+
+        /// Set the cursor index / range
+        #[inline]
+        pub fn set_cursor_range(&mut self, range: impl Into<CursorRange>) {
+            self.edit_x_coord = None;
+            self.selection = range.into().into();
         }
 
         /// Enable IME if not already enabled
@@ -575,26 +628,29 @@ mod EditField {
             }
         }
 
-        /// Cancel on-going selection action; restart on-going IME action
+        /// Cancel on-going selection and IME actions
         ///
         /// This should be called if e.g. key-input interrupts the current
         /// action.
-        fn cancel_selection_and_restart_ime(&mut self, cx: &mut EventCx) {
+        fn cancel_selection_and_ime(&mut self, cx: &mut EventState) {
             if self.current == CurrentAction::Selection {
                 self.input_handler.stop_selecting();
                 self.current = CurrentAction::None;
             } else if self.current.is_ime() {
                 self.clear_ime();
                 cx.cancel_ime_focus(self.id_ref());
-                self.enable_ime(cx);
             }
         }
 
+        /// Clean up IME state
+        ///
+        /// One should also call [`EventCx::cancel_ime_focus`] unless this is
+        /// implied.
         fn clear_ime(&mut self) {
             if self.current.is_ime() {
                 let action = std::mem::replace(&mut self.current, CurrentAction::None);
                 if let CurrentAction::ImePreedit { edit_range } = action {
-                    self.selection.set_all(edit_range.start.cast());
+                    self.selection.set_cursor(edit_range.start.cast());
                     self.text.replace_range(edit_range.cast(), "");
                 }
             }
@@ -704,7 +760,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
         EditField {
             editable: true,
             text: Text::new(text, TextClass::Editor, false),
-            selection: SelectionHelper::new(len, len),
+            selection: SelectionHelper::from(len),
             ..Default::default()
         }
     }
@@ -782,7 +838,7 @@ impl<G: EditGuard> EditField<G> {
         let text = text.to_string();
         let len = text.len();
         self.text.set_string(text);
-        self.selection.set_all(len);
+        self.selection.set_cursor(len);
         self
     }
 
@@ -897,17 +953,26 @@ impl<G: EditGuard> EditField<G> {
         cx.redraw(self);
     }
 
-    fn save_undo_state(&mut self, edit: LastEdit) {
-        if self.last_edit == edit {
+    /// Request key focus, if we don't have it or IME
+    fn request_key_focus(&self, cx: &mut EventState, source: FocusSource) {
+        if !self.has_key_focus && !self.current.is_ime() {
+            cx.request_key_focus(self.id(), source);
+        }
+    }
+
+    /// Call before an edit to (potentially) commit current state based on last_edit
+    ///
+    /// Call with [`None`] to force commit of any uncommitted changes.
+    fn save_undo_state(&mut self, edit: Option<EditOp>) {
+        if let Some(op) = edit
+            && op.try_merge(&mut self.last_edit)
+        {
             return;
         }
 
-        self.old_state = Some((
-            self.text.clone_string(),
-            self.selection.edit_index(),
-            self.selection.sel_index(),
-        ));
         self.last_edit = edit;
+        self.undo_stack
+            .try_push((self.clone_string(), self.cursor_range()));
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx, force_set_offset: bool) {
@@ -947,24 +1012,21 @@ impl<G: EditGuard> EditField<G> {
         if !self.editable {
             return Unused;
         }
+        self.cancel_selection_and_ime(cx);
 
         let index = self.selection.edit_index();
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
-        if self.last_edit != LastEdit::Insert || have_sel {
-            self.save_undo_state(LastEdit::Insert);
-        }
         if have_sel {
             self.text.replace_range(selection.clone(), text);
-            self.selection.set_all(selection.start + text.len());
+            self.selection.set_cursor(selection.start + text.len());
         } else {
             self.text.insert_str(index, text);
-            self.selection.set_all(index + text.len());
+            self.selection.set_cursor(index + text.len());
         }
         self.edit_x_coord = None;
 
         self.prepare_text(cx, false);
-        self.cancel_selection_and_restart_ime(cx);
         Used
     }
 
@@ -989,10 +1051,10 @@ impl<G: EditGuard> EditField<G> {
             None,
             Deselect,
             Activate,
-            Edit,
-            Insert(&'a str, LastEdit),
-            Delete(Range<usize>),
+            Insert(&'a str, EditOp),
+            Delete(Range<usize>, EditOp),
             Move(usize, Option<f32>),
+            UndoRedo(bool),
         }
 
         let action = match cmd {
@@ -1000,11 +1062,11 @@ impl<G: EditGuard> EditField<G> {
             Command::Activate => Action::Activate,
             Command::Enter if shift || !multi_line => Action::Activate,
             Command::Enter if editable && multi_line => {
-                Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
+                Action::Insert('\n'.encode_utf8(&mut buf), EditOp::KeyInput)
             }
             // NOTE: we might choose to optionally handle Tab in the future,
             // but without some workaround it prevents keyboard navigation.
-            // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
+            // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), EditOp::Insert),
             Command::Left | Command::Home if !shift && have_sel => {
                 Action::Move(selection.start, None)
             }
@@ -1123,12 +1185,12 @@ impl<G: EditGuard> EditField<G> {
                 Action::Move(self.text.text_index_nearest(v)?, Some(v.0))
             }
             Command::Delete | Command::DelBack if editable && have_sel => {
-                Action::Delete(selection.clone())
+                Action::Delete(selection.clone(), EditOp::Delete)
             }
             Command::Delete if editable => GraphemeCursor::new(cursor, len, true)
                 .next_boundary(self.text.text(), 0)
                 .unwrap()
-                .map(|next| Action::Delete(cursor..next))
+                .map(|next| Action::Delete(cursor..next, EditOp::Delete))
                 .unwrap_or(Action::None),
             Command::DelBack if editable => {
                 // We always delete one code-point, not one grapheme cluster:
@@ -1137,7 +1199,7 @@ impl<G: EditGuard> EditField<G> {
                     .next_back()
                     .map(|(i, _)| i)
                     .unwrap_or(0);
-                Action::Delete(prev..cursor)
+                Action::Delete(prev..cursor, EditOp::Delete)
             }
             Command::DelWord if editable => {
                 let next = self.text.text()[cursor..]
@@ -1145,7 +1207,7 @@ impl<G: EditGuard> EditField<G> {
                     .nth(1)
                     .map(|(index, _)| cursor + index)
                     .unwrap_or(len);
-                Action::Delete(cursor..next)
+                Action::Delete(cursor..next, EditOp::Delete)
             }
             Command::DelWordBack if editable => {
                 let prev = self.text.text()[0..cursor]
@@ -1153,7 +1215,7 @@ impl<G: EditGuard> EditField<G> {
                     .next_back()
                     .map(|(index, _)| index)
                     .unwrap_or(0);
-                Action::Delete(prev..cursor)
+                Action::Delete(prev..cursor, EditOp::Delete)
             }
             Command::SelectAll => {
                 self.selection.set_sel_index(0);
@@ -1162,7 +1224,7 @@ impl<G: EditGuard> EditField<G> {
             }
             Command::Cut if editable && have_sel => {
                 cx.set_clipboard((self.text.text()[selection.clone()]).into());
-                Action::Delete(selection.clone())
+                Action::Delete(selection.clone(), EditOp::Clipboard)
             }
             Command::Copy if have_sel => {
                 cx.set_clipboard((self.text.text()[selection.clone()]).into());
@@ -1172,46 +1234,32 @@ impl<G: EditGuard> EditField<G> {
                 if let Some(content) = cx.get_clipboard() {
                     let range = self.trim_paste(&content);
                     string = content;
-                    Action::Insert(&string[range], LastEdit::Paste)
+                    Action::Insert(&string[range], EditOp::Clipboard)
                 } else {
                     Action::None
                 }
             }
-            Command::Undo | Command::Redo if editable => {
-                // TODO: maintain full edit history (externally?)
-                if let Some((state, c2, sel)) = self.old_state.as_mut() {
-                    self.text.swap_string(state);
-                    self.selection.set_edit_index(*c2);
-                    *c2 = cursor;
-                    let index = *sel;
-                    *sel = self.selection.sel_index();
-                    self.selection.set_sel_index(index);
-                    self.edit_x_coord = None;
-                    self.last_edit = LastEdit::None;
-                }
-                Action::Edit
-            }
+            Command::Undo | Command::Redo if editable => Action::UndoRedo(cmd == Command::Redo),
             _ => return Ok(Unused),
         };
 
         // We can receive some commands without key focus as a result of
         // selection focus. Request focus on edit actions (like Command::Cut).
-        if !self.has_key_focus
-            && matches!(
-                action,
-                Action::Activate
-                    | Action::Edit
-                    | Action::Insert(_, _)
-                    | Action::Delete(_)
-                    | Action::Move(_, _)
-            )
-        {
-            cx.request_key_focus(self.id(), FocusSource::Synthetic);
+        if !matches!(action, Action::None | Action::Deselect) {
+            self.request_key_focus(cx, FocusSource::Synthetic);
         }
 
         if !matches!(action, Action::None) {
-            self.cancel_selection_and_restart_ime(cx);
+            self.cancel_selection_and_ime(cx);
         }
+
+        let edit_action = match action {
+            Action::None => return Ok(Used),
+            Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
+            Action::Activate | Action::UndoRedo(_) => None,
+            Action::Insert(_, edit) | Action::Delete(_, edit) => Some(edit),
+        };
+        self.save_undo_state(edit_action);
 
         let mut force_set_offset = false;
         let result = match action {
@@ -1225,32 +1273,22 @@ impl<G: EditGuard> EditField<G> {
                 force_set_offset = true;
                 EditAction::Activate
             }
-            Action::Edit => EditAction::Edit,
-            Action::Insert(s, edit) => {
+            Action::Insert(s, _) => {
                 let mut index = cursor;
-                if have_sel {
-                    self.save_undo_state(edit);
-
-                    self.text.replace_range(selection.clone(), s);
+                let range = if have_sel {
                     index = selection.start;
+                    selection.clone()
                 } else {
-                    if self.last_edit != edit {
-                        self.save_undo_state(edit);
-                    }
-
-                    self.text.replace_range(index..index, s);
-                }
-                self.selection.set_all(index + s.len());
+                    index..index
+                };
+                self.text.replace_range(range, s);
+                self.selection.set_cursor(index + s.len());
                 self.edit_x_coord = None;
                 EditAction::Edit
             }
-            Action::Delete(sel) => {
-                if self.last_edit != LastEdit::Delete {
-                    self.save_undo_state(LastEdit::Delete);
-                }
-
+            Action::Delete(sel, _) => {
                 self.text.replace_range(sel.clone(), "");
-                self.selection.set_all(sel.start);
+                self.selection.set_cursor(sel.start);
                 self.edit_x_coord = None;
                 EditAction::Edit
             }
@@ -1265,6 +1303,18 @@ impl<G: EditGuard> EditField<G> {
                 force_set_offset = true;
                 cx.redraw();
                 EditAction::None
+            }
+            Action::UndoRedo(redo) => {
+                if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
+                    if self.text.set_str(text) {
+                        self.edit_x_coord = None;
+                        self.error_state = false;
+                    }
+                    self.selection = (*cursor).into();
+                    EditAction::Edit
+                } else {
+                    return Ok(Used);
+                }
             }
         };
 

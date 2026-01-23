@@ -454,11 +454,11 @@ mod SpinBox {
                 Some(self.edit.guard.value.sub_step(self.edit.guard.step))
             } else if let Some(SetValueText(string)) = cx.try_pop() {
                 self.edit.set_string(cx, string);
-                SpinGuard::edit(&mut self.edit, cx, data);
+                self.edit.call_guard_edit(cx, data);
                 self.edit.guard.parsed
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
-                self.edit.replace_selection(cx, &text);
-                SpinGuard::edit(&mut self.edit, cx, data);
+                self.edit.replace_selected_text(cx, &text);
+                self.edit.call_guard_edit(cx, data);
                 self.edit.guard.parsed
             } else {
                 None

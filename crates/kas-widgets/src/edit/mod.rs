@@ -16,13 +16,37 @@ pub use guard::*;
 use std::fmt::Debug;
 use std::ops::Range;
 
-#[derive(Clone, Debug, Default, PartialEq)]
-enum LastEdit {
-    #[default]
-    None,
-    Insert,
+/// Describes the change source of a history (undo) state
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum EditOp {
+    /// Initial state
+    Initial,
+    /// Cursor movement or selection adjustment
+    Cursor,
+    /// Keyboard
+    KeyInput,
+    /// Input Method Editor
+    Ime,
+    /// Deletion due to key press
     Delete,
-    Paste,
+    /// Cut to or paste from clipboard
+    Clipboard,
+    /// Programmatic edit
+    Synthetic,
+}
+
+impl EditOp {
+    /// An edit may be merged with a previous one if both are equal and this method returns `true`
+    fn try_merge(self, last_op: &mut Option<Self>) -> bool {
+        match (self, last_op) {
+            (EditOp::Cursor, Some(last)) => {
+                *last = self;
+                true
+            }
+            (EditOp::KeyInput | EditOp::Delete, Some(last)) if self == *last => true,
+            _ => false,
+        }
+    }
 }
 
 enum EditAction {

@@ -96,7 +96,7 @@ mod SelectableText {
                 core: Default::default(),
                 text: Text::new(text, TextClass::Standard, true),
                 text_fn: None,
-                selection: SelectionHelper::new(0, 0),
+                selection: SelectionHelper::default(),
                 has_sel_focus: false,
                 input_handler: Default::default(),
             }

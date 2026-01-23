@@ -45,6 +45,8 @@ pub struct SetValueF64(pub f64);
 /// Set an input value from a `String`
 ///
 /// This message may be used to set a text value to an input field.
+///
+/// For targets with undo support this message commits a new undo state.
 #[derive(Clone, Debug)]
 pub struct SetValueText(pub String);
 
@@ -52,6 +54,8 @@ pub struct SetValueText(pub String);
 ///
 /// This acts the same as typing or pasting the text: replace an existing
 /// selection or insert at the cursor position.
+///
+/// For targets with undo support this message commits a new undo state.
 #[derive(Clone, Debug)]
 pub struct ReplaceSelectedText(pub String);
 

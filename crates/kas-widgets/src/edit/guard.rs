@@ -84,7 +84,10 @@ pub trait EditGuard: Sized {
 
     /// Edit guard
     ///
-    /// This function is called when contents are updated by the user.
+    /// This function is called after the text is updated (including by keyboard
+    /// input, an undo action or by a message like
+    /// [`kas::messages::SetValueText`]). The exceptions are setter methods like
+    /// [`clear`](EditField::clear) and [`set_string`](EditField::set_string).
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) {
         let _ = (edit, cx, data);
     }
