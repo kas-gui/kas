@@ -258,7 +258,7 @@ mod EditField {
                     if let Some(text) = &event.text {
                         self.save_undo_state(Some(EditOp::KeyInput));
                         let used = self.received_text(cx, text);
-                        G::edit(self, cx, data);
+                        self.call_guard_edit(cx, data);
                         used
                     } else {
                         let opt_cmd = cx
@@ -337,7 +337,7 @@ mod EditField {
                         };
                         self.edit_x_coord = None;
                         self.prepare_and_scroll(cx, false);
-                        G::edit(self, cx, data);
+                        self.call_guard_edit(cx, data);
                         Used
                     }
                     Ime::DeleteSurrounding {
@@ -398,7 +398,7 @@ mod EditField {
                         self.edit_x_coord = None;
                         self.prepare_and_scroll(cx, false);
 
-                        G::edit(self, cx, data);
+                        self.call_guard_edit(cx, data);
                     }
 
                     self.request_key_focus(cx, FocusSource::Pointer);
@@ -472,13 +472,11 @@ mod EditField {
             if let Some(SetValueText(string)) = cx.try_pop() {
                 self.pre_commit();
                 self.set_string(cx, string);
-                G::edit(self, cx, data);
-                G::activate(self, cx, data);
+                self.call_guard_edit(cx, data);
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
                 self.pre_commit();
                 self.replace_selected_text(cx, &text);
-                G::edit(self, cx, data);
-                G::activate(self, cx, data);
+                self.call_guard_edit(cx, data);
             }
         }
     }
@@ -513,8 +511,11 @@ mod EditField {
         }
 
         /// Call the [`EditGuard`]'s `edit` method
+        ///
+        /// This call also clears the [error state](Editor::set_error_state).
         #[inline]
         pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
+            self.set_error_state(cx, false);
             G::edit(self, cx, data);
         }
     }
@@ -690,7 +691,7 @@ impl<G: EditGuard> EditField<G> {
                 G::activate(self, cx, data)
             }
             CmdAction::Edit => {
-                G::edit(self, cx, data);
+                self.call_guard_edit(cx, data);
                 Used
             }
         })

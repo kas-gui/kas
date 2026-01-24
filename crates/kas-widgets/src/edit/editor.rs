@@ -29,7 +29,7 @@ pub struct Editor {
     undo_stack: UndoStack<(String, CursorRange)>,
     pub(super) has_key_focus: bool,
     pub(super) current: CurrentAction,
-    pub(super) error_state: bool,
+    error_state: bool,
     pub(super) input_handler: TextInput,
 }
 
@@ -553,7 +553,6 @@ impl Editor {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
                     if self.text.set_str(text) {
                         self.edit_x_coord = None;
-                        self.error_state = false;
                     }
                     self.selection = (*cursor).into();
                     CmdAction::Edit
@@ -784,7 +783,9 @@ impl Editor {
     /// This state is cleared by [`Self::set_string`].
     // TODO: possibly change type to Option<String> and display the error
     pub fn set_error_state(&mut self, cx: &mut EventState, error_state: bool) {
-        self.error_state = error_state;
-        cx.redraw(&self.id);
+        if error_state != self.error_state {
+            self.error_state = error_state;
+            cx.redraw(&self.id);
+        }
     }
 }

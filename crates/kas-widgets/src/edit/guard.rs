@@ -88,6 +88,9 @@ pub trait EditGuard: Sized {
     /// input, an undo action or by a message like
     /// [`kas::messages::SetValueText`]). The exceptions are setter methods like
     /// [`clear`](Editor::clear) and [`set_string`](Editor::set_string).
+    ///
+    /// The guard may set the [error state](Editor::set_error_state) here.
+    /// The error state is cleared immediately before calling this method.
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) {
         let _ = (edit, cx, data);
     }
