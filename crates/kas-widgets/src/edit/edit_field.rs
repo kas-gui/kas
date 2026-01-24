@@ -230,14 +230,18 @@ mod EditField {
                 Event::KeyFocus => {
                     self.has_key_focus = true;
                     self.set_view_offset_from_cursor(cx);
-                    self.guard.focus_gained(&mut self.editor, cx, data);
+                    if !self.current.is_ime_enabled() {
+                        self.guard.focus_gained(&mut self.editor, cx, data);
+                    }
                     self.enable_ime(cx);
                     Used
                 }
                 Event::LostKeyFocus => {
                     self.has_key_focus = false;
                     cx.redraw();
-                    self.guard.focus_lost(&mut self.editor, cx, data);
+                    if !self.current.is_ime_enabled() {
+                        self.guard.focus_lost(&mut self.editor, cx, data);
+                    }
                     Used
                 }
                 Event::LostSelFocus => {
@@ -277,6 +281,9 @@ mod EditField {
                 }
                 Event::Ime(ime) => match ime {
                     Ime::Enabled => {
+                        if !self.has_key_focus {
+                            self.guard.focus_gained(&mut self.editor, cx, data);
+                        }
                         match self.current {
                             CurrentAction::None => {
                                 self.current = CurrentAction::ImeStart;
@@ -294,6 +301,9 @@ mod EditField {
                     }
                     Ime::Disabled => {
                         self.clear_ime();
+                        if !self.has_key_focus {
+                            self.guard.focus_lost(&mut self.editor, cx, data);
+                        }
                         Used
                     }
                     Ime::Preedit { text, cursor } => {

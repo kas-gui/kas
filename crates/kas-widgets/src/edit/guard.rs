@@ -68,14 +68,15 @@ pub trait EditGuard: Sized {
 
     /// Focus-gained guard
     ///
-    /// This function is called when the widget gains keyboard input focus.
+    /// This function is called when the widget gains keyboard or IME focus.
     fn focus_gained(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) {
         let _ = (edit, cx, data);
     }
 
     /// Focus-lost guard
     ///
-    /// This function is called when the widget loses keyboard input focus.
+    /// This function is called after the widget has lost both keyboard and IME
+    /// focus.
     fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) {
         let _ = (edit, cx, data);
     }
