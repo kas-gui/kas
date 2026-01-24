@@ -351,13 +351,9 @@ impl<'a> DrawCx<'a> {
                 if cfg!(debug_assertions) {
                     let num_colors = if colors.is_empty() { 1 } else { colors.len() };
                     let mut i = 0;
-                    let mut first = false;
                     for effect in effects {
-                        if !first {
-                            assert!(effect.start > i);
-                        }
+                        assert!(effect.start >= i);
                         i = effect.start;
-                        first = false;
 
                         assert!(usize::from(effect.e) < num_colors);
                     }

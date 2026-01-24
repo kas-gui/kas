@@ -128,7 +128,7 @@ mod EditField {
             });
             self.text.set_rect(cx, rect, hints);
             self.text.ensure_no_left_overhang();
-            if self.current.is_ime() {
+            if self.current.is_ime_enabled() {
                 self.set_ime_cursor_area(cx);
             }
         }
@@ -287,9 +287,19 @@ mod EditField {
                 }
                 Event::Ime(ime) => match ime {
                     Ime::Enabled => {
-                        self.input_handler.stop_selecting();
-                        self.current = CurrentAction::ImeStart;
-                        self.set_ime_cursor_area(cx);
+                        match self.current {
+                            CurrentAction::None => {
+                                self.current = CurrentAction::ImeStart;
+                                self.set_ime_cursor_area(cx);
+                            }
+                            CurrentAction::ImeStart | CurrentAction::ImePreedit { .. } => {
+                                // already enabled
+                            }
+                            CurrentAction::Selection => {
+                                // Do not interrupt selection
+                                cx.cancel_ime_focus(self.id_ref());
+                            }
+                        }
                         Used
                     }
                     Ime::Disabled => {
@@ -412,7 +422,7 @@ mod EditField {
                         clear,
                         repeats,
                     } => {
-                        if self.current.is_ime() {
+                        if self.current.is_ime_enabled() {
                             self.clear_ime();
                             cx.cancel_ime_focus(self.id_ref());
                         }
@@ -429,25 +439,29 @@ mod EditField {
                         Used
                     }
                     TextInputAction::PressMove { coord, repeats } => {
-                        self.set_cursor_from_coord(cx, coord);
-                        if repeats > 1 {
-                            self.selection.expand(&self.text, repeats >= 3);
+                        if self.current == CurrentAction::Selection {
+                            self.set_cursor_from_coord(cx, coord);
+                            if repeats > 1 {
+                                self.selection.expand(&self.text, repeats >= 3);
+                            }
                         }
 
                         Used
                     }
                     TextInputAction::PressEnd { coord } => {
-                        if self.current.is_ime() {
+                        if self.current.is_ime_enabled() {
                             self.clear_ime();
                             cx.cancel_ime_focus(self.id_ref());
                         }
-                        if self.current != CurrentAction::Selection {
+                        self.save_undo_state(Some(EditOp::Cursor));
+                        if self.current == CurrentAction::Selection {
+                            self.set_primary(cx);
+                        } else {
                             self.set_cursor_from_coord(cx, coord);
                             self.selection.set_empty();
                         }
                         self.current = CurrentAction::None;
 
-                        self.set_primary(cx);
                         self.request_key_focus(cx, FocusSource::Pointer);
                         self.enable_ime(cx);
                         Used
@@ -636,7 +650,7 @@ mod EditField {
             if self.current == CurrentAction::Selection {
                 self.input_handler.stop_selecting();
                 self.current = CurrentAction::None;
-            } else if self.current.is_ime() {
+            } else if self.current.is_ime_enabled() {
                 self.clear_ime();
                 cx.cancel_ime_focus(self.id_ref());
             }
@@ -647,7 +661,7 @@ mod EditField {
         /// One should also call [`EventCx::cancel_ime_focus`] unless this is
         /// implied.
         fn clear_ime(&mut self) {
-            if self.current.is_ime() {
+            if self.current.is_ime_enabled() {
                 let action = std::mem::replace(&mut self.current, CurrentAction::None);
                 if let CurrentAction::ImePreedit { edit_range } = action {
                     self.selection.set_cursor(edit_range.start.cast());
@@ -955,7 +969,7 @@ impl<G: EditGuard> EditField<G> {
 
     /// Request key focus, if we don't have it or IME
     fn request_key_focus(&self, cx: &mut EventState, source: FocusSource) {
-        if !self.has_key_focus && !self.current.is_ime() {
+        if !self.has_key_focus && !self.current.is_ime_enabled() {
             cx.request_key_focus(self.id(), source);
         }
     }

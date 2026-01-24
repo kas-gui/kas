@@ -79,7 +79,10 @@ impl CurrentAction {
         *self == CurrentAction::None
     }
 
-    fn is_ime(&self) -> bool {
+    /// Check whether IME is enabled
+    ///
+    /// This does not imply a pre-edit (or any IME input).
+    fn is_ime_enabled(&self) -> bool {
         matches!(
             self,
             CurrentAction::ImeStart | CurrentAction::ImePreedit { .. }
