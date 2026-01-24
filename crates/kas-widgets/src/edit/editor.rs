@@ -12,6 +12,7 @@ use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{CursorRange, SelectionHelper};
 use kas::theme::{Text, TextClass};
+use kas::util::UndoStack;
 
 /// Editor component
 #[autoimpl(Debug)]
@@ -23,6 +24,8 @@ pub struct Editor {
     pub(super) text: Text<String>,
     pub(super) selection: SelectionHelper,
     pub(super) edit_x_coord: Option<f32>,
+    last_edit: Option<EditOp>,
+    pub(super) undo_stack: UndoStack<(String, CursorRange)>,
     pub(super) has_key_focus: bool,
     pub(super) current: CurrentAction,
     pub(super) error_state: bool,
@@ -41,6 +44,8 @@ impl Editor {
             text: Text::new(String::new(), TextClass::Editor, false),
             selection: Default::default(),
             edit_x_coord: None,
+            last_edit: Some(EditOp::Initial),
+            undo_stack: UndoStack::new(),
             has_key_focus: false,
             current: CurrentAction::None,
             error_state: false,
@@ -191,6 +196,21 @@ impl Editor {
         }
     }
 
+    /// Call before an edit to (potentially) commit current state based on last_edit
+    ///
+    /// Call with [`None`] to force commit of any uncommitted changes.
+    pub(super) fn save_undo_state(&mut self, edit: Option<EditOp>) {
+        if let Some(op) = edit
+            && op.try_merge(&mut self.last_edit)
+        {
+            return;
+        }
+
+        self.last_edit = edit;
+        self.undo_stack
+            .try_push((self.clone_string(), self.cursor_range()));
+    }
+
     /// Prepare text
     ///
     /// Updates the view offset (scroll position) if the content size changes or
@@ -305,6 +325,26 @@ impl Editor {
     #[inline]
     pub fn clone_string(&self) -> String {
         self.text.clone_string()
+    }
+
+    /// Commit outstanding changes to the undo history
+    ///
+    /// Call this *before* changing the text with `set_str` or `set_string`
+    /// to commit changes to the undo history.
+    #[inline]
+    pub fn pre_commit(&mut self) {
+        self.save_undo_state(Some(EditOp::Synthetic));
+    }
+
+    /// Clear text contents and undo history
+    ///
+    /// This method does not call any [`EditGuard`] actions; consider also
+    /// calling [`EditField::call_guard_edit`].
+    #[inline]
+    pub fn clear(&mut self, cx: &mut EventState) {
+        self.last_edit = Some(EditOp::Initial);
+        self.undo_stack.clear();
+        self.set_string(cx, String::new());
     }
 
     /// Set text contents from a `str`

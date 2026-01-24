@@ -12,9 +12,8 @@ use kas::event::{CursorIcon, ElementState, FocusSource, PhysicalKey};
 use kas::geom::Vec2;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
-use kas::text::{CursorRange, Effect, EffectFlags, NotReady};
+use kas::text::{Effect, EffectFlags, NotReady};
 use kas::theme::TextClass;
-use kas::util::UndoStack;
 use std::fmt::{Debug, Display};
 use std::ops::Range;
 use std::str::FromStr;
@@ -74,8 +73,6 @@ mod EditField {
         width: (f32, f32),
         lines: (f32, f32),
         editor: Editor,
-        last_edit: Option<EditOp>,
-        undo_stack: UndoStack<(String, CursorRange)>,
         /// The associated [`EditGuard`] implementation
         pub guard: G,
     }
@@ -508,30 +505,8 @@ mod EditField {
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
                 editor: Editor::new(),
-                last_edit: Some(EditOp::Initial),
-                undo_stack: UndoStack::new(),
                 guard,
             }
-        }
-
-        /// Clear text contents and undo history
-        ///
-        /// This method does not call any [`EditGuard`] actions; consider also
-        /// calling [`Self::call_guard_edit`].
-        #[inline]
-        pub fn clear(&mut self, cx: &mut EventState) {
-            self.last_edit = Some(EditOp::Initial);
-            self.undo_stack.clear();
-            self.set_string(cx, String::new());
-        }
-
-        /// Commit outstanding changes to the undo history
-        ///
-        /// Call this *before* changing the text with `set_str` or `set_string`
-        /// to commit changes to the undo history.
-        #[inline]
-        pub fn pre_commit(&mut self) {
-            self.save_undo_state(Some(EditOp::Synthetic));
         }
 
         /// Call the [`EditGuard`]'s `activate` method
@@ -701,21 +676,6 @@ impl<G: EditGuard> EditField<G> {
         if !self.has_key_focus && !self.current.is_ime_enabled() {
             cx.request_key_focus(self.id(), source);
         }
-    }
-
-    /// Call before an edit to (potentially) commit current state based on last_edit
-    ///
-    /// Call with [`None`] to force commit of any uncommitted changes.
-    fn save_undo_state(&mut self, edit: Option<EditOp>) {
-        if let Some(op) = edit
-            && op.try_merge(&mut self.last_edit)
-        {
-            return;
-        }
-
-        self.last_edit = edit;
-        self.undo_stack
-            .try_push((self.clone_string(), self.cursor_range()));
     }
 
     fn trim_paste(&self, text: &str) -> Range<usize> {
@@ -1009,7 +969,7 @@ impl<G: EditGuard> EditField<G> {
                 EditAction::None
             }
             Action::UndoRedo(redo) => {
-                if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
+                if let Some((text, cursor)) = self.editor.undo_stack.undo_or_redo(redo) {
                     if self.editor.text.set_str(text) {
                         self.editor.edit_x_coord = None;
                         self.editor.error_state = false;
