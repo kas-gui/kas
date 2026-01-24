@@ -100,9 +100,7 @@ impl EditGuard for ListEntryGuard {
     type Data = MyItem;
 
     fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &MyItem) {
-        if !edit.has_edit_focus() {
-            edit.set_string(cx, data.1.to_string());
-        }
+        edit.set_string(cx, data.1.to_string());
     }
 
     fn activate(&mut self, _: &mut Editor, cx: &mut EventCx, _: &MyItem) -> IsUsed {

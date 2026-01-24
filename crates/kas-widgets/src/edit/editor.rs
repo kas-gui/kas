@@ -763,12 +763,12 @@ impl Editor {
         self.text.class()
     }
 
-    /// Get whether the widget has edit focus
+    /// Get whether the widget has input focus
     ///
-    /// This is true when the widget is editable and has keyboard focus.
+    /// This is true when the widget is has keyboard or IME focus.
     #[inline]
-    pub fn has_edit_focus(&self) -> bool {
-        self.editable && self.has_key_focus
+    pub fn has_input_focus(&self) -> bool {
+        self.has_key_focus || self.current.is_ime_enabled()
     }
 
     /// Get whether the input state is erroneous

@@ -202,7 +202,9 @@ mod EditField {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
             let size = self.content_size();
-            self.guard.update(&mut self.editor, cx, data);
+            if !self.has_input_focus() {
+                self.guard.update(&mut self.editor, cx, data);
+            }
             if size != self.content_size() {
                 cx.resize();
             }

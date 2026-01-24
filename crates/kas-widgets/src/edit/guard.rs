@@ -33,15 +33,11 @@ pub trait EditGuard: Sized {
 
     /// Update guard
     ///
-    /// This function is called when input data is updated.
+    /// This function is called when input data is updated **and** the editor
+    /// does not have [input focus](Editor::has_input_focus).
     ///
-    /// Note that this method may be called during editing as a result of a
-    /// message sent by the [`Editor`] or another cause. It is recommended to
-    /// ignore updates for editable widgets with
-    /// [key focus](Editor::has_edit_focus) to avoid overwriting user input;
-    /// [`Self::focus_lost`] may update the content instead.
-    /// For read-only fields this is not recommended (but `has_edit_focus` will
-    /// not be true anyway).
+    /// This method may also be called on loss of input focus (see
+    /// [`Self::focus_lost`]).
     fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &Self::Data) {
         let _ = (edit, cx, data);
     }
@@ -77,8 +73,11 @@ pub trait EditGuard: Sized {
     ///
     /// This function is called after the widget has lost both keyboard and IME
     /// focus.
+    ///
+    /// The default implementation calls [`Self::update`] since updates are
+    /// inhibited while the editor has input focus.
     fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) {
-        let _ = (edit, cx, data);
+        self.update(edit, cx, data);
     }
 
     /// Edit guard
@@ -156,24 +155,20 @@ mod StringGuard {
     impl EditGuard for Self {
         type Data = A;
 
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
+            let string = (self.value_fn)(data);
+            edit.set_string(cx, string);
+        }
+
         fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
             if self.edited {
                 self.edited = false;
                 if let Some(ref on_afl) = self.on_afl {
                     return on_afl(cx, data, edit.as_str());
                 }
-            }
-
-            // Reset data on focus loss (update is inhibited with focus).
-            // No need if we just sent a message (should cause an update).
-            let string = (self.value_fn)(data);
-            edit.set_string(cx, string);
-        }
-
-        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
-            if !edit.has_edit_focus() {
-                let string = (self.value_fn)(data);
-                edit.set_string(cx, string);
+            } else {
+                // Reset data on focus loss (update is inhibited with focus).
+                self.update(edit, cx, data);
             }
         }
 
@@ -226,14 +221,18 @@ mod ParseGuard {
     impl EditGuard for Self {
         type Data = A;
 
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
+            let value = (self.value_fn)(data);
+            edit.set_string(cx, format!("{value}"));
+            self.parsed = None;
+        }
+
         fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
             if let Some(value) = self.parsed.take() {
                 (self.on_afl)(cx, value);
             } else {
                 // Reset data on focus loss (update is inhibited with focus).
-                // No need if we just sent a message (should cause an update).
-                let value = (self.value_fn)(data);
-                edit.set_string(cx, format!("{value}"));
+                self.update(edit, cx, data);
             }
         }
 
@@ -241,14 +240,6 @@ mod ParseGuard {
             self.parsed = edit.as_str().parse().ok();
             let is_err = self.parsed.is_none();
             edit.set_error_state(cx, is_err);
-        }
-
-        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
-            if !edit.has_edit_focus() {
-                let value = (self.value_fn)(data);
-                edit.set_string(cx, format!("{value}"));
-                self.parsed = None;
-            }
         }
     }
 }
@@ -290,10 +281,14 @@ mod InstantParseGuard {
     impl EditGuard for Self {
         type Data = A;
 
-        fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
-            // Always reset data on focus loss
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
             let value = (self.value_fn)(data);
             edit.set_string(cx, format!("{value}"));
+        }
+
+        fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
+            // Always reset data on focus loss
+            self.update(edit, cx, data);
         }
 
         fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
@@ -301,13 +296,6 @@ mod InstantParseGuard {
             edit.set_error_state(cx, result.is_err());
             if let Ok(value) = result {
                 (self.on_afl)(cx, value);
-            }
-        }
-
-        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
-            if !edit.has_edit_focus() {
-                let value = (self.value_fn)(data);
-                edit.set_string(cx, format!("{value}"));
             }
         }
     }
