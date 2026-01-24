@@ -26,6 +26,10 @@ use crate::{Id, dir::Direction, window::WindowId};
 pub enum Ime<'a> {
     /// Notifies when the IME was enabled.
     ///
+    /// This may mean, for example, that a virtual keyboard is now active with
+    /// focus on the recipient. This event does not mean that physical keyboard
+    /// input is disabled (or that it should be ignored).
+    ///
     /// The widget should call [`EventState::set_ime_cursor_area`] immediately
     /// and each time the area changes (relative to the widget's coordinate
     /// space), until [`Ime::Disabled`] is received. Failure to do so will
