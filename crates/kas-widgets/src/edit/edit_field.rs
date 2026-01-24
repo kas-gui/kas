@@ -287,9 +287,19 @@ mod EditField {
                 }
                 Event::Ime(ime) => match ime {
                     Ime::Enabled => {
-                        self.input_handler.stop_selecting();
-                        self.current = CurrentAction::ImeStart;
-                        self.set_ime_cursor_area(cx);
+                        match self.current {
+                            CurrentAction::None => {
+                                self.current = CurrentAction::ImeStart;
+                                self.set_ime_cursor_area(cx);
+                            }
+                            CurrentAction::ImeStart | CurrentAction::ImePreedit { .. } => {
+                                // already enabled
+                            }
+                            CurrentAction::Selection => {
+                                // Do not interrupt selection
+                                cx.cancel_ime_focus(self.id_ref());
+                            }
+                        }
                         Used
                     }
                     Ime::Disabled => {
