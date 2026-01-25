@@ -164,7 +164,7 @@ mod StringGuard {
             if self.edited {
                 self.edited = false;
                 if let Some(ref on_afl) = self.on_afl {
-                    return on_afl(cx, data, edit.as_str());
+                    on_afl(cx, data, edit.as_str());
                 }
             } else {
                 // Reset data on focus loss (update is inhibited with focus).

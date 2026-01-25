@@ -206,7 +206,7 @@ impl Editor {
     }
 
     pub(super) fn tooltip(&self) -> Option<&str> {
-        self.error_message.as_ref().map(|s| &**s)
+        self.error_message.as_deref()
     }
 
     /// Call before an edit to (potentially) commit current state based on last_edit
