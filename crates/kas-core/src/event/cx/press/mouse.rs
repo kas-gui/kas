@@ -12,7 +12,7 @@ use crate::event::{
 use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::WindowErased;
 use crate::window::WindowWidget;
-use crate::{ActionRedraw, Id, Node, TileExt};
+use crate::{ActionRedraw, Id, Node, Tile, TileExt};
 use cast::{CastApprox, CastFloat};
 use std::time::{Duration, Instant};
 use winit::cursor::CursorIcon;
@@ -73,6 +73,7 @@ pub(crate) struct Mouse {
     last_pin: Option<(Id, DVec2)>,
     pub(super) grab: Option<MouseGrab>,
     tooltip_source: Option<Id>,
+    tooltip_expiry_started: bool,
     last_position: DVec2,
     last_click_position: DVec2,
     pub(super) samples: velocity::Samples,
@@ -90,6 +91,7 @@ impl Default for Mouse {
             last_pin: None,
             grab: None,
             tooltip_source: None,
+            tooltip_expiry_started: false,
             last_position: DVec2::ZERO,
             last_click_position: DVec2::ZERO,
             samples: Default::default(),
@@ -98,7 +100,7 @@ impl Default for Mouse {
 }
 
 impl Mouse {
-    pub(crate) const TIMER_HOVER: TimerHandle = TimerHandle::new(1 << 59, false);
+    pub(crate) const TIMER_TOOLTIP: TimerHandle = TimerHandle::new(1 << 59, false);
 
     /// Clear all focus and grabs on `target`
     pub(in crate::event::cx) fn cancel_event_focus(&mut self, target: &Id) {
@@ -244,6 +246,16 @@ impl EventState {
     }
 }
 
+fn has_tooltip(window: &dyn Tile, id: Option<&Id>) -> bool {
+    if let Some(id) = id.as_ref()
+        && let Some(tile) = window.find_tile(id)
+    {
+        tile.tooltip().is_some()
+    } else {
+        false
+    }
+}
+
 impl<'a> EventCx<'a> {
     // Clear old `over` id, set new `over`, send events.
     // If there is a popup, only permit descendants of that.
@@ -255,8 +267,37 @@ impl<'a> EventCx<'a> {
             }
             self.mouse.over = w_id.clone();
             self.mouse.icon = Default::default();
-            let delay = self.config().event().hover_delay();
-            self.request_timer(window.id(), Mouse::TIMER_HOVER, delay);
+
+            let tooltip_expiry_started = self.mouse.tooltip_expiry_started;
+            let update_timer = if let Some(source) = &mut self.mouse.tooltip_source {
+                if !tooltip_expiry_started {
+                    // Existing tooltip, didn't start expiry timer yet: start
+                    // timer if there is not a tooltip on w_id
+                    if *source != w_id && !has_tooltip(window.as_tile(), w_id.as_ref()) {
+                        self.mouse.tooltip_expiry_started = true;
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    // Already started timer: restart if we now have a tooltip
+                    // on w_id
+                    if *source == w_id || has_tooltip(window.as_tile(), w_id.as_ref()) {
+                        self.mouse.tooltip_expiry_started = false;
+                        true
+                    } else {
+                        false
+                    }
+                }
+            } else {
+                // No existing tooltip: always start timer
+                self.mouse.tooltip_expiry_started = false;
+                true
+            };
+            if update_timer {
+                let delay = self.config().event().hover_delay();
+                self.request_timer(window.id(), Mouse::TIMER_TOOLTIP, delay);
+            }
 
             if let Some(id) = w_id {
                 self.send_event(window, id, Event::MouseOver(true));
@@ -480,8 +521,8 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    /// Call on TIMER_HOVER expiry
-    pub(crate) fn hover_timer_expiry(&mut self, win: &mut dyn WindowErased) {
+    /// Call on TIMER_TOOLTIP expiry
+    pub(crate) fn timer_expiry_tooltip(&mut self, win: &mut dyn WindowErased) {
         match (self.mouse.over_id(), &self.mouse.tooltip_source) {
             (None, None) => (),
             (None, Some(_)) => {
@@ -503,17 +544,14 @@ impl<'a> EventCx<'a> {
     }
 
     fn tooltip_motion(&mut self, win: &mut dyn WindowErased, id: &Option<Id>) {
-        match &mut self.mouse.tooltip_source {
-            Some(source) if *source != id => {
-                if let Some(id) = id.as_ref()
-                    && let Some(text) = win.as_tile().find_tile(id).and_then(|tile| tile.tooltip())
-                {
-                    win.show_tooltip(self, id.clone(), text.to_string());
-                    self.post_recursion();
-                    self.mouse.tooltip_source = Some(id.clone());
-                }
-            }
-            _ => (),
+        if let Some(source) = &mut self.mouse.tooltip_source
+            && *source != id
+            && let Some(id) = id.as_ref()
+            && let Some(text) = win.as_tile().find_tile(id).and_then(|tile| tile.tooltip())
+        {
+            win.show_tooltip(self, id.clone(), text.to_string());
+            self.post_recursion();
+            self.mouse.tooltip_source = Some(id.clone());
         }
     }
 }

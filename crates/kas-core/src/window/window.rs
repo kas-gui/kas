@@ -358,8 +358,8 @@ mod Window {
                     cx.drag_window();
                     Used
                 }
-                Event::Timer(handle) if handle == crate::event::Mouse::TIMER_HOVER => {
-                    cx.hover_timer_expiry(self);
+                Event::Timer(handle) if handle == crate::event::Mouse::TIMER_TOOLTIP => {
+                    cx.timer_expiry_tooltip(self);
                     Used
                 }
                 _ => Unused,
