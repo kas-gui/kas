@@ -118,6 +118,11 @@ mod EditBox {
     }
 
     impl Tile for Self {
+        #[inline]
+        fn tooltip(&self) -> Option<&str> {
+            self.deref().tooltip()
+        }
+
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::ScrollRegion {
                 offset: self.scroll.offset(),
