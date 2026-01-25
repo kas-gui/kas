@@ -17,6 +17,7 @@ use kas::dir::{Down, Right};
 use kas::image::Svg;
 use kas::prelude::*;
 use kas::theme::{MarginStyle, TextClass};
+use kas::widgets::edit::{EditGuard, Editor};
 use kas::widgets::{column, *};
 use kas::window::Popup;
 use std::ops::Range;
@@ -89,14 +90,15 @@ fn widgets() -> Page<AppData> {
     impl EditGuard for Guard {
         type Data = Data;
 
-        fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> IsUsed {
+        fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
             cx.push(Item::Edit(edit.clone_string()));
             Used
         }
 
-        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Data) {
             // 7a is the colour of *magic*!
-            edit.set_error_state(cx, edit.as_str().len() % (7 + 1) == 0);
+            let is_err = edit.as_str().len() % (7 + 1) == 0;
+            edit.set_error_state(cx, is_err);
         }
     }
 
@@ -285,11 +287,11 @@ fn editor() -> Page<AppData> {
     impl EditGuard for Guard {
         type Data = Data;
 
-        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Data) {
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &Data) {
             cx.set_disabled(edit.id(), data.disabled);
         }
 
-        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
             let result = Markdown::new(edit.as_str());
             edit.set_error_state(cx, result.is_err());
             let text = result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap());
@@ -460,7 +462,7 @@ fn filter_list() -> Page<AppData> {
     impl EditGuard for MonthYearFilterGuard {
         type Data = ();
 
-        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Self::Data) {
             let mut filter = MonthYearFilter {
                 text: edit.as_str().to_uppercase(),
                 month_end: edit.as_str().len(),
@@ -489,8 +491,8 @@ fn filter_list() -> Page<AppData> {
                 filter.year_denom = 10u32.pow((filter.text.len() - i).cast());
             }
 
-            if filter != edit.guard.0 {
-                edit.guard.0 = filter;
+            if filter != self.0 {
+                self.0 = filter;
                 cx.push(FilterUpdate);
             }
 

@@ -16,7 +16,7 @@
 //! -   [`adapt`] provides [`Adapt`], [`AdaptWidget`], [`AdaptWidgetAny`] and supporting items
 //!     (the items mentioned are re-export here).
 //! -   [`dialog`] provides [`MessageBox`](dialog::MessageBox), ...
-//! -   [`edit`] provides [`EditBox`], [`EditField`] widgets, [`EditGuard`] trait and some impls
+//! -   [`edit`] provides text-editing functionality; the [`EditBox`] and [`EditField`] widgets are re-export here
 //! -   [`menu`] provides a [`MenuBar`](menu::MenuBar), [`SubMenu`](menu::SubMenu), ...
 //!
 //! ## Container widgets
@@ -95,7 +95,7 @@ pub use access_label::AccessLabel;
 pub use button::Button;
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
-pub use edit::{EditBox, EditField, EditGuard};
+pub use edit::{EditBox, EditField};
 pub use event_config::EventConfig;
 pub use filler::Filler;
 pub use float::Float;

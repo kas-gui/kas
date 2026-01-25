@@ -5,7 +5,10 @@
 
 //! SpinBox widget
 
-use crate::{EditField, EditGuard, MarkButton};
+use crate::{
+    MarkButton,
+    edit::{EditField, EditGuard, Editor},
+};
 use kas::messages::{DecrementStep, IncrementStep, ReplaceSelectedText, SetValueF64, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, MarkStyle, Text, TextClass};
@@ -154,28 +157,29 @@ impl<A, T: SpinValue> SpinGuard<A, T> {
 impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
     type Data = A;
 
-    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
-        edit.guard.value = (edit.guard.state_fn)(cx, data);
-        edit.set_string(cx, edit.guard.value.to_string());
+    fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
+        self.value = (self.state_fn)(cx, data);
+        let text = self.value.to_string();
+        edit.set_string(cx, text);
     }
 
-    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
-        if let Some(value) = edit.guard.parsed.take() {
-            edit.guard.value = value;
+    fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
+        if let Some(value) = self.parsed.take() {
+            self.value = value;
             cx.push(ValueMsg(value));
         } else {
-            edit.set_string(cx, edit.guard.value.to_string());
+            self.update(edit, cx, data);
         }
     }
 
-    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
         let is_err;
         if let Ok(value) = edit.as_str().parse::<T>() {
-            edit.guard.value = value.clamp(edit.guard.start, edit.guard.end);
-            edit.guard.parsed = Some(edit.guard.value);
+            self.value = value.clamp(self.start, self.end);
+            self.parsed = Some(self.value);
             is_err = false;
         } else {
-            edit.guard.parsed = None;
+            self.parsed = None;
             is_err = true;
         };
         edit.set_error_state(cx, is_err);

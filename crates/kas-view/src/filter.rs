@@ -6,7 +6,7 @@
 //! Filters over data
 
 use kas::event::EventCx;
-use kas_widgets::{EditField, EditGuard};
+use kas_widgets::edit::{EditGuard, Editor};
 use std::fmt::Debug;
 
 /// Ability to set filter
@@ -97,7 +97,7 @@ pub struct KeystrokeGuard;
 impl EditGuard for KeystrokeGuard {
     type Data = ();
 
-    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Self::Data) {
         cx.push(SetFilter(edit.as_str().to_string()));
     }
 }
@@ -110,7 +110,7 @@ impl EditGuard for AflGuard {
     type Data = ();
 
     #[inline]
-    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
+    fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Self::Data) {
         cx.push(SetFilter(edit.as_str().to_string()));
     }
 }
