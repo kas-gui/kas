@@ -182,7 +182,9 @@ impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
             self.parsed = None;
             is_err = true;
         };
-        edit.set_error_state(cx, is_err);
+        if is_err {
+            edit.set_error(cx, Some("parse failure".into()));
+        }
     }
 }
 

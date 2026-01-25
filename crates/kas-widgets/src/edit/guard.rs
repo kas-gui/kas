@@ -87,7 +87,7 @@ pub trait EditGuard: Sized {
     /// [`kas::messages::SetValueText`]). The exceptions are setter methods like
     /// [`clear`](Editor::clear) and [`set_string`](Editor::set_string).
     ///
-    /// The guard may set the [error state](Editor::set_error_state) here.
+    /// The guard may call [`Editor::set_error`] here.
     /// The error state is cleared immediately before calling this method.
     fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) {
         let _ = (edit, cx, data);
@@ -164,7 +164,7 @@ mod StringGuard {
             if self.edited {
                 self.edited = false;
                 if let Some(ref on_afl) = self.on_afl {
-                    return on_afl(cx, data, edit.as_str());
+                    on_afl(cx, data, edit.as_str());
                 }
             } else {
                 // Reset data on focus loss (update is inhibited with focus).
@@ -238,8 +238,9 @@ mod ParseGuard {
 
         fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
             self.parsed = edit.as_str().parse().ok();
-            let is_err = self.parsed.is_none();
-            edit.set_error_state(cx, is_err);
+            if self.parsed.is_none() {
+                edit.set_error(cx, Some("parse failure".into()));
+            }
         }
     }
 }
@@ -293,7 +294,9 @@ mod InstantParseGuard {
 
         fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
             let result = edit.as_str().parse();
-            edit.set_error_state(cx, result.is_err());
+            if result.is_err() {
+                edit.set_error(cx, Some("parse failure".into()));
+            }
             if let Ok(value) = result {
                 (self.on_afl)(cx, value);
             }

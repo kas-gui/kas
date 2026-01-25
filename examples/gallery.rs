@@ -97,8 +97,9 @@ fn widgets() -> Page<AppData> {
 
         fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Data) {
             // 7a is the colour of *magic*!
-            let is_err = edit.as_str().len() % (7 + 1) == 0;
-            edit.set_error_state(cx, is_err);
+            if edit.as_str().len() % (7 + 1) == 0 {
+                edit.set_error(cx, Some("Invalid length: is a multiple of (7 + 1)!".into()));
+            }
         }
     }
 
@@ -292,10 +293,10 @@ fn editor() -> Page<AppData> {
         }
 
         fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
-            let result = Markdown::new(edit.as_str());
-            edit.set_error_state(cx, result.is_err());
-            let text = result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap());
-            cx.send(data.label_id.clone(), text);
+            match Markdown::new(edit.as_str()) {
+                Ok(text) => cx.send(data.label_id.clone(), text),
+                Err(err) => edit.set_error(cx, Some(format!("{err}").into())),
+            }
         }
     }
 
@@ -474,7 +475,7 @@ fn filter_list() -> Page<AppData> {
                     filter.month_end = 0;
                 } else {
                     if filter.text.as_bytes()[i - 1] != b' ' {
-                        edit.set_error_state(cx, true);
+                        edit.set_error(cx, None);
                         return;
                     }
                     filter.month_end = i - 1;
@@ -484,7 +485,7 @@ fn filter_list() -> Page<AppData> {
                 filter.year_tail = match text.parse() {
                     Ok(y) => y,
                     Err(_) => {
-                        edit.set_error_state(cx, true);
+                        edit.set_error(cx, None);
                         return;
                     }
                 };
@@ -495,8 +496,6 @@ fn filter_list() -> Page<AppData> {
                 self.0 = filter;
                 cx.push(FilterUpdate);
             }
-
-            edit.set_error_state(cx, false);
         }
     }
 

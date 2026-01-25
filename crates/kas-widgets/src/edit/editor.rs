@@ -13,6 +13,7 @@ use kas::prelude::*;
 use kas::text::{CursorRange, NotReady, SelectionHelper};
 use kas::theme::{Text, TextClass};
 use kas::util::UndoStack;
+use std::borrow::Cow;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 /// Editor component
@@ -30,6 +31,7 @@ pub struct Editor {
     pub(super) has_key_focus: bool,
     pub(super) current: CurrentAction,
     error_state: bool,
+    error_message: Option<Cow<'static, str>>,
     pub(super) input_handler: TextInput,
 }
 
@@ -50,6 +52,7 @@ impl Editor {
             has_key_focus: false,
             current: CurrentAction::None,
             error_state: false,
+            error_message: None,
             input_handler: Default::default(),
         }
     }
@@ -195,6 +198,15 @@ impl Editor {
 
             cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.pos));
         }
+    }
+
+    pub(super) fn clear_error(&mut self) {
+        self.error_state = false;
+        self.error_message = None;
+    }
+
+    pub(super) fn tooltip(&self) -> Option<&str> {
+        self.error_message.as_deref()
     }
 
     /// Call before an edit to (potentially) commit current state based on last_edit
@@ -677,8 +689,8 @@ impl Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     ///
-    /// This method does not call any [`EditGuard`] actions; consider also
-    /// calling [`EditField::call_guard_edit`].
+    /// This method clears the error state but does not call any [`EditGuard`]
+    /// actions; consider also calling [`EditField::call_guard_edit`].
     ///
     /// Returns `true` if the text is ready and may have changed.
     pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
@@ -691,7 +703,7 @@ impl Editor {
         let len = self.text.str_len();
         self.selection.set_max_len(len);
         self.edit_x_coord = None;
-        self.set_error_state(cx, false);
+        self.clear_error();
         self.text.prepare()
     }
 
@@ -700,8 +712,8 @@ impl Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     ///
-    /// This method does not call any [`EditGuard`] actions; consider also
-    /// calling [`EditField::call_guard_edit`].
+    /// This method clears the error state but does not call any [`EditGuard`]
+    /// actions; consider also calling [`EditField::call_guard_edit`].
     ///
     /// Returns `true` if the text is ready and may have changed.
     #[inline]
@@ -719,7 +731,7 @@ impl Editor {
             self.selection.set_cursor(index + text.len());
         }
         self.edit_x_coord = None;
-        self.set_error_state(cx, false);
+        self.clear_error();
         self.text.prepare()
     }
 
@@ -777,15 +789,17 @@ impl Editor {
         self.error_state
     }
 
-    /// Set the error state
+    /// Mark the input as erroneous with an optional message
     ///
-    /// When true, the input field's background is drawn red.
-    /// This state is cleared by [`Self::set_string`].
-    // TODO: possibly change type to Option<String> and display the error
-    pub fn set_error_state(&mut self, cx: &mut EventState, error_state: bool) {
-        if error_state != self.error_state {
-            self.error_state = error_state;
-            cx.redraw(&self.id);
-        }
+    /// This state should be set from [`EditGuard::edit`] when appropriate. The
+    /// state is cleared immediately before calling [`EditGuard::edit`] and also
+    /// in case a text is directly assigned (e.g. using [`Self::set_string`]).
+    ///
+    /// When set, the input field's background is drawn red. If a message is
+    /// supplied, then a tooltip will be available on mouse-hover.
+    pub fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
+        self.error_state = true;
+        self.error_message = message;
+        cx.redraw(&self.id);
     }
 }

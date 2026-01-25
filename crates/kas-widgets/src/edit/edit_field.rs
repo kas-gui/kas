@@ -171,6 +171,11 @@ mod EditField {
             true
         }
 
+        #[inline]
+        fn tooltip(&self) -> Option<&str> {
+            self.editor.tooltip()
+        }
+
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::TextInput {
                 text: self.text.as_str(),
@@ -524,10 +529,10 @@ mod EditField {
 
         /// Call the [`EditGuard`]'s `edit` method
         ///
-        /// This call also clears the [error state](Editor::set_error_state).
+        /// This call also clears the error state (see [`Editor::set_error`]).
         #[inline]
         pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
-            self.set_error_state(cx, false);
+            self.clear_error();
             self.guard.edit(&mut self.editor, cx, data);
         }
     }
