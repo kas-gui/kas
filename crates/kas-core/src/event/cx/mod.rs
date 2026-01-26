@@ -275,34 +275,6 @@ impl EventState {
         Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
     }
 
-    /// Set/unset a widget as disabled
-    ///
-    /// Disabled status applies to all descendants and blocks reception of
-    /// events ([`Unused`] is returned automatically when the
-    /// recipient or any ancestor is disabled).
-    ///
-    /// Disabling a widget clears navigation, selection and key focus when the
-    /// target is disabled, and also cancels press/pan grabs.
-    pub fn set_disabled(&mut self, target: Id, disable: bool) {
-        if disable {
-            self.cancel_event_focus(&target);
-        }
-
-        for (i, id) in self.disabled.iter().enumerate() {
-            if target == id {
-                if !disable {
-                    self.redraw(target);
-                    self.disabled.remove(i);
-                }
-                return;
-            }
-        }
-        if disable {
-            self.redraw(&target);
-            self.disabled.push(target);
-        }
-    }
-
     /// Notify that a widget must be redrawn
     ///
     /// This method is designed to support partial redraws though these are not
@@ -438,6 +410,34 @@ impl<'a> ConfigCx<'a> {
         let start_resize = std::mem::take(&mut self.resize);
         widget._update(self);
         self.resize = self.resize.or(start_resize);
+    }
+
+    /// Set/unset a widget as disabled
+    ///
+    /// Disabled status applies to all descendants and blocks reception of
+    /// events ([`Unused`] is returned automatically when the
+    /// recipient or any ancestor is disabled).
+    ///
+    /// Disabling a widget clears navigation, selection and key focus when the
+    /// target is disabled, and also cancels press/pan grabs.
+    pub fn set_disabled(&mut self, target: Id, disable: bool) {
+        if disable {
+            self.cancel_event_focus(&target);
+        }
+
+        for (i, id) in self.disabled.iter().enumerate() {
+            if target == id {
+                if !disable {
+                    self.redraw();
+                    self.disabled.remove(i);
+                }
+                return;
+            }
+        }
+        if disable {
+            self.redraw();
+            self.disabled.push(target);
+        }
     }
 
     /// Set a target for messages of a specific type when sent to `Id::default()`

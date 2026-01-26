@@ -5,7 +5,7 @@
 
 //! Event context: navigation focus
 
-use super::{EventCx, EventState};
+use super::{ConfigCx, EventCx, EventState};
 use crate::event::{Event, FocusSource};
 use crate::{Id, Node};
 #[allow(unused)] use crate::{Tile, event::Command};
@@ -150,7 +150,9 @@ impl EventState {
             source,
         };
     }
+}
 
+impl<'a> ConfigCx<'a> {
     /// Sets the fallback recipient of [`Event::Command`]
     ///
     /// Where a key-press translates to a [`Command`], this is first sent to
