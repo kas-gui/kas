@@ -2,6 +2,166 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] — 2026-01-26
+
+Significant additions include improved Input Method Editor (IME) support, font selection, font rendering (gamma correction and sub-pixel rendering support), several small input handling improvements, better resizing, a new text `Editor` component, revised image widgets `Sprite` and `Image`, a new `kas-soft` rendering backend and significantly revised view widget clerks.
+
+Known issues: this release uses a pinned pre-release of winit which breaks AccessKit support.
+
+### Dependencies
+
+-   Bump MSRV to 1.92.0 (#621)
+-   Update winit to 0.31.0-beta.2 (pinned) (#583)
+-   Update wgpu to 28.0.0 (#584, #621)
+-   Update kas-text to 0.9.0 (#590, #599, #634, #646)
+-   Remove dark-light (#637)
+
+### Feature flags
+
+-   Flag `minimal` no longer implies `wgpu` (#622)
+-   Flag `default` (of `kas`) no longer implies `view`, `resvg`, `markdown`, `spawn`, `accesskit` (#568)
+-   Flag `image` (of `kas-widgets`, `kas-core`, `kas`) no longer automatically enables all available formats (#568)
+-   Add flag `image-default-format` to `kas-wigdgets` to enable all formats (#568)
+-   Add flags `avif`, `jpeg`, `png`, `webp` to `kas-wigdgets` to enable individual formats (#568)
+-   Kas enables its own flags `view`, `markdown` and `resvg` as a dev-dependency (#568)
+
+### Configuration
+
+-   Support selection of font (generic) family, size and weight based on `TextClass` (#618, #634)
+-   Revise text raster config (#620)
+-   Add `double_click_dist_thresh` event configuration (#623)
+
+### Macros
+
+-   Let `#[derive_widget]` support overriding of more `Tile` methods (#612)
+-   Remove `widget_set_rect!` macro (#613)
+-   Remove `aligned_row!` and `aligned_column!` (#630)
+-   Support `row!` and `column!` within `grid!` (#630)
+
+### Widget traits and lifecycle
+
+-   Add traits `WidgetCore`, `WidgetCoreRect` (#613)
+-   Add fns `Tile::{core, core_mut}` where `Self: Sized` (#615)
+-   Remove `Clone` support for widgets (#613)
+-   Replace trait `Scrollable` with `Viewport` (#594, #597, #598)
+-   Remove fns `Events::{configure_recurse, update_recurse}`
+-   Add fn `Events::recurse_indices` for configure/update recursion control (#581)
+-   Add fn `Events::post_configure` (#581)
+-   Add fn `Events::handle_resize` (#589)
+-   Move fn `probe` to trait `Events` (#563, #564)
+-   Move fn `try_probe` to trait `Tile` (#567)
+-   Enforce during configure that widget `Id` is valid (#573)
+-   Support non-rectangular hit-testing (#563)
+-   Validate that `#[layout]` specifications only refer to known fields (#579)
+-   Improved validation of paired method impls (#586)
+
+### Window management
+
+-   Add parameter `modal` to fn `EventCx::add_window` (#565)
+-   Prefer `PresentMode::Mailbox` (#584)
+-   Revise `SolveCache` API (#588)
+-   Revise `kas::runner::{Runner, *Builder, *Theme}` (#622)
+
+### Message handling
+
+-   New trait `ReadMessage` impl'd by `MessageStack` (#565)
+
+### Sizing functionality
+
+-   Pass `SizeCx` by `&mut` (#581)
+-   Let `SizeCx` deref mut to `EventState` (#581)
+-   Rename `SizeRules::solve_seq` -> `solve_widths` and publically document (#614)
+-   Support for prioritised rules-solving (#612)
+-   Let `SizeRules` margins default to zero (remove constructor parameter) (#578)
+-   Add fns `SizeRules::{with_margin, with_margins}` (#578)
+-   Add fn `SizeCx::logical` (#578, #579)
+-   Replace fn `AxisInfo::sub_other` with `map_other` (#581)
+-   Do not stretch `Stretch::None` widgets in `SizeRules::solve_widths` (#578)
+-   Do not allow larger-than-ideal size while any item has less-than-ideal size (#614)
+-   Do not allow items with `Stretch` priority lower than that of the highest item to be larger than their ideal size (#614)
+
+### Draw and theme functionality
+
+-   Add fns `DrawCx::{colors, draw_rounded}` (#577)
+-   Add fn `{Rgb, Rgba}::desaturate` (#577)
+-   Revise fns `DrawShared::image_*` (#627, #639)
+-   Remove `MultiThemeBuilder` (#628)
+-   Add `MarkStyle::{Plus, Minus}` (#632)
+-   Add fn `DrawCx::text_with_color` and paramter `colors` to fn `text_with_effects` (#636)
+-   Rename fns `DrawCx::text_pos` -> `text_with_position`, `text_selected` -> `text_with_selection` (#636)
+
+### Event handling
+
+-   Let `EventCx` impl `Deref<Target = ConfigCx>` (#599)
+-   Revise component `TextInput` with support for touch taps (#605)
+-   Add component `ClickInputAction` (#597)
+-   Rename variant `Event::CursorMove` -> `PointerMove` (#605)
+-   Move fn `EventState::exit` to `EventCx` (#570)
+-   Add fn `id` to `AdaptEventCx`, `AdaptConfigCx` (#572)
+-   Add fn `EventState::close_own_window` (#588)
+-   Remove some `Action` variants (#588, #591)
+-   Add `ActionMoved`, `ActionResize`, `ActionRedraw`, `ActionClose` (#588, #589, #633)
+-   Add `ConfigAction` and `WindowAction` (#591)
+
+### Text processing
+
+-   Revise enum `TextClass` to variants `Standard, Label, Small, Editor` (#618)
+-   Remove fns `ConfigCx::text_configure`, `SizeCx::text_rules` (#636)
+-   Remove `kas::text::Text` (#636)
+-   `kas::theme::Text` now supports `mut` access to text object (#572)
+-   Add paramameter `max_lines` to fn `measure_height` (#590)
+-   Multiple font selection improvements in `kas-text` backend
+
+### Text editing
+
+-   Revise input handling: `TextInputAction` component (#566)
+-   Revise `SelectionHelper` fns (#566)
+-   Improved support for Input Method Editors (IME) (#583, #603, #605, #642)
+-   Full undo history for text editors (#641)
+-   Add `kas-widgets::edit::Editor` component (#643)
+-   Call `EditGuard::update` only without input focus (#643)
+-   Revise when `EditGuard::{focus_gained, focus_lost}` are called (#643)
+-   Replace fn `Editor::set_error_state` with `set_error` with optional tooltip message (#644)
+
+### Rendering
+
+-   Add `kas-soft` software-rendering backend (#610)
+-   Gamma-correct text rendering for `kas-wgpu` (#618)
+-   Sub-pixel rendering for `kas-soft` (#620)
+
+### Widgets
+
+-   Rename `ScrollRegion` -> `ClipRegion` (#595)
+-   Replace `ScrollBars` and `ScrollBarRegion` with `ScrollRegion` (#595)
+-   Replace `format_data!` and `format_value!` with `format_text!` and `format_label!` (#618)
+-   Add `Flow` widget (horizontal only) (#615)
+-   Remove fn `Grid::edit` (#589)
+-   Revise `Text` constructors (#572)
+-   Add parameter `inner: &mut W` to `Adapt` closures
+-   Rename fn `AdaptWidget::margins` -> `with_margin_style` and support in macro layout syntax (#616)
+-   Add fn `List::truncate` (#575)
+-   Add fn `AdaptWidget::with_stretch` (#592)
+-   `Stack` now only uses the active page to infer its minimum size (#590)
+
+### Image widgets
+
+-   Rename `kas-resvg` -> `kas-image` (#577)
+-   Revise `kas-image::Scaling` (#578)
+-   Rename `kas-image::Image` -> `Sprite`, requiring explicit allocation and raster upload (#579, #627)
+-   Add `kas-image::Image` as a high-level image widget (#579)
+
+### View widgets
+
+-   Reorganise: add `kas::view::clerk` and move/rename multiple `kas::view` items (#574)
+-   Remove `FilterBoxListView` without replacement (#574)
+-   Remove struct `GeneratorClerk` (#574)
+-   Rename `kas::view::DataGenerator` -> `kas::view::clerk::KeyedGenerator` (#574)
+-   Add `kas::view::clerk::IndexedGenerator` (#574)
+-   Split trait `DataClerk` into `Clerk`, `AsyncClerk` and `TokenClerk` (#574)
+-   Add `Clerk::mock_item` for explicit control over sizing before data is available (#573)
+-   Revise `Tab`-key navigation for `ListView` and `GridView` (#596)
+-   Add const `Driver::TAB_NAVIGABLE` (#596)
+
 ## [0.16.1] — 2025-09-20
 
 ### Window management
