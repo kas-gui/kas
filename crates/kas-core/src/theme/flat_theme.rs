@@ -255,7 +255,7 @@ where
     }
 }
 
-#[kas::extends(ThemeDraw, base=self.as_simple())]
+#[kas::extends(ThemeDraw using self.as_simple())]
 impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,

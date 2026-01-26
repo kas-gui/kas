@@ -672,18 +672,41 @@ pub fn cell_collection(input: TokenStream) -> TokenStream {
         .into()
 }
 
-/// A trait implementation is an extension over some base
+/// A limited form of class inheritance
 ///
-/// Usage as follows:
+/// For supported traits (see below), this macro implements missing trait
+/// methods as a wrapper over the same method on a specified *base*.
+///
+/// ## Supported usage
+///
+/// ### ThemeDraw
+///
+/// Attribute parameters:
+///
+/// > `ThemeDraw` `using` _Expr_
+///
+/// This implements missing `kas::theme::ThemeDraw` methods over the specified
+/// *base* expression _Expr_. This expression is expected to yield an object
+/// implementing `ThemeDraw`. All applicable types should be in scope.
+///
+/// #### Example
+///
 /// ```ignore
-/// #[extends(ThemeDraw, base = self.base())]
+/// #[extends(ThemeDraw using self.base())]
 /// impl ThemeDraw for Object {
-///     // All methods not present are implemented automatically over
-///     // `self.base()`, which mut return an object implementing ThemeDraw
+///     // ...
 /// }
 /// ```
 ///
-/// Note: this is a very limited macro which *only* supports `ThemeDraw`.
+/// Since this example does not provide an implementation of `fn image`, this
+/// macro would provide the implementation below:
+/// ```ignore
+/// fn image(&mut self, id: ImageId, rect: Rect) {
+///     (self.base()).image(id, rect);
+/// }
+/// ```
+/// Each `ThemeDraw` method not implemented in the `impl` block is implemented
+/// by the macro in this manner.
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn extends(attr: TokenStream, item: TokenStream) -> TokenStream {
