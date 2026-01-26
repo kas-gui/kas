@@ -124,10 +124,8 @@ smithay-clipboard = { version = "0.7.0", optional = true }
 [target.'cfg(not(target_os = "android"))'.dependencies]
 arboard = { version = "3.2.0", optional = true, default-features = false }
 
-
 [dependencies.winit]
-# Provides translations for several winit types
-version = "0.31.0-beta.2"
+version = "=0.31.0-beta.2"
 default-features = false
 
 [lints.clippy]
