@@ -7,7 +7,7 @@
 
 use super::*;
 use kas::event::components::TextInput;
-use kas::event::{FocusSource, ImePurpose, ImeSurroundingText, Scroll};
+use kas::event::{FocusSource, ImeSurroundingText, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{CursorRange, NotReady, SelectionHelper};
@@ -66,16 +66,6 @@ impl Editor {
             text: Text::new(text, TextClass::Editor, false),
             selection: SelectionHelper::from(len),
             ..Editor::new()
-        }
-    }
-
-    /// Enable IME if not already enabled
-    pub(super) fn enable_ime(&mut self, cx: &mut EventCx) {
-        if self.current.is_none() {
-            let hint = Default::default();
-            let purpose = ImePurpose::Normal;
-            let surrounding_text = self.ime_surrounding_text();
-            cx.request_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
         }
     }
 

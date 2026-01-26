@@ -65,12 +65,13 @@ impl Input {
         }
         let old_focus = self.focus.take().unwrap();
         let key = std::mem::take(&mut self.key_focus);
-        self.ime_focus = false;
+        let ime = std::mem::take(&mut self.ime_focus);
 
         if let Some(ref mut focus) = self.lost_focus {
             if focus.id == target {
                 // Upgrade partial-loss to full-loss
                 focus.key |= key;
+                focus.ime |= ime;
             } else {
                 // Loss of focus on another target implies old_focus changed
                 // recently without sending Event::SelFocus yet. Do nothing.
@@ -79,7 +80,7 @@ impl Input {
             self.lost_focus = Some(LostFocus {
                 id: old_focus,
                 key,
-                ime: false,
+                ime,
             });
         }
     }
@@ -250,27 +251,26 @@ impl<'a> EventCx<'a> {
         self.input.new_sel_focus = Some(source);
     }
 
-    /// Request IME focus
+    /// Request Input Method Editor (IME) focus
     ///
     /// IME focus requires selection focus (see
     /// [`EventState::request_key_focus`], [`EventState::request_sel_focus`]).
     /// The request fails if this has not already been obtained (wait for
     /// [`Event::SelFocus`] or [`Event::KeyFocus`] before calling this method).
     ///
-    /// To support Input Method Editors, call this method after receiving
-    /// selection focus and handle [`Event::Ime`] events.
+    /// This method enables IME focus, replacing the existing focus. This should
+    /// be used both to initially enable IME input and to replace the `hint`,
+    /// `purpose` or `surrounding_text`.
     ///
-    /// If `target` does not have selection focus this request will be ignored.
-    /// If `target` already has IME focus, it will be replaced (using the new
-    /// parameters provided).
-    pub fn request_ime_focus(
+    /// Once enabled, `target` should receive [`Event::Ime`] events.
+    pub fn replace_ime_focus(
         &mut self,
         target: Id,
         hint: ImeHint,
         purpose: ImePurpose,
         mut surrounding_text: Option<ImeSurroundingText>,
     ) {
-        if target != self.input.sel_focus() {
+        if target != self.input.focus {
             return;
         }
 
