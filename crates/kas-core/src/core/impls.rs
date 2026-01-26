@@ -41,8 +41,9 @@ pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) {
             cx.update(node);
         }
 
-        if cx.resize.is_some() && widget.status().is_sized() {
-            cx.resize = widget.handle_resize(cx, data);
+        if cx.needs_resize() && widget.status().is_sized() {
+            let opt_resize = widget.handle_resize(cx, data);
+            cx.set_resize(opt_resize);
         }
     }
 }
@@ -96,9 +97,10 @@ pub fn _send<W: Events>(
                 );
             }
 
-            if cx.resize.is_some() {
+            if cx.needs_resize() {
                 debug_assert!(widget.status().is_sized());
-                cx.resize = widget.handle_resize(cx, data);
+                let opt_resize = widget.handle_resize(cx, data);
+                cx.set_resize(opt_resize);
             }
 
             if let Some(scroll) = cx.post_send(index) {
@@ -144,8 +146,9 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
             );
         }
 
-        if cx.resize.is_some() && widget.status().is_sized() {
-            cx.resize = widget.handle_resize(cx, data);
+        if cx.needs_resize() && widget.status().is_sized() {
+            let opt_resize = widget.handle_resize(cx, data);
+            cx.set_resize(opt_resize);
         }
 
         if let Some(scroll) = cx.post_send(index) {

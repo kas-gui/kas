@@ -569,9 +569,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let size = theme.size();
         let mut cx = ConfigCx::new(&size, &mut self.ev_state);
         cx.update(self.widget.as_node(data));
-        if cx.resize.is_some() {
+        if cx.needs_resize() {
             self.apply_size(data, false, true);
-        } else if cx.redraw.is_some() {
+        } else if cx.needs_redraw() {
             window.request_redraw();
         }
 

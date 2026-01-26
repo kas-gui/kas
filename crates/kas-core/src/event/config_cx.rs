@@ -107,6 +107,21 @@ impl<'a> ConfigCx<'a> {
     pub fn resize(&mut self) {
         self.resize = Some(ActionResize);
     }
+
+    #[inline]
+    pub(crate) fn needs_redraw(&self) -> bool {
+        self.redraw.is_some()
+    }
+
+    #[inline]
+    pub(crate) fn needs_resize(&self) -> bool {
+        self.resize.is_some()
+    }
+
+    #[inline]
+    pub(crate) fn set_resize(&mut self, resize: Option<ActionResize>) {
+        self.resize = resize;
+    }
 }
 
 impl<'a> Deref for ConfigCx<'a> {
