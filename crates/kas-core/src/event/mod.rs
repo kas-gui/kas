@@ -54,7 +54,6 @@
 //! [`Id`]: crate::Id
 
 pub mod components;
-mod config_cx;
 mod cx;
 mod event;
 mod response;
@@ -67,7 +66,6 @@ pub use winit::window::{ImeHint, ImePurpose, ImeSurroundingText};
 
 #[allow(unused)]
 use crate::{Events, Widget, runner::AppData};
-pub use config_cx::ConfigCx;
 pub use cx::*;
 pub use event::*;
 pub use response::{IsUsed, Scroll, Unused, Used};
