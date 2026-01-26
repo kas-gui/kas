@@ -14,7 +14,7 @@ use std::fmt::Debug;
 /// Scroll bar mode
 ///
 /// The default value is [`ScrollBarMode::Auto`].
-#[kas_macros::impl_default(ScrollBarMode::Auto)]
+#[impl_default(ScrollBarMode::Auto)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ScrollBarMode {
     /// Automatically enable/disable scroll bars as required when resized.

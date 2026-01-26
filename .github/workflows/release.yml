@@ -1,0 +1,63 @@
+name: Publish to crates.io
+on:
+  push:
+    tags: ['[0-9].[0-9].*', '[0-9].[1-9][0-9].*']
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release  # Optional: for enhanced security
+    permissions:
+      id-token: write     # Required for OIDC token exchange
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libfontconfig1-dev
+    - uses: rust-lang/crates-io-auth-action@v1
+      id: auth
+    - name: Publish kas-macros
+      working-directory: ./crates/kas-macros
+      run: cargo publish
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+    - name: Publish kas-core
+      working-directory: ./crates/kas-core
+      run: cargo publish --features wayland
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+    - name: Publish kas-widgets
+      working-directory: ./crates/kas-widgets
+      run: cargo publish --features kas/wayland
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+    - name: Publish kas-image
+      working-directory: ./crates/kas-image
+      run: cargo publish --features kas/wayland
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+    - name: Publish kas-view
+      working-directory: ./crates/kas-view
+      run: cargo publish --features kas/wayland
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+    - name: Publish kas-soft
+      working-directory: ./crates/kas-soft
+      run: cargo publish --features wayland
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+    - name: Publish kas-wgpu
+      working-directory: ./crates/kas-wgpu
+      run: cargo publish --features kas/wayland
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+    - name: Publish kas-dylib
+      working-directory: ./crates/kas-dylib
+      run: cargo publish --features kas-core/wayland
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+    - name: Publish kas
+      working-directory: ./
+      run: cargo publish --features wayland
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
