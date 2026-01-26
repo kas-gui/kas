@@ -114,6 +114,9 @@ rustc-hash = "2.0"
 ab_glyph = { version = "0.2.10", optional = true }
 swash = { version = "0.2.4", features = ["scale"] }
 linearize = { version = "0.1.5", features = ["derive"] }
+kas-macros = { version = "0.16.0", path = "../kas-macros" }
+kas-text = "0.9.0"
+easy-cast = "0.5.4" # used in doc links
 
 [target.'cfg(any(target_os="linux", target_os="dragonfly", target_os="freebsd", target_os="netbsd", target_os="openbsd"))'.dependencies]
 smithay-clipboard = { version = "0.7.0", optional = true }
@@ -121,16 +124,6 @@ smithay-clipboard = { version = "0.7.0", optional = true }
 [target.'cfg(not(target_os = "android"))'.dependencies]
 arboard = { version = "3.2.0", optional = true, default-features = false }
 
-
-[dependencies.kas-macros]
-version = "0.16.0"
-path = "../kas-macros"
-
-[dependencies.kas-text]
-version = "0.8.0"
-
-[dependencies.easy-cast]
-version = "0.5.4" # used in doc links
 
 [dependencies.winit]
 # Provides translations for several winit types
