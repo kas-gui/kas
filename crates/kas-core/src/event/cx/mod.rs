@@ -100,8 +100,6 @@ pub struct EventState {
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     pub(super) pending_send_targets: Vec<(TypeId, Id)>,
-    // Widget requiring update
-    pending_update: Option<Id>,
     // Optional new target for selection focus. bool is true if this also gains key focus.
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
@@ -144,7 +142,6 @@ impl EventState {
             send_queue: Default::default(),
             pending_send_targets: vec![],
             fut_messages: vec![],
-            pending_update: None,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
             action_moved: None,
@@ -321,17 +318,6 @@ impl EventState {
     #[inline]
     pub fn action_redraw(&mut self, action: impl Into<Option<ActionRedraw>>) {
         self.action_redraw = self.action_redraw.or(action.into());
-    }
-
-    /// Request update to widget `id`
-    ///
-    /// This will call [`Events::update`] on `id`.
-    pub fn request_update(&mut self, id: Id) {
-        self.pending_update = if let Some(id2) = self.pending_update.take() {
-            Some(id.common_ancestor(&id2))
-        } else {
-            Some(id)
-        };
     }
 }
 
