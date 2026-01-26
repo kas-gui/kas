@@ -271,7 +271,7 @@ impl Editor {
     }
 
     /// Request key focus, if we don't have it or IME
-    pub(super) fn request_key_focus(&self, cx: &mut EventState, source: FocusSource) {
+    pub(super) fn request_key_focus(&self, cx: &mut EventCx, source: FocusSource) {
         if !self.has_key_focus && !self.current.is_ime_enabled() {
             cx.request_key_focus(self.id(), source);
         }

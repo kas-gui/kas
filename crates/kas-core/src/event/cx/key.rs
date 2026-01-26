@@ -88,6 +88,47 @@ impl EventState {
         }
     }
 
+    /// Set IME cursor area
+    ///
+    /// This should be called after receiving
+    /// <code>[Event::Ime][]([Ime::Enabled][crate::event::Ime::Enabled])</code>,
+    /// and any time that the `rect` parameter changes, until
+    /// <code>[Event::Ime][]([Ime::Disabled][crate::event::Ime::Disabled])</code>
+    /// is received.
+    ///
+    /// This sets the text cursor's area, `rect`, relative to the widget's own
+    /// coordinate space. If never called, then the widget's whole rect is used.
+    ///
+    /// This does nothing if `target` does not have IME-enabled input focus.
+    #[inline]
+    pub fn set_ime_cursor_area(&mut self, target: &Id, rect: Rect) {
+        if self.ime_is_enabled && self.sel_focus.as_ref() == Some(target) {
+            self.ime_cursor_area = rect;
+        }
+    }
+
+    /// Explicitly clear Input Method Editor focus on `target`
+    ///
+    /// This method may be used to disable IME focus while retaining selection
+    /// focus. IME focus is lost automatically when selection focus is lost.
+    #[inline]
+    pub fn cancel_ime_focus(&mut self, target: &Id) {
+        if self.pending_sel_focus.is_some() {
+            // IME focus will be cancelled
+        } else if self.ime_is_enabled
+            && let Some(id) = self.sel_focus.as_ref()
+            && target.is_ancestor_of(id)
+        {
+            self.pending_sel_focus = Some(PendingSelFocus {
+                target: Some(id.clone()),
+                key_focus: self.key_focus,
+                source: FocusSource::Synthetic,
+            });
+        }
+    }
+}
+
+impl<'a> EventCx<'a> {
     /// Request keyboard input focus
     ///
     /// When granted, the widget will receive [`Event::KeyFocus`] followed by
@@ -144,79 +185,6 @@ impl EventState {
         });
     }
 
-    /// Visually depress a widget via a key code
-    ///
-    /// When a button-like widget is activated by a key it may call this to
-    /// ensure the widget is visually depressed until the key is released.
-    /// The widget will not receive a notification of key-release but will be
-    /// redrawn automatically.
-    ///
-    /// Note that keyboard shortcuts and mnemonics should usually match against
-    /// the "logical key". [`PhysicalKey`] is used here since the the logical key
-    /// may be changed by modifier keys.
-    ///
-    /// Does nothing when `code` is `None`.
-    pub fn depress_with_key(&mut self, id: impl HasId, code: impl Into<Option<PhysicalKey>>) {
-        fn inner(state: &mut EventState, id: Id, code: PhysicalKey) {
-            if state
-                .key_depress
-                .get(&code)
-                .map(|target| *target == id)
-                .unwrap_or(false)
-            {
-                return;
-            }
-
-            state.key_depress.insert(code, id.clone());
-            state.redraw(id);
-        }
-
-        if let Some(code) = code.into() {
-            inner(self, id.has_id(), code);
-        }
-    }
-
-    /// Set IME cursor area
-    ///
-    /// This should be called after receiving
-    /// <code>[Event::Ime][]([Ime::Enabled][crate::event::Ime::Enabled])</code>,
-    /// and any time that the `rect` parameter changes, until
-    /// <code>[Event::Ime][]([Ime::Disabled][crate::event::Ime::Disabled])</code>
-    /// is received.
-    ///
-    /// This sets the text cursor's area, `rect`, relative to the widget's own
-    /// coordinate space. If never called, then the widget's whole rect is used.
-    ///
-    /// This does nothing if `target` does not have IME-enabled input focus.
-    #[inline]
-    pub fn set_ime_cursor_area(&mut self, target: &Id, rect: Rect) {
-        if self.ime_is_enabled && self.sel_focus.as_ref() == Some(target) {
-            self.ime_cursor_area = rect;
-        }
-    }
-
-    /// Explicitly clear Input Method Editor focus on `target`
-    ///
-    /// This method may be used to disable IME focus while retaining selection
-    /// focus. IME focus is lost automatically when selection focus is lost.
-    #[inline]
-    pub fn cancel_ime_focus(&mut self, target: &Id) {
-        if self.pending_sel_focus.is_some() {
-            // IME focus will be cancelled
-        } else if self.ime_is_enabled
-            && let Some(id) = self.sel_focus.as_ref()
-            && target.is_ancestor_of(id)
-        {
-            self.pending_sel_focus = Some(PendingSelFocus {
-                target: Some(id.clone()),
-                key_focus: self.key_focus,
-                source: FocusSource::Synthetic,
-            });
-        }
-    }
-}
-
-impl<'a> EventCx<'a> {
     /// Request IME focus
     ///
     /// IME focus requires selection focus (see
@@ -278,6 +246,38 @@ impl<'a> EventCx<'a> {
                 }
             }
             Err(e) => log::warn!("Unexpected IME error: {e}"),
+        }
+    }
+
+    /// Visually depress a widget via a key code
+    ///
+    /// When a button-like widget is activated by a key it may call this to
+    /// ensure the widget is visually depressed until the key is released.
+    /// The widget will not receive a notification of key-release but will be
+    /// redrawn automatically.
+    ///
+    /// Note that keyboard shortcuts and mnemonics should usually match against
+    /// the "logical key". [`PhysicalKey`] is used here since the the logical key
+    /// may be changed by modifier keys.
+    ///
+    /// Does nothing when `code` is `None`.
+    pub fn depress_with_key(&mut self, id: impl HasId, code: impl Into<Option<PhysicalKey>>) {
+        fn inner(state: &mut EventState, id: Id, code: PhysicalKey) {
+            if state
+                .key_depress
+                .get(&code)
+                .map(|target| *target == id)
+                .unwrap_or(false)
+            {
+                return;
+            }
+
+            state.key_depress.insert(code, id.clone());
+            state.redraw(id);
+        }
+
+        if let Some(code) = code.into() {
+            inner(self, id.has_id(), code);
         }
     }
 
