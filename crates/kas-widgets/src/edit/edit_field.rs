@@ -160,7 +160,7 @@ mod EditField {
                 draw.text_with_selection(pos, rect, &self.text, self.selection.range());
             }
 
-            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
+            if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {
                 draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
             }
         }

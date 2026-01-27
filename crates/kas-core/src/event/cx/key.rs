@@ -57,18 +57,20 @@ impl EventState {
         self.modifiers
     }
 
-    /// Get whether this widget has `(key_focus, sel_focus)`
+    /// Get whether this widget has input focus
     ///
-    /// -   `key_focus`: implies this widget receives keyboard input
-    /// -   `sel_focus`: implies this widget is allowed to select things
+    /// Return values:
     ///
-    /// Note that `key_focus` implies `sel_focus`.
+    /// -   `None` if the widget does not have selection focus
+    /// -   `Some(false)` if the widget has selection focus but not keyboard or
+    ///     IME focus
+    /// -   `Some(true)` if the widget has keyboard and/or IME focus
     #[inline]
-    pub fn has_key_focus(&self, w_id: &Id) -> (bool, bool) {
+    pub fn has_input_focus(&self, w_id: &Id) -> Option<bool> {
         if *w_id == self.input.focus {
-            (self.input.key_focus, true)
+            Some(self.input.key_focus || self.input.ime_focus)
         } else {
-            (false, false)
+            None
         }
     }
 
