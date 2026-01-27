@@ -7,7 +7,7 @@ rust-version = "1.92.0"
 
 [package]
 name = "kas"
-version = "0.16.1"
+version = "0.17.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -135,15 +135,15 @@ x11 = ["kas-core/x11", "kas-soft?/wayland"]
 unsafe_node = ["kas-core/unsafe_node"]
 
 [dependencies]
-kas-core = { version = "0.16.1", path = "crates/kas-core" }
-kas-dylib = { version = "0.16.0", path = "crates/kas-dylib", optional = true }
-kas-widgets = { version = "0.16.1", path = "crates/kas-widgets" }
-kas-view = { version = "0.16.0", path = "crates/kas-view", optional = true }
-kas-image = { version = "0.16.0", path = "crates/kas-image", optional = true }
-kas-soft = { version = "0.16.0", path = "crates/kas-soft", optional = true }
+kas-core = { version = "0.17.0", path = "crates/kas-core" }
+kas-dylib = { version = "0.17.0", path = "crates/kas-dylib", optional = true }
+kas-widgets = { version = "0.17.0", path = "crates/kas-widgets" }
+kas-view = { version = "0.17.0", path = "crates/kas-view", optional = true }
+kas-image = { version = "0.17.0", path = "crates/kas-image", optional = true }
+kas-soft = { version = "0.17.0", path = "crates/kas-soft", optional = true }
 
 [dependencies.kas-wgpu]
-version = "0.16.0"
+version = "0.17.0"
 path = "crates/kas-wgpu"
 optional = true
 default-features = false

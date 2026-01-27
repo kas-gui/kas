@@ -185,13 +185,7 @@ Tooltips (pop-up text on mouse hover) have been implemented.
 
 ### 0.17.0 — Unreleased
 
-IME support is improved using the revised winit support for this.
-
-Added `kas-soft` software-rendering backend, providing an alternative to WGPU and enabling substantially smaller binaries.
-
-Revised per-class text support, allowing this to affect font size & style.
-
-Sub-pixel rendering support.
+Significant additions include improved Input Method Editor (IME) support, font selection, font rendering (gamma correction and sub-pixel rendering support), several small input handling improvements, better resizing, a new text `Editor` component, revised image widgets `Sprite` and `Image`, a new `kas-soft` rendering backend and significantly revised view widget clerks.
 
 
 Future work

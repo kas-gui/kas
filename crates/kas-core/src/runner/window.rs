@@ -240,8 +240,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let winit_id = window.id();
 
         #[cfg(feature = "accesskit")]
-        let accesskit =
-            accesskit_winit::Adapter::with_event_loop_proxy(el, &window, el.create_proxy());
+        let accesskit = todo!(); // FIXME: accesskit_winit::Adapter::with_event_loop_proxy(el, &window, el.create_proxy());
 
         let window = WindowData {
             window,
@@ -307,7 +306,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         #[cfg(feature = "accesskit")]
-        window.accesskit.process_event(&window.window, &event);
+        todo!(); // FIXME: window.accesskit.process_event(&window.window, &event);
 
         let (apply_size, resize, poll) = match event {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => return false,
@@ -481,7 +480,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
                     cx.handle_accesskit_action(self.widget.as_node(data), request);
                 });
-                if *resize {
+                if resize.is_some() {
                     self.apply_size(data, false, true);
                 }
             }
