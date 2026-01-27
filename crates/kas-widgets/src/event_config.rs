@@ -20,7 +20,7 @@ mod EventConfig {
     /// TODO: support undo and/or revert to saved values.
     #[widget]
     #[layout(grid! {
-        row!["Hover delay:", self.menu_delay],
+        row!["Hover delay:", self.hover_delay],
         row!["Menu delay:", self.menu_delay],
         row!["Touch-selection delay:", self.touch_select_delay],
         row!["Kinetic scrolling timeout:", self.kinetic_timeout],
