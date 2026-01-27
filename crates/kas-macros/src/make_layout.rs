@@ -45,7 +45,8 @@ pub struct Tree(Layout);
 impl Tree {
     /// Initial validation: the layout does not refer to non-existant fields
     pub fn validate(&self, fields: &[Member]) {
-        self.0.validate(fields);
+        let mut used = vec![];
+        self.0.validate(fields, &mut used);
     }
 
     /// Attempt to parse a layout tree from Scope item attribute
@@ -115,10 +116,7 @@ impl Tree {
     }
 
     /// Generate implementation of nav_next
-    pub fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
-        &self,
-        children: I,
-    ) -> std::result::Result<Toks, (Span, &'static str)> {
+    pub fn nav_next(&self, children: &[Child]) -> std::result::Result<Toks, (Span, &'static str)> {
         let mut v = Vec::new();
         self.0.nav_next(children, &mut v).map(|()| {
             quote! {
@@ -469,15 +467,16 @@ impl Stretch {
 }
 
 impl Layout {
-    /// Validate that nothing refers to an invalid field
-    fn validate(&self, fields: &[Member]) {
+    /// Validate that nothing refers to an invalid field and that no field is
+    /// referred to twice.
+    fn validate(&self, fields: &[Member], used: &mut Vec<Member>) {
         match self {
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
             | Layout::Stretch(layout, _)
             | Layout::WithMarginStyle(layout, _)
             | Layout::Frame(_, layout, _, _) => {
-                layout.validate(fields);
+                layout.validate(fields, used);
             }
             Layout::Single(expr) => {
                 // Note that try_probe_recurse fails on non-widget fields though these might still
@@ -485,17 +484,20 @@ impl Layout {
                 // may be confusing without this error.
                 if !fields.contains(&expr.member) {
                     emit_error!(expr, "not a field of self")
+                } else if used.contains(&expr.member) {
+                    emit_error!(expr, "double use of this field")
                 }
+                used.push(expr.member.clone());
             }
             Layout::Dummy | Layout::Widget(_, _) | Layout::Label(_, _) => (),
             Layout::List(_, _, list) | Layout::Float(list) => {
                 for item in list {
-                    item.validate(fields);
+                    item.validate(fields, used);
                 }
             }
             Layout::Grid(_, _, _, list) => {
                 for item in list {
-                    item.validate(fields);
+                    item.validate(fields, used);
                 }
             }
         }
@@ -889,9 +891,9 @@ impl Layout {
     /// Create a Vec enumerating all children in navigation order
     ///
     /// -   `output`: the result
-    fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
+    fn nav_next(
         &self,
-        children: I,
+        children: &[Child],
         output: &mut Vec<usize>,
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
@@ -901,7 +903,7 @@ impl Layout {
             | Layout::WithMarginStyle(layout, _)
             | Layout::Frame(_, layout, _, _) => layout.nav_next(children, output),
             Layout::Single(m) => {
-                for (i, child) in children.enumerate() {
+                for (i, child) in children.iter().enumerate() {
                     if let ChildIdent::Field(ref ident) = child.ident {
                         if m.member == *ident {
                             output.push(i);
@@ -914,7 +916,7 @@ impl Layout {
                 Ok(())
             }
             Layout::Widget(ident, _) => {
-                for (i, child) in children.enumerate() {
+                for (i, child) in children.iter().enumerate() {
                     if let ChildIdent::CoreField(Member::Named(ref ci)) = child.ident {
                         if *ident == *ci {
                             output.push(i);
@@ -927,7 +929,7 @@ impl Layout {
             Layout::List(_, dir, list) => {
                 let start = output.len();
                 for item in list {
-                    item.nav_next(children.clone(), output)?;
+                    item.nav_next(children, output)?;
                 }
                 match dir {
                     _ if output.len() <= start + 1 => Ok(()),
@@ -939,13 +941,13 @@ impl Layout {
             Layout::Grid(_, _, _, list) => {
                 // TODO: sort using CellInfo?
                 for item in list {
-                    item.nav_next(children.clone(), output)?;
+                    item.nav_next(children, output)?;
                 }
                 Ok(())
             }
             Layout::Float(list) => {
                 for item in list {
-                    item.nav_next(children.clone(), output)?;
+                    item.nav_next(children, output)?;
                 }
                 Ok(())
             }

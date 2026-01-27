@@ -490,6 +490,9 @@ mod ScrollText {
         }
 
         fn update_content_size(&mut self, cx: &mut EventState) {
+            if !self.core.status.is_sized() {
+                return;
+            }
             let size = self.rect().size;
             let _ = self.scroll.set_sizes(size, self.text.content_size());
             self.vert_bar

@@ -62,6 +62,7 @@ impl EventState {
     /// Multiple timer requests with the same `id` and `handle` are merged
     /// (see [`TimerHandle`] documentation).
     pub fn request_timer(&mut self, id: Id, handle: TimerHandle, delay: Duration) {
+        debug_assert!(id.is_valid());
         let time = Instant::now() + delay;
         if let Some(row) = self
             .time_updates

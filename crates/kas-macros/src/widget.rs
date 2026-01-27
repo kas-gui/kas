@@ -548,7 +548,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         let tree_size_rules = tree.size_rules(&core_path);
         let tree_set_rect = tree.set_rect(&core_path);
         let tree_draw = tree.draw(&core_path);
-        fn_nav_next = tree.nav_next(children.iter());
+        fn_nav_next = tree.nav_next(&children);
 
         scope.generated.push(quote! {
             impl #impl_generics ::kas::MacroDefinedLayout for #impl_target {

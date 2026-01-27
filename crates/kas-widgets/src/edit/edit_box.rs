@@ -227,6 +227,9 @@ mod EditBox {
         }
 
         fn update_content_size(&mut self, cx: &mut EventState) {
+            if !self.core.status.is_sized() {
+                return;
+            }
             let size = self.inner.rect().size;
             let _ = self.scroll.set_sizes(size, self.inner.content_size());
             let max_offset = self.scroll.max_offset().1;
