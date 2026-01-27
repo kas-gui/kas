@@ -20,10 +20,10 @@ use winit::window::{
 };
 
 #[derive(Debug)]
-pub(super) struct PendingSelFocus {
-    target: Option<Id>,
-    key_focus: bool,
-    source: FocusSource,
+struct LostFocus {
+    id: Id,
+    key: bool,
+    ime: bool,
 }
 
 /// Keyboard and IME focus tracking
@@ -32,13 +32,14 @@ pub(super) struct Input {
     focus: Option<Id>,
     key_focus: bool,
     ime_focus: bool,
+    lost_focus: Option<LostFocus>,
+    new_sel_focus: Option<FocusSource>,
+    new_key_focus: bool,
     old_ime_target: Option<Id>,
     /// Rect is cursor area in sel_focus's coordinate space if size != ZERO
     ime_cursor_area: Rect,
     last_ime_rect: Rect,
     has_reported_ime_not_supported: bool,
-    // Optional new target for selection focus. bool is true if this also gains key focus.
-    pending_sel_focus: Option<PendingSelFocus>,
 }
 
 impl Input {
@@ -59,29 +60,33 @@ impl Input {
 
     /// Clear sel, key and ime focus on target
     pub(super) fn clear_sel_socus_on(&mut self, target: &Id) {
-        if let Some(pending) = self.pending_sel_focus.as_mut() {
-            if let Some(id) = pending.target.as_ref()
-                && target.is_ancestor_of(id)
-            {
-                pending.target = None;
-                pending.key_focus = false;
+        if *target != self.sel_focus() {
+            return; // nothing to do
+        }
+        let old_focus = self.focus.take().unwrap();
+        let key = std::mem::take(&mut self.key_focus);
+        self.ime_focus = false;
+
+        if let Some(ref mut focus) = self.lost_focus {
+            if focus.id == target {
+                // Upgrade partial-loss to full-loss
+                focus.key |= key;
             } else {
-                // We have a new focus target, hence the old one will be cleared
+                // Loss of focus on another target implies old_focus changed
+                // recently without sending Event::SelFocus yet. Do nothing.
             }
-        } else if let Some(ref id) = self.focus
-            && target.is_ancestor_of(id)
-        {
-            self.pending_sel_focus = Some(PendingSelFocus {
-                target: None,
-                key_focus: false,
-                source: FocusSource::Synthetic,
+        } else {
+            self.lost_focus = Some(LostFocus {
+                id: old_focus,
+                key,
+                ime: false,
             });
         }
     }
 
     #[inline]
     pub(super) fn has_pending_changes(&self) -> bool {
-        self.pending_sel_focus.is_some()
+        self.lost_focus.is_some() || self.new_sel_focus.is_some() || self.new_key_focus
     }
 
     pub(super) fn frame_update(&mut self, window: &dyn WindowDataErased, widget: &dyn Tile) {
@@ -175,15 +180,23 @@ impl EventState {
     /// focus. IME focus is lost automatically when selection focus is lost.
     #[inline]
     pub fn cancel_ime_focus(&mut self, target: &Id) {
-        if self.input.pending_sel_focus.is_some() {
-            // IME focus will be cancelled
-        } else if let Some(id) = self.input.ime_focus()
-            && target.is_ancestor_of(id)
-        {
-            self.input.pending_sel_focus = Some(PendingSelFocus {
-                target: Some(id.clone()),
-                key_focus: self.input.key_focus().is_some(),
-                source: FocusSource::Synthetic,
+        if *target != self.input.ime_focus() {
+            return;
+        }
+        self.input.ime_focus = false;
+
+        if let Some(ref mut focus) = self.input.lost_focus {
+            if focus.id == target {
+                focus.ime = true;
+            } else {
+                // Loss of focus on another target implies sel focus changed
+                // recently without sending Event::SelFocus yet. Do nothing.
+            }
+        } else {
+            self.input.lost_focus = Some(LostFocus {
+                id: target.clone(),
+                key: false,
+                ime: true,
             });
         }
     }
@@ -203,15 +216,11 @@ impl<'a> EventCx<'a> {
     /// navigation focus. It also clears IME focus.
     #[inline]
     pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
-        if self.nav_focus.as_ref() != Some(&target) {
-            self.set_nav_focus(target.clone(), source);
+        self.request_sel_focus(target, source);
+        if !self.input.key_focus {
+            self.input.key_focus = true;
+            self.input.new_key_focus = true;
         }
-
-        self.input.pending_sel_focus = Some(PendingSelFocus {
-            target: Some(target),
-            key_focus: true,
-            source,
-        });
     }
 
     /// Request selection focus
@@ -229,21 +238,16 @@ impl<'a> EventCx<'a> {
     /// When key focus is lost, [`Event::LostSelFocus`] is sent.
     #[inline]
     pub fn request_sel_focus(&mut self, target: Id, source: FocusSource) {
-        if self.nav_focus.as_ref() != Some(&target) {
-            self.set_nav_focus(target.clone(), source);
-        }
-
-        if let Some(ref pending) = self.input.pending_sel_focus
-            && pending.target.as_ref() == Some(&target)
-        {
+        if target == self.input.sel_focus() {
             return;
+        } else if let Some(id) = self.input.sel_focus().cloned() {
+            self.input.clear_sel_socus_on(&id);
         }
 
-        self.input.pending_sel_focus = Some(PendingSelFocus {
-            target: Some(target),
-            key_focus: false,
-            source,
-        });
+        self.set_nav_focus(target.clone(), source);
+
+        self.input.focus = Some(target);
+        self.input.new_sel_focus = Some(source);
     }
 
     /// Request IME focus
@@ -270,8 +274,8 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if self.input.ime_focus().is_some() {
-            self.clear_ime_focus();
+        if let Some(id) = self.input.ime_focus().cloned() {
+            self.clear_ime_focus(id);
         }
 
         let mut capabilities = ImeCapabilities::new()
@@ -356,14 +360,12 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    pub(super) fn clear_ime_focus(&mut self) {
-        if let Some(id) = self.input.sel_focus() {
-            // NOTE: we assume that winit will send us Ime::Disabled
-            self.input.old_ime_target = Some(id.clone());
-            self.window.ime_request(ImeRequest::Disable).unwrap();
-            self.input.ime_focus = false;
-            self.input.ime_cursor_area = Rect::ZERO;
-        }
+    pub(super) fn clear_ime_focus(&mut self, id: Id) {
+        // NOTE: we assume that winit will send us Ime::Disabled
+        self.input.old_ime_target = Some(id);
+        self.window.ime_request(ImeRequest::Disable).unwrap();
+        self.input.ime_focus = false;
+        self.input.ime_cursor_area = Rect::ZERO;
     }
 
     pub(super) fn keyboard_input(
@@ -524,47 +526,30 @@ impl<'a> EventCx<'a> {
     }
 
     pub(super) fn flush_pending_input_focus(&mut self, mut widget: Node<'_>) {
-        let Some(PendingSelFocus {
-            target,
-            key_focus,
-            source,
-        }) = self.input.pending_sel_focus.take()
-        else {
-            return;
-        };
-        let target_is_new = target != self.input.focus;
-        let old_key_focus = self.input.key_focus;
-        self.input.key_focus = key_focus;
-
-        log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
-
-        if let Some(id) = self.input.sel_focus().cloned() {
-            self.clear_ime_focus();
-
-            if old_key_focus && (!key_focus || target_is_new) {
-                // If widget has key focus, this is lost
-                self.send_event(widget.re(), id.clone(), Event::LostKeyFocus);
+        if let Some(focus) = self.input.lost_focus.take() {
+            if focus.ime {
+                self.clear_ime_focus(focus.id.clone());
             }
 
-            if target.is_none() {
-                // Retain selection focus without a new target
-                return;
-            } else if target_is_new {
-                // Selection focus is lost if another widget receives key focus
-                self.send_event(widget.re(), id, Event::LostSelFocus);
+            if focus.key {
+                self.send_event(widget.re(), focus.id.clone(), Event::LostKeyFocus);
+            }
+
+            if focus.id != self.input.sel_focus() {
+                self.send_event(widget.re(), focus.id, Event::LostSelFocus);
             }
         }
 
-        if let Some(id) = target.clone() {
-            if target_is_new {
-                self.send_event(widget.re(), id.clone(), Event::SelFocus(source));
-            }
-
-            if key_focus && (!old_key_focus || target_is_new) {
-                self.send_event(widget.re(), id.clone(), Event::KeyFocus);
-            }
+        if let Some(source) = self.input.new_sel_focus.take()
+            && let Some(id) = self.input.sel_focus().cloned()
+        {
+            self.send_event(widget.re(), id, Event::SelFocus(source));
         }
-
-        self.input.focus = target;
+        if self.input.new_key_focus
+            && let Some(id) = self.input.key_focus().cloned()
+        {
+            self.input.new_key_focus = false;
+            self.send_event(widget.re(), id, Event::KeyFocus);
+        }
     }
 }

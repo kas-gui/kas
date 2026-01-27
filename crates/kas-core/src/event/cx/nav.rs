@@ -211,7 +211,9 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if let Some(id) = self.input.sel_focus().cloned() {
+        if let Some(id) = self.input.sel_focus().cloned()
+            && id != target
+        {
             self.input.clear_sel_socus_on(&id);
         }
 
