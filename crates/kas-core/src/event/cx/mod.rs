@@ -9,6 +9,7 @@ use linear_map::{LinearMap, set::LinearSet};
 use smallvec::SmallVec;
 use std::any::TypeId;
 use std::collections::{HashMap, VecDeque};
+use std::fmt::Debug;
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -18,15 +19,15 @@ use super::*;
 use crate::cast::{Cast, Conv};
 use crate::config::{ConfigMsg, WindowConfig};
 use crate::draw::DrawShared;
-use crate::geom::{Offset, Rect, Vec2};
+use crate::geom::{Offset, Vec2};
 use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, WindowId};
 use crate::{ActionClose, ActionMoved, ActionRedraw, ActionResize, ConfigAction, HasId, Id, Node};
-use key::PendingSelFocus;
-use nav::PendingNavFocus;
+use key::Input;
+use nav::NavFocus;
 
 #[cfg(feature = "accesskit")] mod accessibility;
 mod key;
@@ -74,17 +75,8 @@ pub struct EventState {
     #[cfg(feature = "accesskit")]
     accesskit_is_enabled: bool,
     modifiers: ModifiersState,
-    /// Key (and IME) focus is on same widget as sel_focus; otherwise its value is ignored
-    key_focus: bool,
-    ime_is_enabled: bool,
-    old_ime_target: Option<Id>,
-    /// Rect is cursor area in sel_focus's coordinate space if size != ZERO
-    ime_cursor_area: Rect,
-    last_ime_rect: Rect,
-    has_reported_ime_not_supported: bool,
-    sel_focus: Option<Id>,
-    nav_focus: Option<Id>,
-    nav_fallback: Option<Id>,
+    input: Input,
+    nav: NavFocus,
     key_depress: LinearMap<PhysicalKey, Id>,
     mouse: Mouse,
     touch: Touch,
@@ -99,11 +91,6 @@ pub struct EventState {
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     pub(super) pending_send_targets: Vec<(TypeId, Id)>,
-    // Widget requiring update
-    pending_update: Option<Id>,
-    // Optional new target for selection focus. bool is true if this also gains key focus.
-    pending_sel_focus: Option<PendingSelFocus>,
-    pending_nav_focus: PendingNavFocus,
     action_moved: Option<ActionMoved>,
     pub(crate) action_redraw: Option<ActionRedraw>,
     action_close: Option<ActionClose>,
@@ -122,15 +109,8 @@ impl EventState {
             #[cfg(feature = "accesskit")]
             accesskit_is_enabled: false,
             modifiers: ModifiersState::empty(),
-            key_focus: false,
-            ime_is_enabled: false,
-            old_ime_target: None,
-            ime_cursor_area: Rect::ZERO,
-            last_ime_rect: Rect::ZERO,
-            has_reported_ime_not_supported: false,
-            sel_focus: None,
-            nav_focus: None,
-            nav_fallback: None,
+            input: Input::default(),
+            nav: NavFocus::default(),
             key_depress: Default::default(),
             mouse: Default::default(),
             touch: Default::default(),
@@ -143,9 +123,6 @@ impl EventState {
             send_queue: Default::default(),
             pending_send_targets: vec![],
             fut_messages: vec![],
-            pending_update: None,
-            pending_sel_focus: None,
-            pending_nav_focus: PendingNavFocus::None,
             action_moved: None,
             action_redraw: None,
             action_close: None,
@@ -177,7 +154,7 @@ impl EventState {
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
 
         // These are recreated during configure:
-        self.nav_fallback = None;
+        self.nav.fallback = None;
 
         let mut cx = ConfigCx::new(sizer, self);
         cx.configure(node, id);
@@ -217,7 +194,7 @@ impl EventState {
 
     /// Clear all focus and grabs on `target`
     fn cancel_event_focus(&mut self, target: &Id) {
-        self.clear_sel_socus_on(target);
+        self.input.clear_sel_socus_on(target);
         self.clear_nav_focus_on(target);
         self.mouse.cancel_event_focus(target);
         self.touch.cancel_event_focus(target);
@@ -274,34 +251,6 @@ impl EventState {
         Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
     }
 
-    /// Set/unset a widget as disabled
-    ///
-    /// Disabled status applies to all descendants and blocks reception of
-    /// events ([`Unused`] is returned automatically when the
-    /// recipient or any ancestor is disabled).
-    ///
-    /// Disabling a widget clears navigation, selection and key focus when the
-    /// target is disabled, and also cancels press/pan grabs.
-    pub fn set_disabled(&mut self, target: Id, disable: bool) {
-        if disable {
-            self.cancel_event_focus(&target);
-        }
-
-        for (i, id) in self.disabled.iter().enumerate() {
-            if target == id {
-                if !disable {
-                    self.redraw(target);
-                    self.disabled.remove(i);
-                }
-                return;
-            }
-        }
-        if disable {
-            self.redraw(&target);
-            self.disabled.push(target);
-        }
-    }
-
     /// Notify that a widget must be redrawn
     ///
     /// This method is designed to support partial redraws though these are not
@@ -349,16 +298,155 @@ impl EventState {
     pub fn action_redraw(&mut self, action: impl Into<Option<ActionRedraw>>) {
         self.action_redraw = self.action_redraw.or(action.into());
     }
+}
 
-    /// Request update to widget `id`
+/// Widget configuration and update context
+///
+/// This type supports access to [`EventState`] via [`Deref`] / [`DerefMut`]
+/// and to [`SizeCx`] via [`Self::size_cx`].
+#[must_use]
+pub struct ConfigCx<'a> {
+    theme: &'a dyn ThemeSize,
+    state: &'a mut EventState,
+    resize: Option<ActionResize>,
+    redraw: Option<ActionRedraw>,
+}
+
+impl<'a> Deref for ConfigCx<'a> {
+    type Target = EventState;
+    fn deref(&self) -> &EventState {
+        self.state
+    }
+}
+impl<'a> DerefMut for ConfigCx<'a> {
+    fn deref_mut(&mut self) -> &mut EventState {
+        self.state
+    }
+}
+
+impl<'a> ConfigCx<'a> {
+    /// Construct
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    pub fn new(sh: &'a dyn ThemeSize, ev: &'a mut EventState) -> Self {
+        ConfigCx {
+            theme: sh,
+            state: ev,
+            resize: None,
+            redraw: None,
+        }
+    }
+
+    /// Access a [`SizeCx`]
+    #[inline]
+    pub fn size_cx<'b>(&'b mut self) -> SizeCx<'b>
+    where
+        'a: 'b,
+    {
+        SizeCx::new(self.state, self.theme)
+    }
+
+    /// Configure a widget
     ///
-    /// This will call [`Events::update`] on `id`.
-    pub fn request_update(&mut self, id: Id) {
-        self.pending_update = if let Some(id2) = self.pending_update.take() {
-            Some(id.common_ancestor(&id2))
-        } else {
-            Some(id)
-        };
+    /// All widgets must be configured after construction; see
+    /// [widget lifecycle](crate::Widget#widget-lifecycle) and
+    /// [configuration](Events#configuration).
+    /// Widgets must always be sized after configuration.
+    ///
+    /// Assigns `id` to the widget. This must be valid and is usually
+    /// constructed with [`Events::make_child_id`].
+    #[inline]
+    pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
+        // This recurses; avoid passing existing state in
+        // (Except redraw: this doesn't matter.)
+        let start_resize = std::mem::take(&mut self.resize);
+        widget._configure(self, id);
+        self.resize = self.resize.or(start_resize);
+    }
+
+    /// Update a widget
+    ///
+    /// All widgets must be updated after input data changes; see
+    /// [update](Events#update).
+    #[inline]
+    pub fn update(&mut self, mut widget: Node<'_>) {
+        // This recurses; avoid passing existing state in
+        // (Except redraw: this doesn't matter.)
+        let start_resize = std::mem::take(&mut self.resize);
+        widget._update(self);
+        self.resize = self.resize.or(start_resize);
+    }
+
+    /// Set/unset a widget as disabled
+    ///
+    /// Disabled status applies to all descendants and blocks reception of
+    /// events ([`Unused`] is returned automatically when the
+    /// recipient or any ancestor is disabled).
+    ///
+    /// Disabling a widget clears navigation, selection and key focus when the
+    /// target is disabled, and also cancels press/pan grabs.
+    pub fn set_disabled(&mut self, target: Id, disable: bool) {
+        if disable {
+            self.cancel_event_focus(&target);
+        }
+
+        for (i, id) in self.disabled.iter().enumerate() {
+            if target == id {
+                if !disable {
+                    self.redraw();
+                    self.disabled.remove(i);
+                }
+                return;
+            }
+        }
+        if disable {
+            self.redraw();
+            self.disabled.push(target);
+        }
+    }
+
+    /// Set a target for messages of a specific type when sent to `Id::default()`
+    ///
+    /// Messages of this type sent to `Id::default()` from any window will be
+    /// sent to `id`.
+    pub fn set_send_target_for<M: Debug + 'static>(&mut self, id: Id) {
+        let type_id = TypeId::of::<M>();
+        self.pending_send_targets.push((type_id, id));
+    }
+
+    /// Notify that a widget must be redrawn
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    #[inline]
+    pub fn redraw(&mut self) {
+        self.redraw = Some(ActionRedraw);
+    }
+
+    /// Require that the current widget (and its descendants) be resized
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    #[inline]
+    pub fn resize(&mut self) {
+        self.resize = Some(ActionResize);
+    }
+
+    #[inline]
+    pub(crate) fn needs_redraw(&self) -> bool {
+        self.redraw.is_some()
+    }
+
+    #[inline]
+    pub(crate) fn needs_resize(&self) -> bool {
+        self.resize.is_some()
+    }
+
+    #[inline]
+    pub(crate) fn set_resize(&mut self, resize: Option<ActionResize>) {
+        self.resize = resize;
     }
 }
 

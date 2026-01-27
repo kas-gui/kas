@@ -6,9 +6,9 @@
 //! The [`EditField`] and [`EditBox`] widgets, plus supporting items
 
 use super::*;
-use kas::event::Ime;
 use kas::event::components::TextInputAction;
 use kas::event::{CursorIcon, ElementState, FocusSource, PhysicalKey};
+use kas::event::{Ime, ImePurpose};
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::text::{Effect, EffectFlags, NotReady};
@@ -160,7 +160,7 @@ mod EditField {
                 draw.text_with_selection(pos, rect, &self.text, self.selection.range());
             }
 
-            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
+            if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {
                 draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
             }
         }
@@ -232,6 +232,7 @@ mod EditField {
                     if source == FocusSource::Pointer {
                         self.set_primary(cx);
                     }
+
                     Used
                 }
                 Event::KeyFocus => {
@@ -240,7 +241,13 @@ mod EditField {
                     if !self.current.is_ime_enabled() {
                         self.guard.focus_gained(&mut self.editor, cx, data);
                     }
-                    self.enable_ime(cx);
+
+                    if self.current.is_none() {
+                        let hint = Default::default();
+                        let purpose = ImePurpose::Normal;
+                        let surrounding_text = self.ime_surrounding_text();
+                        cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
+                    }
                     Used
                 }
                 Event::LostKeyFocus => {
@@ -474,7 +481,6 @@ mod EditField {
                         self.current = CurrentAction::None;
 
                         self.request_key_focus(cx, FocusSource::Pointer);
-                        self.enable_ime(cx);
                         Used
                     }
                 },

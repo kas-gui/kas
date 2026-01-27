@@ -5,7 +5,7 @@
 
 //! Event context: navigation focus
 
-use super::{EventCx, EventState};
+use super::{ConfigCx, EventCx, EventState};
 use crate::event::{Event, FocusSource};
 use crate::{Id, Node};
 #[allow(unused)] use crate::{Tile, event::Command};
@@ -41,10 +41,17 @@ pub(super) enum PendingNavFocus {
     },
 }
 
-impl PendingNavFocus {
+#[derive(Default)]
+pub(super) struct NavFocus {
+    focus: Option<Id>,
+    pub(super) fallback: Option<Id>,
+    pending_focus: PendingNavFocus,
+}
+
+impl NavFocus {
     #[inline]
-    pub(super) fn is_some(&self) -> bool {
-        !matches!(self, PendingNavFocus::None)
+    pub(super) fn has_pending_changes(&self) -> bool {
+        !matches!(self.pending_focus, PendingNavFocus::None)
     }
 }
 
@@ -52,60 +59,37 @@ impl EventState {
     /// Get whether this widget has navigation focus
     #[inline]
     pub fn has_nav_focus(&self, w_id: &Id) -> bool {
-        *w_id == self.nav_focus
+        *w_id == self.nav.focus
     }
 
     /// Get the current navigation focus, if any
     ///
     /// This is the widget selected by navigating the UI with the Tab key.
     ///
-    /// Note: changing navigation focus (e.g. via [`Self::clear_nav_focus`],
-    /// [`Self::request_nav_focus`] or [`Self::next_nav_focus`]) does not
+    /// Note: changing navigation focus (e.g. via [`EventCx::clear_nav_focus`],
+    /// [`EventCx::request_nav_focus`] or [`EventCx::next_nav_focus`]) does not
     /// immediately affect the result of this method.
     #[inline]
     pub fn nav_focus(&self) -> Option<&Id> {
-        self.nav_focus.as_ref()
-    }
-
-    /// Clear navigation focus
-    pub fn clear_nav_focus(&mut self) {
-        self.pending_nav_focus = PendingNavFocus::Set {
-            target: None,
-            source: FocusSource::Synthetic,
-        };
+        self.nav.focus.as_ref()
     }
 
     pub(super) fn clear_nav_focus_on(&mut self, target: &Id) {
-        if let Some(id) = self.nav_focus.as_ref()
+        if let Some(id) = self.nav.focus.as_ref()
             && target.is_ancestor_of(id)
         {
-            if matches!(&self.pending_nav_focus, PendingNavFocus::Set { target, .. } if target.as_ref() == Some(id))
+            if matches!(&self.nav.pending_focus, PendingNavFocus::Set { target, .. } if target.as_ref() == Some(id))
             {
-                self.pending_nav_focus = PendingNavFocus::None;
+                self.nav.pending_focus = PendingNavFocus::None;
             }
 
-            if matches!(self.pending_nav_focus, PendingNavFocus::None) {
-                self.pending_nav_focus = PendingNavFocus::Set {
+            if matches!(self.nav.pending_focus, PendingNavFocus::None) {
+                self.nav.pending_focus = PendingNavFocus::Set {
                     target: None,
                     source: FocusSource::Synthetic,
                 };
             }
         }
-    }
-
-    /// Request navigation focus directly
-    ///
-    /// If `id` already has navigation focus or navigation focus is disabled
-    /// globally then nothing happens. If widget `id` supports
-    /// [navigation focus](Tile::navigable), then it should receive
-    /// [`Event::NavFocus`]; if not then the first supporting ancestor will
-    /// receive focus.
-    pub fn request_nav_focus(&mut self, id: Id, source: FocusSource) {
-        self.pending_nav_focus = PendingNavFocus::Next {
-            target: Some(id),
-            advance: NavAdvance::None,
-            source,
-        };
     }
 
     /// Set navigation focus directly
@@ -118,8 +102,53 @@ impl EventState {
     /// is not checked or required. For example, a `ScrollLabel` can receive
     /// focus on text selection with the mouse.
     pub(crate) fn set_nav_focus(&mut self, id: Id, source: FocusSource) {
-        self.pending_nav_focus = PendingNavFocus::Set {
+        self.nav.pending_focus = PendingNavFocus::Set {
             target: Some(id),
+            source,
+        };
+    }
+}
+
+impl<'a> ConfigCx<'a> {
+    /// Sets the fallback recipient of [`Event::Command`]
+    ///
+    /// Where a key-press translates to a [`Command`], this is first sent to
+    /// widgets with applicable key, selection and/or navigation focus as an
+    /// [`Event::Command`]. If this event goes unhandled and a fallback
+    /// recipient is set using this method, then this fallback recipient will
+    /// be sent the same event.
+    ///
+    /// There may be one fallback recipient per window; do not use an [`Id`]
+    /// from another window. If this method is called multiple times, the last
+    /// such call succeeds.
+    pub fn register_nav_fallback(&mut self, id: Id) {
+        if self.nav.fallback.is_none() {
+            log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
+            self.nav.fallback = Some(id);
+        }
+    }
+}
+
+impl<'a> EventCx<'a> {
+    /// Clear navigation focus
+    pub fn clear_nav_focus(&mut self) {
+        self.nav.pending_focus = PendingNavFocus::Set {
+            target: None,
+            source: FocusSource::Synthetic,
+        };
+    }
+
+    /// Request navigation focus directly
+    ///
+    /// If `id` already has navigation focus or navigation focus is disabled
+    /// globally then nothing happens. If widget `id` supports
+    /// [navigation focus](Tile::navigable), then it should receive
+    /// [`Event::NavFocus`]; if not then the first supporting ancestor will
+    /// receive focus.
+    pub fn request_nav_focus(&mut self, id: Id, source: FocusSource) {
+        self.nav.pending_focus = PendingNavFocus::Next {
+            target: Some(id),
+            advance: NavAdvance::None,
             source,
         };
     }
@@ -128,7 +157,7 @@ impl EventState {
     ///
     /// If `target == Some(id)`, this looks for the next widget from `id`
     /// (inclusive) which is [navigable](Tile::navigable). Otherwise where
-    /// some widget `id` has [`nav_focus`](Self::nav_focus) this looks for the
+    /// some widget `id` has [`nav_focus`](EventState::nav_focus) this looks for the
     /// next navigable widget *excluding* `id`. If no reference is available,
     /// this instead looks for the first navigable widget.
     ///
@@ -144,33 +173,13 @@ impl EventState {
             false => NavAdvance::Forward(target.is_some()),
             true => NavAdvance::Reverse(target.is_some()),
         };
-        self.pending_nav_focus = PendingNavFocus::Next {
+        self.nav.pending_focus = PendingNavFocus::Next {
             target,
             advance,
             source,
         };
     }
 
-    /// Sets the fallback recipient of [`Event::Command`]
-    ///
-    /// Where a key-press translates to a [`Command`], this is first sent to
-    /// widgets with applicable key, selection and/or navigation focus as an
-    /// [`Event::Command`]. If this event goes unhandled and a fallback
-    /// recipient is set using this method, then this fallback recipient will
-    /// be sent the same event.
-    ///
-    /// There may be one fallback recipient per window; do not use an [`Id`]
-    /// from another window. If this method is called multiple times, the last
-    /// such call succeeds.
-    pub fn register_nav_fallback(&mut self, id: Id) {
-        if self.nav_fallback.is_none() {
-            log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
-            self.nav_fallback = Some(id);
-        }
-    }
-}
-
-impl<'a> EventCx<'a> {
     // Call Widget::_nav_next
     #[inline]
     pub(super) fn nav_next(
@@ -185,7 +194,7 @@ impl<'a> EventCx<'a> {
     }
 
     pub(super) fn handle_pending_nav_focus(&mut self, widget: Node<'_>) {
-        match std::mem::take(&mut self.pending_nav_focus) {
+        match std::mem::take(&mut self.nav.pending_focus) {
             PendingNavFocus::None => (),
             PendingNavFocus::Set { target, source } => {
                 self.set_nav_focus_impl(widget, target, source)
@@ -205,20 +214,22 @@ impl<'a> EventCx<'a> {
         target: Option<Id>,
         source: FocusSource,
     ) {
-        if target == self.nav_focus || !self.config.nav_focus {
+        if target == self.nav.focus || !self.config.nav_focus {
             return;
         }
 
-        if let Some(id) = self.sel_focus.clone() {
-            self.clear_sel_socus_on(&id);
+        if let Some(id) = self.input.sel_focus().cloned()
+            && id != target
+        {
+            self.input.clear_sel_socus_on(&id);
         }
 
-        if let Some(old) = self.nav_focus.take() {
+        if let Some(old) = self.nav.focus.take() {
             self.redraw();
             self.send_event(widget.re(), old, Event::LostNavFocus);
         }
 
-        self.nav_focus = target.clone();
+        self.nav.focus = target.clone();
         log::debug!(target: "kas_core::event", "nav_focus = {target:?}");
         if let Some(id) = target {
             self.redraw();
@@ -234,7 +245,7 @@ impl<'a> EventCx<'a> {
         advance: NavAdvance,
         source: FocusSource,
     ) {
-        if !self.config.nav_focus || (target.is_some() && target == self.nav_focus) {
+        if !self.config.nav_focus || (target.is_some() && target == self.nav.focus) {
             return;
         }
 
@@ -259,7 +270,7 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        let focus = target.or_else(|| self.nav_focus.clone());
+        let focus = target.or_else(|| self.nav.focus.clone());
 
         // Whether to restart from the beginning on failure
         let restart = focus.is_some();

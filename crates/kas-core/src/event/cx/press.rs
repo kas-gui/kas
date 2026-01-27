@@ -208,7 +208,7 @@ impl PressStart {
     /// `success: false`).
     ///
     /// [`EventState::is_depressed`] will return true for the grabbing widget.
-    /// Call [`EventState::set_grab_depress`] on `PressMove` to update the
+    /// Call [`EventCx::set_grab_depress`] on `PressMove` to update the
     /// grab's depress target. (This is done automatically for
     /// [`GrabMode::Click`], and ends automatically when the grab ends.)
     ///
@@ -370,6 +370,42 @@ impl EventState {
                 .is_none_or(|grab| grab.start_id == w_id)
     }
 
+    /// Returns true if there is a mouse or touch grab on `id` or any descendant of `id`
+    pub fn any_grab_on(&self, id: &Id) -> bool {
+        if self
+            .mouse
+            .grab
+            .as_ref()
+            .map(|grab| grab.start_id == id)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        self.touch.touch_grab.iter().any(|grab| grab.start_id == id)
+    }
+
+    /// Get velocity of the mouse pointer or a touch
+    ///
+    /// The velocity is calculated at the time this method is called using
+    /// existing samples of motion.
+    ///
+    /// Where the `source` is a mouse this always succeeds.
+    /// For touch events this requires an active grab and is not
+    /// guaranteed to succeed; currently only a limited number of presses with
+    /// mode [`GrabMode::Grab`] are tracked for velocity.
+    pub fn press_velocity(&self, source: PressSource) -> Option<Vec2> {
+        let evc = self.config().event();
+        if source.is_mouse() {
+            Some(self.mouse.samples.velocity(evc.kinetic_timeout()))
+        } else if let Some(finger_id) = source.finger_id() {
+            self.touch.velocity(finger_id, evc)
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+impl<'a> EventCx<'a> {
     /// Set the pointer icon
     ///
     /// This is normally called from [`Events::handle_mouse_over`]. In other
@@ -428,42 +464,6 @@ impl EventState {
         redraw
     }
 
-    /// Returns true if there is a mouse or touch grab on `id` or any descendant of `id`
-    pub fn any_grab_on(&self, id: &Id) -> bool {
-        if self
-            .mouse
-            .grab
-            .as_ref()
-            .map(|grab| grab.start_id == id)
-            .unwrap_or(false)
-        {
-            return true;
-        }
-        self.touch.touch_grab.iter().any(|grab| grab.start_id == id)
-    }
-
-    /// Get velocity of the mouse pointer or a touch
-    ///
-    /// The velocity is calculated at the time this method is called using
-    /// existing samples of motion.
-    ///
-    /// Where the `source` is a mouse this always succeeds.
-    /// For touch events this requires an active grab and is not
-    /// guaranteed to succeed; currently only a limited number of presses with
-    /// mode [`GrabMode::Grab`] are tracked for velocity.
-    pub fn press_velocity(&self, source: PressSource) -> Option<Vec2> {
-        let evc = self.config().event();
-        if source.is_mouse() {
-            Some(self.mouse.samples.velocity(evc.kinetic_timeout()))
-        } else if let Some(finger_id) = source.finger_id() {
-            self.touch.velocity(finger_id, evc)
-        } else {
-            unreachable!()
-        }
-    }
-}
-
-impl<'a> EventCx<'a> {
     /// Update the mouse pointer icon used during a grab
     ///
     /// This only succeeds if widget `id` has an active mouse-grab (see

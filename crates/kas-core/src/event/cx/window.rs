@@ -78,19 +78,13 @@ impl EventState {
             cx.mouse_handle_pending(node.re());
             cx.touch_handle_pending(node.re());
 
-            if let Some(id) = cx.pending_update.take() {
-                cx.pre_recursion();
-                node.find_node(&id, |node| cx.update(node));
-                cx.post_recursion();
-            }
-
-            if cx.pending_nav_focus.is_some() {
+            if cx.nav.has_pending_changes() {
                 cx.handle_pending_nav_focus(node.re());
             }
 
             // Update sel focus after nav focus:
-            if let Some(pending) = cx.pending_sel_focus.take() {
-                cx.set_sel_focus(node.re(), pending);
+            if cx.input.has_pending_changes() {
+                cx.flush_pending_input_focus(node.re());
             }
 
             // Poll futures; these may push messages to cx.send_queue.
@@ -191,7 +185,7 @@ impl<'a> EventCx<'a> {
         let id = self.runner.add_popup(parent_id, popup.clone());
         let mut old_nav_focus = None;
         if set_focus {
-            old_nav_focus = self.nav_focus.clone();
+            old_nav_focus = self.nav_focus().cloned();
             self.clear_nav_focus();
         }
         self.popups.push(PopupState {

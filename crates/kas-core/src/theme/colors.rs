@@ -34,9 +34,9 @@ bitflags::bitflags! {
         const DEPRESS = 1 << 3;
         /// Keyboard navigation of UIs moves a "focus" from widget to widget.
         const NAV_FOCUS = 1 << 4;
-        /// "Key focus" implies this widget is ready to receive text input
-        /// (e.g. typing into an input field).
-        const KEY_FOCUS = 1 << 5;
+        /// "Input focus" implies this widget is ready to receive text input
+        /// (e.g. typing into an input field or a virtual keyboard).
+        const INPUT_FOCUS = 1 << 5;
         /// "Selection focus" allows things such as text to be selected. Selection
         /// focus implies that the widget also has character focus.
         const SEL_FOCUS = 1 << 6;
@@ -55,7 +55,6 @@ impl InputState {
 
     /// Construct, setting all but depress status
     pub fn new_except_depress(ev: &EventState, id: &Id) -> Self {
-        let (key_focus, sel_focus) = ev.has_key_focus(id);
         let mut state = InputState::empty();
         if ev.is_disabled(id) {
             state |= InputState::DISABLED;
@@ -66,11 +65,10 @@ impl InputState {
         if ev.has_nav_focus(id) {
             state |= InputState::NAV_FOCUS;
         }
-        if key_focus {
-            state |= InputState::KEY_FOCUS;
-        }
-        if sel_focus {
-            state |= InputState::SEL_FOCUS;
+        match ev.has_input_focus(id) {
+            None => (),
+            Some(false) => state |= InputState::SEL_FOCUS,
+            Some(true) => state |= InputState::SEL_FOCUS | InputState::INPUT_FOCUS,
         }
         state
     }
@@ -109,10 +107,10 @@ impl InputState {
         self.contains(InputState::NAV_FOCUS)
     }
 
-    /// Extract `KEY_FOCUS` bit
+    /// Extract `INPUT_FOCUS` bit
     #[inline]
-    pub fn key_focus(self) -> bool {
-        self.contains(InputState::KEY_FOCUS)
+    pub fn input_focus(self) -> bool {
+        self.contains(InputState::INPUT_FOCUS)
     }
 
     /// Extract `SEL_FOCUS` bit
@@ -283,7 +281,7 @@ impl ColorsLinear {
             col.average()
         } else if state.depress() {
             col.multiply(MULT_DEPRESS)
-        } else if state.under_mouse() || state.key_focus() {
+        } else if state.under_mouse() || state.input_focus() {
             col.multiply(MULT_HIGHLIGHT).max(MIN_HIGHLIGHT)
         } else {
             col

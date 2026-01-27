@@ -170,7 +170,7 @@ mod Popup {
         /// open.
         ///
         /// Returns `true` when the popup is newly opened. In this case, the
-        /// caller may wish to call [`EventState::next_nav_focus`] next.
+        /// caller may wish to call [`EventCx::next_nav_focus`] next.
         pub fn open(
             &mut self,
             cx: &mut EventCx,

@@ -5,10 +5,8 @@
 
 //! Event context: timers
 
-use winit::window::ImeRequestData;
-
 use super::{EventCx, EventState};
-use crate::{Id, Node, TileExt, event::Event, geom::Size};
+use crate::{Id, Node, event::Event};
 use std::time::{Duration, Instant};
 
 /// A timer handle
@@ -122,28 +120,7 @@ impl<'a> EventCx<'a> {
             self.send_event(widget.re(), id, Event::Timer(handle));
         }
 
-        // Set IME cursor area, if moved.
-        if self.ime_is_enabled
-            && let Some(ref target) = self.sel_focus
-            && let Some((mut rect, translation)) = widget.as_tile().find_tile_rect(target)
-        {
-            if self.ime_cursor_area.size != Size::ZERO {
-                rect = self.ime_cursor_area;
-            }
-            rect += translation;
-            if rect != self.last_ime_rect {
-                let data = ImeRequestData::default().with_cursor_area(
-                    rect.pos.as_physical().into(),
-                    rect.size.as_physical().into(),
-                );
-                let req = winit::window::ImeRequest::Update(data);
-                match self.window.ime_request(req) {
-                    Ok(()) => (),
-                    Err(e) => log::warn!("Unexpected IME error: {e}"),
-                }
-                self.last_ime_rect = rect;
-            }
-        }
+        self.cx.input.frame_update(self.window, widget.as_tile());
     }
 
     /// Update widgets due to timer
