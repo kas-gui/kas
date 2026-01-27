@@ -27,7 +27,7 @@ use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, WindowId};
 use crate::{ActionClose, ActionMoved, ActionRedraw, ActionResize, ConfigAction, HasId, Id, Node};
 use key::Input;
-use nav::PendingNavFocus;
+use nav::NavFocus;
 
 #[cfg(feature = "accesskit")] mod accessibility;
 mod key;
@@ -76,8 +76,7 @@ pub struct EventState {
     accesskit_is_enabled: bool,
     modifiers: ModifiersState,
     input: Input,
-    nav_focus: Option<Id>,
-    nav_fallback: Option<Id>,
+    nav: NavFocus,
     key_depress: LinearMap<PhysicalKey, Id>,
     mouse: Mouse,
     touch: Touch,
@@ -92,7 +91,6 @@ pub struct EventState {
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     pub(super) pending_send_targets: Vec<(TypeId, Id)>,
-    pending_nav_focus: PendingNavFocus,
     action_moved: Option<ActionMoved>,
     pub(crate) action_redraw: Option<ActionRedraw>,
     action_close: Option<ActionClose>,
@@ -112,8 +110,7 @@ impl EventState {
             accesskit_is_enabled: false,
             modifiers: ModifiersState::empty(),
             input: Input::default(),
-            nav_focus: None,
-            nav_fallback: None,
+            nav: NavFocus::default(),
             key_depress: Default::default(),
             mouse: Default::default(),
             touch: Default::default(),
@@ -126,7 +123,6 @@ impl EventState {
             send_queue: Default::default(),
             pending_send_targets: vec![],
             fut_messages: vec![],
-            pending_nav_focus: PendingNavFocus::None,
             action_moved: None,
             action_redraw: None,
             action_close: None,
@@ -158,7 +154,7 @@ impl EventState {
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
 
         // These are recreated during configure:
-        self.nav_fallback = None;
+        self.nav.fallback = None;
 
         let mut cx = ConfigCx::new(sizer, self);
         cx.configure(node, id);

@@ -41,10 +41,17 @@ pub(super) enum PendingNavFocus {
     },
 }
 
-impl PendingNavFocus {
+#[derive(Default)]
+pub(super) struct NavFocus {
+    focus: Option<Id>,
+    pub(super) fallback: Option<Id>,
+    pending_focus: PendingNavFocus,
+}
+
+impl NavFocus {
     #[inline]
-    pub(super) fn is_some(&self) -> bool {
-        !matches!(self, PendingNavFocus::None)
+    pub(super) fn has_pending_changes(&self) -> bool {
+        !matches!(self.pending_focus, PendingNavFocus::None)
     }
 }
 
@@ -52,7 +59,7 @@ impl EventState {
     /// Get whether this widget has navigation focus
     #[inline]
     pub fn has_nav_focus(&self, w_id: &Id) -> bool {
-        *w_id == self.nav_focus
+        *w_id == self.nav.focus
     }
 
     /// Get the current navigation focus, if any
@@ -64,28 +71,28 @@ impl EventState {
     /// immediately affect the result of this method.
     #[inline]
     pub fn nav_focus(&self) -> Option<&Id> {
-        self.nav_focus.as_ref()
+        self.nav.focus.as_ref()
     }
 
     /// Clear navigation focus
     pub fn clear_nav_focus(&mut self) {
-        self.pending_nav_focus = PendingNavFocus::Set {
+        self.nav.pending_focus = PendingNavFocus::Set {
             target: None,
             source: FocusSource::Synthetic,
         };
     }
 
     pub(super) fn clear_nav_focus_on(&mut self, target: &Id) {
-        if let Some(id) = self.nav_focus.as_ref()
+        if let Some(id) = self.nav.focus.as_ref()
             && target.is_ancestor_of(id)
         {
-            if matches!(&self.pending_nav_focus, PendingNavFocus::Set { target, .. } if target.as_ref() == Some(id))
+            if matches!(&self.nav.pending_focus, PendingNavFocus::Set { target, .. } if target.as_ref() == Some(id))
             {
-                self.pending_nav_focus = PendingNavFocus::None;
+                self.nav.pending_focus = PendingNavFocus::None;
             }
 
-            if matches!(self.pending_nav_focus, PendingNavFocus::None) {
-                self.pending_nav_focus = PendingNavFocus::Set {
+            if matches!(self.nav.pending_focus, PendingNavFocus::None) {
+                self.nav.pending_focus = PendingNavFocus::Set {
                     target: None,
                     source: FocusSource::Synthetic,
                 };
@@ -101,7 +108,7 @@ impl EventState {
     /// [`Event::NavFocus`]; if not then the first supporting ancestor will
     /// receive focus.
     pub fn request_nav_focus(&mut self, id: Id, source: FocusSource) {
-        self.pending_nav_focus = PendingNavFocus::Next {
+        self.nav.pending_focus = PendingNavFocus::Next {
             target: Some(id),
             advance: NavAdvance::None,
             source,
@@ -118,7 +125,7 @@ impl EventState {
     /// is not checked or required. For example, a `ScrollLabel` can receive
     /// focus on text selection with the mouse.
     pub(crate) fn set_nav_focus(&mut self, id: Id, source: FocusSource) {
-        self.pending_nav_focus = PendingNavFocus::Set {
+        self.nav.pending_focus = PendingNavFocus::Set {
             target: Some(id),
             source,
         };
@@ -144,7 +151,7 @@ impl EventState {
             false => NavAdvance::Forward(target.is_some()),
             true => NavAdvance::Reverse(target.is_some()),
         };
-        self.pending_nav_focus = PendingNavFocus::Next {
+        self.nav.pending_focus = PendingNavFocus::Next {
             target,
             advance,
             source,
@@ -165,9 +172,9 @@ impl<'a> ConfigCx<'a> {
     /// from another window. If this method is called multiple times, the last
     /// such call succeeds.
     pub fn register_nav_fallback(&mut self, id: Id) {
-        if self.nav_fallback.is_none() {
+        if self.nav.fallback.is_none() {
             log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
-            self.nav_fallback = Some(id);
+            self.nav.fallback = Some(id);
         }
     }
 }
@@ -187,7 +194,7 @@ impl<'a> EventCx<'a> {
     }
 
     pub(super) fn handle_pending_nav_focus(&mut self, widget: Node<'_>) {
-        match std::mem::take(&mut self.pending_nav_focus) {
+        match std::mem::take(&mut self.nav.pending_focus) {
             PendingNavFocus::None => (),
             PendingNavFocus::Set { target, source } => {
                 self.set_nav_focus_impl(widget, target, source)
@@ -207,7 +214,7 @@ impl<'a> EventCx<'a> {
         target: Option<Id>,
         source: FocusSource,
     ) {
-        if target == self.nav_focus || !self.config.nav_focus {
+        if target == self.nav.focus || !self.config.nav_focus {
             return;
         }
 
@@ -217,12 +224,12 @@ impl<'a> EventCx<'a> {
             self.input.clear_sel_socus_on(&id);
         }
 
-        if let Some(old) = self.nav_focus.take() {
+        if let Some(old) = self.nav.focus.take() {
             self.redraw();
             self.send_event(widget.re(), old, Event::LostNavFocus);
         }
 
-        self.nav_focus = target.clone();
+        self.nav.focus = target.clone();
         log::debug!(target: "kas_core::event", "nav_focus = {target:?}");
         if let Some(id) = target {
             self.redraw();
@@ -238,7 +245,7 @@ impl<'a> EventCx<'a> {
         advance: NavAdvance,
         source: FocusSource,
     ) {
-        if !self.config.nav_focus || (target.is_some() && target == self.nav_focus) {
+        if !self.config.nav_focus || (target.is_some() && target == self.nav.focus) {
             return;
         }
 
@@ -263,7 +270,7 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        let focus = target.or_else(|| self.nav_focus.clone());
+        let focus = target.or_else(|| self.nav.focus.clone());
 
         // Whether to restart from the beginning on failure
         let restart = focus.is_some();

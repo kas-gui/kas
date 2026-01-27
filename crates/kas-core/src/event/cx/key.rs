@@ -436,7 +436,7 @@ impl<'a> EventCx<'a> {
             }
 
             if !self.modifiers.alt_key()
-                && let Some(id) = self.nav_focus.clone()
+                && let Some(id) = self.nav_focus().cloned()
                 && send(self, id, cmd)
             {
                 return;
@@ -452,7 +452,7 @@ impl<'a> EventCx<'a> {
                 return;
             }
 
-            let fallback = self.nav_fallback.clone().unwrap_or(id);
+            let fallback = self.nav.fallback.clone().unwrap_or(id);
             if send(self, fallback, cmd) {
                 return;
             }

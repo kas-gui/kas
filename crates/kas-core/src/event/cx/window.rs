@@ -78,7 +78,7 @@ impl EventState {
             cx.mouse_handle_pending(node.re());
             cx.touch_handle_pending(node.re());
 
-            if cx.pending_nav_focus.is_some() {
+            if cx.nav.has_pending_changes() {
                 cx.handle_pending_nav_focus(node.re());
             }
 
@@ -185,7 +185,7 @@ impl<'a> EventCx<'a> {
         let id = self.runner.add_popup(parent_id, popup.clone());
         let mut old_nav_focus = None;
         if set_focus {
-            old_nav_focus = self.nav_focus.clone();
+            old_nav_focus = self.nav_focus().cloned();
             self.clear_nav_focus();
         }
         self.popups.push(PopupState {
