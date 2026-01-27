@@ -21,7 +21,7 @@ impl EventState {
     /// When calling this method, be aware that some widgets use an inner
     /// component to handle events, thus calling with the outer widget's `id`
     /// may not have the desired effect. [`Tile::try_probe`] and
-    /// [`EventState::next_nav_focus`] are usually able to find the appropriate
+    /// [`EventCx::next_nav_focus`] are usually able to find the appropriate
     /// event-handling target.
     ///
     /// This uses a tree traversal as with event handling, thus ancestors will

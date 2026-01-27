@@ -258,7 +258,7 @@ impl<'a> EventCx<'a> {
     /// Request Input Method Editor (IME) focus
     ///
     /// IME focus requires selection focus (see
-    /// [`EventState::request_key_focus`], [`EventState::request_sel_focus`]).
+    /// [`EventCx::request_key_focus`], [`EventCx::request_sel_focus`]).
     /// The request fails if this has not already been obtained (wait for
     /// [`Event::SelFocus`] or [`Event::KeyFocus`] before calling this method).
     ///

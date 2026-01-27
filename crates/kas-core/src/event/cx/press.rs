@@ -208,7 +208,7 @@ impl PressStart {
     /// `success: false`).
     ///
     /// [`EventState::is_depressed`] will return true for the grabbing widget.
-    /// Call [`EventState::set_grab_depress`] on `PressMove` to update the
+    /// Call [`EventCx::set_grab_depress`] on `PressMove` to update the
     /// grab's depress target. (This is done automatically for
     /// [`GrabMode::Click`], and ends automatically when the grab ends.)
     ///

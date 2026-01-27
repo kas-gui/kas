@@ -66,8 +66,8 @@ impl EventState {
     ///
     /// This is the widget selected by navigating the UI with the Tab key.
     ///
-    /// Note: changing navigation focus (e.g. via [`Self::clear_nav_focus`],
-    /// [`Self::request_nav_focus`] or [`Self::next_nav_focus`]) does not
+    /// Note: changing navigation focus (e.g. via [`EventCx::clear_nav_focus`],
+    /// [`EventCx::request_nav_focus`] or [`EventCx::next_nav_focus`]) does not
     /// immediately affect the result of this method.
     #[inline]
     pub fn nav_focus(&self) -> Option<&Id> {
@@ -157,7 +157,7 @@ impl<'a> EventCx<'a> {
     ///
     /// If `target == Some(id)`, this looks for the next widget from `id`
     /// (inclusive) which is [navigable](Tile::navigable). Otherwise where
-    /// some widget `id` has [`nav_focus`](Self::nav_focus) this looks for the
+    /// some widget `id` has [`nav_focus`](EventState::nav_focus) this looks for the
     /// next navigable widget *excluding* `id`. If no reference is available,
     /// this instead looks for the first navigable widget.
     ///

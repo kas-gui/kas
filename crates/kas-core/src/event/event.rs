@@ -90,10 +90,10 @@ pub enum Event<'a> {
     /// In many cases (but not all) the target widget has navigation focus.
     ///
     /// A [`PhysicalKey`] is attached when the command is caused by a key press.
-    /// The recipient may use this to call [`EventState::depress_with_key`].
+    /// The recipient may use this to call [`EventCx::depress_with_key`].
     ///
     /// If a widget has keyboard input focus (see
-    /// [`EventState::request_key_focus`]) it will instead receive
+    /// [`EventCx::request_key_focus`]) it will instead receive
     /// [`Event::Key`] for key presses (but may still receive `Event::Command`
     /// from other sources).
     Command(Command, Option<PhysicalKey>),
@@ -209,7 +209,7 @@ pub enum Event<'a> {
     /// Navigation focus implies that the widget is highlighted and will be the
     /// primary target of [`Event::Command`], and is thus able to receive basic
     /// keyboard input (e.g. arrow keys). To receive full keyboard input
-    /// ([`Event::Key`]), call [`EventState::request_key_focus`].
+    /// ([`Event::Key`]), call [`EventCx::request_key_focus`].
     ///
     /// With [`FocusSource::Pointer`] the widget should already have received
     /// [`Event::PressStart`].
@@ -223,7 +223,7 @@ pub enum Event<'a> {
     /// Notification that a widget has gained selection focus
     ///
     /// This focus must be requested by calling
-    /// [`EventState::request_sel_focus`] or [`EventState::request_key_focus`].
+    /// [`EventCx::request_sel_focus`] or [`EventCx::request_key_focus`].
     SelFocus(FocusSource),
     /// Notification that a widget has lost selection focus
     ///
@@ -233,7 +233,7 @@ pub enum Event<'a> {
     /// Notification that a widget has gained keyboard input focus
     ///
     /// This focus must be requested by calling
-    /// [`EventState::request_key_focus`].
+    /// [`EventCx::request_key_focus`].
     ///
     /// This is always preceeded by [`Event::SelFocus`] and is received prior to
     /// [`Event::Key`] events.
@@ -289,7 +289,7 @@ impl<'a> Event<'a> {
     ///
     /// -   [`Event::PressStart`] is grabbed using [`GrabMode::Click`]
     /// -   [`Event::Command`] with a key will cause `id` to be depressed until
-    ///     that key is released (see [`EventState::depress_with_key`]).
+    ///     that key is released (see [`EventCx::depress_with_key`]).
     pub fn on_click<F: FnOnce(&mut EventCx)>(self, cx: &mut EventCx, id: Id, f: F) -> IsUsed {
         match self {
             Event::Command(cmd, code) if cmd.is_activate() => {
