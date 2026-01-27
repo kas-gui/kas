@@ -25,6 +25,13 @@ pub(super) struct PendingSelFocus {
     source: FocusSource,
 }
 
+/// Keyboard and IME focus tracking
+#[derive(Debug, Default)]
+pub(super) struct Input {
+    focus: Option<Id>,
+    key_focus: bool,
+}
+
 impl EventState {
     pub(crate) fn clear_access_key_bindings(&mut self) {
         self.access_keys.clear();
@@ -57,13 +64,24 @@ impl EventState {
     /// Note that `key_focus` implies `sel_focus`.
     #[inline]
     pub fn has_key_focus(&self, w_id: &Id) -> (bool, bool) {
-        let sel_focus = *w_id == self.sel_focus;
-        (sel_focus && self.key_focus, sel_focus)
+        if *w_id == self.input.focus {
+            (self.input.key_focus, true)
+        } else {
+            (false, false)
+        }
     }
 
     #[inline]
-    pub(super) fn key_focus(&self) -> Option<Id> {
-        if self.key_focus { self.sel_focus.clone() } else { None }
+    pub(super) fn sel_focus(&self) -> Option<&Id> {
+        self.input.focus.as_ref()
+    }
+
+    #[inline]
+    pub(super) fn key_focus(&self) -> Option<&Id> {
+        self.input
+            .key_focus
+            .then_some(self.input.focus.as_ref())
+            .flatten()
     }
 
     /// Clear sel, key and ime focus on target
@@ -77,7 +95,7 @@ impl EventState {
             } else {
                 // We have a new focus target, hence the old one will be cleared
             }
-        } else if let Some(id) = self.sel_focus.as_ref()
+        } else if let Some(ref id) = self.input.focus
             && target.is_ancestor_of(id)
         {
             self.pending_sel_focus = Some(PendingSelFocus {
@@ -102,7 +120,7 @@ impl EventState {
     /// This does nothing if `target` does not have IME-enabled input focus.
     #[inline]
     pub fn set_ime_cursor_area(&mut self, target: &Id, rect: Rect) {
-        if self.ime_is_enabled && self.sel_focus.as_ref() == Some(target) {
+        if self.ime_is_enabled && *target == self.sel_focus() {
             self.ime_cursor_area = rect;
         }
     }
@@ -116,12 +134,12 @@ impl EventState {
         if self.pending_sel_focus.is_some() {
             // IME focus will be cancelled
         } else if self.ime_is_enabled
-            && let Some(id) = self.sel_focus.as_ref()
+            && let Some(ref id) = self.input.focus
             && target.is_ancestor_of(id)
         {
             self.pending_sel_focus = Some(PendingSelFocus {
                 target: Some(id.clone()),
-                key_focus: self.key_focus,
+                key_focus: self.key_focus().is_some(),
                 source: FocusSource::Synthetic,
             });
         }
@@ -205,7 +223,7 @@ impl<'a> EventCx<'a> {
         purpose: ImePurpose,
         mut surrounding_text: Option<ImeSurroundingText>,
     ) {
-        if self.sel_focus.as_ref() != Some(&target) {
+        if target != self.sel_focus() {
             return;
         }
 
@@ -283,7 +301,7 @@ impl<'a> EventCx<'a> {
 
     /// Update surrounding text used by Input Method Editor
     pub fn update_ime_surrounding_text(&self, target: &Id, surrounding_text: ImeSurroundingText) {
-        if !self.ime_is_enabled || self.sel_focus.as_ref() != Some(target) {
+        if !self.ime_is_enabled || *target != self.sel_focus() {
             return;
         }
 
@@ -296,7 +314,7 @@ impl<'a> EventCx<'a> {
     }
 
     pub(super) fn clear_ime_focus(&mut self) {
-        if let Some(id) = self.sel_focus.clone() {
+        if let Some(id) = self.sel_focus() {
             // NOTE: we assume that winit will send us Ime::Disabled
             self.old_ime_target = Some(id.clone());
             self.window.ime_request(ImeRequest::Disable).unwrap();
@@ -311,7 +329,7 @@ impl<'a> EventCx<'a> {
         mut event: KeyEvent,
         is_synthetic: bool,
     ) {
-        if let Some(id) = self.key_focus() {
+        if let Some(id) = self.key_focus().cloned() {
             // TODO(winit): https://github.com/rust-windowing/winit/issues/3038
             let mut mods = self.modifiers;
             mods.remove(ModifiersState::SHIFT);
@@ -365,9 +383,9 @@ impl<'a> EventCx<'a> {
                 }
             };
 
-            if (self.key_focus || cmd.suitable_for_sel_focus())
-                && let Some(id) = self.sel_focus.clone()
-                && send(self, id, cmd)
+            if (self.input.key_focus || cmd.suitable_for_sel_focus())
+                && let Some(ref id) = self.input.focus
+                && send(self, id.clone(), cmd)
             {
                 return;
             }
@@ -438,7 +456,7 @@ impl<'a> EventCx<'a> {
         }
 
         if self.ime_is_enabled
-            && let Some(id) = self.sel_focus.clone()
+            && let Some(id) = self.sel_focus().cloned()
         {
             let event = match ime {
                 Ime::Enabled => super::Ime::Enabled,
@@ -471,13 +489,13 @@ impl<'a> EventCx<'a> {
             key_focus,
             source,
         } = pending;
-        let target_is_new = target != self.sel_focus;
-        let old_key_focus = self.key_focus;
-        self.key_focus = key_focus;
+        let target_is_new = target != self.input.focus;
+        let old_key_focus = self.input.key_focus;
+        self.input.key_focus = key_focus;
 
         log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
 
-        if let Some(id) = self.sel_focus.clone() {
+        if let Some(id) = self.sel_focus().cloned() {
             self.clear_ime_focus();
 
             if old_key_focus && (!key_focus || target_is_new) {
@@ -504,6 +522,6 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        self.sel_focus = target;
+        self.input.focus = target;
     }
 }

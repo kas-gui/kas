@@ -211,7 +211,7 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if let Some(id) = self.sel_focus.clone() {
+        if let Some(id) = self.sel_focus().cloned() {
             self.clear_sel_socus_on(&id);
         }
 
