@@ -99,8 +99,8 @@ pub enum Event<'a> {
     Command(Command, Option<PhysicalKey>),
     /// Keyboard input: `event, is_synthetic`
     ///
-    /// This is only received by a widget with character focus (see
-    /// [`EventState::request_key_focus`]).
+    /// This is only received by a widget with
+    /// [keyboard focus](EventCx::request_key_focus).
     ///
     /// On some platforms, synthetic key events are generated when a window
     /// gains or loses focus with a key held (see documentation of
@@ -124,9 +124,8 @@ pub enum Event<'a> {
     Key(&'a KeyEvent, bool),
     /// An Input Method Editor event
     ///
-    /// IME events are only received after
-    /// [requesting key focus](EventState::request_key_focus) with some `ime`
-    /// purpose.
+    /// IME events are only received with
+    /// [IME focus](EventCx::replace_ime_focus).
     ///
     /// On [`Ime::Enabled`],
     /// the widget should call [`EventState::set_ime_cursor_area`] immediately

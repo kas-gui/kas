@@ -211,10 +211,10 @@ impl<'a> EventCx<'a> {
     /// translation of key events to [`Event::Command`] while key focus is
     /// active.
     ///
-    /// The `source` parameter is used by [`Event::SelFocus`].
+    /// Since key focus requires [selection focus](Self::request_sel_focus),
+    /// this method requests that too.
     ///
-    /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
-    /// navigation focus. It also clears IME focus.
+    /// The `source` parameter is used by [`Event::SelFocus`].
     #[inline]
     pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
         self.request_sel_focus(target, source);
@@ -231,6 +231,10 @@ impl<'a> EventCx<'a> {
     /// Selection focus is implied by character focus. [`Event::LostSelFocus`]
     /// is sent when selection focus is lost; in this case any existing
     /// selection should be cleared.
+    ///
+    /// Selection focus is a pre-requisite for
+    /// [key focus](Self::request_key_focus) and
+    /// [IME focus](Self::replace_ime_focus).
     ///
     /// The `source` parameter is used by [`Event::SelFocus`].
     ///
