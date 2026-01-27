@@ -19,14 +19,14 @@ use super::*;
 use crate::cast::{Cast, Conv};
 use crate::config::{ConfigMsg, WindowConfig};
 use crate::draw::DrawShared;
-use crate::geom::{Offset, Rect, Vec2};
+use crate::geom::{Offset, Vec2};
 use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, WindowId};
 use crate::{ActionClose, ActionMoved, ActionRedraw, ActionResize, ConfigAction, HasId, Id, Node};
-use key::{Input, PendingSelFocus};
+use key::Input;
 use nav::PendingNavFocus;
 
 #[cfg(feature = "accesskit")] mod accessibility;
@@ -75,11 +75,6 @@ pub struct EventState {
     #[cfg(feature = "accesskit")]
     accesskit_is_enabled: bool,
     modifiers: ModifiersState,
-    old_ime_target: Option<Id>,
-    /// Rect is cursor area in sel_focus's coordinate space if size != ZERO
-    ime_cursor_area: Rect,
-    last_ime_rect: Rect,
-    has_reported_ime_not_supported: bool,
     input: Input,
     nav_focus: Option<Id>,
     nav_fallback: Option<Id>,
@@ -97,8 +92,6 @@ pub struct EventState {
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     pub(super) pending_send_targets: Vec<(TypeId, Id)>,
-    // Optional new target for selection focus. bool is true if this also gains key focus.
-    pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
     action_moved: Option<ActionMoved>,
     pub(crate) action_redraw: Option<ActionRedraw>,
@@ -118,10 +111,6 @@ impl EventState {
             #[cfg(feature = "accesskit")]
             accesskit_is_enabled: false,
             modifiers: ModifiersState::empty(),
-            old_ime_target: None,
-            ime_cursor_area: Rect::ZERO,
-            last_ime_rect: Rect::ZERO,
-            has_reported_ime_not_supported: false,
             input: Input::default(),
             nav_focus: None,
             nav_fallback: None,
@@ -137,7 +126,6 @@ impl EventState {
             send_queue: Default::default(),
             pending_send_targets: vec![],
             fut_messages: vec![],
-            pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
             action_moved: None,
             action_redraw: None,
@@ -210,7 +198,7 @@ impl EventState {
 
     /// Clear all focus and grabs on `target`
     fn cancel_event_focus(&mut self, target: &Id) {
-        self.clear_sel_socus_on(target);
+        self.input.clear_sel_socus_on(target);
         self.clear_nav_focus_on(target);
         self.mouse.cancel_event_focus(target);
         self.touch.cancel_event_focus(target);
