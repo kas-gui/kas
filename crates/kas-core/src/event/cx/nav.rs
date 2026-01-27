@@ -74,14 +74,6 @@ impl EventState {
         self.nav.focus.as_ref()
     }
 
-    /// Clear navigation focus
-    pub fn clear_nav_focus(&mut self) {
-        self.nav.pending_focus = PendingNavFocus::Set {
-            target: None,
-            source: FocusSource::Synthetic,
-        };
-    }
-
     pub(super) fn clear_nav_focus_on(&mut self, target: &Id) {
         if let Some(id) = self.nav.focus.as_ref()
             && target.is_ancestor_of(id)
@@ -100,21 +92,6 @@ impl EventState {
         }
     }
 
-    /// Request navigation focus directly
-    ///
-    /// If `id` already has navigation focus or navigation focus is disabled
-    /// globally then nothing happens. If widget `id` supports
-    /// [navigation focus](Tile::navigable), then it should receive
-    /// [`Event::NavFocus`]; if not then the first supporting ancestor will
-    /// receive focus.
-    pub fn request_nav_focus(&mut self, id: Id, source: FocusSource) {
-        self.nav.pending_focus = PendingNavFocus::Next {
-            target: Some(id),
-            advance: NavAdvance::None,
-            source,
-        };
-    }
-
     /// Set navigation focus directly
     ///
     /// If `id` already has navigation focus or navigation focus is disabled
@@ -127,6 +104,51 @@ impl EventState {
     pub(crate) fn set_nav_focus(&mut self, id: Id, source: FocusSource) {
         self.nav.pending_focus = PendingNavFocus::Set {
             target: Some(id),
+            source,
+        };
+    }
+}
+
+impl<'a> ConfigCx<'a> {
+    /// Sets the fallback recipient of [`Event::Command`]
+    ///
+    /// Where a key-press translates to a [`Command`], this is first sent to
+    /// widgets with applicable key, selection and/or navigation focus as an
+    /// [`Event::Command`]. If this event goes unhandled and a fallback
+    /// recipient is set using this method, then this fallback recipient will
+    /// be sent the same event.
+    ///
+    /// There may be one fallback recipient per window; do not use an [`Id`]
+    /// from another window. If this method is called multiple times, the last
+    /// such call succeeds.
+    pub fn register_nav_fallback(&mut self, id: Id) {
+        if self.nav.fallback.is_none() {
+            log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
+            self.nav.fallback = Some(id);
+        }
+    }
+}
+
+impl<'a> EventCx<'a> {
+    /// Clear navigation focus
+    pub fn clear_nav_focus(&mut self) {
+        self.nav.pending_focus = PendingNavFocus::Set {
+            target: None,
+            source: FocusSource::Synthetic,
+        };
+    }
+
+    /// Request navigation focus directly
+    ///
+    /// If `id` already has navigation focus or navigation focus is disabled
+    /// globally then nothing happens. If widget `id` supports
+    /// [navigation focus](Tile::navigable), then it should receive
+    /// [`Event::NavFocus`]; if not then the first supporting ancestor will
+    /// receive focus.
+    pub fn request_nav_focus(&mut self, id: Id, source: FocusSource) {
+        self.nav.pending_focus = PendingNavFocus::Next {
+            target: Some(id),
+            advance: NavAdvance::None,
             source,
         };
     }
@@ -157,29 +179,7 @@ impl EventState {
             source,
         };
     }
-}
 
-impl<'a> ConfigCx<'a> {
-    /// Sets the fallback recipient of [`Event::Command`]
-    ///
-    /// Where a key-press translates to a [`Command`], this is first sent to
-    /// widgets with applicable key, selection and/or navigation focus as an
-    /// [`Event::Command`]. If this event goes unhandled and a fallback
-    /// recipient is set using this method, then this fallback recipient will
-    /// be sent the same event.
-    ///
-    /// There may be one fallback recipient per window; do not use an [`Id`]
-    /// from another window. If this method is called multiple times, the last
-    /// such call succeeds.
-    pub fn register_nav_fallback(&mut self, id: Id) {
-        if self.nav.fallback.is_none() {
-            log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
-            self.nav.fallback = Some(id);
-        }
-    }
-}
-
-impl<'a> EventCx<'a> {
     // Call Widget::_nav_next
     #[inline]
     pub(super) fn nav_next(
