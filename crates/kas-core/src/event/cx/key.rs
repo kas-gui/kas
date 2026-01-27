@@ -241,11 +241,11 @@ impl<'a> EventCx<'a> {
             }
             Err(ImeRequestError::NotSupported) => {
                 if !self.has_reported_ime_not_supported {
-                    log::error!("Failed to start Input Method Editor: not supported");
+                    log::warn!("Failed to start Input Method Editor: not supported");
                     self.has_reported_ime_not_supported = true;
                 }
             }
-            Err(e) => log::warn!("Unexpected IME error: {e}"),
+            Err(e) => log::error!("Unexpected IME error: {e}"),
         }
     }
 
@@ -291,7 +291,7 @@ impl<'a> EventCx<'a> {
         let req = ImeRequest::Update(data);
         match self.window.ime_request(req) {
             Ok(()) => (),
-            Err(e) => log::warn!("Unexpected IME error: {e}"),
+            Err(e) => log::error!("Unexpected IME error: {e}"),
         }
     }
 
