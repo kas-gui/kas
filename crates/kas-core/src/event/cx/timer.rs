@@ -123,8 +123,7 @@ impl<'a> EventCx<'a> {
         }
 
         // Set IME cursor area, if moved.
-        if self.ime_is_enabled
-            && let Some(ref target) = self.sel_focus()
+        if let Some(target) = self.ime_focus()
             && let Some((mut rect, translation)) = widget.as_tile().find_tile_rect(target)
         {
             if self.ime_cursor_area.size != Size::ZERO {

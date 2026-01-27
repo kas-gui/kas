@@ -75,7 +75,6 @@ pub struct EventState {
     #[cfg(feature = "accesskit")]
     accesskit_is_enabled: bool,
     modifiers: ModifiersState,
-    ime_is_enabled: bool,
     old_ime_target: Option<Id>,
     /// Rect is cursor area in sel_focus's coordinate space if size != ZERO
     ime_cursor_area: Rect,
@@ -119,7 +118,6 @@ impl EventState {
             #[cfg(feature = "accesskit")]
             accesskit_is_enabled: false,
             modifiers: ModifiersState::empty(),
-            ime_is_enabled: false,
             old_ime_target: None,
             ime_cursor_area: Rect::ZERO,
             last_ime_rect: Rect::ZERO,

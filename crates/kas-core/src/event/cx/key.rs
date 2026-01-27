@@ -30,6 +30,7 @@ pub(super) struct PendingSelFocus {
 pub(super) struct Input {
     focus: Option<Id>,
     key_focus: bool,
+    ime_focus: bool,
 }
 
 impl EventState {
@@ -84,6 +85,14 @@ impl EventState {
             .flatten()
     }
 
+    #[inline]
+    pub(super) fn ime_focus(&self) -> Option<&Id> {
+        self.input
+            .ime_focus
+            .then_some(self.input.focus.as_ref())
+            .flatten()
+    }
+
     /// Clear sel, key and ime focus on target
     pub(super) fn clear_sel_socus_on(&mut self, target: &Id) {
         if let Some(pending) = self.pending_sel_focus.as_mut() {
@@ -120,7 +129,7 @@ impl EventState {
     /// This does nothing if `target` does not have IME-enabled input focus.
     #[inline]
     pub fn set_ime_cursor_area(&mut self, target: &Id, rect: Rect) {
-        if self.ime_is_enabled && *target == self.sel_focus() {
+        if *target == self.ime_focus() {
             self.ime_cursor_area = rect;
         }
     }
@@ -133,8 +142,7 @@ impl EventState {
     pub fn cancel_ime_focus(&mut self, target: &Id) {
         if self.pending_sel_focus.is_some() {
             // IME focus will be cancelled
-        } else if self.ime_is_enabled
-            && let Some(ref id) = self.input.focus
+        } else if let Some(id) = self.ime_focus()
             && target.is_ancestor_of(id)
         {
             self.pending_sel_focus = Some(PendingSelFocus {
@@ -227,7 +235,7 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if self.ime_is_enabled {
+        if self.ime_focus().is_some() {
             self.clear_ime_focus();
         }
 
@@ -255,7 +263,7 @@ impl<'a> EventCx<'a> {
             Ok(()) => {
                 // NOTE: we could store (a clone of) data here, but we don't
                 // need to: we only need to pass changed properties on update.
-                self.ime_is_enabled = true;
+                self.input.ime_focus = true;
             }
             Err(ImeRequestError::NotSupported) => {
                 if !self.has_reported_ime_not_supported {
@@ -301,7 +309,7 @@ impl<'a> EventCx<'a> {
 
     /// Update surrounding text used by Input Method Editor
     pub fn update_ime_surrounding_text(&self, target: &Id, surrounding_text: ImeSurroundingText) {
-        if !self.ime_is_enabled || *target != self.sel_focus() {
+        if *target != self.ime_focus() {
             return;
         }
 
@@ -318,7 +326,7 @@ impl<'a> EventCx<'a> {
             // NOTE: we assume that winit will send us Ime::Disabled
             self.old_ime_target = Some(id.clone());
             self.window.ime_request(ImeRequest::Disable).unwrap();
-            self.ime_is_enabled = false;
+            self.input.ime_focus = false;
             self.ime_cursor_area = Rect::ZERO;
         }
     }
@@ -455,9 +463,7 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if self.ime_is_enabled
-            && let Some(id) = self.sel_focus().cloned()
-        {
+        if let Some(id) = self.ime_focus().cloned() {
             let event = match ime {
                 Ime::Enabled => super::Ime::Enabled,
                 Ime::Preedit(ref text, cursor) => super::Ime::Preedit { text, cursor },
@@ -471,7 +477,7 @@ impl<'a> EventCx<'a> {
                 },
                 Ime::Disabled => {
                     // IME disabled by external cause
-                    self.ime_is_enabled = false;
+                    self.input.ime_focus = false;
                     self.ime_cursor_area = Rect::ZERO;
 
                     super::Ime::Disabled
