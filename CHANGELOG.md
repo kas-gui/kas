@@ -2,6 +2,12 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1 for kas-wgpu] — 2026-01-30
+
+### Fixes
+
+-   Fix upload of RGBA text sprites (i.e. Emojis) in kas_wgpu (#651)
+
 ## [0.17.0] — 2026-01-26
 
 Significant additions include improved Input Method Editor (IME) support, font selection, font rendering (gamma correction and sub-pixel rendering support), several small input handling improvements, better resizing, a new text `Editor` component, revised image widgets `Sprite` and `Image`, a new `kas-soft` rendering backend and significantly revised view widget clerks.

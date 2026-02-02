@@ -288,6 +288,7 @@ impl Images {
         encoder: &mut wgpu::CommandEncoder,
         text: &mut kas::text::raster::State,
     ) {
+        self.atlas_rgba.prepare(device);
         self.atlas_mask.prepare(device);
         if let Some(pipeline) = self.atlas_rgba_mask.as_mut() {
             pipeline.prepare(device);
