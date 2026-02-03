@@ -13,7 +13,7 @@ readme = "README.md"
 documentation = "https://docs.rs/kas-soft/"
 
 [package.metadata.docs.rs]
-features = ["kas/wayland"]
+features = ["wayland"]
 
 [features]
 # Enable DRM/KMS backend
