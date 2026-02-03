@@ -92,11 +92,6 @@ impl Shortcuts {
 
             map.insert(NamedKey::Delete.into(), Command::DelWordBack);
             map.extend(shortcuts.iter().cloned());
-
-            // Shift + Option
-            let modifiers = ModifiersState::SHIFT | ModifiersState::ALT;
-            let map = self.map.entry(modifiers).or_insert_with(Default::default);
-            map.extend(shortcuts.iter().cloned());
         }
 
         // Command (MacOS) or Ctrl (other OS)
@@ -152,11 +147,6 @@ impl Shortcuts {
                 (NamedKey::PageUp.into(), Command::TabPrevious),
                 (NamedKey::PageDown.into(), Command::TabNext),
             ];
-            map.extend(shortcuts.iter().cloned());
-
-            // Shift + Ctrl
-            let modifiers = ModifiersState::SHIFT | CMD;
-            let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.extend(shortcuts.iter().cloned());
         }
 
