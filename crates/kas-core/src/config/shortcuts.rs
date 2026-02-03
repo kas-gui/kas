@@ -37,14 +37,8 @@ impl Shortcuts {
 
     /// Load default shortcuts for the current platform
     pub fn load_platform_defaults(&mut self) {
-        #[cfg(target_os = "macos")]
-        const CMD: ModifiersState = ModifiersState::META;
-        #[cfg(not(target_os = "macos"))]
-        const CMD: ModifiersState = ModifiersState::CONTROL;
-
         // No modifiers
-        #[cfg(not(target_os = "macos"))]
-        {
+        if !cfg!(target_os = "macos") {
             let modifiers = ModifiersState::empty();
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             let shortcuts = [
@@ -61,8 +55,7 @@ impl Shortcuts {
         }
 
         // Shift
-        #[cfg(not(target_os = "macos"))]
-        {
+        if !cfg!(target_os = "macos") {
             let modifiers = ModifiersState::SHIFT;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.insert(NamedKey::F3.into(), Command::FindPrevious);
@@ -71,8 +64,7 @@ impl Shortcuts {
         // Alt (Option on MacOS)
         let modifiers = ModifiersState::ALT;
         let map = self.map.entry(modifiers).or_insert_with(Default::default);
-        #[cfg(not(target_os = "macos"))]
-        {
+        if !cfg!(target_os = "macos") {
             let shortcuts = [
                 (NamedKey::F4.into(), Command::Close),
                 (NamedKey::ArrowLeft.into(), Command::NavPrevious),
@@ -81,9 +73,7 @@ impl Shortcuts {
                 (NamedKey::ArrowDown.into(), Command::NavDown),
             ];
             map.extend(shortcuts.iter().cloned());
-        }
-        #[cfg(target_os = "macos")]
-        {
+        } else {
             // Missing functionality: move to start/end of paragraph on (Shift)+Alt+Up/Down
             let shortcuts = [
                 (NamedKey::ArrowLeft.into(), Command::WordLeft),
@@ -95,6 +85,11 @@ impl Shortcuts {
         }
 
         // Command (MacOS) or Ctrl (other OS)
+        const CMD: ModifiersState = if cfg!(target_os = "macos") {
+            ModifiersState::META
+        } else {
+            ModifiersState::CONTROL
+        };
         let map = self.map.entry(CMD).or_insert_with(Default::default);
         let shortcuts = [
             (Key::Character("a".into()), Command::SelectAll),
@@ -116,8 +111,7 @@ impl Shortcuts {
             (NamedKey::Tab.into(), Command::TabNext),
         ];
         map.extend(shortcuts.iter().cloned());
-        #[cfg(target_os = "macos")]
-        {
+        if cfg!(target_os = "macos") {
             let shortcuts = [
                 (Key::Character("g".into()), Command::FindNext),
                 (NamedKey::ArrowUp.into(), Command::DocHome),
@@ -126,9 +120,7 @@ impl Shortcuts {
                 (NamedKey::ArrowRight.into(), Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
+        } else {
             let shortcuts = [
                 (Key::Character("q".into()), Command::Exit),
                 (Key::Character("r".into()), Command::FindReplace),
@@ -151,8 +143,7 @@ impl Shortcuts {
         }
 
         // Ctrl + Command (MacOS)
-        #[cfg(target_os = "macos")]
-        {
+        if cfg!(target_os = "macos") {
             let modifiers = ModifiersState::CONTROL | ModifiersState::META;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.insert(Key::Character("f".into()), Command::Fullscreen);
@@ -167,8 +158,7 @@ impl Shortcuts {
             (NamedKey::Tab.into(), Command::TabPrevious),
         ];
         map.extend(shortcuts.iter().cloned());
-        #[cfg(target_os = "macos")]
-        {
+        if cfg!(target_os = "macos") {
             let shortcuts = [
                 (Key::Character("g".into()), Command::FindPrevious),
                 (Key::Character(":".into()), Command::SpellCheck),
@@ -181,8 +171,7 @@ impl Shortcuts {
         }
 
         // Alt + Command (MacOS)
-        #[cfg(target_os = "macos")]
-        {
+        if cfg!(target_os = "macos") {
             let modifiers = ModifiersState::ALT | CMD;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.insert(Key::Character("w".into()), Command::Exit);
