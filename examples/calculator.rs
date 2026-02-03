@@ -37,7 +37,6 @@ fn calc_ui() -> Window<()> {
         .with_width_em(5.0, 10.0)
         .with_margin_style(kas::theme::MarginStyle::None);
 
-    // We use map_any to avoid passing input data (not wanted by buttons):
     let buttons = grid! {
         // Key bindings: C, Del
         (0, 0) => Button::label_msg("&clear", Key::Named(NamedKey::Clear))
@@ -62,6 +61,7 @@ fn calc_ui() -> Window<()> {
         (0..=1, 4) => key_button("&0"),
         (2, 4) => key_button("&."),
     };
+    // We use map_any to avoid passing input data (not wanted by buttons):
     let buttons = Frame::new(buttons).with_style(FrameStyle::None).map_any();
 
     let ui = Adapt::new(column![display, buttons], Calculator::new())

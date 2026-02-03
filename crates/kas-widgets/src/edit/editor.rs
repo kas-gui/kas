@@ -322,25 +322,19 @@ impl Editor {
             Command::Left | Command::Home if !shift && have_sel => {
                 Action::Move(selection.start, None)
             }
-            Command::Left if cursor > 0 => {
-                let mut cursor = GraphemeCursor::new(cursor, len, true);
-                cursor
-                    .prev_boundary(self.text.text(), 0)
-                    .unwrap()
-                    .map(|index| Action::Move(index, None))
-                    .unwrap_or(Action::None)
-            }
+            Command::Left if cursor > 0 => GraphemeCursor::new(cursor, len, true)
+                .prev_boundary(self.text.text(), 0)
+                .unwrap()
+                .map(|index| Action::Move(index, None))
+                .unwrap_or(Action::None),
             Command::Right | Command::End if !shift && have_sel => {
                 Action::Move(selection.end, None)
             }
-            Command::Right if cursor < len => {
-                let mut cursor = GraphemeCursor::new(cursor, len, true);
-                cursor
-                    .next_boundary(self.text.text(), 0)
-                    .unwrap()
-                    .map(|index| Action::Move(index, None))
-                    .unwrap_or(Action::None)
-            }
+            Command::Right if cursor < len => GraphemeCursor::new(cursor, len, true)
+                .next_boundary(self.text.text(), 0)
+                .unwrap()
+                .map(|index| Action::Move(index, None))
+                .unwrap_or(Action::None),
             Command::WordLeft if cursor > 0 => {
                 let mut iter = self.text.text()[0..cursor].split_word_bound_indices();
                 let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
@@ -444,15 +438,11 @@ impl Editor {
                 .unwrap()
                 .map(|next| Action::Delete(cursor..next, EditOp::Delete))
                 .unwrap_or(Action::None),
-            Command::DelBack if editable => {
-                // We always delete one code-point, not one grapheme cluster:
-                let prev = self.text.text()[0..cursor]
-                    .char_indices()
-                    .next_back()
-                    .map(|(i, _)| i)
-                    .unwrap_or(0);
-                Action::Delete(prev..cursor, EditOp::Delete)
-            }
+            Command::DelBack if editable => GraphemeCursor::new(cursor, len, true)
+                .prev_boundary(self.text.text(), 0)
+                .unwrap()
+                .map(|prev| Action::Delete(prev..cursor, EditOp::Delete))
+                .unwrap_or(Action::None),
             Command::DelWord if editable => {
                 let next = self.text.text()[cursor..]
                     .split_word_bound_indices()

@@ -2,11 +2,17 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.17.1 for kas-wgpu] — 2026-01-30
+## [0.17.1] — 2026-01-30 – 2026-02-03
 
 ### Fixes
 
 -   Fix upload of RGBA text sprites (i.e. Emojis) in kas_wgpu (#651)
+-   Fix docs.rs build for kas-soft (#652)
+
+### Changed
+
+-   Let Backspace key delete one grapheme cluster (#652)
+
 
 ## [0.17.0] — 2026-01-26
 
