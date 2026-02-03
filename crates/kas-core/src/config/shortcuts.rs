@@ -8,7 +8,7 @@
 use crate::event::{Command, Key, ModifiersState};
 use linear_map::LinearMap;
 use std::collections::HashMap;
-use winit::keyboard::NamedKey;
+use winit::{event::KeyEvent, keyboard::NamedKey};
 
 /// Shortcut manager
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -183,6 +183,7 @@ impl Shortcuts {
     /// Note: text-editor navigation keys (e.g. arrows, home/end) result in the
     /// same output with and without Shift pressed. Editors should check the
     /// status of the Shift modifier directly where this has an affect.
+    #[deprecated(since = "0.17.1", note = "use try_match_event instead")]
     pub fn try_match(&self, mut modifiers: ModifiersState, key: &Key) -> Option<Command> {
         if let Some(result) = self.map.get(&modifiers).and_then(|m| m.get(key)) {
             return Some(*result);
@@ -191,6 +192,32 @@ impl Shortcuts {
         if modifiers.is_empty() {
             // These keys get matched with and without Shift:
             return Command::new(key);
+        }
+        None
+    }
+
+    /// Match shortcuts
+    ///
+    /// Note: text-editor navigation keys (e.g. arrows, home/end) result in the
+    /// same output with and without Shift pressed. Editors should check the
+    /// status of the Shift modifier directly where this has an affect.
+    pub fn try_match_event(
+        &self,
+        mut modifiers: ModifiersState,
+        event: &KeyEvent,
+    ) -> Option<Command> {
+        if let Some(map) = self.map.get(&modifiers) {
+            if let Some(result) = map.get(&event.logical_key) {
+                return Some(*result);
+            } else if let Some(result) = map.get(&event.key_without_modifiers) {
+                return Some(*result);
+            }
+        }
+
+        modifiers.remove(ModifiersState::SHIFT);
+        if modifiers.is_empty() {
+            // These keys get matched with and without Shift:
+            return Command::new(&event.logical_key);
         }
         None
     }
