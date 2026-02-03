@@ -17,4 +17,4 @@ image = "0.25.8"
 [dependencies.kas]
 version = "0.17.0"
 path = "../.."
-features = ["image", "view", "spawn"]
+features = ["image", "svg", "view", "spawn"]

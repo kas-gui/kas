@@ -1,11 +1,12 @@
 use crate::{ChangeDir, Entry};
 use image::ImageFormat;
 use kas::Tile as _;
+use kas::image::{Image, Svg};
 use kas::prelude::*;
 use kas::theme::MarginStyle;
 use kas::widgets::{AdaptWidget, Button, Label, Page, Stack, Text};
 use std::borrow::Cow;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[autoimpl(Debug)]
 pub enum State {
@@ -14,6 +15,7 @@ pub enum State {
     Unknown(PathBuf),
     Directory(PathBuf, String),
     Image(PathBuf, ImageFormat),
+    Svg(PathBuf),
 }
 
 impl State {
@@ -23,6 +25,7 @@ impl State {
             State::Unknown(path) => path,
             State::Directory(path, _) => path,
             State::Image(path, _) => path,
+            State::Svg(path) => path,
         })
     }
 
@@ -54,6 +57,8 @@ impl State {
             State::Directory(path, name)
         } else if let Ok(format) = ImageFormat::from_path(&path) {
             State::Image(path, format)
+        } else if path.extension().map(|ext| ext == "svg").unwrap_or_default() {
+            State::Svg(path)
         } else {
             State::Unknown(path)
         }
@@ -64,6 +69,7 @@ impl State {
         match self {
             Self::Directory(_, _) => Some(Page::new(directory())),
             Self::Image(_, _) => Some(Page::new(image())),
+            Self::Svg(path) => svg(path).map(Page::new).ok(),
             _ => None,
         }
     }
@@ -99,8 +105,6 @@ fn directory() -> impl Widget<Data = State> {
 }
 
 fn image() -> impl Widget<Data = State> {
-    use kas::image::Image;
-
     Image::default()
         .map_any()
         .on_update(|cx, widget, state: &State| {
@@ -111,6 +115,15 @@ fn image() -> impl Widget<Data = State> {
                 widget.set(cx, path);
             }
         })
+}
+
+fn svg(path: &Path) -> Result<impl Widget<Data = State> + 'static, impl std::error::Error> {
+    Svg::new_path(path).map(|svg| {
+        svg.map_any().on_update(|_, widget, _: &State| {
+            let size = crate::tile_size().cast();
+            widget.set_logical_size((size, size));
+        })
+    })
 }
 
 #[impl_self]
