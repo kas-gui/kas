@@ -153,14 +153,14 @@ impl Shortcuts {
         let modifiers = ModifiersState::SHIFT | CMD;
         let map = self.map.entry(modifiers).or_insert_with(Default::default);
         let shortcuts = [
-            (Key::Character("a".into()), Command::Deselect),
-            (Key::Character("z".into()), Command::Redo),
+            (Key::Character("A".into()), Command::Deselect),
+            (Key::Character("Z".into()), Command::Redo),
             (NamedKey::Tab.into(), Command::TabPrevious),
         ];
         map.extend(shortcuts.iter().cloned());
         if cfg!(target_os = "macos") {
             let shortcuts = [
-                (Key::Character("g".into()), Command::FindPrevious),
+                (Key::Character("G".into()), Command::FindPrevious),
                 (Key::Character(":".into()), Command::SpellCheck),
                 (NamedKey::ArrowUp.into(), Command::DocHome),
                 (NamedKey::ArrowDown.into(), Command::DocEnd),
