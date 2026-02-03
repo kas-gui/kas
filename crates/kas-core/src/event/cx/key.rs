@@ -399,7 +399,7 @@ impl<'a> EventCx<'a> {
         }
 
         if event.state == ElementState::Pressed && !is_synthetic {
-            self.start_key_event(widget, event.key_without_modifiers, event.physical_key);
+            self.start_key_event(widget, &event);
         } else if event.state == ElementState::Released
             && self.key_depress.remove(&event.physical_key).is_some()
         {
@@ -407,11 +407,19 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    pub(super) fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: PhysicalKey) {
+    pub(super) fn start_key_event(&mut self, mut widget: Node<'_>, event: &KeyEvent) {
         let id = widget.id();
-        log::trace!("start_key_event: window={id}, vkey={vkey:?}, physical_key={code:?}");
+        log::trace!(
+            "start_key_event: window={id}, physical_key={:?}, logical_key={:?}, without_modifiers={:?}",
+            &event.physical_key,
+            &event.logical_key,
+            &event.key_without_modifiers
+        );
 
-        let opt_cmd = self.config.shortcuts().try_match(self.modifiers, &vkey);
+        let opt_cmd = self
+            .config
+            .shortcuts()
+            .try_match_event(self.modifiers, event);
 
         if Some(Command::Exit) == opt_cmd {
             self.runner.exit();
@@ -423,7 +431,7 @@ impl<'a> EventCx<'a> {
             let mut targets = vec![];
             let mut send = |_self: &mut Self, id: Id, cmd| -> bool {
                 if !targets.contains(&id) {
-                    let event = Event::Command(cmd, Some(code));
+                    let event = Event::Command(cmd, Some(event.physical_key));
                     let used = _self.send_event(widget.re(), id.clone(), event);
                     targets.push(id);
                     used
@@ -470,7 +478,7 @@ impl<'a> EventCx<'a> {
         }
 
         // Next priority goes to access keys when Alt is held or alt_bypass is true
-        let target = self.access_keys.get(&vkey).cloned();
+        let target = self.access_keys.get(&event.logical_key).cloned();
 
         if let Some(id) = target {
             self.close_non_ancestors_of(Some(&id));
@@ -479,7 +487,7 @@ impl<'a> EventCx<'a> {
                 self.request_nav_focus(id, FocusSource::Key);
             }
 
-            let event = Event::Command(Command::Activate, Some(code));
+            let event = Event::Command(Command::Activate, Some(event.physical_key));
             self.send_event(widget, id, event);
         } else if self.config.nav_focus && opt_cmd == Some(Command::Tab) {
             let shift = self.modifiers.shift_key();

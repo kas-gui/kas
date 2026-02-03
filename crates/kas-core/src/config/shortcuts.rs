@@ -8,7 +8,7 @@
 use crate::event::{Command, Key, ModifiersState};
 use linear_map::LinearMap;
 use std::collections::HashMap;
-use winit::keyboard::NamedKey;
+use winit::{event::KeyEvent, keyboard::NamedKey};
 
 /// Shortcut manager
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -37,14 +37,8 @@ impl Shortcuts {
 
     /// Load default shortcuts for the current platform
     pub fn load_platform_defaults(&mut self) {
-        #[cfg(target_os = "macos")]
-        const CMD: ModifiersState = ModifiersState::META;
-        #[cfg(not(target_os = "macos"))]
-        const CMD: ModifiersState = ModifiersState::CONTROL;
-
         // No modifiers
-        #[cfg(not(target_os = "macos"))]
-        {
+        if !cfg!(target_os = "macos") {
             let modifiers = ModifiersState::empty();
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             let shortcuts = [
@@ -61,8 +55,7 @@ impl Shortcuts {
         }
 
         // Shift
-        #[cfg(not(target_os = "macos"))]
-        {
+        if !cfg!(target_os = "macos") {
             let modifiers = ModifiersState::SHIFT;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.insert(NamedKey::F3.into(), Command::FindPrevious);
@@ -71,8 +64,7 @@ impl Shortcuts {
         // Alt (Option on MacOS)
         let modifiers = ModifiersState::ALT;
         let map = self.map.entry(modifiers).or_insert_with(Default::default);
-        #[cfg(not(target_os = "macos"))]
-        {
+        if !cfg!(target_os = "macos") {
             let shortcuts = [
                 (NamedKey::F4.into(), Command::Close),
                 (NamedKey::ArrowLeft.into(), Command::NavPrevious),
@@ -81,9 +73,7 @@ impl Shortcuts {
                 (NamedKey::ArrowDown.into(), Command::NavDown),
             ];
             map.extend(shortcuts.iter().cloned());
-        }
-        #[cfg(target_os = "macos")]
-        {
+        } else {
             // Missing functionality: move to start/end of paragraph on (Shift)+Alt+Up/Down
             let shortcuts = [
                 (NamedKey::ArrowLeft.into(), Command::WordLeft),
@@ -92,14 +82,14 @@ impl Shortcuts {
 
             map.insert(NamedKey::Delete.into(), Command::DelWordBack);
             map.extend(shortcuts.iter().cloned());
-
-            // Shift + Option
-            let modifiers = ModifiersState::SHIFT | ModifiersState::ALT;
-            let map = self.map.entry(modifiers).or_insert_with(Default::default);
-            map.extend(shortcuts.iter().cloned());
         }
 
         // Command (MacOS) or Ctrl (other OS)
+        const CMD: ModifiersState = if cfg!(target_os = "macos") {
+            ModifiersState::META
+        } else {
+            ModifiersState::CONTROL
+        };
         let map = self.map.entry(CMD).or_insert_with(Default::default);
         let shortcuts = [
             (Key::Character("a".into()), Command::SelectAll),
@@ -121,8 +111,7 @@ impl Shortcuts {
             (NamedKey::Tab.into(), Command::TabNext),
         ];
         map.extend(shortcuts.iter().cloned());
-        #[cfg(target_os = "macos")]
-        {
+        if cfg!(target_os = "macos") {
             let shortcuts = [
                 (Key::Character("g".into()), Command::FindNext),
                 (NamedKey::ArrowUp.into(), Command::DocHome),
@@ -131,9 +120,7 @@ impl Shortcuts {
                 (NamedKey::ArrowRight.into(), Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
+        } else {
             let shortcuts = [
                 (Key::Character("q".into()), Command::Exit),
                 (Key::Character("r".into()), Command::FindReplace),
@@ -153,16 +140,10 @@ impl Shortcuts {
                 (NamedKey::PageDown.into(), Command::TabNext),
             ];
             map.extend(shortcuts.iter().cloned());
-
-            // Shift + Ctrl
-            let modifiers = ModifiersState::SHIFT | CMD;
-            let map = self.map.entry(modifiers).or_insert_with(Default::default);
-            map.extend(shortcuts.iter().cloned());
         }
 
         // Ctrl + Command (MacOS)
-        #[cfg(target_os = "macos")]
-        {
+        if cfg!(target_os = "macos") {
             let modifiers = ModifiersState::CONTROL | ModifiersState::META;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.insert(Key::Character("f".into()), Command::Fullscreen);
@@ -172,15 +153,14 @@ impl Shortcuts {
         let modifiers = ModifiersState::SHIFT | CMD;
         let map = self.map.entry(modifiers).or_insert_with(Default::default);
         let shortcuts = [
-            (Key::Character("a".into()), Command::Deselect),
-            (Key::Character("z".into()), Command::Redo),
+            (Key::Character("A".into()), Command::Deselect),
+            (Key::Character("Z".into()), Command::Redo),
             (NamedKey::Tab.into(), Command::TabPrevious),
         ];
         map.extend(shortcuts.iter().cloned());
-        #[cfg(target_os = "macos")]
-        {
+        if cfg!(target_os = "macos") {
             let shortcuts = [
-                (Key::Character("g".into()), Command::FindPrevious),
+                (Key::Character("G".into()), Command::FindPrevious),
                 (Key::Character(":".into()), Command::SpellCheck),
                 (NamedKey::ArrowUp.into(), Command::DocHome),
                 (NamedKey::ArrowDown.into(), Command::DocEnd),
@@ -191,8 +171,7 @@ impl Shortcuts {
         }
 
         // Alt + Command (MacOS)
-        #[cfg(target_os = "macos")]
-        {
+        if cfg!(target_os = "macos") {
             let modifiers = ModifiersState::ALT | CMD;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.insert(Key::Character("w".into()), Command::Exit);
@@ -204,6 +183,7 @@ impl Shortcuts {
     /// Note: text-editor navigation keys (e.g. arrows, home/end) result in the
     /// same output with and without Shift pressed. Editors should check the
     /// status of the Shift modifier directly where this has an affect.
+    #[deprecated(since = "0.17.1", note = "use try_match_event instead")]
     pub fn try_match(&self, mut modifiers: ModifiersState, key: &Key) -> Option<Command> {
         if let Some(result) = self.map.get(&modifiers).and_then(|m| m.get(key)) {
             return Some(*result);
@@ -212,6 +192,32 @@ impl Shortcuts {
         if modifiers.is_empty() {
             // These keys get matched with and without Shift:
             return Command::new(key);
+        }
+        None
+    }
+
+    /// Match shortcuts
+    ///
+    /// Note: text-editor navigation keys (e.g. arrows, home/end) result in the
+    /// same output with and without Shift pressed. Editors should check the
+    /// status of the Shift modifier directly where this has an affect.
+    pub fn try_match_event(
+        &self,
+        mut modifiers: ModifiersState,
+        event: &KeyEvent,
+    ) -> Option<Command> {
+        if let Some(map) = self.map.get(&modifiers) {
+            if let Some(result) = map.get(&event.logical_key) {
+                return Some(*result);
+            } else if let Some(result) = map.get(&event.key_without_modifiers) {
+                return Some(*result);
+            }
+        }
+
+        modifiers.remove(ModifiersState::SHIFT);
+        if modifiers.is_empty() {
+            // These keys get matched with and without Shift:
+            return Command::new(&event.logical_key);
         }
         None
     }
