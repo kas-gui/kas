@@ -59,12 +59,12 @@ impl State {
         }
     }
 
-    /// Get page number for Tile::stack widget
-    fn page(&self) -> usize {
+    /// Return a specific stack page widget (if relevant)
+    fn page(&self) -> Option<Page<State>> {
         match self {
-            Self::Directory(_, _) => 1,
-            Self::Image(_, _) => 2,
-            _ => 0,
+            Self::Directory(_, _) => Some(Page::new(directory())),
+            Self::Image(_, _) => Some(Page::new(image())),
+            _ => None,
         }
     }
 }
@@ -139,6 +139,7 @@ mod Tile {
             if self.state.update(entry) {
                 // Always reset the page to 0 on change
                 self.stack.set_active(cx, &self.state, 0);
+                self.stack.truncate(cx, 1);
 
                 if let Some(path) = self.state.path() {
                     let path = path.clone();
@@ -150,8 +151,10 @@ mod Tile {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(state) = cx.try_pop() {
                 self.state = state;
-                let page = self.state.page();
-                self.stack.set_active(cx, &self.state, page);
+                if let Some(page) = self.state.page() {
+                    self.stack.push(cx, &self.state, page);
+                    self.stack.set_active(cx, &self.state, 1);
+                }
             }
         }
     }
@@ -161,11 +164,7 @@ mod Tile {
             Tile {
                 core: Default::default(),
                 state: State::Initial,
-                stack: Stack::from([
-                    Page::new(generic()),
-                    Page::new(directory()),
-                    Page::new(image()),
-                ]),
+                stack: Stack::from([Page::new(generic())]),
             }
         }
     }
