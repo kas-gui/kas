@@ -13,7 +13,7 @@ pub enum State {
     Initial,
     Error,
     Unknown(PathBuf),
-    Directory(PathBuf, String),
+    Directory(PathBuf),
     Image(PathBuf, ImageFormat),
     Svg(PathBuf),
 }
@@ -23,7 +23,7 @@ impl State {
         Some(match self {
             State::Initial | State::Error => return None,
             State::Unknown(path) => path,
-            State::Directory(path, _) => path,
+            State::Directory(path) => path,
             State::Image(path, _) => path,
             State::Svg(path) => path,
         })
@@ -50,11 +50,7 @@ impl State {
     /// Detect from `path`
     fn detect(path: PathBuf) -> Self {
         if path.is_dir() {
-            let name = path
-                .file_name()
-                .map(|os_str| os_str.to_string_lossy().to_string())
-                .unwrap_or_default();
-            State::Directory(path, name)
+            State::Directory(path)
         } else if let Ok(format) = ImageFormat::from_path(&path) {
             State::Image(path, format)
         } else if path.extension().map(|ext| ext == "svg").unwrap_or_default() {
@@ -67,8 +63,8 @@ impl State {
     /// Return a specific stack page widget (if relevant)
     fn page(&self) -> Option<Page<State>> {
         match self {
-            Self::Directory(_, _) => Some(Page::new(directory())),
-            Self::Image(_, _) => Some(Page::new(image())),
+            Self::Directory(path) => Some(Page::new(directory(path.clone()))),
+            Self::Image(path, _) => Some(Page::new(image(path))),
             Self::Svg(path) => svg(path).map(Page::new).ok(),
             _ => None,
         }
@@ -92,28 +88,20 @@ fn generic() -> impl Widget<Data = State> {
     })
 }
 
-fn directory() -> impl Widget<Data = State> {
-    Button::new(Text::new_str(|state: &State| match state {
-        State::Directory(_, name) => name,
-        _ => "<bad state>",
-    }))
-    .with(|cx, state: &State| {
-        if let State::Directory(path, _) = state {
-            cx.push(ChangeDir(path.clone()))
-        }
-    })
+fn directory(path: PathBuf) -> impl Widget<Data = State> {
+    let name = path
+        .file_name()
+        .map(|os_str| os_str.to_string_lossy().to_string())
+        .unwrap_or_default();
+    Button::label_msg(name, ChangeDir(path)).map_any()
 }
 
-fn image() -> impl Widget<Data = State> {
-    Image::default()
+fn image(path: &Path) -> impl Widget<Data = State> + 'static {
+    Image::new(path)
         .map_any()
-        .on_update(|cx, widget, state: &State| {
+        .on_update(|_, widget, _: &State| {
             let size = crate::tile_size().cast();
             widget.set_logical_size((size, size));
-            if let State::Image(path, _format) = state {
-                // TODO: use format parameter?
-                widget.set(cx, path);
-            }
         })
 }
 
