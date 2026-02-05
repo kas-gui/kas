@@ -5,7 +5,7 @@ use kas::image::{Image, Svg};
 use kas::prelude::*;
 use kas::theme::MarginStyle;
 use kas::widgets::{AdaptWidget, Button, Label, Page, Stack, Text};
-use std::borrow::Cow;
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 #[autoimpl(Debug)]
@@ -30,7 +30,7 @@ impl State {
     }
 
     /// Update, returning `true` on change (or error)
-    fn update(&mut self, entry: &Entry) -> bool {
+    fn update(&mut self, entry: &Entry, text: &mut String) -> bool {
         log::trace!("State::update: {entry:?}");
 
         if entry.as_os_str().is_empty() {
@@ -38,11 +38,14 @@ impl State {
                 return false;
             }
             *self = State::Initial;
+            text.replace_range(.., "loading");
             true
         } else if self.path() == Some(entry) {
             false
         } else {
             *self = State::Unknown(entry.clone());
+            text.clear();
+            write!(text, "{}", entry.display()).unwrap();
             true
         }
     }
@@ -61,7 +64,7 @@ impl State {
     }
 
     /// Return a specific stack page widget (if relevant)
-    fn page(&self) -> Option<Page<State>> {
+    fn page(&self) -> Option<Page<String>> {
         match self {
             Self::Directory(path) => Some(Page::new(directory(path.clone()))),
             Self::Image(path, _) => Some(Page::new(image(path))),
@@ -71,24 +74,11 @@ impl State {
     }
 }
 
-fn generic() -> impl Widget<Data = State> {
-    Text::new_update(|_, entry: &State, text: &mut String| {
-        let new_text: Cow<str> = match &entry {
-            State::Initial => Cow::from("loading"),
-            State::Error => "<error>".into(),
-            State::Unknown(path) => format!("{}", path.display()).into(),
-            _ => "<bad state>".into(),
-        };
-        if *text != new_text {
-            *text = new_text.into_owned();
-            true
-        } else {
-            false
-        }
-    })
+fn generic() -> impl Widget<Data = String> {
+    Text::new_str(|text: &String| text)
 }
 
-fn directory(path: PathBuf) -> impl Widget<Data = State> {
+fn directory(path: PathBuf) -> impl Widget<Data = String> {
     let name = path
         .file_name()
         .map(|os_str| os_str.to_string_lossy().to_string())
@@ -96,18 +86,16 @@ fn directory(path: PathBuf) -> impl Widget<Data = State> {
     Button::label_msg(name, ChangeDir(path)).map_any()
 }
 
-fn image(path: &Path) -> impl Widget<Data = State> + 'static {
-    Image::new(path)
-        .map_any()
-        .on_update(|_, widget, _: &State| {
-            let size = crate::tile_size().cast();
-            widget.set_logical_size((size, size));
-        })
+fn image(path: &Path) -> impl Widget<Data = String> + 'static {
+    Image::new(path).map_any().on_update(|_, widget, _| {
+        let size = crate::tile_size().cast();
+        widget.set_logical_size((size, size));
+    })
 }
 
-fn svg(path: &Path) -> Result<impl Widget<Data = State> + 'static, impl std::error::Error> {
+fn svg(path: &Path) -> Result<impl Widget<Data = String> + 'static, impl std::error::Error> {
     Svg::new_path(path).map(|svg| {
-        svg.map_any().on_update(|_, widget, _: &State| {
+        svg.map_any().on_update(|_, widget, _| {
             let size = crate::tile_size().cast();
             widget.set_logical_size((size, size));
         })
@@ -121,8 +109,9 @@ mod Tile {
     pub struct Tile {
         core: widget_core!(),
         state: State,
-        #[widget(&self.state)]
-        stack: Stack<State>,
+        generic: String,
+        #[widget(&self.generic)]
+        stack: Stack<String>,
     }
 
     impl Layout for Self {
@@ -137,9 +126,9 @@ mod Tile {
         type Data = Entry;
 
         fn update(&mut self, cx: &mut ConfigCx, entry: &Entry) {
-            if self.state.update(entry) {
+            if self.state.update(entry, &mut self.generic) {
                 // Always reset the page to 0 on change
-                self.stack.set_active(cx, &self.state, 0);
+                self.stack.set_active(cx, &self.generic, 0);
                 self.stack.truncate(cx, 1);
 
                 if let Some(path) = self.state.path() {
@@ -153,8 +142,8 @@ mod Tile {
             if let Some(state) = cx.try_pop() {
                 self.state = state;
                 if let Some(page) = self.state.page() {
-                    self.stack.push(cx, &self.state, page);
-                    self.stack.set_active(cx, &self.state, 1);
+                    self.stack.push(cx, &self.generic, page);
+                    self.stack.set_active(cx, &self.generic, 1);
                 }
             }
         }
@@ -165,6 +154,7 @@ mod Tile {
             Tile {
                 core: Default::default(),
                 state: State::Initial,
+                generic: String::new(),
                 stack: Stack::from([Page::new(generic())]),
             }
         }
