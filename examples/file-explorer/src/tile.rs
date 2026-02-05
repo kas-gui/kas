@@ -11,64 +11,32 @@ use std::path::{Path, PathBuf};
 #[autoimpl(Debug)]
 pub enum State {
     Initial,
-    Error,
-    Unknown(PathBuf),
-    Directory(PathBuf),
-    Image(PathBuf, ImageFormat),
-    Svg(PathBuf),
+    Unknown,
+    Directory,
+    Image(ImageFormat),
+    Svg,
 }
 
 impl State {
-    fn path(&self) -> Option<&PathBuf> {
-        Some(match self {
-            State::Initial | State::Error => return None,
-            State::Unknown(path) => path,
-            State::Directory(path) => path,
-            State::Image(path, _) => path,
-            State::Svg(path) => path,
-        })
-    }
-
-    /// Update, returning `true` on change (or error)
-    fn update(&mut self, entry: &Entry, text: &mut String) -> bool {
-        log::trace!("State::update: {entry:?}");
-
-        if entry.as_os_str().is_empty() {
-            if matches!(self, State::Initial) {
-                return false;
-            }
-            *self = State::Initial;
-            text.replace_range(.., "loading");
-            true
-        } else if self.path() == Some(entry) {
-            false
-        } else {
-            *self = State::Unknown(entry.clone());
-            text.clear();
-            write!(text, "{}", entry.display()).unwrap();
-            true
-        }
-    }
-
     /// Detect from `path`
-    fn detect(path: PathBuf) -> Self {
+    fn detect(path: &Path) -> Self {
         if path.is_dir() {
-            State::Directory(path)
-        } else if let Ok(format) = ImageFormat::from_path(&path) {
-            State::Image(path, format)
+            State::Directory
+        } else if let Ok(format) = ImageFormat::from_path(path) {
+            State::Image(format)
         } else if path.extension().map(|ext| ext == "svg").unwrap_or_default() {
-            State::Svg(path)
+            State::Svg
         } else {
-            State::Unknown(path)
+            State::Unknown
         }
     }
 
     /// Return a specific stack page widget (if relevant)
-    fn page(&self) -> Option<Page<String>> {
+    fn page(&self, path: &Path) -> Option<Page<String>> {
         match self {
-            Self::Directory(path) => Some(Page::new(directory(path.clone()))),
-            Self::Image(path, _) => Some(Page::new(image(path))),
-            Self::Svg(path) => svg(path).map(Page::new).ok(),
+            Self::Directory => Some(Page::new(directory(path.to_path_buf()))),
+            Self::Image(_) => Some(Page::new(image(path))),
+            Self::Svg => svg(path).map(Page::new).ok(),
             _ => None,
         }
     }
@@ -108,6 +76,7 @@ mod Tile {
     #[layout(self.stack)]
     pub struct Tile {
         core: widget_core!(),
+        path: PathBuf,
         state: State,
         generic: String,
         #[widget(&self.generic)]
@@ -126,22 +95,33 @@ mod Tile {
         type Data = Entry;
 
         fn update(&mut self, cx: &mut ConfigCx, entry: &Entry) {
-            if self.state.update(entry, &mut self.generic) {
-                // Always reset the page to 0 on change
-                self.stack.set_active(cx, &self.generic, 0);
-                self.stack.truncate(cx, 1);
-
-                if let Some(path) = self.state.path() {
-                    let path = path.clone();
-                    cx.send_spawn(self.id(), async { State::detect(path) });
-                }
+            if *entry == self.path {
+                return;
             }
+            self.path.clear();
+            self.path.push(entry);
+
+            if entry.as_os_str().is_empty() {
+                self.state = State::Initial;
+                self.generic.replace_range(.., "loading");
+            } else {
+                self.state = State::Unknown;
+                self.generic.clear();
+                write!(self.generic, "{}", entry.display()).unwrap();
+
+                let path = self.path.clone();
+                cx.send_spawn(self.id(), async move { State::detect(&path) });
+            }
+
+            // Always reset the page to 0 on change
+            self.stack.set_active(cx, &self.generic, 0);
+            self.stack.truncate(cx, 1);
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(state) = cx.try_pop() {
                 self.state = state;
-                if let Some(page) = self.state.page() {
+                if let Some(page) = self.state.page(&self.path) {
                     self.stack.push(cx, &self.generic, page);
                     self.stack.set_active(cx, &self.generic, 1);
                 }
@@ -153,6 +133,7 @@ mod Tile {
         fn new() -> Self {
             Tile {
                 core: Default::default(),
+                path: PathBuf::new(),
                 state: State::Initial,
                 generic: String::new(),
                 stack: Stack::from([Page::new(generic())]),
