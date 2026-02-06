@@ -17,14 +17,16 @@ use std::collections::hash_map::Entry;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::iter::once;
 use std::marker::PhantomData;
-use std::mem::size_of;
+use std::mem::{forget, size_of, transmute};
 use std::num::NonZeroU64;
-use std::rc::Rc;
 use std::{fmt, slice};
 
+// TODO(opt): we don't need Arc's weak references
+// TODO(opt): we could use a smaller element type than usize and/or compress entries
+type Arc = std::sync::Arc<*mut usize>;
 thread_local! {
     // Map from hash of path to allocated path
-    static DB: RefCell<HashedMap<u64, *mut usize>> = const { RefCell::new(HashedMap::with_hasher(HashBuildHasher::new())) };
+    static DB: RefCell<HashedMap<u64, Arc>> = const { RefCell::new(HashedMap::with_hasher(HashBuildHasher::new())) };
 }
 
 /// Invalid (default) identifier
@@ -54,10 +56,10 @@ const LEN_INCR: usize = LEN_MASK + 1;
 ///
 /// `self.0 & USE_MASK` are the "flag bits" determining the variant used. This
 /// overlaps with the pointer's lowest bit (which must be zero due to alignment).
-///
-/// `PhantomData<Rc<()>>` is used to impl !Send and !Sync. We need atomic
-/// reference counting to support those.
-struct IntOrPtr(NonZeroU64, PhantomData<Rc<()>>);
+//
+// `PhantomData<Arc>` is used to support inference of auto-traits (probably not
+// necessary now that `Send + Sync` are supported).
+struct IntOrPtr(NonZeroU64, PhantomData<Arc>);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Variant<'a> {
@@ -79,21 +81,24 @@ impl IntOrPtr {
     const INVALID: Self = IntOrPtr(NonZeroU64::new(INVALID).unwrap(), PhantomData);
 
     #[inline]
-    fn get_ptr(&self) -> Option<*mut usize> {
-        if self.0.get() & USE_MASK == USE_PTR {
-            let p = usize::conv(self.0.get() & MASK_PTR);
-            Some(p as *mut usize)
-        } else {
-            None
-        }
+    fn is_ptr(&self) -> bool {
+        self.0.get() & USE_MASK == USE_PTR
     }
 
     fn get_slice(&self) -> Option<&[usize]> {
-        self.get_ptr().map(|p| unsafe {
-            let len = *p.offset(1) & LEN_MASK;
-            let p = p.offset(2);
-            slice::from_raw_parts(p, len)
-        })
+        if self.is_ptr() {
+            let p = usize::conv(self.0.get() & MASK_PTR);
+            let a: Arc = unsafe { transmute(p) };
+            let p: *const usize = *a;
+            forget(a);
+            Some(unsafe {
+                let len = *p & LEN_MASK;
+                let p = p.offset(1);
+                slice::from_raw_parts(p, len)
+            })
+        } else {
+            None
+        }
     }
 
     /// Construct from an integer
@@ -103,37 +108,36 @@ impl IntOrPtr {
         assert!(x & USE_MASK == USE_BITS);
         let x = NonZeroU64::new(x).unwrap();
         let u = IntOrPtr(x, PhantomData);
-        assert!(u.get_ptr().is_none());
+        assert!(!u.is_ptr());
         u
     }
 
     /// Construct as a slice from an iterator
     fn new_iter<I: Clone + Iterator<Item = usize>>(iter: I) -> Self {
-        let ref_count = 1;
         let len = iter.clone().count();
-        let mut v: Vec<usize> = once(ref_count).chain(once(len)).chain(iter).collect();
+        let mut v: Vec<usize> = once(len).chain(iter).collect();
 
-        let mut p: Option<*mut usize> = None;
-        let pp = &mut p;
+        let mut a: Option<Arc> = None;
+        let pa = &mut a;
         DB.with_borrow_mut(move |db| {
             loop {
                 let x = hash(&v);
                 match db.entry(x) {
                     Entry::Occupied(entry) => {
-                        let p = *entry.get();
-                        let slice = unsafe { slice::from_raw_parts(p.offset(2), *p.offset(1)) };
-                        if slice == &v[2..] {
-                            unsafe { increment_rc(p) };
-                            *pp = Some(p);
+                        let p = **entry.get();
+                        let slice = unsafe { slice::from_raw_parts(p.offset(1), *p) };
+                        if slice == &v[1..] {
+                            *pa = Some(entry.get().clone());
                             break;
                         } else {
                             // Hash collision: tweak the representation and retry
-                            v[1] = v[1].wrapping_add(LEN_INCR);
+                            v[0] = v[0].wrapping_add(LEN_INCR);
                         }
                     }
                     Entry::Vacant(entry) => {
-                        let p = Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize;
-                        *pp = Some(p);
+                        let p =
+                            Arc::new(Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize);
+                        *pa = Some(p.clone());
                         entry.insert(p);
                         break;
                     }
@@ -141,11 +145,11 @@ impl IntOrPtr {
             }
         });
 
-        let p: u64 = (p.expect("failed to access Id DB") as usize).cast();
+        let p: u64 = unsafe { transmute(a.expect("failed to access Id DB")) };
         debug_assert_eq!(p & 3, 0);
         let p = p | USE_PTR;
         let u = IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData);
-        assert!(u.get_ptr().is_some());
+        assert!(u.is_ptr());
         u
     }
 
@@ -177,9 +181,9 @@ impl IntOrPtr {
                 let mut result = None;
                 let r = &mut result;
                 DB.with_borrow(|db| {
-                    if let Some(p) = db.get(&n) {
-                        unsafe { increment_rc(*p) };
-                        let p: u64 = (*p as usize).cast();
+                    if let Some(a) = db.get(&n) {
+                        let a: Arc = a.clone();
+                        let p: u64 = unsafe { transmute(a) };
                         debug_assert_eq!(p & 3, 0);
                         let p = p | USE_PTR;
                         *r = Some(IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData))
@@ -193,41 +197,28 @@ impl IntOrPtr {
     }
 }
 
-/// Increment a IntOrPtr pointer ref-count
-///
-/// Safety: the input must be a valid IntOrPtr pointer value.
-unsafe fn increment_rc(p: *mut usize) {
-    unsafe {
-        let ref_count = *p;
-
-        // Copy behaviour of Rc::clone:
-        if ref_count == 0 || ref_count == usize::MAX {
-            std::process::abort();
-        }
-
-        *p = ref_count + 1;
-    }
-}
-
 impl Clone for IntOrPtr {
     fn clone(&self) -> Self {
-        if let Some(p) = self.get_ptr() {
-            unsafe { increment_rc(p) };
+        if self.is_ptr() {
+            let p = usize::conv(self.0.get() & MASK_PTR);
+            let a: Arc = unsafe { transmute(p) };
+            forget(a.clone());
+            forget(a);
         }
+
         IntOrPtr(self.0, PhantomData)
     }
 }
 
 impl Drop for IntOrPtr {
     fn drop(&mut self) {
-        if let Some(p) = self.get_ptr() {
-            unsafe {
-                let ref_count = *p;
-                if ref_count > 1 {
-                    *p = ref_count - 1;
-                } else {
-                    // len+2 because path len does not include ref_count or len "fields"
-                    let len = (*p.offset(1) & LEN_MASK) + 2;
+        if self.is_ptr() {
+            let p = usize::conv(self.0.get() & MASK_PTR);
+            let a: Arc = unsafe { transmute(p) };
+            if let Ok(p) = Arc::try_unwrap(a) {
+                unsafe {
+                    // len+1 because path len does not include len "field"
+                    let len = (*p & LEN_MASK) + 1;
                     let slice = slice::from_raw_parts_mut(p, len);
 
                     let x = hash(slice);
@@ -301,8 +292,6 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 /// check, and in the worst case a pointer dereference and ref-count increment.
 /// Paths up to 14 digits long (as printed) are represented internally;
 /// beyond this limit a reference-counted stack allocation is used.
-///
-/// `Id` is neither `Send` nor `Sync`.
 ///
 /// # Invalid state
 ///
