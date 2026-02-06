@@ -13,7 +13,7 @@ use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 use std::num::NonZeroU32;
-use std::rc::Rc;
+use std::sync::Arc;
 use thiserror::Error;
 
 /// Identifier for an image allocation
@@ -25,7 +25,7 @@ pub struct ImageId(NonZeroU32);
 /// Serves both to identify an allocated image and to track the number of users
 /// via reference counting.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ImageHandle(ImageId, Rc<()>);
+pub struct ImageHandle(ImageId, Arc<()>);
 
 impl ImageHandle {
     /// Convert to an [`ImageId`]
@@ -144,7 +144,7 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     fn image_alloc(&mut self, format: ImageFormat, size: Size) -> Result<ImageHandle, AllocError> {
         self.draw
             .image_alloc(format, size)
-            .map(|id| ImageHandle(id, Rc::new(())))
+            .map(|id| ImageHandle(id, Arc::new(())))
     }
 
     #[inline]
@@ -158,7 +158,7 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
 
     #[inline]
     fn image_free(&mut self, handle: ImageHandle) {
-        if let Ok(()) = Rc::try_unwrap(handle.1) {
+        if let Ok(()) = Arc::try_unwrap(handle.1) {
             self.draw.image_free(handle.0);
         }
     }
