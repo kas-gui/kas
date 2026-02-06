@@ -94,7 +94,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn on_configure<F>(self, f: F) -> AdaptEvents<Self>
     where
-        F: Fn(&mut AdaptConfigCx, &mut Self) + 'static,
+        F: Fn(&mut AdaptConfigCx, &mut Self) + Send + 'static,
     {
         AdaptEvents::new(self).on_configure(f)
     }
@@ -105,7 +105,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn on_update<F>(self, f: F) -> AdaptEvents<Self>
     where
-        F: Fn(&mut AdaptConfigCx, &mut Self, &Self::Data) + 'static,
+        F: Fn(&mut AdaptConfigCx, &mut Self, &Self::Data) + Send + 'static,
     {
         AdaptEvents::new(self).on_update(f)
     }
@@ -119,7 +119,7 @@ pub trait AdaptWidget: Widget + Sized {
     fn on_message<M, H>(self, handler: H) -> AdaptEvents<Self>
     where
         M: Debug + 'static,
-        H: Fn(&mut AdaptEventCx, &mut Self, M) + 'static,
+        H: Fn(&mut AdaptEventCx, &mut Self, M) + Send + 'static,
     {
         AdaptEvents::new(self).on_message(handler)
     }
@@ -142,7 +142,7 @@ pub trait AdaptWidget: Widget + Sized {
     where
         M: Debug + 'static,
         N: Debug + 'static,
-        H: Fn(usize, M) -> N + 'static,
+        H: Fn(usize, M) -> N + Send + 'static,
     {
         AdaptEvents::new(self).map_message(handler)
     }
@@ -153,7 +153,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn on_messages<H>(self, handler: H) -> AdaptEvents<Self>
     where
-        H: Fn(&mut AdaptEventCx, &mut Self, &Self::Data) + 'static,
+        H: Fn(&mut AdaptEventCx, &mut Self, &Self::Data) + Send + 'static,
     {
         AdaptEvents::new(self).on_messages(handler)
     }

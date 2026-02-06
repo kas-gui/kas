@@ -34,7 +34,7 @@ mod Text {
     pub struct Text<A, T: Default + FormattableText + 'static = String> {
         core: widget_core!(),
         text: theme::Text<T>,
-        text_fn: Box<dyn Fn(&ConfigCx, &A, &mut T) -> bool>,
+        text_fn: Box<dyn Fn(&ConfigCx, &A, &mut T) -> bool + Send>,
     }
 
     impl Default for Self
@@ -59,7 +59,7 @@ mod Text {
 
     impl<A> Text<A, String> {
         /// Construct with an `str` accessor
-        pub fn new_str(as_str: impl Fn(&A) -> &str + 'static) -> Self {
+        pub fn new_str(as_str: impl Fn(&A) -> &str + Send + 'static) -> Self {
             Text {
                 core: Default::default(),
                 text: theme::Text::new(String::new(), TextClass::Standard, true),
@@ -80,7 +80,7 @@ mod Text {
         ///
         /// `gen_text` is called on each widget update to generate text from
         /// input data.
-        pub fn new_gen(gen_text: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        pub fn new_gen(gen_text: impl Fn(&ConfigCx, &A) -> T + Send + 'static) -> Self {
             Text {
                 core: Default::default(),
                 text: theme::Text::new(T::default(), TextClass::Standard, true),
@@ -102,7 +102,10 @@ mod Text {
         /// updated text will not be displayed) and should return `false`
         /// otherwise (or the text will be re-prepared needlessly, which can be
         /// expensive).
-        pub fn new_update(update_text: impl Fn(&ConfigCx, &A, &mut T) -> bool + 'static) -> Self {
+        pub fn new_update<U>(update_text: U) -> Self
+        where
+            U: Fn(&ConfigCx, &A, &mut T) -> bool + Send + 'static,
+        {
             Text {
                 core: Default::default(),
                 text: theme::Text::new(T::default(), TextClass::Standard, true),

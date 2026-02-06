@@ -34,7 +34,7 @@ mod SelectableText {
     pub struct SelectableText<A, T: FormattableText + 'static> {
         core: widget_core!(),
         text: Text<T>,
-        text_fn: Option<Box<dyn Fn(&ConfigCx, &A) -> T>>,
+        text_fn: Option<Box<dyn Fn(&ConfigCx, &A) -> T + Send>>,
         selection: SelectionHelper,
         has_sel_focus: bool,
         input_handler: TextInput,
@@ -108,7 +108,7 @@ mod SelectableText {
         #[inline]
         pub fn with_fn<A>(
             self,
-            text_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+            text_fn: impl Fn(&ConfigCx, &A) -> T + Send + 'static,
         ) -> SelectableText<A, T> {
             SelectableText {
                 core: self.core,
@@ -126,7 +126,7 @@ mod SelectableText {
         ///
         /// The text is set from input data on update.
         #[inline]
-        pub fn new_fn(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self
+        pub fn new_fn(text_fn: impl Fn(&ConfigCx, &A) -> T + Send + 'static) -> Self
         where
             T: Default,
         {
@@ -427,7 +427,7 @@ mod ScrollText {
         #[inline]
         pub fn with_fn<A>(
             self,
-            text_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+            text_fn: impl Fn(&ConfigCx, &A) -> T + Send + 'static,
         ) -> ScrollText<A, T> {
             ScrollText {
                 core: self.core,
@@ -443,7 +443,7 @@ mod ScrollText {
         ///
         /// The text is set from input data on update.
         #[inline]
-        pub fn new_fn(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self
+        pub fn new_fn(text_fn: impl Fn(&ConfigCx, &A) -> T + Send + 'static) -> Self
         where
             T: Default,
         {

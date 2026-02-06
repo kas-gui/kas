@@ -119,7 +119,7 @@ mod TabStack {
         tabs: AdaptEvents<Row<Vec<Tab>>>, // TODO: want a TabBar widget for scrolling support?
         #[widget]
         stack: Stack<A>,
-        on_change: Option<Box<dyn Fn(&mut EventCx, &A, usize, &str)>>,
+        on_change: Option<Box<dyn Fn(&mut EventCx, &A, usize, &str) + Send>>,
     }
 
     impl Self {
@@ -153,7 +153,7 @@ mod TabStack {
         /// `f` receives as parameters input data, page index and tab title.
         #[inline]
         #[must_use]
-        pub fn with(mut self, f: impl Fn(&mut EventCx, &A, usize, &str) + 'static) -> Self {
+        pub fn with(mut self, f: impl Fn(&mut EventCx, &A, usize, &str) + Send + 'static) -> Self {
             debug_assert!(self.on_change.is_none());
             self.on_change = Some(Box::new(f));
             self
@@ -164,7 +164,7 @@ mod TabStack {
         /// `f` receives as page index and tab title.
         #[inline]
         #[must_use]
-        pub fn with_msg<M>(self, f: impl Fn(usize, &str) -> M + 'static) -> Self
+        pub fn with_msg<M>(self, f: impl Fn(usize, &str) -> M + Send + 'static) -> Self
         where
             M: std::fmt::Debug + 'static,
         {
