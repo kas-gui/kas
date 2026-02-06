@@ -11,7 +11,6 @@
 use crate::cast::{Cast, Conv};
 use crate::window::WindowId;
 use hash_hasher::{HashBuildHasher, HashedMap};
-use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::fmt;
@@ -20,14 +19,14 @@ use std::iter::once;
 use std::marker::PhantomData;
 use std::mem::{forget, size_of, transmute};
 use std::num::NonZeroU64;
+use std::sync::Mutex;
 
 // TODO(opt): we don't need Arc's weak references
 // TODO(opt): we could use a smaller element type than usize and/or compress entries
 type Arc = std::sync::Arc<Box<[usize]>>;
-thread_local! {
-    // Map from hash of path to allocated path
-    static DB: RefCell<HashedMap<u64, Arc>> = const { RefCell::new(HashedMap::with_hasher(HashBuildHasher::new())) };
-}
+// Map from hash of path to allocated path
+static DB: Mutex<HashedMap<u64, Arc>> =
+    const { Mutex::new(HashedMap::with_hasher(HashBuildHasher::new())) };
 
 /// Invalid (default) identifier
 const INVALID: u64 = !0;
@@ -113,25 +112,23 @@ impl IntOrPtr {
 
         let mut a: Option<Arc> = None;
         let pa = &mut a;
-        DB.with_borrow_mut(move |db| {
-            let x = hash(&b);
-            match db.entry(x) {
-                Entry::Occupied(entry) => {
-                    let slice: &[usize] = &***entry.get();
-                    if slice == &*b {
-                        *pa = Some(entry.get().clone());
-                    } else {
-                        // Hash collision: omit entry
-                        // NOTE: we could tweak b and retry, but this would require extra data in b
-                    }
-                }
-                Entry::Vacant(entry) => {
-                    let p = Arc::new(b);
-                    *pa = Some(p.clone());
-                    entry.insert(p);
+        let x = hash(&b);
+        match DB.lock().unwrap().entry(x) {
+            Entry::Occupied(entry) => {
+                let slice: &[usize] = &***entry.get();
+                if slice == &*b {
+                    *pa = Some(entry.get().clone());
+                } else {
+                    // Hash collision: omit entry
+                    // NOTE: we could tweak b and retry, but this would require extra data in b
                 }
             }
-        });
+            Entry::Vacant(entry) => {
+                let p = Arc::new(b);
+                *pa = Some(p.clone());
+                entry.insert(p);
+            }
+        }
 
         let p: u64 = unsafe { transmute(a.expect("failed to access Id DB")) };
         debug_assert_eq!(p & 3, 0);
@@ -168,15 +165,13 @@ impl IntOrPtr {
             USE_PTR => {
                 let mut result = None;
                 let r = &mut result;
-                DB.with_borrow(|db| {
-                    if let Some(a) = db.get(&n) {
-                        let a: Arc = a.clone();
-                        let p: u64 = unsafe { transmute(a) };
-                        debug_assert_eq!(p & 3, 0);
-                        let p = p | USE_PTR;
-                        *r = Some(IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData))
-                    }
-                });
+                if let Some(a) = DB.lock().unwrap().get(&n) {
+                    let a: Arc = a.clone();
+                    let p: u64 = unsafe { transmute(a) };
+                    debug_assert_eq!(p & 3, 0);
+                    let p = p | USE_PTR;
+                    *r = Some(IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData))
+                }
                 result
             }
             _ if n == !0 => Some(IntOrPtr::INVALID),
@@ -205,7 +200,7 @@ impl Drop for IntOrPtr {
             let a: Arc = unsafe { transmute(p) };
             if let Ok(b) = Arc::try_unwrap(a) {
                 let x = hash(&*b);
-                DB.with_borrow_mut(|db| db.remove(&x));
+                DB.lock().unwrap().remove(&x);
             }
         }
     }
