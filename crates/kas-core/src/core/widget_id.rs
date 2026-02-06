@@ -14,16 +14,16 @@ use hash_hasher::{HashBuildHasher, HashedMap};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
+use std::fmt;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::iter::once;
 use std::marker::PhantomData;
 use std::mem::{forget, size_of, transmute};
 use std::num::NonZeroU64;
-use std::{fmt, slice};
 
 // TODO(opt): we don't need Arc's weak references
 // TODO(opt): we could use a smaller element type than usize and/or compress entries
-type Arc = std::sync::Arc<*mut usize>;
+type Arc = std::sync::Arc<Box<[usize]>>;
 thread_local! {
     // Map from hash of path to allocated path
     static DB: RefCell<HashedMap<u64, Arc>> = const { RefCell::new(HashedMap::with_hasher(HashBuildHasher::new())) };
@@ -45,9 +45,6 @@ const BLOCKS: u8 = 14;
 const MASK_BITS: u64 = 0xFFFF_FFFF_FFFF_FF00;
 
 const MASK_PTR: u64 = 0xFFFF_FFFF_FFFF_FFFC;
-
-const LEN_MASK: usize = 0xF_FFFF;
-const LEN_INCR: usize = LEN_MASK + 1;
 
 /// Integer or pointer to a reference-counted slice.
 ///
@@ -89,13 +86,10 @@ impl IntOrPtr {
         if self.is_ptr() {
             let p = usize::conv(self.0.get() & MASK_PTR);
             let a: Arc = unsafe { transmute(p) };
-            let p: *const usize = *a;
+            let slice: &[usize] = &**a;
+            let slice: &[usize] = unsafe { transmute(slice) };
             forget(a);
-            Some(unsafe {
-                let len = *p & LEN_MASK;
-                let p = p.offset(1);
-                slice::from_raw_parts(p, len)
-            })
+            Some(slice)
         } else {
             None
         }
@@ -114,33 +108,27 @@ impl IntOrPtr {
 
     /// Construct as a slice from an iterator
     fn new_iter<I: Clone + Iterator<Item = usize>>(iter: I) -> Self {
-        let len = iter.clone().count();
-        let mut v: Vec<usize> = once(len).chain(iter).collect();
+        let v: Vec<usize> = iter.collect();
+        let b = v.into_boxed_slice();
 
         let mut a: Option<Arc> = None;
         let pa = &mut a;
         DB.with_borrow_mut(move |db| {
-            loop {
-                let x = hash(&v);
-                match db.entry(x) {
-                    Entry::Occupied(entry) => {
-                        let p = **entry.get();
-                        let slice = unsafe { slice::from_raw_parts(p.offset(1), *p) };
-                        if slice == &v[1..] {
-                            *pa = Some(entry.get().clone());
-                            break;
-                        } else {
-                            // Hash collision: tweak the representation and retry
-                            v[0] = v[0].wrapping_add(LEN_INCR);
-                        }
+            let x = hash(&b);
+            match db.entry(x) {
+                Entry::Occupied(entry) => {
+                    let slice: &[usize] = &***entry.get();
+                    if slice == &*b {
+                        *pa = Some(entry.get().clone());
+                    } else {
+                        // Hash collision: omit entry
+                        // NOTE: we could tweak b and retry, but this would require extra data in b
                     }
-                    Entry::Vacant(entry) => {
-                        let p =
-                            Arc::new(Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize);
-                        *pa = Some(p.clone());
-                        entry.insert(p);
-                        break;
-                    }
+                }
+                Entry::Vacant(entry) => {
+                    let p = Arc::new(b);
+                    *pa = Some(p.clone());
+                    entry.insert(p);
                 }
             }
         });
@@ -215,17 +203,9 @@ impl Drop for IntOrPtr {
         if self.is_ptr() {
             let p = usize::conv(self.0.get() & MASK_PTR);
             let a: Arc = unsafe { transmute(p) };
-            if let Ok(p) = Arc::try_unwrap(a) {
-                unsafe {
-                    // len+1 because path len does not include len "field"
-                    let len = (*p & LEN_MASK) + 1;
-                    let slice = slice::from_raw_parts_mut(p, len);
-
-                    let x = hash(slice);
-                    DB.with_borrow_mut(|db| db.remove(&x));
-
-                    let _ = Box::<[usize]>::from_raw(slice);
-                }
+            if let Ok(b) = Arc::try_unwrap(a) {
+                let x = hash(&*b);
+                DB.with_borrow_mut(|db| db.remove(&x));
             }
         }
     }
