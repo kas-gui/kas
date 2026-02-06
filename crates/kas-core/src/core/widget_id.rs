@@ -66,10 +66,12 @@ enum Variant<'a> {
     Slice(&'a [usize]),
 }
 
+/// Returns a key for use in DB
 fn hash(path: &[usize]) -> u64 {
     let mut hasher = DefaultHasher::new();
     path.hash(&mut hasher);
-    hasher.finish()
+    // NOTE: we require USE_PTR for use in try_from_u64
+    (hasher.finish() & MASK_PTR) | USE_PTR
 }
 
 impl IntOrPtr {
@@ -159,8 +161,7 @@ impl IntOrPtr {
 
     fn to_nzu64(&self) -> NonZeroU64 {
         if let Some(slice) = self.get_slice() {
-            let x = hash(slice) & MASK_PTR;
-            NonZeroU64::new(x | USE_PTR).unwrap()
+            NonZeroU64::new(hash(slice)).unwrap()
         } else {
             self.0
         }
@@ -179,6 +180,8 @@ impl IntOrPtr {
                     if let Some(p) = db.get(&n) {
                         unsafe { increment_rc(*p) };
                         let p: u64 = (*p as usize).cast();
+                        debug_assert_eq!(p & 3, 0);
+                        let p = p | USE_PTR;
                         *r = Some(IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData))
                     }
                 });
