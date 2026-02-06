@@ -27,7 +27,7 @@ mod MapAny {
     #[autoimpl(Clone, Default where W: trait)]
     #[derive_widget]
     pub struct MapAny<A, W: Widget<Data = ()>> {
-        _a: PhantomData<dyn Fn(A) + Send + Sync>,
+        _a: PhantomData<fn(A)>,
         /// The inner widget
         #[widget = &()]
         pub inner: W,
