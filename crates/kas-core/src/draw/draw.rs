@@ -24,9 +24,8 @@ use std::time::Instant;
 /// ```ignore
 /// # use kas::draw::{DrawIface, DrawRoundedImpl, DrawSharedImpl, DrawCx, DrawRounded, color::Rgba};
 /// # use kas::geom::Rect;
-/// # struct CircleWidget<DS> {
+/// # struct CircleWidget {
 /// #     rect: Rect,
-/// #     _pd: std::marker::PhantomData<DS>,
 /// # }
 /// impl CircleWidget {
 ///     fn draw(&self, mut draw: DrawCx) {

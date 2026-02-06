@@ -99,7 +99,7 @@ pub trait EditGuard: Sized {
 /// This guard should probably not be used for a functional user-interface but
 /// may be useful in mock UIs.
 #[autoimpl(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct DefaultGuard<A>(PhantomData<A>);
+pub struct DefaultGuard<A>(PhantomData<dyn Fn(A) + Send + Sync>);
 impl<A: 'static> EditGuard for DefaultGuard<A> {
     type Data = A;
 }
