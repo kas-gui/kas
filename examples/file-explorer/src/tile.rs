@@ -10,7 +10,6 @@ use std::path::{Path, PathBuf};
 
 #[autoimpl(Debug)]
 pub enum State {
-    Initial,
     Unknown,
     Directory,
     Image(ImageFormat),
@@ -34,10 +33,10 @@ impl State {
     /// Return a specific stack page widget (if relevant)
     fn page(&self, path: &Path) -> Option<Page<String>> {
         match self {
+            State::Unknown => None,
             Self::Directory => Some(Page::new(directory(path.to_path_buf()))),
             Self::Image(_) => Some(Page::new(image(path))),
             Self::Svg => svg(path).map(Page::new).ok(),
-            _ => None,
         }
     }
 }
@@ -77,7 +76,6 @@ mod Tile {
     pub struct Tile {
         core: widget_core!(),
         path: PathBuf,
-        state: State,
         generic: String,
         #[widget(&self.generic)]
         stack: Stack<String>,
@@ -102,10 +100,8 @@ mod Tile {
             self.path.push(entry);
 
             if entry.as_os_str().is_empty() {
-                self.state = State::Initial;
                 self.generic.replace_range(.., "loading");
             } else {
-                self.state = State::Unknown;
                 self.generic.clear();
                 write!(self.generic, "{}", entry.display()).unwrap();
 
@@ -119,9 +115,8 @@ mod Tile {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(state) = cx.try_pop() {
-                self.state = state;
-                if let Some(page) = self.state.page(&self.path) {
+            if let Some(state) = cx.try_pop::<State>() {
+                if let Some(page) = state.page(&self.path) {
                     self.stack.push(cx, &self.generic, page);
                     self.stack.set_active(cx, &self.generic, 1);
                 }
@@ -134,7 +129,6 @@ mod Tile {
             Tile {
                 core: Default::default(),
                 path: PathBuf::new(),
-                state: State::Initial,
                 generic: String::new(),
                 stack: Stack::from([Page::new(generic())]),
             }
