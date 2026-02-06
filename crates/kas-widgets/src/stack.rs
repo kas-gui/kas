@@ -495,6 +495,17 @@ impl<A> Stack<A> {
         page
     }
 
+    /// Remove all children at index greater than or equal to `len`
+    ///
+    /// If `len` is greater than or equal to the current length this has no effect.
+    pub fn truncate(&mut self, cx: &mut ConfigCx, len: usize) {
+        self.widgets.truncate(len);
+
+        if self.active >= len {
+            cx.region_moved();
+        }
+    }
+
     /// Append child widgets from an iterator
     ///
     /// The new pages are not made active (the active index may be changed to
