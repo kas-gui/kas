@@ -48,7 +48,7 @@ mod ComboBox {
         popup: Popup<AdaptEvents<Column<Vec<MenuEntry<V>>>>>,
         active: usize,
         opening: bool,
-        state_fn: Box<dyn Fn(&ConfigCx, &A) -> V>,
+        state_fn: Box<dyn Fn(&ConfigCx, &A) -> V + Send>,
         on_select: Option<Box<dyn Fn(&mut EventCx, V)>>,
     }
 
@@ -241,7 +241,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// ```
     ///
     /// The closure `state_fn` selects the active entry from input data.
-    pub fn new<T, I>(iter: I, state_fn: impl Fn(&ConfigCx, &A) -> V + 'static) -> Self
+    pub fn new<T, I>(iter: I, state_fn: impl Fn(&ConfigCx, &A) -> V + Send + 'static) -> Self
     where
         T: Into<AccessString>,
         I: IntoIterator<Item = (T, V)>,
@@ -260,7 +260,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// The closure `state_fn` selects the active entry from input data.
     pub fn new_vec(
         entries: Vec<MenuEntry<V>>,
-        state_fn: impl Fn(&ConfigCx, &A) -> V + 'static,
+        state_fn: impl Fn(&ConfigCx, &A) -> V + Send + 'static,
     ) -> Self {
         let label = entries.first().map(|entry| entry.as_str().to_string());
         let label = Label::new(label.unwrap_or_default()).with_class(TextClass::Label);
@@ -308,8 +308,8 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// See [`Self::new`] and [`Self::with_msg`] for documentation.
     pub fn new_msg<T, I, M>(
         iter: I,
-        state_fn: impl Fn(&ConfigCx, &A) -> V + 'static,
-        msg_fn: impl Fn(V) -> M + 'static,
+        state_fn: impl Fn(&ConfigCx, &A) -> V + Send + 'static,
+        msg_fn: impl Fn(V) -> M + Send + 'static,
     ) -> Self
     where
         T: Into<AccessString>,

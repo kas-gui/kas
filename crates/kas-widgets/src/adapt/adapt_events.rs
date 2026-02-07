@@ -24,9 +24,9 @@ mod AdaptEvents {
         /// The inner widget
         #[widget]
         pub inner: W,
-        on_configure: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W)>>,
-        on_update: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &W::Data)>>,
-        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W, &W::Data)>>,
+        on_configure: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W) + Send>>,
+        on_update: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &W::Data) + Send>>,
+        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W, &W::Data) + Send>>,
     }
 
     impl<W: Widget> AdaptEvents<W> {
@@ -49,7 +49,7 @@ mod AdaptEvents {
         #[must_use]
         pub fn on_configure<F>(mut self, f: F) -> Self
         where
-            F: Fn(&mut AdaptConfigCx, &mut W) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W) + Send + 'static,
         {
             self.on_configure = Some(Box::new(f));
             self
@@ -65,7 +65,7 @@ mod AdaptEvents {
         #[must_use]
         pub fn on_update<F>(mut self, f: F) -> Self
         where
-            F: Fn(&mut AdaptConfigCx, &mut W, &W::Data) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W, &W::Data) + Send + 'static,
         {
             self.on_update = Some(Box::new(f));
             self
@@ -81,7 +81,7 @@ mod AdaptEvents {
         pub fn on_message<M, H>(self, handler: H) -> Self
         where
             M: Debug + 'static,
-            H: Fn(&mut AdaptEventCx, &mut W, M) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W, M) + Send + 'static,
         {
             self.on_messages(move |cx, w, _data| {
                 if let Some(m) = cx.try_pop() {
@@ -108,7 +108,7 @@ mod AdaptEvents {
         where
             M: Debug + 'static,
             N: Debug + 'static,
-            H: Fn(usize, M) -> N + 'static,
+            H: Fn(usize, M) -> N + Send + 'static,
         {
             self.on_messages(move |cx, _, _| {
                 if let Some(index) = cx.last_child() {
@@ -126,7 +126,7 @@ mod AdaptEvents {
         #[must_use]
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &mut W, &W::Data) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W, &W::Data) + Send + 'static,
         {
             self.message_handlers.push(Box::new(handler));
             self

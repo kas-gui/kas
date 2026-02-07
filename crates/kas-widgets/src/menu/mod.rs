@@ -172,8 +172,8 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     pub fn push_toggle<M: Debug + 'static>(
         &mut self,
         label: impl Into<AccessString>,
-        state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
-        msg_fn: impl Fn(bool) -> M + 'static,
+        state_fn: impl Fn(&ConfigCx, &Data) -> bool + Send + 'static,
+        msg_fn: impl Fn(bool) -> M + Send + 'static,
     ) {
         self.menu
             .push(Box::new(MenuToggle::new_msg(label, state_fn, msg_fn)));
@@ -183,8 +183,8 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     pub fn toggle<M: Debug + 'static>(
         mut self,
         label: impl Into<AccessString>,
-        state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
-        msg_fn: impl Fn(bool) -> M + 'static,
+        state_fn: impl Fn(&ConfigCx, &Data) -> bool + Send + 'static,
+        msg_fn: impl Fn(bool) -> M + Send + 'static,
     ) -> Self {
         self.push_toggle(label, state_fn, msg_fn);
         self

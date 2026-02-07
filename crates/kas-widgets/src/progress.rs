@@ -19,7 +19,7 @@ mod ProgressBar {
         core: widget_core!(),
         direction: D,
         value: f32,
-        value_fn: Box<dyn Fn(&ConfigCx, &A) -> f32>,
+        value_fn: Box<dyn Fn(&ConfigCx, &A) -> f32 + Send>,
     }
 
     impl Self
@@ -31,7 +31,7 @@ mod ProgressBar {
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn new(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static) -> Self {
+        pub fn new(value_fn: impl Fn(&ConfigCx, &A) -> f32 + Send + 'static) -> Self {
             Self::new_dir(value_fn, D::default())
         }
     }
@@ -41,7 +41,7 @@ mod ProgressBar {
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn right(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static) -> Self {
+        pub fn right(value_fn: impl Fn(&ConfigCx, &A) -> f32 + Send + 'static) -> Self {
             ProgressBar::new(value_fn)
         }
     }
@@ -52,7 +52,10 @@ mod ProgressBar {
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn new_dir(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static, direction: D) -> Self {
+        pub fn new_dir<V>(value_fn: V, direction: D) -> Self
+        where
+            V: Fn(&ConfigCx, &A) -> f32 + Send + 'static,
+        {
             ProgressBar {
                 core: Default::default(),
                 direction,

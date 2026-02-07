@@ -45,11 +45,11 @@ mod Adapt {
         state: W::Data,
         #[widget(&self.state)]
         inner: W,
-        configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &mut W::Data)>>,
-        update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &mut W::Data, &A)>>,
+        configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &mut W::Data) + Send>>,
+        update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &mut W::Data, &A) + Send>>,
         timer_handlers:
-            LinearMap<TimerHandle, Box<dyn Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A)>>,
-        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A)>>,
+            LinearMap<TimerHandle, Box<dyn Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + Send>>,
+        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + Send>>,
     }
 
     impl Self {
@@ -70,7 +70,7 @@ mod Adapt {
         /// Add a handler to be called on configuration
         pub fn on_configure<F>(mut self, handler: F) -> Self
         where
-            F: Fn(&mut AdaptConfigCx, &mut W, &mut W::Data) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W, &mut W::Data) + Send + 'static,
         {
             debug_assert!(self.configure_handler.is_none());
             self.configure_handler = Some(Box::new(handler));
@@ -82,7 +82,7 @@ mod Adapt {
         /// Children will be updated after the handler is called.
         pub fn on_update<F>(mut self, handler: F) -> Self
         where
-            F: Fn(&mut AdaptConfigCx, &mut W, &mut W::Data, &A) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W, &mut W::Data, &A) + Send + 'static,
         {
             debug_assert!(self.update_handler.is_none());
             self.update_handler = Some(Box::new(handler));
@@ -96,7 +96,7 @@ mod Adapt {
         /// of [`EventState::send_async`](kas::event::EventState::send_async).
         pub fn on_timer<H>(mut self, timer_id: TimerHandle, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + Send + 'static,
         {
             debug_assert!(self.timer_handlers.get(&timer_id).is_none());
             self.timer_handlers.insert(timer_id, Box::new(handler));
@@ -112,7 +112,7 @@ mod Adapt {
         pub fn on_message<M, H>(self, handler: H) -> Self
         where
             M: Debug + 'static,
-            H: Fn(&mut AdaptEventCx, &mut W::Data, M) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W::Data, M) + Send + 'static,
         {
             self.on_messages(move |cx, _, state, _data| {
                 if let Some(m) = cx.try_pop() {
@@ -124,7 +124,7 @@ mod Adapt {
         /// Add a generic message handler
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + Send + 'static,
         {
             self.message_handlers.push(Box::new(handler));
             self
@@ -197,7 +197,7 @@ mod Map {
         #[widget = (self.map_fn)(data)]
         pub inner: W,
         map_fn: F,
-        _a: PhantomData<dyn Fn(A) + Send + Sync>,
+        _a: PhantomData<fn(A)>,
     }
 
     impl Widget for Self {

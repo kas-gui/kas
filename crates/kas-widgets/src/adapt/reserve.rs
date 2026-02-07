@@ -25,7 +25,7 @@ mod Reserve {
     pub struct Reserve<W: Widget> {
         #[widget]
         pub inner: W,
-        reserve: Box<dyn Fn(&mut SizeCx, AxisInfo) -> SizeRules + 'static>,
+        reserve: Box<dyn Fn(&mut SizeCx, AxisInfo) -> SizeRules + Send>,
     }
 
     impl Self {
@@ -47,7 +47,7 @@ mod Reserve {
         #[inline]
         pub fn new(
             inner: W,
-            reserve: impl Fn(&mut SizeCx, AxisInfo) -> SizeRules + 'static,
+            reserve: impl Fn(&mut SizeCx, AxisInfo) -> SizeRules + Send + 'static,
         ) -> Self {
             let reserve = Box::new(reserve);
             Reserve { inner, reserve }

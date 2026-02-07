@@ -465,12 +465,12 @@ pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
 ///     #[derive_widget]
 ///     pub struct Map<A, W: Widget, F>
 ///     where
-///         F: for<'a> Fn(&'a A) -> &'a W::Data,
+///         F: for<'a> Fn(&'a A) -> &'a W::Data + Send,
 ///     {
 ///         #[widget = (self.map_fn)(data)]
 ///         pub inner: W,
 ///         map_fn: F,
-///         _a: std::marker::PhantomData<dyn Fn(A) + Send + Sync>,
+///         _a: std::marker::PhantomData<fn(A)>,
 ///     }
 ///
 ///     impl Widget for Self {

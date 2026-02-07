@@ -99,7 +99,7 @@ pub trait EditGuard: Sized {
 /// This guard should probably not be used for a functional user-interface but
 /// may be useful in mock UIs.
 #[autoimpl(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct DefaultGuard<A>(PhantomData<dyn Fn(A) + Send + Sync>);
+pub struct DefaultGuard<A>(PhantomData<fn(A)>);
 impl<A: 'static> EditGuard for DefaultGuard<A> {
     type Data = A;
 }
@@ -113,8 +113,8 @@ mod StringGuard {
     /// [`ScrollText`](crate::ScrollText).
     #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
     pub struct StringGuard<A> {
-        value_fn: Box<dyn Fn(&A) -> String>,
-        on_afl: Option<Box<dyn Fn(&mut EventCx, &A, &str)>>,
+        value_fn: Box<dyn Fn(&A) -> String + Send>,
+        on_afl: Option<Box<dyn Fn(&mut EventCx, &A, &str) + Send>>,
         edited: bool,
     }
 
@@ -125,7 +125,7 @@ mod StringGuard {
         /// If, however, the input field has focus, the update is ignored.
         ///
         /// No other action happens unless [`Self::with_msg`] is used.
-        pub fn new(value_fn: impl Fn(&A) -> String + 'static) -> Self {
+        pub fn new(value_fn: impl Fn(&A) -> String + Send + 'static) -> Self {
             StringGuard {
                 value_fn: Box::new(value_fn),
                 on_afl: None,
@@ -137,7 +137,7 @@ mod StringGuard {
         ///
         /// On field **a**ctivation and **f**ocus **l**oss (AFL) after an edit,
         /// `f` is called.
-        pub fn with(mut self, f: impl Fn(&mut EventCx, &A, &str) + 'static) -> Self {
+        pub fn with(mut self, f: impl Fn(&mut EventCx, &A, &str) + Send + 'static) -> Self {
             debug_assert!(self.on_afl.is_none());
             self.on_afl = Some(Box::new(f));
             self
@@ -147,7 +147,7 @@ mod StringGuard {
         ///
         /// On field **a**ctivation and **f**ocus **l**oss (AFL) after an edit,
         /// `f` is used to construct a message to be emitted via [`EventCx::push`].
-        pub fn with_msg<M: Debug + 'static>(self, f: impl Fn(&str) -> M + 'static) -> Self {
+        pub fn with_msg<M: Debug + 'static>(self, f: impl Fn(&str) -> M + Send + 'static) -> Self {
             self.with(move |cx, _, value| cx.push(f(value)))
         }
     }
@@ -188,8 +188,8 @@ mod ParseGuard {
     #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
     pub struct ParseGuard<A, T: Debug + Display + FromStr> {
         parsed: Option<T>,
-        value_fn: Box<dyn Fn(&A) -> T>,
-        on_afl: Box<dyn Fn(&mut EventCx, T)>,
+        value_fn: Box<dyn Fn(&A) -> T + Send>,
+        on_afl: Box<dyn Fn(&mut EventCx, T) + Send>,
     }
 
     impl Self {
@@ -207,8 +207,8 @@ mod ParseGuard {
         /// emitted via [`EventCx::push`]. The cached value is then cleared to
         /// avoid sending duplicate messages.
         pub fn new<M: Debug + 'static>(
-            value_fn: impl Fn(&A) -> T + 'static,
-            on_afl: impl Fn(T) -> M + 'static,
+            value_fn: impl Fn(&A) -> T + Send + 'static,
+            on_afl: impl Fn(T) -> M + Send + 'static,
         ) -> Self {
             ParseGuard {
                 parsed: None,
@@ -254,8 +254,8 @@ mod InstantParseGuard {
     /// immediately (where successful parsing occurred).
     #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
     pub struct InstantParseGuard<A, T: Debug + Display + FromStr> {
-        value_fn: Box<dyn Fn(&A) -> T>,
-        on_afl: Box<dyn Fn(&mut EventCx, T)>,
+        value_fn: Box<dyn Fn(&A) -> T + Send>,
+        on_afl: Box<dyn Fn(&mut EventCx, T) + Send>,
     }
 
     impl Self {
@@ -269,8 +269,8 @@ mod InstantParseGuard {
         /// `T` via [`FromStr`]. On success, the result is converted to a
         /// message via `on_afl` then emitted via [`EventCx::push`].
         pub fn new<M: Debug + 'static>(
-            value_fn: impl Fn(&A) -> T + 'static,
-            on_afl: impl Fn(T) -> M + 'static,
+            value_fn: impl Fn(&A) -> T + Send + 'static,
+            on_afl: impl Fn(T) -> M + Send + 'static,
         ) -> Self {
             InstantParseGuard {
                 value_fn: Box::new(value_fn),

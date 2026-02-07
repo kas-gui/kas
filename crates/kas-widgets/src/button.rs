@@ -34,7 +34,7 @@ mod Button {
         frame_style: FrameStyle,
         #[widget]
         pub inner: W,
-        on_press: Option<Box<dyn Fn(&mut EventCx, &W::Data)>>,
+        on_press: Option<Box<dyn Fn(&mut EventCx, &W::Data) + Send>>,
     }
 
     impl Self {
@@ -54,7 +54,7 @@ mod Button {
         /// Call the handler `f` on press / activation
         #[inline]
         #[must_use]
-        pub fn with(mut self, f: impl Fn(&mut EventCx, &W::Data) + 'static) -> Self {
+        pub fn with(mut self, f: impl Fn(&mut EventCx, &W::Data) + Send + 'static) -> Self {
             debug_assert!(self.on_press.is_none());
             self.on_press = Some(Box::new(f));
             self
@@ -65,7 +65,7 @@ mod Button {
         #[must_use]
         pub fn with_msg<M>(self, msg: M) -> Self
         where
-            M: Clone + Debug + 'static,
+            M: Clone + Debug + Send + 'static,
         {
             self.with(move |cx, _| cx.push(msg.clone()))
         }
@@ -76,7 +76,7 @@ mod Button {
         /// parent widget. The parent (or an ancestor) should handle this using
         /// [`Events::handle_messages`].
         #[inline]
-        pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
+        pub fn new_msg<M: Clone + Debug + Send + 'static>(inner: W, msg: M) -> Self {
             Self::new(inner).with_msg(msg)
         }
 
@@ -172,7 +172,7 @@ mod Button {
         /// overlapping trait implementations (not specialisation).
         pub fn label_msg<M>(label: impl Into<AccessString>, msg: M) -> Self
         where
-            M: Clone + Debug + 'static,
+            M: Clone + Debug + Send + 'static,
         {
             Button::new_msg(AccessLabel::new(label), msg)
         }

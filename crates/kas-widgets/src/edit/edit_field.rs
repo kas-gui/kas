@@ -556,7 +556,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
 
     /// Construct a read-only `EditField` displaying some `String` value
     #[inline]
-    pub fn string(value_fn: impl Fn(&A) -> String + 'static) -> EditField<StringGuard<A>> {
+    pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditField<StringGuard<A>> {
         EditField::new(StringGuard::new(value_fn)).with_editable(false)
     }
 
@@ -575,8 +575,8 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
     /// avoid sending duplicate messages.
     #[inline]
     pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + 'static,
-        msg_fn: impl Fn(T) -> M + 'static,
+        value_fn: impl Fn(&A) -> T + Send + 'static,
+        msg_fn: impl Fn(T) -> M + Send + 'static,
     ) -> EditField<ParseGuard<A, T>> {
         EditField::new(ParseGuard::new(value_fn, msg_fn))
     }
@@ -591,8 +591,8 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
     /// `T` via [`FromStr`]. On success, the result is converted to a
     /// message via `on_afl` then emitted via [`EventCx::push`].
     pub fn instant_parser<T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + 'static,
-        msg_fn: impl Fn(T) -> M + 'static,
+        value_fn: impl Fn(&A) -> T + Send + 'static,
+        msg_fn: impl Fn(T) -> M + Send + 'static,
     ) -> EditField<InstantParseGuard<A, T>> {
         EditField::new(InstantParseGuard::new(value_fn, msg_fn))
     }
@@ -606,7 +606,7 @@ impl<A: 'static> EditField<StringGuard<A>> {
     ///
     /// This method sets self as editable (see [`Self::with_editable`]).
     #[must_use]
-    pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + 'static) -> Self
+    pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + Send + 'static) -> Self
     where
         M: Debug + 'static,
     {
