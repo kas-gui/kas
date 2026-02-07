@@ -8,36 +8,27 @@ use kas::widgets::{AdaptWidget, Button, Label, Page, Stack, Text};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-#[autoimpl(Debug)]
-pub enum State {
-    Unknown,
-    Directory,
-    Image(ImageFormat),
-    Svg,
+#[autoimpl(Debug ignore self.0)]
+struct SendBoxedWidget(Box<dyn Widget<Data = String> + Send>);
+impl SendBoxedWidget {
+    #[inline]
+    fn new(w: impl Widget<Data = String> + Send + 'static) -> Self {
+        SendBoxedWidget(Box::new(w))
+    }
 }
 
-impl State {
-    /// Detect from `path`
-    fn detect(path: &Path) -> Self {
-        if path.is_dir() {
-            State::Directory
-        } else if let Ok(format) = ImageFormat::from_path(path) {
-            State::Image(format)
-        } else if path.extension().map(|ext| ext == "svg").unwrap_or_default() {
-            State::Svg
-        } else {
-            State::Unknown
-        }
-    }
-
-    /// Return a specific stack page widget (if relevant)
-    fn page(&self, path: &Path) -> Option<Page<String>> {
-        match self {
-            State::Unknown => None,
-            Self::Directory => Some(Page::new(directory(path.to_path_buf()))),
-            Self::Image(_) => Some(Page::new(image(path))),
-            Self::Svg => svg(path).map(Page::new).ok(),
-        }
+/// Detect from `path`
+///
+/// Returns a specific stack page widget (if relevant)
+fn detect(path: &Path) -> Option<SendBoxedWidget> {
+    if path.is_dir() {
+        Some(directory(path.to_path_buf()))
+    } else if let Ok(_format) = ImageFormat::from_path(path) {
+        Some(image(path))
+    } else if path.extension().map(|ext| ext == "svg").unwrap_or_default() {
+        svg(path).ok()
+    } else {
+        None
     }
 }
 
@@ -45,28 +36,31 @@ fn generic() -> impl Widget<Data = String> {
     Text::new_str(|text: &String| text)
 }
 
-fn directory(path: PathBuf) -> impl Widget<Data = String> {
+fn directory(path: PathBuf) -> SendBoxedWidget {
     let name = path
         .file_name()
         .map(|os_str| os_str.to_string_lossy().to_string())
         .unwrap_or_default();
-    Button::label_msg(name, ChangeDir(path)).map_any()
+    SendBoxedWidget::new(Button::label_msg(name, ChangeDir(path)).map_any())
 }
 
-fn image(path: &Path) -> impl Widget<Data = String> + 'static {
-    Image::new(path).map_any().on_update(|_, widget, _| {
+fn image(path: &Path) -> SendBoxedWidget {
+    SendBoxedWidget::new(Image::new(path).map_any().on_update(|_, widget, _| {
         let size = crate::tile_size().cast();
         widget.set_logical_size((size, size));
-    })
+    }))
 }
 
-fn svg(path: &Path) -> Result<impl Widget<Data = String> + 'static, impl std::error::Error> {
-    Svg::new_path(path).map(|svg| {
-        svg.map_any().on_update(|_, widget, _| {
-            let size = crate::tile_size().cast();
-            widget.set_logical_size((size, size));
-        })
-    })
+fn svg(path: &Path) -> Result<SendBoxedWidget, impl std::error::Error> {
+    match Svg::new_path(path) {
+        Ok(svg) => Ok(SendBoxedWidget::new(svg.map_any().on_update(
+            |_, widget, _| {
+                let size = crate::tile_size().cast();
+                widget.set_logical_size((size, size));
+            },
+        ))),
+        Err(e) => Err(e),
+    }
 }
 
 #[impl_self]
@@ -106,20 +100,18 @@ mod Tile {
                 write!(self.generic, "{}", entry.display()).unwrap();
 
                 let path = self.path.clone();
-                cx.send_spawn(self.id(), async move { State::detect(&path) });
+                cx.send_spawn(self.id(), async move { detect(&path) });
             }
 
             // Always reset the page to 0 on change
             self.stack.set_active(cx, &self.generic, 0);
-            self.stack.truncate(cx, 1);
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(state) = cx.try_pop::<State>() {
-                if let Some(page) = state.page(&self.path) {
-                    self.stack.push(cx, &self.generic, page);
-                    self.stack.set_active(cx, &self.generic, 1);
-                }
+            if let Some(Some(SendBoxedWidget(w))) = cx.try_pop() {
+                self.stack.truncate(cx, 1);
+                self.stack.push(cx, &self.generic, Page::new_boxed(w));
+                self.stack.set_active(cx, &self.generic, 1);
             }
         }
     }
