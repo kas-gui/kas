@@ -18,7 +18,7 @@ mod Separator {
     #[widget]
     pub struct Separator<A> {
         core: widget_core!(),
-        _pd: PhantomData<A>,
+        _a: PhantomData<dyn Fn(A) + Send + Sync>,
     }
 
     impl Self {
@@ -27,7 +27,7 @@ mod Separator {
         pub fn new() -> Self {
             Separator {
                 core: Default::default(),
-                _pd: PhantomData,
+                _a: PhantomData,
             }
         }
     }

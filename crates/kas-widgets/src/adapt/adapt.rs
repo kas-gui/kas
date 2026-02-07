@@ -197,7 +197,7 @@ mod Map {
         #[widget = (self.map_fn)(data)]
         pub inner: W,
         map_fn: F,
-        _data: PhantomData<A>,
+        _a: PhantomData<dyn Fn(A) + Send + Sync>,
     }
 
     impl Widget for Self {
@@ -213,7 +213,7 @@ mod Map {
             Map {
                 inner,
                 map_fn,
-                _data: PhantomData,
+                _a: PhantomData,
             }
         }
     }

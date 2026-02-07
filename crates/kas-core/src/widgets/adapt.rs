@@ -11,6 +11,7 @@ use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::SizeCx;
 use crate::{Layout, Widget};
 use kas_macros::{autoimpl, impl_self};
+use std::marker::PhantomData;
 
 #[impl_self]
 mod MapAny {
@@ -26,7 +27,7 @@ mod MapAny {
     #[autoimpl(Clone, Default where W: trait)]
     #[derive_widget]
     pub struct MapAny<A, W: Widget<Data = ()>> {
-        _a: std::marker::PhantomData<A>,
+        _a: PhantomData<dyn Fn(A) + Send + Sync>,
         /// The inner widget
         #[widget = &()]
         pub inner: W,
@@ -40,7 +41,7 @@ mod MapAny {
         /// Construct
         pub fn new(inner: W) -> Self {
             MapAny {
-                _a: std::marker::PhantomData,
+                _a: PhantomData,
                 inner,
             }
         }

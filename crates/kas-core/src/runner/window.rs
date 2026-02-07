@@ -54,9 +54,8 @@ struct WindowData<G: GraphicsInstance> {
 /// Per-window data
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-#[autoimpl(Debug ignore self._data, self.widget, self.ev_state, self.theme_and_window)]
+#[autoimpl(Debug ignore self.widget, self.ev_state, self.theme_and_window)]
 pub struct Window<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
-    _data: std::marker::PhantomData<A>,
     pub(super) widget: Box<dyn WindowWidget<Data = A>>,
     ev_state: EventState,
     theme_and_window: Option<(T::Window, WindowData<G>)>,
@@ -73,7 +72,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     ) -> Self {
         let config = WindowConfig::new(config);
         Window {
-            _data: std::marker::PhantomData,
             widget: widget.0,
             ev_state: EventState::new(window_id, config, platform),
             theme_and_window: None,

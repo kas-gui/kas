@@ -470,7 +470,7 @@ pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
 ///         #[widget = (self.map_fn)(data)]
 ///         pub inner: W,
 ///         map_fn: F,
-///         _data: PhantomData<A>,
+///         _a: std::marker::PhantomData<dyn Fn(A) + Send + Sync>,
 ///     }
 ///
 ///     impl Widget for Self {
