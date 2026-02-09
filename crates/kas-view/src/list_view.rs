@@ -461,6 +461,7 @@ mod ListView {
         }
 
         fn position_solver(&self) -> PositionSolver {
+            let alloc_len = self.widgets.len();
             let cur_len: usize = self.cur_len.cast();
             let mut first_data: usize = self.first_data.cast();
             let mut skip = Offset::ZERO;
@@ -479,7 +480,7 @@ mod ListView {
                 skip,
                 size: self.child_size,
                 first_data,
-                cur_len,
+                alloc_len,
             }
         }
 
@@ -565,11 +566,12 @@ mod ListView {
             let id = self.id();
 
             let solver = self.position_solver();
-            for i in range.clone() {
-                let w = &mut self.widgets[i % solver.cur_len];
+            let alloc_len = self.widgets.len();
+            for di in range.clone() {
+                let w = &mut self.widgets[di % alloc_len];
 
                 let force = self.token_update != Update::None;
-                let changes = self.clerk.update_token(data, i, force, &mut w.token);
+                let changes = self.clerk.update_token(data, di, force, &mut w.token);
                 w.is_mock = false;
                 let Some(token) = w.token.as_ref() else {
                     continue;
@@ -577,7 +579,7 @@ mod ListView {
 
                 let mut rect_update = self.rect_update;
                 if changes.key() || self.token_update == Update::Configure {
-                    w.item.index = i;
+                    w.item.index = di;
                     // TODO(opt): some impls of Driver::set_key do nothing
                     // and do not need re-configure (beyond the first).
                     self.driver.set_key(&mut w.item.inner, token.borrow());
@@ -600,7 +602,7 @@ mod ListView {
 
                 if rect_update {
                     w.item
-                        .set_rect(&mut cx.size_cx(), solver.rect(i), self.align_hints);
+                        .set_rect(&mut cx.size_cx(), solver.rect(di), self.align_hints);
                 }
             }
 
@@ -709,11 +711,12 @@ mod ListView {
             // action and we cannot guarantee that the requested
             // TIMER_UPDATE_WIDGETS event will be immediately.)
             let solver = self.position_solver();
-            for i in 0..solver.cur_len {
-                let i = solver.first_data + i;
-                let w = &mut self.widgets[i % solver.cur_len];
+            let alloc_len = self.widgets.len();
+            for i in 0..self.cur_len {
+                let di = solver.first_data + usize::conv(i);
+                let w = &mut self.widgets[di % alloc_len];
                 if w.token.is_some() {
-                    w.item.set_rect(cx, solver.rect(i), self.align_hints);
+                    w.item.set_rect(cx, solver.rect(di), self.align_hints);
                 }
             }
 
@@ -753,7 +756,7 @@ mod ListView {
         fn draw_with_offset(&self, mut draw: DrawCx, viewport: Rect, offset: Offset) {
             // We use a new pass to clip and offset scrolled content:
             draw.with_clip_region(viewport, offset + self.virtual_offset(), |mut draw| {
-                for child in &self.widgets[..self.cur_len.cast()] {
+                for child in &self.widgets {
                     if let Some(key) = child.key() {
                         if self.selection.contains(key) {
                             draw.selection(child.item.rect(), self.sel_style);
@@ -786,8 +789,7 @@ mod ListView {
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let key = C::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
-                let num = self.cur_len.cast();
-                for (i, w) in self.widgets[..num].iter().enumerate() {
+                for (i, w) in self.widgets.iter().enumerate() {
                     if key.as_ref() == w.key() {
                         return Some(i);
                     }
@@ -848,7 +850,7 @@ mod ListView {
 
         fn probe(&self, coord: Coord) -> Id {
             let coord = coord + self.translation(0);
-            for child in &self.widgets[..self.cur_len.cast()] {
+            for child in &self.widgets {
                 if child.token.is_some()
                     && let Some(id) = child.item.try_probe(coord)
                 {
@@ -886,7 +888,11 @@ mod ListView {
             if self.token_update != Update::None || changes != Changes::None {
                 self.handle_update(cx, data, changes, true);
             } else {
-                for w in &mut self.widgets[..self.cur_len.cast()] {
+                // NOTE: we update all widgets with a valid token. Some of these
+                // may be outside the view range in which case they don't need
+                // to be updated now, but in that case we would need to mark
+                // them as needing an update (or just invalidate the token).
+                for w in &mut self.widgets {
                     if let Some(ref token) = w.token {
                         let item = self.clerk.item(data, token);
                         cx.update(w.item.as_node(item));
@@ -935,7 +941,7 @@ mod ListView {
                         None => return Unused,
                     };
                     let is_vert = self.direction.is_vertical();
-                    let len = solver.cur_len;
+                    let len: usize = self.cur_len.cast();
 
                     use Command as C;
                     let data_index = match cmd {
@@ -950,17 +956,16 @@ mod ListView {
                         // TODO: C::ViewUp, ...
                         _ => None,
                     };
-                    if let Some(i_data) = data_index {
+                    if let Some(di) = data_index {
                         // Set nav focus to i_data and update scroll position
-                        let rect = solver.rect(i_data) - self.virtual_offset();
+                        let rect = solver.rect(di) - self.virtual_offset();
                         cx.set_scroll(Scroll::Rect(rect));
-                        let index = i_data % usize::conv(self.cur_len);
-                        let w = &self.widgets[index];
-                        if w.item.index == i_data && w.token.is_some() {
+                        let w = &self.widgets[di % self.widgets.len()];
+                        if w.item.index == di && w.token.is_some() {
                             cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
                         } else {
                             self.immediate_scroll_update = true;
-                            cx.send(self.id(), FocusIndex(i_data));
+                            cx.send(self.id(), FocusIndex(di));
                         }
                         Used
                     } else {
@@ -999,13 +1004,13 @@ mod ListView {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
-            if let Some(FocusIndex(i_data)) = cx.try_pop() {
-                let index = i_data % usize::conv(self.cur_len);
+            if let Some(FocusIndex(di)) = cx.try_pop() {
+                let index = di % self.widgets.len();
                 let w = &self.widgets[index];
-                if w.item.index == i_data && w.token.is_some() {
+                if w.item.index == di && w.token.is_some() {
                     cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
                 } else {
-                    log::error!("ListView failed to set focus: data item {i_data:?} not in view");
+                    log::error!("ListView failed to set focus: data item {di:?} not in view");
                 }
             }
 
@@ -1087,22 +1092,22 @@ struct PositionSolver {
     skip: Offset,
     size: Size,
     first_data: usize,
-    cur_len: usize,
+    alloc_len: usize,
 }
 
 impl PositionSolver {
     /// Map a child index to a data index
     fn child_to_data(&self, index: usize) -> usize {
-        let mut data = (self.first_data / self.cur_len) * self.cur_len + index;
+        let mut data = (self.first_data / self.alloc_len) * self.alloc_len + index;
         if data < self.first_data {
-            data += self.cur_len;
+            data += self.alloc_len;
         }
         data
     }
 
-    /// Rect of data item i
-    fn rect(&self, i: usize) -> Rect {
-        let pos = self.pos_start + self.skip * i32::conv(i);
+    /// Rect of data item `di`
+    fn rect(&self, di: usize) -> Rect {
+        let pos = self.pos_start + self.skip * i32::conv(di);
         Rect::new(pos, self.size)
     }
 }
