@@ -3,8 +3,9 @@ use image::ImageFormat;
 use kas::Tile as _;
 use kas::image::{Image, Svg};
 use kas::prelude::*;
-use kas::theme::MarginStyle;
-use kas::widgets::{AdaptWidget, Button, Label, Page, Stack, Text};
+use kas::text::LineIterator;
+use kas::theme::{MarginStyle, TextClass};
+use kas::widgets::{AdaptWidget, Button, Frame, Label, Page, Stack, Text};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -25,8 +26,16 @@ fn detect(path: &Path) -> Option<SendBoxedWidget> {
         Some(directory(path.to_path_buf()))
     } else if let Ok(_format) = ImageFormat::from_path(path) {
         Some(image(path))
-    } else if path.extension().map(|ext| ext == "svg").unwrap_or_default() {
-        svg(path).ok()
+    } else if let Some(ext) = path.extension() {
+        if ext == "svg" {
+            svg(path).ok()
+        } else if ext == "txt" || ext == "md" {
+            TextTile::new(path)
+                .map(|w| SendBoxedWidget::new(Frame::new(w)))
+                .ok()
+        } else {
+            None
+        }
     } else {
         None
     }
@@ -60,6 +69,49 @@ fn svg(path: &Path) -> Result<SendBoxedWidget, impl std::error::Error> {
             },
         ))),
         Err(e) => Err(e),
+    }
+}
+
+#[impl_self]
+mod TextTile {
+    #[widget]
+    #[layout(self.text)]
+    pub struct TextTile {
+        core: widget_core!(),
+        text: kas::theme::Text<String>,
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let _ = self.text.size_rules(cx, axis);
+            let size = crate::tile_size().cast();
+            cx.logical(size, size).build(axis)
+        }
+    }
+
+    impl Events for Self {
+        type Data = String;
+    }
+
+    impl Self {
+        fn new(path: &Path) -> Result<Self, std::io::Error> {
+            // We truncate the text to an arbitrary line limit.
+            // TODO(opt): limit during file reading.
+            const LINES: usize = 16;
+            let mut text = std::fs::read_to_string(path)?;
+            let len = text.len();
+            let len = LineIterator::new(&text)
+                .take(LINES)
+                .last()
+                .map(|range| range.end)
+                .unwrap_or(len);
+            text.truncate(len);
+
+            Ok(TextTile {
+                core: Default::default(),
+                text: kas::theme::Text::new(text, TextClass::Small, true),
+            })
+        }
     }
 }
 
