@@ -3,42 +3,41 @@ use image::ImageFormat;
 use kas::Tile as _;
 use kas::image::{Image, Svg};
 use kas::prelude::*;
-use kas::theme::MarginStyle;
-use kas::widgets::{AdaptWidget, Button, Label, Page, Stack, Text};
+use kas::text::LineIterator;
+use kas::theme::{MarginStyle, TextClass};
+use kas::widgets::{AdaptWidget, Button, Frame, Label, Page, Stack, Text};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-#[autoimpl(Debug)]
-pub enum State {
-    Initial,
-    Unknown,
-    Directory,
-    Image(ImageFormat),
-    Svg,
+#[autoimpl(Debug ignore self.0)]
+struct SendBoxedWidget(Box<dyn Widget<Data = String> + Send>);
+impl SendBoxedWidget {
+    #[inline]
+    fn new(w: impl Widget<Data = String> + Send + 'static) -> Self {
+        SendBoxedWidget(Box::new(w))
+    }
 }
 
-impl State {
-    /// Detect from `path`
-    fn detect(path: &Path) -> Self {
-        if path.is_dir() {
-            State::Directory
-        } else if let Ok(format) = ImageFormat::from_path(path) {
-            State::Image(format)
-        } else if path.extension().map(|ext| ext == "svg").unwrap_or_default() {
-            State::Svg
+/// Detect from `path`
+///
+/// Returns a specific stack page widget (if relevant)
+fn detect(path: &Path) -> Option<SendBoxedWidget> {
+    if path.is_dir() {
+        Some(directory(path.to_path_buf()))
+    } else if let Ok(_format) = ImageFormat::from_path(path) {
+        Some(image(path))
+    } else if let Some(ext) = path.extension() {
+        if ext == "svg" {
+            svg(path).ok()
+        } else if ext == "txt" || ext == "md" {
+            TextTile::new(path)
+                .map(|w| SendBoxedWidget::new(Frame::new(w)))
+                .ok()
         } else {
-            State::Unknown
+            None
         }
-    }
-
-    /// Return a specific stack page widget (if relevant)
-    fn page(&self, path: &Path) -> Option<Page<String>> {
-        match self {
-            Self::Directory => Some(Page::new(directory(path.to_path_buf()))),
-            Self::Image(_) => Some(Page::new(image(path))),
-            Self::Svg => svg(path).map(Page::new).ok(),
-            _ => None,
-        }
+    } else {
+        None
     }
 }
 
@@ -46,28 +45,74 @@ fn generic() -> impl Widget<Data = String> {
     Text::new_str(|text: &String| text)
 }
 
-fn directory(path: PathBuf) -> impl Widget<Data = String> {
+fn directory(path: PathBuf) -> SendBoxedWidget {
     let name = path
         .file_name()
         .map(|os_str| os_str.to_string_lossy().to_string())
         .unwrap_or_default();
-    Button::label_msg(name, ChangeDir(path)).map_any()
+    SendBoxedWidget::new(Button::label_msg(name, ChangeDir(path)).map_any())
 }
 
-fn image(path: &Path) -> impl Widget<Data = String> + 'static {
-    Image::new(path).map_any().on_update(|_, widget, _| {
+fn image(path: &Path) -> SendBoxedWidget {
+    SendBoxedWidget::new(Image::new(path).map_any().on_update(|_, widget, _| {
         let size = crate::tile_size().cast();
         widget.set_logical_size((size, size));
-    })
+    }))
 }
 
-fn svg(path: &Path) -> Result<impl Widget<Data = String> + 'static, impl std::error::Error> {
-    Svg::new_path(path).map(|svg| {
-        svg.map_any().on_update(|_, widget, _| {
+fn svg(path: &Path) -> Result<SendBoxedWidget, impl std::error::Error> {
+    match Svg::new_path(path) {
+        Ok(svg) => Ok(SendBoxedWidget::new(svg.map_any().on_update(
+            |_, widget, _| {
+                let size = crate::tile_size().cast();
+                widget.set_logical_size((size, size));
+            },
+        ))),
+        Err(e) => Err(e),
+    }
+}
+
+#[impl_self]
+mod TextTile {
+    #[widget]
+    #[layout(self.text)]
+    pub struct TextTile {
+        core: widget_core!(),
+        text: kas::theme::Text<String>,
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let _ = self.text.size_rules(cx, axis);
             let size = crate::tile_size().cast();
-            widget.set_logical_size((size, size));
-        })
-    })
+            cx.logical(size, size).build(axis)
+        }
+    }
+
+    impl Events for Self {
+        type Data = String;
+    }
+
+    impl Self {
+        fn new(path: &Path) -> Result<Self, std::io::Error> {
+            // We truncate the text to an arbitrary line limit.
+            // TODO(opt): limit during file reading.
+            const LINES: usize = 16;
+            let mut text = std::fs::read_to_string(path)?;
+            let len = text.len();
+            let len = LineIterator::new(&text)
+                .take(LINES)
+                .last()
+                .map(|range| range.end)
+                .unwrap_or(len);
+            text.truncate(len);
+
+            Ok(TextTile {
+                core: Default::default(),
+                text: kas::theme::Text::new(text, TextClass::Small, true),
+            })
+        }
+    }
 }
 
 #[impl_self]
@@ -77,7 +122,6 @@ mod Tile {
     pub struct Tile {
         core: widget_core!(),
         path: PathBuf,
-        state: State,
         generic: String,
         #[widget(&self.generic)]
         stack: Stack<String>,
@@ -102,29 +146,24 @@ mod Tile {
             self.path.push(entry);
 
             if entry.as_os_str().is_empty() {
-                self.state = State::Initial;
                 self.generic.replace_range(.., "loading");
             } else {
-                self.state = State::Unknown;
                 self.generic.clear();
                 write!(self.generic, "{}", entry.display()).unwrap();
 
                 let path = self.path.clone();
-                cx.send_spawn(self.id(), async move { State::detect(&path) });
+                cx.send_spawn(self.id(), async move { detect(&path) });
             }
 
             // Always reset the page to 0 on change
             self.stack.set_active(cx, &self.generic, 0);
-            self.stack.truncate(cx, 1);
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(state) = cx.try_pop() {
-                self.state = state;
-                if let Some(page) = self.state.page(&self.path) {
-                    self.stack.push(cx, &self.generic, page);
-                    self.stack.set_active(cx, &self.generic, 1);
-                }
+            if let Some(Some(SendBoxedWidget(w))) = cx.try_pop() {
+                self.stack.truncate(cx, 1);
+                self.stack.push(cx, &self.generic, Page::new_boxed(w));
+                self.stack.set_active(cx, &self.generic, 1);
             }
         }
     }
@@ -134,7 +173,6 @@ mod Tile {
             Tile {
                 core: Default::default(),
                 path: PathBuf::new(),
-                state: State::Initial,
                 generic: String::new(),
                 stack: Stack::from([Page::new(generic())]),
             }
