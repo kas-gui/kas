@@ -154,6 +154,7 @@ mod ListView {
         first_data: u32,
         /// Last data item to have navigation focus
         last_focus: u32,
+        visible_range: Range<u32>,
         direction: D,
         align_hints: AlignHints,
         ideal_visible: i32,
@@ -244,6 +245,7 @@ mod ListView {
                 cur_len: 0,
                 first_data: 0,
                 last_focus: 0,
+                visible_range: 0..0,
                 direction,
                 align_hints: Default::default(),
                 ideal_visible: 5,
@@ -503,13 +505,17 @@ mod ListView {
                 self.token_update = self.token_update.max(Update::Token);
             }
 
-            let offset = self.offset.extract(self.direction);
-            let first_data = usize::conv(u64::conv(offset) / u64::conv(self.skip));
+            let offset: u64 = self.offset.extract(self.direction).cast();
+            let size: u64 = self.rect().size.extract(self.direction).cast();
+            let skip: u64 = self.skip.cast();
+            let visible_start = usize::conv(offset / skip);
+            let visible_end = usize::conv((offset + size) / skip) + 1;
+            self.visible_range = (visible_start..visible_end).cast();
 
             let alloc_len = self.widgets.len();
             let data_len;
             if !self.len_is_known || changes != Changes::None {
-                let lbound = first_data + 2 * alloc_len;
+                let lbound = visible_end + alloc_len;
                 let result = self.clerk.len(data, lbound);
                 self.len_is_known = result.is_known();
                 data_len = result.len();
@@ -520,13 +526,14 @@ mod ListView {
             } else {
                 data_len = self.data_len.cast();
             }
-            let cur_len = data_len.min(alloc_len);
-            let first_data = first_data.min(data_len - cur_len);
+            let cur_len = data_len.min(visible_end) - visible_start;
+            let first_data = visible_start;
 
             let old_start = self.first_data.cast();
             let old_end = old_start + usize::conv(self.cur_len);
             let (mut start, mut end) = (first_data, first_data + cur_len);
 
+            let offset = self.offset.extract(self.direction);
             let virtual_offset = -(offset & 0x7FF0_0000);
             if virtual_offset != self.virtual_offset {
                 self.virtual_offset = virtual_offset;
@@ -756,8 +763,11 @@ mod ListView {
         fn draw_with_offset(&self, mut draw: DrawCx, viewport: Rect, offset: Offset) {
             // We use a new pass to clip and offset scrolled content:
             draw.with_clip_region(viewport, offset + self.virtual_offset(), |mut draw| {
-                for child in &self.widgets {
-                    if let Some(key) = child.key() {
+                let alloc_len = self.widgets.len();
+                for di in self.visible_range.clone() {
+                    if let Some(child) = self.widgets.get(usize::conv(di) % alloc_len)
+                        && let Some(key) = child.key()
+                    {
                         if self.selection.contains(key) {
                             draw.selection(child.item.rect(), self.sel_style);
                         }
@@ -850,8 +860,10 @@ mod ListView {
 
         fn probe(&self, coord: Coord) -> Id {
             let coord = coord + self.translation(0);
-            for child in &self.widgets {
-                if child.token.is_some()
+            let alloc_len = self.widgets.len();
+            for di in self.visible_range.clone() {
+                if let Some(child) = self.widgets.get(usize::conv(di) % alloc_len)
+                    && child.token.is_some()
                     && let Some(id) = child.item.try_probe(coord)
                 {
                     return id;
