@@ -10,23 +10,24 @@
 
 use crate::cast::{Cast, Conv};
 use crate::window::WindowId;
-use hash_hasher::{HashBuildHasher, HashedMap};
 use std::cmp::Ordering;
-use std::collections::hash_map::Entry;
 use std::fmt;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::iter::once;
 use std::marker::PhantomData;
 use std::mem::{forget, size_of, transmute};
 use std::num::NonZeroU64;
-use std::sync::Mutex;
 
 // TODO(opt): we don't need Arc's weak references
 // TODO(opt): we could use a smaller element type than usize and/or compress entries
 type Arc = std::sync::Arc<Box<[usize]>>;
 // Map from hash of path to allocated path
-static DB: Mutex<HashedMap<u64, Arc>> =
-    const { Mutex::new(HashedMap::with_hasher(HashBuildHasher::new())) };
+#[cfg(feature = "accesskit")]
+static DB: std::sync::Mutex<hash_hasher::HashedMap<u64, Arc>> = const {
+    std::sync::Mutex::new(hash_hasher::HashedMap::with_hasher(
+        hash_hasher::HashBuildHasher::new(),
+    ))
+};
 
 /// Invalid (default) identifier
 const INVALID: u64 = !0;
@@ -110,24 +111,30 @@ impl IntOrPtr {
         let v: Vec<usize> = iter.collect();
         let b = v.into_boxed_slice();
 
-        let x = hash(&b);
-        let a: Arc = match DB.lock().unwrap().entry(x) {
-            Entry::Occupied(entry) => {
-                let slice: &[usize] = &***entry.get();
-                if slice == &*b {
-                    entry.get().clone()
-                } else {
-                    // Hash collision: omit entry
-                    // NOTE: we could tweak b and retry, but this would require extra data in b
-                    Arc::new(b)
+        #[cfg(feature = "accesskit")]
+        let a: Arc = {
+            use std::collections::hash_map::Entry;
+            let x = hash(&b);
+            match DB.lock().unwrap().entry(x) {
+                Entry::Occupied(entry) => {
+                    let slice: &[usize] = &***entry.get();
+                    if slice == &*b {
+                        entry.get().clone()
+                    } else {
+                        // Hash collision: omit entry
+                        // NOTE: we could tweak b and retry, but this would require extra data in b
+                        Arc::new(b)
+                    }
+                }
+                Entry::Vacant(entry) => {
+                    let p = Arc::new(b);
+                    entry.insert(p.clone());
+                    p
                 }
             }
-            Entry::Vacant(entry) => {
-                let p = Arc::new(b);
-                entry.insert(p.clone());
-                p
-            }
         };
+        #[cfg(not(feature = "accesskit"))]
+        let a = Arc::new(b);
 
         let p: u64 = unsafe { transmute(a) };
         debug_assert_eq!(p & 3, 0);
@@ -155,6 +162,7 @@ impl IntOrPtr {
         }
     }
 
+    #[cfg(feature = "accesskit")]
     fn try_from_u64(n: u64) -> Option<IntOrPtr> {
         match n & USE_MASK {
             USE_BITS => {
@@ -197,9 +205,12 @@ impl Drop for IntOrPtr {
         if self.is_ptr() {
             let p = usize::conv(self.0.get() & MASK_PTR);
             let a: Arc = unsafe { transmute(p) };
-            if let Ok(b) = Arc::try_unwrap(a) {
-                let x = hash(&*b);
-                DB.lock().unwrap().remove(&x);
+            if let Ok(_b) = Arc::try_unwrap(a) {
+                #[cfg(feature = "accesskit")]
+                {
+                    let x = hash(&*_b);
+                    DB.lock().unwrap().remove(&x);
+                }
             }
         }
     }
@@ -587,6 +598,11 @@ impl Id {
     ///
     /// Bad / random inputs may yield either `None` or `Some(bad_id)` and in the
     /// latter case operations on `bad_id` may panic, but are memory safe.
+    ///
+    /// This method is feature-gated behind `accesskit` since support is not
+    /// free, and may be removed eventually if an alternative is found for
+    /// accessibility tooling.
+    #[cfg(feature = "accesskit")]
     pub fn try_from_u64(n: u64) -> Option<Id> {
         IntOrPtr::try_from_u64(n).map(Id)
     }
@@ -1006,6 +1022,12 @@ mod test {
     fn deduplicate_allocations() {
         let id1 = make_id(&[2, 6, 1, 1, 0, 13, 0, 100, 1000]);
         let id2 = make_id(&[2, 6, 1, 1, 0, 13, 0, 100, 1000]);
+
+        // De-duplication of allocations is feature-gated since it requires DB:
+        #[cfg(feature = "accesskit")]
         assert_eq!(id1.0.0, id2.0.0);
+
+        // Either way, the Ids should test equal:
+        assert_eq!(id1, id2);
     }
 }
