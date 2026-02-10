@@ -110,27 +110,26 @@ impl IntOrPtr {
         let v: Vec<usize> = iter.collect();
         let b = v.into_boxed_slice();
 
-        let mut a: Option<Arc> = None;
-        let pa = &mut a;
         let x = hash(&b);
-        match DB.lock().unwrap().entry(x) {
+        let a: Arc = match DB.lock().unwrap().entry(x) {
             Entry::Occupied(entry) => {
                 let slice: &[usize] = &***entry.get();
                 if slice == &*b {
-                    *pa = Some(entry.get().clone());
+                    entry.get().clone()
                 } else {
                     // Hash collision: omit entry
                     // NOTE: we could tweak b and retry, but this would require extra data in b
+                    Arc::new(b)
                 }
             }
             Entry::Vacant(entry) => {
                 let p = Arc::new(b);
-                *pa = Some(p.clone());
-                entry.insert(p);
+                entry.insert(p.clone());
+                p
             }
-        }
+        };
 
-        let p: u64 = unsafe { transmute(a.expect("failed to access Id DB")) };
+        let p: u64 = unsafe { transmute(a) };
         debug_assert_eq!(p & 3, 0);
         let p = p | USE_PTR;
         let u = IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData);
