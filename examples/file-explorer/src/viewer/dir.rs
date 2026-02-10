@@ -129,11 +129,23 @@ mod DirView {
             .with_style(FrameStyle::EditBox)
             .with_margin_style(MarginStyle::None)
     )]
-    #[derive(Default)]
     pub struct DirView {
         core: widget_core!(),
         #[widget]
         list: ScrollRegion<ListView<Clerk, crate::tile::Driver, kas::dir::Down>>,
+    }
+
+    impl Self {
+        pub fn new() -> Self {
+            DirView {
+                core: Default::default(),
+                list: ScrollRegion::new_viewport(
+                    ListView::default()
+                        .with_load_ahead(2)
+                        .with_min_alloc_len(100),
+                ),
+            }
+        }
     }
 
     impl Events for Self {

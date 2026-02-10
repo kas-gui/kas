@@ -144,6 +144,8 @@ mod ListView {
         driver: V,
         widgets: Vec<WidgetData<C, V>>,
         data_len: u32,
+        load_ahead: u32,
+        min_alloc_len: u32,
         token_update: Update,
         rect_update: bool,
         immediate_scroll_update: bool,
@@ -238,6 +240,8 @@ mod ListView {
                 driver,
                 widgets: Default::default(),
                 data_len: 0,
+                load_ahead: 0,
+                min_alloc_len: 0,
                 token_update: Update::None,
                 rect_update: false,
                 immediate_scroll_update: false,
@@ -454,6 +458,48 @@ mod ListView {
             self
         }
 
+        /// Set the number of items to load predictively
+        ///
+        /// `ListView` will construct and update sufficient view widgets to
+        /// cover all visible items plus this many items before and after the
+        /// range of visible items.
+        ///
+        /// By default this is zero since load-ahead is not useful where data is
+        /// available and view widgets are fast to update; it may even harm
+        /// performance.
+        ///
+        /// Where data must be retrieved (asynchronously) from a slow source, it
+        /// may be preferable not to use this setting but instead to
+        /// predictively load data items in the clerk: see
+        /// [`AsyncClerk::prepare_range`](super::clerk::AsyncClerk::prepare_range).
+        #[inline]
+        pub fn with_load_ahead(mut self, items: u32) -> Self {
+            self.load_ahead = items;
+            self
+        }
+
+        /// Set the minimum allocation size
+        ///
+        /// The allocation size is always large enough to cover all visible data
+        /// items plus those required by [`Self::with_load_ahead`]. This method
+        /// allows a larger allocation size (i.e. a cache) to be used.
+        ///
+        /// When the allocation size is larger than required, previously-loaded
+        /// items outside of the visible + load-ahead range will be retained
+        /// until overwritten, potentially allowing faster scroll-back.
+        ///
+        /// By default this is zero since this is not useful where data is
+        /// available and view widgets are fast to update; it may even harm
+        /// performance since cached widgets are also updated as required.
+        ///
+        /// Where data access is slow, it may be preferable to instead cache
+        /// data in a clerk (see [Async Clerks](super::clerk#async-clerks)).
+        #[inline]
+        pub fn with_min_alloc_len(mut self, len: u32) -> Self {
+            self.min_alloc_len = len;
+            self
+        }
+
         #[inline]
         fn virtual_offset(&self) -> Offset {
             match self.direction.is_vertical() {
@@ -526,12 +572,15 @@ mod ListView {
             } else {
                 data_len = self.data_len.cast();
             }
-            let cur_len = data_len.min(visible_end) - visible_start;
-            let first_data = visible_start;
+
+            let load_ahead: usize = self.load_ahead.cast();
+            let data_start = data_len.min(visible_start.saturating_sub(load_ahead));
+            let data_end = data_len.min(visible_end.saturating_add(load_ahead));
+            let cur_len = data_end - data_start;
 
             let old_start = self.first_data.cast();
             let old_end = old_start + usize::conv(self.cur_len);
-            let (mut start, mut end) = (first_data, first_data + cur_len);
+            let (mut start, mut end) = (data_start, data_start + cur_len);
 
             let offset = self.offset.extract(self.direction);
             let virtual_offset = -(offset & 0x7FF0_0000);
@@ -548,7 +597,7 @@ mod ListView {
 
             debug_assert!(cur_len <= self.widgets.len());
             self.cur_len = cur_len.cast();
-            self.first_data = first_data.cast();
+            self.first_data = data_start.cast();
 
             if start < end {
                 self.map_view_widgets(cx, data, start..end, force_update);
@@ -692,8 +741,9 @@ mod ListView {
                 0
             } else {
                 self.skip = skip;
-                let size = rect.size.extract(self.direction);
-                usize::conv(size).div_ceil(usize::conv(skip)) + 1
+                let size: usize = rect.size.extract(self.direction).cast();
+                usize::conv(self.min_alloc_len)
+                    .max(size.div_ceil(usize::conv(skip)) + 1 + 2 * usize::conv(self.load_ahead))
             };
 
             let avail_widgets = self.widgets.len();
