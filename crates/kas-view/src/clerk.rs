@@ -3,32 +3,41 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Data clerks
+//! A clerk (pronounced "klark" or "klerk") is:
+//!
+//! > One who occupationally provides assistance by working with records,
+//! > accounts, letters, etc.; an office worker.
+//!
+//! (See [clerk - Wiktionary](https://en.wiktionary.org/wiki/clerk).)
 //!
 //! # Interfaces
 //!
-//! A clerk manages a view or query over a data set using an `Index` type
-//! specified by the [view controller](crate#view-controller). For
-//! [`ListView`](crate::ListView), `Index = usize`.
+//! Each [view controller](crate#view-controller) uses a clerk to access data
+//! records. Clerks are user-defined types and must implement [`Clerk`]:
 //!
-//! All clerks must implement [`Clerk`]:
+//! All clerks must implement [`Clerk`] as well as at least one of the other
+//! traits below:
 //!
 //! -   [`Clerk`] covers the base functionality required by all clerks
 //!
-//! ## Data generators
+//! The `Index` type parameter used by [`Clerk`] must correspond to the view
+//! controller; for example [`ListView`](crate::ListView) requires
+//! `Index = usize`.
 //!
-//! Generator clerks construct owned items. One of the following traits must be
-//! implemented:
+//! ## Generator Clerks
+//!
+//! A generator clerk constructs owned data items on demand and must implement
+//! one of the following traits:
 //!
 //! -   [`IndexedGenerator`] provides a very simple interface: `update` and
 //!     `generate`.
 //! -   [`KeyedGenerator`] is slightly more complex, supporting a custom key
 //!     type (thus allowing data items to be tracked through changing indices).
 //!
-//! ## Async data access
+//! ## Async Clerks
 //!
-//! Async clerks allow borrowed access to locally cached items. Such clerks must
-//! implement both [`AsyncClerk`] and [`TokenClerk`]:
+//! An async clerk allows borrowed access to locally cached items. Such clerks
+//! must implement both [`AsyncClerk`] and [`TokenClerk`]:
 //!
 //! -   [`AsyncClerk`] supports async data access with a local cache and batched
 //!     item retrieval.
