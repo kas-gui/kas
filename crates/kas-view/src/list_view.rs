@@ -587,8 +587,26 @@ mod ListView {
             if virtual_offset != self.virtual_offset {
                 self.virtual_offset = virtual_offset;
                 self.rect_update = true;
-            } else if force_update || self.rect_update || self.token_update != Update::None {
-                // This forces an update to all widgets
+            }
+
+            if force_update || self.rect_update || self.token_update != Update::None {
+                // Not restricting start..end forces an update to all widgets
+                // We must also clear cached widgets not in start..end:
+                let a = start % alloc_len;
+                let b = end % alloc_len;
+                let range = if a == b {
+                    0..alloc_len
+                } else if a > b {
+                    b..a
+                } else {
+                    for i in 0..a {
+                        self.widgets[i].token = None;
+                    }
+                    b..alloc_len
+                };
+                for i in range {
+                    self.widgets[i].token = None;
+                }
             } else if start >= old_start {
                 start = start.max(old_end);
             } else if end <= old_end {
@@ -725,6 +743,9 @@ mod ListView {
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
+            if rect == self.rect() && hints == self.align_hints {
+                return;
+            }
             self.core.set_rect(rect);
             self.align_hints = hints;
 
