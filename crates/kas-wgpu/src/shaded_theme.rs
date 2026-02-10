@@ -68,7 +68,7 @@ const NORMS_RAISED: (f32, f32) = (0.0, 0.7);
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     draw: DrawIface<'a, DS>,
     ev: &'a mut EventState,
-    w: &'a mut dim::Window<DS::Draw>,
+    w: &'a mut dim::Window,
     cols: &'a ColorsLinear,
 }
 
@@ -76,7 +76,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for ShadedTheme
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    type Window = dim::Window<DS::Draw>;
+    type Window = dim::Window;
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn init(&mut self, config: &RefCell<Config>) {
