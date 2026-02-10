@@ -79,7 +79,7 @@ fn dimensions() -> dim::Parameters {
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
     pub(crate) ev: &'a mut EventState,
-    pub(crate) w: &'a mut dim::Window<DS::Draw>,
+    pub(crate) w: &'a mut dim::Window,
     pub(crate) cols: &'a ColorsLinear,
 }
 
@@ -87,7 +87,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for FlatTheme
 where
     DS::Draw: DrawRoundedImpl,
 {
-    type Window = dim::Window<DS::Draw>;
+    type Window = dim::Window;
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn init(&mut self, config: &RefCell<Config>) {

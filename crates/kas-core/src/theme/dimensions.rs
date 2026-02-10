@@ -160,14 +160,14 @@ impl Dimensions {
     }
 }
 
-/// A convenient implementation of [`crate::window::Window`]
-pub struct Window<D> {
+/// A convenient implementation of [`crate::theme::Window`]
+pub struct Window {
     pub config: Rc<RefCell<Config>>,
     pub dims: Dimensions,
-    pub anim: AnimState<D>,
+    pub anim: AnimState,
 }
 
-impl<D> Window<D> {
+impl Window {
     pub fn new(dims: &Parameters, config: &WindowConfig) -> Self {
         Window {
             config: config.clone_base(),
@@ -187,7 +187,7 @@ impl<D> Window<D> {
     }
 }
 
-impl<D: 'static> super::Window for Window<D> {
+impl super::Window for Window {
     fn size(&self) -> &dyn ThemeSize {
         self
     }
@@ -197,7 +197,7 @@ impl<D: 'static> super::Window for Window<D> {
     }
 }
 
-impl<D: 'static> ThemeSize for Window<D> {
+impl ThemeSize for Window {
     fn scale_factor(&self) -> f32 {
         self.dims.scale
     }

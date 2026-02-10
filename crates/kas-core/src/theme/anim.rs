@@ -7,7 +7,6 @@
 
 use crate::Id;
 use crate::draw::DrawImpl;
-use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]
@@ -18,14 +17,13 @@ struct Config {
 
 /// State holding theme animation data
 #[derive(Debug)]
-pub struct AnimState<D> {
+pub struct AnimState {
     c: Config,
     now: Instant, // frame start time
     text_cursor: TextCursor,
-    _d: PhantomData<D>,
 }
 
-impl<D> AnimState<D> {
+impl AnimState {
     pub fn new(config: &crate::config::ThemeConfig) -> Self {
         let c = Config {
             cursor_blink_rate: config.cursor_blink_rate(),
@@ -41,7 +39,6 @@ impl<D> AnimState<D> {
                 state: false,
                 time: now,
             },
-            _d: PhantomData,
         }
     }
 
@@ -61,11 +58,14 @@ struct TextCursor {
     state: bool,
     time: Instant,
 }
-impl<D: DrawImpl> AnimState<D> {
+impl AnimState {
     /// Flashing text cursor: return true to draw
     ///
     /// Assumption: only one widget may draw a text cursor at any time.
-    pub fn text_cursor(&mut self, draw: &mut D, id: &Id, byte: usize) -> bool {
+    pub fn text_cursor<D>(&mut self, draw: &mut D, id: &Id, byte: usize) -> bool
+    where
+        D: DrawImpl,
+    {
         let entry = &mut self.text_cursor;
         let widget = id.to_nzu64().get();
         if entry.widget == widget && entry.byte == byte {
@@ -86,12 +86,15 @@ impl<D: DrawImpl> AnimState<D> {
     }
 }
 
-impl<D: DrawImpl> AnimState<D> {
+impl AnimState {
     /// Fade over a boolean transition
     ///
     /// Normally returns `1.0` if `state` else `0.0`, but within a short time
     /// after a state change will linearly transition between these values.
-    pub fn fade_bool(&mut self, draw: &mut D, state: bool, last_change: Option<Instant>) -> f32 {
+    pub fn fade_bool<D>(&mut self, draw: &mut D, state: bool, last_change: Option<Instant>) -> f32
+    where
+        D: DrawImpl,
+    {
         if let Some(dur) = last_change.and_then(|inst| self.elapsed(inst))
             && dur < self.c.fade_dur
         {
