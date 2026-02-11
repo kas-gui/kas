@@ -567,8 +567,11 @@ impl Id {
     /// This conversion is infallible but not free.
     ///
     /// The result may be used in equality checks (with a *very* small risk of
-    /// false positive due to hash collision) and may be passed to
-    /// [`Self::try_from_u64`].
+    /// false positive due to hash collision).
+    #[cfg_attr(
+        feature = "accesskit",
+        doc = "The result may also be passed to [`Self::try_from_u64`]."
+    )]
     pub fn to_nzu64(&self) -> NonZeroU64 {
         self.0.to_nzu64()
     }
