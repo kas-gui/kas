@@ -57,6 +57,10 @@ enum CmdAction {
     Unused,
     /// Key used, no action
     Used,
+    /// Focus has been gained
+    FocusGained,
+    /// Focus has been lost
+    FocusLost,
     /// Cursor and/or selection changed
     Cursor,
     /// Enter key in single-line editor
