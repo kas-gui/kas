@@ -12,7 +12,7 @@
 use crate::cast::Conv;
 use crate::event::Key;
 use crate::text::format::{FontToken, FormattableText};
-use crate::text::{Effect, EffectFlags};
+use crate::text::{Effect, EffectFlags, fonts::FontSelector};
 
 /// An access key string
 ///
@@ -62,7 +62,7 @@ impl AccessString {
 
                     let e0 = Effect {
                         start,
-                        e: 0,
+                        color: 0,
                         flags: EffectFlags::UNDERLINE,
                     };
 
@@ -71,7 +71,7 @@ impl AccessString {
 
                     let e1 = Effect {
                         start: start + u32::conv(i),
-                        e: 0,
+                        color: 0,
                         flags: EffectFlags::empty(),
                     };
 
@@ -101,15 +101,13 @@ impl AccessString {
 }
 
 impl FormattableText for AccessString {
-    type FontTokenIter<'a> = std::iter::Empty<FontToken>;
-
     #[inline]
     fn as_str(&self) -> &str {
         &self.text
     }
 
     #[inline]
-    fn font_tokens(&self, _: f32) -> Self::FontTokenIter<'_> {
+    fn font_tokens(&self, _: f32, _: FontSelector) -> impl Iterator<Item = FontToken> {
         std::iter::empty()
     }
 

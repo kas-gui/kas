@@ -326,7 +326,7 @@ impl<'a> DrawCx<'a> {
     /// Text is then drawn using `colors[0]` except as specified by effects.
     ///
     /// The list of `effects` (if not empty) controls render effects:
-    /// [`Effect::e`] is an index into `colors` while [`Effect::flags`] controls
+    /// [`Effect::color`] is an index into `colors` while [`Effect::flags`] controls
     /// underline and strikethrough. [`Effect::start`] is the text index at
     /// which this effect first takes effect, and must effects must be ordered
     /// such that the sequence of [`Effect::start`] values is strictly
@@ -352,7 +352,7 @@ impl<'a> DrawCx<'a> {
                 assert!(effect.start >= i);
                 i = effect.start;
 
-                assert!(usize::from(effect.e) < num_colors);
+                assert!(usize::from(effect.color) < num_colors);
             }
         }
 

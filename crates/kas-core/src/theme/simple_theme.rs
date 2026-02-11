@@ -401,17 +401,17 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         let effects = [
             Effect {
                 start: 0,
-                e: 0,
+                color: 0,
                 flags: Default::default(),
             },
             Effect {
                 start: range.start.cast(),
-                e: 1,
+                color: 1,
                 flags: Default::default(),
             },
             Effect {
                 start: range.end.cast(),
-                e: 0,
+                color: 0,
                 flags: Default::default(),
             },
         ];

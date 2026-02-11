@@ -168,17 +168,17 @@ impl Component {
             let effects = [
                 Effect {
                     start: 0,
-                    e: 0,
+                    color: 0,
                     flags: Default::default(),
                 },
                 Effect {
                     start: edit_range.start,
-                    e: 0,
+                    color: 0,
                     flags: EffectFlags::UNDERLINE,
                 },
                 Effect {
                     start: edit_range.end,
-                    e: 0,
+                    color: 0,
                     flags: Default::default(),
                 },
             ];

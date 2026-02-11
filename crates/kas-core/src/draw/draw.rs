@@ -228,10 +228,10 @@ pub trait Draw {
     /// Text is drawn from `pos` and clipped to `bounding_box`.
     ///
     /// The `effects` list provides underlining/strikethrough information via
-    /// [`Effect::flags`] and an index [`Effect::e`].
+    /// [`Effect::flags`] and an index [`Effect::color`].
     ///
-    /// Text colour lookup uses index `e` and is essentially:
-    /// `colors.get(e).unwrap_or(Rgba::BLACK)`.
+    /// Text colour lookup uses index `color` and is essentially:
+    /// `colors.get(color.unwrap_or(Rgba::BLACK)`.
     ///
     /// The `text` display must be prepared prior to calling this method.
     /// Typically this is done using a [`crate::theme::Text`] object.

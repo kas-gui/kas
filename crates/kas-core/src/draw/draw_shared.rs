@@ -204,10 +204,10 @@ pub trait DrawSharedImpl: Any {
     /// Draw text with effects
     ///
     /// The `effects` list provides underlining/strikethrough information via
-    /// [`Effect::flags`] and an index [`Effect::e`].
+    /// [`Effect::flags`] and an index [`Effect::color`].
     ///
-    /// Text colour lookup uses index `e` and is essentially:
-    /// `colors.get(e).unwrap_or(Rgba::BLACK)`.
+    /// Text colour lookup uses index `color` and is essentially:
+    /// `colors.get(color.unwrap_or(Rgba::BLACK)`.
     fn draw_text_effects(
         &mut self,
         draw: &mut Self::Draw,
