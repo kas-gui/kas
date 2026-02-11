@@ -7,7 +7,7 @@
 
 use super::*;
 use kas::event::components::TextInput;
-use kas::event::{FocusSource, ImeSurroundingText, Scroll};
+use kas::event::{FocusSource, ImeSurroundingText, PhysicalKey, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{CursorRange, NotReady, SelectionHelper};
@@ -288,6 +288,7 @@ impl Editor {
         &mut self,
         cx: &mut EventCx,
         cmd: Command,
+        code: Option<PhysicalKey>,
     ) -> Result<CmdAction, NotReady> {
         let editable = self.editable;
         let mut shift = cx.modifiers().shift_key();
@@ -503,14 +504,14 @@ impl Editor {
         };
         self.save_undo_state(edit_op);
 
-        Ok(match action {
+        let action = match action {
             Action::None => unreachable!(),
             Action::Deselect => {
                 self.selection.set_empty();
                 cx.redraw();
                 CmdAction::Cursor
             }
-            Action::Activate => CmdAction::Activate,
+            Action::Activate => CmdAction::Activate(code),
             Action::Insert(s, _) => {
                 let mut index = cursor;
                 let range = if have_sel {
@@ -552,7 +553,10 @@ impl Editor {
                     CmdAction::Used
                 }
             }
-        })
+        };
+
+        self.prepare_and_scroll(cx, true);
+        Ok(action)
     }
 
     /// Set cursor position. It is assumed that the text has not changed.

@@ -15,6 +15,7 @@ pub use edit_field::EditField;
 pub use editor::Editor;
 pub use guard::*;
 
+use kas::event::PhysicalKey;
 use std::fmt::Debug;
 use std::ops::Range;
 
@@ -59,7 +60,7 @@ enum CmdAction {
     /// Cursor and/or selection changed
     Cursor,
     /// Enter key in single-line editor
-    Activate,
+    Activate(Option<PhysicalKey>),
     /// Text was edited by key command
     Edit,
 }

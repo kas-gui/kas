@@ -699,17 +699,10 @@ impl<G: EditGuard> EditField<G> {
         cmd: Command,
         code: Option<PhysicalKey>,
     ) -> Result<IsUsed, NotReady> {
-        let action = self.editor.cmd_action(cx, cmd)?;
-        if matches!(action, CmdAction::Unused) {
-            return Ok(Unused);
-        }
-
-        self.prepare_and_scroll(cx, true);
-
-        Ok(match action {
+        Ok(match self.editor.cmd_action(cx, cmd, code)? {
             CmdAction::Unused => Unused,
             CmdAction::Used | CmdAction::Cursor => Used,
-            CmdAction::Activate => {
+            CmdAction::Activate(code) => {
                 cx.depress_with_key(&self, code);
                 self.guard.activate(&mut self.editor, cx, data)
             }
