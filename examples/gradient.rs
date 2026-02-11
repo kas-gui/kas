@@ -1,6 +1,6 @@
+use kas::image::Sprite;
 use kas::prelude::*;
 use kas::widgets::SpinBox;
-use kas::image::Sprite;
 
 #[derive(Clone, Copy)]
 struct Color {
@@ -18,7 +18,7 @@ impl Color {
 #[derive(Debug)]
 struct NewBuffer {
     buffer: Vec<u8>,
-    size: Size
+    size: Size,
 }
 
 #[derive(Debug)]
@@ -28,7 +28,7 @@ struct SetColor(bool, ColorComponent);
 enum ColorComponent {
     Red(u8),
     Green(u8),
-    Blue(u8)
+    Blue(u8),
 }
 
 fn lerp(start: u8, end: u8, i: usize, max: usize) -> u8 {
@@ -83,7 +83,7 @@ mod Gradient {
         blue2: SpinBox<u8, u8>,
         #[widget]
         sprite: Sprite,
-        rendering: bool
+        rendering: bool,
     }
 
     impl Self {
@@ -111,7 +111,7 @@ mod Gradient {
         fn rerender(&mut self, event: &mut EventState) {
             event.send_spawn(
                 self.id(),
-                render_gradient(self.color1, self.color2, self.sprite.rect().size)
+                render_gradient(self.color1, self.color2, self.sprite.rect().size),
             );
             self.rendering = true;
         }
@@ -137,18 +137,12 @@ mod Gradient {
                 if let Some(handle) = self.sprite.handle()
                     && draw.image_size(handle) == Some(size)
                 {
-                    if let Ok(action) = draw.image_upload(
-                        handle,
-                        &buffer[..]
-                    ) {
+                    if let Ok(action) = draw.image_upload(handle, &buffer[..]) {
                         cx.action_redraw(action);
                     }
                 } else {
                     if let Ok(handle) = draw.image_alloc(kas::draw::ImageFormat::Rgba8, size) {
-                        if let Ok(action) = draw.image_upload(
-                            &handle,
-                            &buffer[..]
-                        ) {
+                        if let Ok(action) = draw.image_upload(&handle, &buffer[..]) {
                             self.sprite.set(cx, handle);
                             cx.action_redraw(action);
                         }
@@ -167,7 +161,7 @@ mod Gradient {
                 match component {
                     Red(r) => c.red = r,
                     Green(g) => c.green = g,
-                    Blue(b) => c.blue = b
+                    Blue(b) => c.blue = b,
                 }
 
                 cx.update(self.as_node(&()));
