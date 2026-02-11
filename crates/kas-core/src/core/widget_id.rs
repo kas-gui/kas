@@ -162,13 +162,17 @@ impl IntOrPtr {
         }
     }
 
+    fn bits_from_u64(n: u64) -> Option<IntOrPtr> {
+        (n & USE_MASK == USE_BITS).then(|| {
+            // TODO: sanity checks
+            IntOrPtr(NonZeroU64::new(n).unwrap(), PhantomData)
+        })
+    }
+
     #[cfg(feature = "accesskit")]
     fn try_from_u64(n: u64) -> Option<IntOrPtr> {
         match n & USE_MASK {
-            USE_BITS => {
-                // TODO: sanity checks
-                Some(IntOrPtr(NonZeroU64::new(n).unwrap(), PhantomData))
-            }
+            USE_BITS => Self::bits_from_u64(n),
             USE_PTR => {
                 let mut result = None;
                 let r = &mut result;
@@ -574,6 +578,13 @@ impl Id {
     )]
     pub fn to_nzu64(&self) -> NonZeroU64 {
         self.0.to_nzu64()
+    }
+
+    /// Try converting a `u64` to an `Id`, supporting only bit-packed representations
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    pub fn bits_from_u64(n: u64) -> Option<Self> {
+        IntOrPtr::bits_from_u64(n).map(Id)
     }
 
     /// Try converting a `u64` to an `Id`

@@ -59,7 +59,7 @@ fn main() {
         }
     };
 
-    if let Some(id) = Id::try_from_u64(n) {
+    if let Some(id) = Id::bits_from_u64(n) {
         let path: Vec<usize> = id.iter().collect();
         println!("{id}: {path:?}");
     } else {
