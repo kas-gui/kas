@@ -15,11 +15,11 @@ use proc_macro_error2::{emit_call_site_error, emit_error, proc_macro_error};
 use syn::parse_macro_input;
 use syn::spanned::Spanned;
 
+mod autoimpl_traits;
 mod collection;
 mod extends;
 mod make_layout;
 mod parser;
-mod scroll_traits;
 mod visitors;
 mod widget;
 mod widget_args;
@@ -72,7 +72,7 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     use autoimpl::ImplTrait;
-    use scroll_traits::ImplViewport;
+    use autoimpl_traits::ImplViewport;
     use std::iter::once;
 
     let mut toks = item.clone();
