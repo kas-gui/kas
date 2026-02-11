@@ -84,7 +84,7 @@ impl EventState {
             self.time_updates.push((time, id, handle));
         }
 
-        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
+        self.time_updates.sort_by_key(|b| std::cmp::Reverse(b.0));
     }
 
     /// Schedule a frame timer update
@@ -138,6 +138,6 @@ impl<'a> EventCx<'a> {
             self.send_event(widget.re(), update.1, Event::Timer(update.2));
         }
 
-        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
+        self.time_updates.sort_by_key(|b| std::cmp::Reverse(b.0));
     }
 }

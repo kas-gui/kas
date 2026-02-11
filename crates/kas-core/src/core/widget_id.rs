@@ -86,7 +86,7 @@ impl IntOrPtr {
         if self.is_ptr() {
             let p = usize::conv(self.0.get() & MASK_PTR);
             let a: Arc = unsafe { transmute(p) };
-            let slice: &[usize] = &**a;
+            let slice: &[usize] = &a;
             let slice: &[usize] = unsafe { transmute(slice) };
             forget(a);
             Some(slice)
@@ -162,13 +162,17 @@ impl IntOrPtr {
         }
     }
 
+    fn bits_from_u64(n: u64) -> Option<IntOrPtr> {
+        (n & USE_MASK == USE_BITS).then(|| {
+            // TODO: sanity checks
+            IntOrPtr(NonZeroU64::new(n).unwrap(), PhantomData)
+        })
+    }
+
     #[cfg(feature = "accesskit")]
     fn try_from_u64(n: u64) -> Option<IntOrPtr> {
         match n & USE_MASK {
-            USE_BITS => {
-                // TODO: sanity checks
-                Some(IntOrPtr(NonZeroU64::new(n).unwrap(), PhantomData))
-            }
+            USE_BITS => Self::bits_from_u64(n),
             USE_PTR => {
                 let mut result = None;
                 let r = &mut result;
@@ -567,10 +571,20 @@ impl Id {
     /// This conversion is infallible but not free.
     ///
     /// The result may be used in equality checks (with a *very* small risk of
-    /// false positive due to hash collision) and may be passed to
-    /// [`Self::try_from_u64`].
+    /// false positive due to hash collision).
+    #[cfg_attr(
+        feature = "accesskit",
+        doc = "The result may also be passed to [`Self::try_from_u64`]."
+    )]
     pub fn to_nzu64(&self) -> NonZeroU64 {
         self.0.to_nzu64()
+    }
+
+    /// Try converting a `u64` to an `Id`, supporting only bit-packed representations
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    pub fn bits_from_u64(n: u64) -> Option<Self> {
+        IntOrPtr::bits_from_u64(n).map(Id)
     }
 
     /// Try converting a `u64` to an `Id`
