@@ -86,7 +86,7 @@ impl IntOrPtr {
         if self.is_ptr() {
             let p = usize::conv(self.0.get() & MASK_PTR);
             let a: Arc = unsafe { transmute(p) };
-            let slice: &[usize] = &**a;
+            let slice: &[usize] = &a;
             let slice: &[usize] = unsafe { transmute(slice) };
             forget(a);
             Some(slice)
