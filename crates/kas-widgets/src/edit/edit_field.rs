@@ -7,7 +7,7 @@
 
 use super::*;
 use kas::event::components::TextInputAction;
-use kas::event::{CursorIcon, ElementState, FocusSource, PhysicalKey};
+use kas::event::{CursorIcon, ElementState, FocusSource};
 use kas::event::{Ime, ImePurpose};
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
@@ -216,15 +216,15 @@ mod EditField {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
-            match event {
+            let action = match event {
                 Event::NavFocus(source) if source == FocusSource::Key => {
                     if !self.input_handler.is_selecting() {
                         self.request_key_focus(cx, source);
                     }
-                    Used
+                    CmdAction::Used
                 }
-                Event::NavFocus(_) => Used,
-                Event::LostNavFocus => Used,
+                Event::NavFocus(_) => CmdAction::Used,
+                Event::LostNavFocus => CmdAction::Used,
                 Event::SelFocus(source) => {
                     // NOTE: sel focus implies key focus since we only request
                     // the latter. We must set before calling self.set_primary.
@@ -233,7 +233,7 @@ mod EditField {
                         self.set_primary(cx);
                     }
 
-                    Used
+                    CmdAction::Used
                 }
                 Event::KeyFocus => {
                     self.has_key_focus = true;
@@ -248,7 +248,7 @@ mod EditField {
                         let surrounding_text = self.ime_surrounding_text();
                         cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
                     }
-                    Used
+                    CmdAction::Used
                 }
                 Event::LostKeyFocus => {
                     self.has_key_focus = false;
@@ -256,7 +256,7 @@ mod EditField {
                     if !self.current.is_ime_enabled() {
                         self.guard.focus_lost(&mut self.editor, cx, data);
                     }
-                    Used
+                    CmdAction::Used
                 }
                 Event::LostSelFocus => {
                     // NOTE: we can assume that we will receive Ime::Disabled if IME is active
@@ -266,30 +266,32 @@ mod EditField {
                     }
                     self.input_handler.stop_selecting();
                     cx.redraw();
-                    Used
+                    CmdAction::Used
                 }
-                Event::Command(cmd, code) => match self.control_key(cx, data, cmd, code) {
-                    Ok(r) => r,
-                    Err(NotReady) => Used,
+                Event::Command(cmd, code) => match self.editor.cmd_action(cx, cmd, code) {
+                    Ok(action) => action,
+                    Err(NotReady) => CmdAction::Used,
                 },
                 Event::Key(event, false) if event.state == ElementState::Pressed => {
                     if let Some(text) = &event.text {
                         self.save_undo_state(Some(EditOp::KeyInput));
-                        let used = self.received_text(cx, text);
-                        self.call_guard_edit(cx, data);
-                        used
+                        if self.received_text(cx, text) == Used {
+                            CmdAction::Edit
+                        } else {
+                            CmdAction::Unused
+                        }
                     } else {
                         let opt_cmd = cx
                             .config()
                             .shortcuts()
                             .try_match_event(cx.modifiers(), event);
                         if let Some(cmd) = opt_cmd {
-                            match self.control_key(cx, data, cmd, Some(event.physical_key)) {
-                                Ok(r) => r,
-                                Err(NotReady) => Used,
+                            match self.editor.cmd_action(cx, cmd, Some(event.physical_key)) {
+                                Ok(action) => action,
+                                Err(NotReady) => CmdAction::Used,
                             }
                         } else {
-                            Unused
+                            CmdAction::Unused
                         }
                     }
                 }
@@ -311,14 +313,14 @@ mod EditField {
                                 cx.cancel_ime_focus(self.id_ref());
                             }
                         }
-                        Used
+                        CmdAction::Used
                     }
                     Ime::Disabled => {
                         self.clear_ime();
                         if !self.has_key_focus {
                             self.guard.focus_lost(&mut self.editor, cx, data);
                         }
-                        Used
+                        CmdAction::Used
                     }
                     Ime::Preedit { text, cursor } => {
                         self.save_undo_state(None);
@@ -343,7 +345,7 @@ mod EditField {
                         };
                         self.edit_x_coord = None;
                         self.prepare_and_scroll(cx, false);
-                        Used
+                        CmdAction::Used
                     }
                     Ime::Commit { text } => {
                         self.save_undo_state(Some(EditOp::Ime));
@@ -362,7 +364,7 @@ mod EditField {
                         self.edit_x_coord = None;
                         self.prepare_and_scroll(cx, false);
                         self.call_guard_edit(cx, data);
-                        Used
+                        CmdAction::Used
                     }
                     Ime::DeleteSurrounding {
                         before_bytes,
@@ -400,11 +402,14 @@ mod EditField {
                             cx.update_ime_surrounding_text(self.id_ref(), text);
                         }
 
-                        Used
+                        CmdAction::Used
                     }
                 },
                 Event::PressStart(press) if press.is_tertiary() => {
-                    press.grab_click(self.id()).complete(cx)
+                    match press.grab_click(self.id()).complete(cx) {
+                        Unused => CmdAction::Unused,
+                        Used => CmdAction::Used,
+                    }
                 }
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     self.set_cursor_from_coord(cx, press.coord);
@@ -426,11 +431,11 @@ mod EditField {
                     }
 
                     self.request_key_focus(cx, FocusSource::Pointer);
-                    Used
+                    CmdAction::Used
                 }
                 event => match self.editor.input_handler.handle(cx, self.core.id(), event) {
-                    TextInputAction::Used => Used,
-                    TextInputAction::Unused => Unused,
+                    TextInputAction::Used => CmdAction::Used,
+                    TextInputAction::Unused => CmdAction::Unused,
                     TextInputAction::PressStart {
                         coord,
                         clear,
@@ -452,7 +457,7 @@ mod EditField {
                         }
 
                         self.request_key_focus(cx, FocusSource::Pointer);
-                        Used
+                        CmdAction::Used
                     }
                     TextInputAction::PressMove { coord, repeats } => {
                         if self.current == CurrentAction::Selection {
@@ -464,7 +469,7 @@ mod EditField {
                             }
                         }
 
-                        Used
+                        CmdAction::Used
                     }
                     TextInputAction::PressEnd { coord } => {
                         if self.current.is_ime_enabled() {
@@ -481,9 +486,22 @@ mod EditField {
                         self.current = CurrentAction::None;
 
                         self.request_key_focus(cx, FocusSource::Pointer);
-                        Used
+                        CmdAction::Used
                     }
                 },
+            };
+
+            match action {
+                CmdAction::Unused => Unused,
+                CmdAction::Used | CmdAction::Cursor => Used,
+                CmdAction::Activate(code) => {
+                    cx.depress_with_key(&self, code);
+                    self.guard.activate(&mut self.editor, cx, data)
+                }
+                CmdAction::Edit => {
+                    self.call_guard_edit(cx, data);
+                    Used
+                }
             }
         }
 
@@ -690,26 +708,5 @@ impl<G: EditGuard> EditField<G> {
     pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
         self.set_width_em(min_em, ideal_em);
         self
-    }
-
-    fn control_key(
-        &mut self,
-        cx: &mut EventCx,
-        data: &G::Data,
-        cmd: Command,
-        code: Option<PhysicalKey>,
-    ) -> Result<IsUsed, NotReady> {
-        Ok(match self.editor.cmd_action(cx, cmd, code)? {
-            CmdAction::Unused => Unused,
-            CmdAction::Used | CmdAction::Cursor => Used,
-            CmdAction::Activate(code) => {
-                cx.depress_with_key(&self, code);
-                self.guard.activate(&mut self.editor, cx, data)
-            }
-            CmdAction::Edit => {
-                self.call_guard_edit(cx, data);
-                Used
-            }
-        })
     }
 }
