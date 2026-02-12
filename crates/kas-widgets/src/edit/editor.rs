@@ -17,11 +17,18 @@ use std::borrow::Cow;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 /// Editor component
+///
+/// ### Special behaviour
+///
+/// This component implements [`Layout`], but only requests the minimum size
+/// allocation required to display its current text contents. The wrapping
+/// widget may wish to reserve extra space, use a higher stretch policy and
+/// potentially also set an alignment hint.
 #[autoimpl(Debug)]
 pub struct Editor {
     // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
     pub(super) id: Id,
-    pub(super) pos: Coord,
+    pos: Coord,
     pub(super) editable: bool,
     pub(super) text: Text<String>,
     pub(super) selection: SelectionHelper,
@@ -33,6 +40,32 @@ pub struct Editor {
     error_state: bool,
     error_message: Option<Cow<'static, str>>,
     pub(super) input_handler: TextInput,
+}
+
+impl Layout for Editor {
+    #[inline]
+    fn rect(&self) -> Rect {
+        self.text.rect()
+    }
+
+    #[inline]
+    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        self.text.size_rules(cx, axis)
+    }
+
+    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
+        self.pos = rect.pos;
+        self.text.set_rect(cx, rect, hints);
+        self.text.ensure_no_left_overhang();
+        if self.current.is_ime_enabled() {
+            self.set_ime_cursor_area(cx);
+        }
+    }
+
+    #[inline]
+    fn draw(&self, draw: DrawCx) {
+        self.text.draw(draw);
+    }
 }
 
 /// API for use by `EditField`
@@ -427,7 +460,7 @@ impl Editor {
     }
 
     /// Call to set IME position only while IME is active
-    pub(super) fn set_ime_cursor_area(&self, cx: &mut EventState) {
+    fn set_ime_cursor_area(&self, cx: &mut EventState) {
         if let Ok(text) = self.text.display() {
             let range = match self.current.clone() {
                 CurrentAction::ImeStart => self.selection.range(),

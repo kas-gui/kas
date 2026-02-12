@@ -63,6 +63,7 @@ mod EditField {
     #[autoimpl(Debug where G: trait)]
     #[autoimpl(Deref, DerefMut using self.editor)]
     #[widget]
+    #[layout(self.editor)]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
         width: (f32, f32),
@@ -73,11 +74,6 @@ mod EditField {
     }
 
     impl Layout for Self {
-        #[inline]
-        fn rect(&self) -> Rect {
-            self.text.rect()
-        }
-
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
@@ -95,7 +91,7 @@ mod EditField {
                 unreachable!()
             };
 
-            let rules = self.text.size_rules(cx, axis);
+            let rules = self.editor.size_rules(cx, axis);
             ideal = ideal.max(rules.ideal_size());
 
             let stretch = if axis.is_horizontal() || self.multi_line() {
@@ -106,18 +102,14 @@ mod EditField {
             SizeRules::new(min, ideal, stretch).with_margins(cx.text_margins().extract(axis))
         }
 
+        #[inline]
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, mut hints: AlignHints) {
-            self.editor.pos = rect.pos;
             hints.vert = Some(if self.multi_line() {
                 Align::Default
             } else {
                 Align::Center
             });
-            self.text.set_rect(cx, rect, hints);
-            self.text.ensure_no_left_overhang();
-            if self.current.is_ime_enabled() {
-                self.set_ime_cursor_area(cx);
-            }
+            self.editor.set_rect(cx, rect, hints);
         }
     }
 
