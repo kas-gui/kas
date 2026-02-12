@@ -9,6 +9,47 @@ use proc_macro2::TokenStream as Toks;
 use quote::quote;
 use syn::ItemStruct;
 
+pub struct ImplLayout;
+impl ImplTrait for ImplLayout {
+    fn path(&self) -> SimplePath {
+        SimplePath::new(&["", "kas", "Layout"])
+    }
+
+    fn support_ignore(&self) -> bool {
+        false
+    }
+
+    fn support_using(&self) -> bool {
+        true
+    }
+
+    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<(Toks, Toks)> {
+        if let Some(using) = args.using_member() {
+            let methods = quote! {
+                #[inline]
+                fn rect(&self) -> ::kas::geom::Rect {
+                    self.#using.rect()
+                }
+                #[inline]
+                fn size_rules(&mut self, cx: &mut ::kas::theme::SizeCx, axis: ::kas::layout::AxisInfo) -> ::kas::layout::SizeRules {
+                    self.#using.size_rules(cx, axis)
+                }
+                #[inline]
+                fn set_rect(&mut self, cx: &mut ::kas::theme::SizeCx, rect: ::kas::geom::Rect, hints: ::kas::layout::AlignHints) {
+                    self.#using.set_rect(cx, rect, hints);
+                }
+                #[inline]
+                fn draw(&self, draw: ::kas::theme::DrawCx) {
+                    self.#using.draw(draw);
+                }
+            };
+            Ok((quote! { ::kas::Layout }, methods))
+        } else {
+            Err(Error::RequireUsing)
+        }
+    }
+}
+
 pub struct ImplViewport;
 impl ImplTrait for ImplViewport {
     fn path(&self) -> SimplePath {
@@ -73,3 +114,6 @@ impl ImplTrait for ImplViewport {
         }
     }
 }
+
+/// List of all Kas trait implementations
+pub const KAS_IMPLS: &[&dyn ImplTrait] = &[&ImplLayout, &ImplViewport];

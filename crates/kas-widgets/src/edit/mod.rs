@@ -12,9 +12,10 @@ mod guard;
 
 pub use edit_box::EditBox;
 pub use edit_field::EditField;
-pub use editor::Editor;
+pub use editor::{Component, Editor};
 pub use guard::*;
 
+use kas::event::PhysicalKey;
 use std::fmt::Debug;
 use std::ops::Range;
 
@@ -51,15 +52,20 @@ impl EditOp {
     }
 }
 
-enum CmdAction {
+/// Result type of [`Component::handle_event`]
+pub enum EventAction {
     /// Key not used, no action
     Unused,
     /// Key used, no action
     Used,
+    /// Focus has been gained
+    FocusGained,
+    /// Focus has been lost
+    FocusLost,
     /// Cursor and/or selection changed
     Cursor,
     /// Enter key in single-line editor
-    Activate,
+    Activate(Option<PhysicalKey>),
     /// Text was edited by key command
     Edit,
 }

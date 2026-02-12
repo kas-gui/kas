@@ -6,12 +6,9 @@
 //! The [`EditField`] and [`EditBox`] widgets, plus supporting items
 
 use super::*;
-use kas::event::components::TextInputAction;
-use kas::event::{CursorIcon, ElementState, FocusSource, PhysicalKey};
-use kas::event::{Ime, ImePurpose};
+use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
-use kas::text::{Effect, EffectFlags, NotReady};
 use kas::theme::TextClass;
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
@@ -24,7 +21,7 @@ mod EditField {
     /// is a component of `EditBox` and has some special behaviour.
     ///
     /// By default, the editor supports a single-line only;
-    /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
+    /// [`Self::with_multi_line`] can be used to change this.
     ///
     /// ### Event handling
     ///
@@ -63,33 +60,30 @@ mod EditField {
     ///
     /// This is a [`Viewport`] widget.
     #[autoimpl(Debug where G: trait)]
-    #[autoimpl(Deref, DerefMut using self.editor)]
+    #[autoimpl(Deref<Target = Editor>, DerefMut using self.editor)]
     #[widget]
+    #[layout(self.editor)]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
         width: (f32, f32),
         lines: (f32, f32),
-        editor: Editor,
+        editor: Component,
         /// The associated [`EditGuard`] implementation
         pub guard: G,
     }
 
     impl Layout for Self {
-        #[inline]
-        fn rect(&self) -> Rect {
-            self.text.rect()
-        }
-
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
-                let dpem = cx.dpem(self.text.class());
+                let dpem = cx.dpem(self.text().class());
                 min = (self.width.0 * dpem).cast_ceil();
                 ideal = (self.width.1 * dpem).cast_ceil();
             } else if let Some(width) = axis.other() {
                 // Use the height of the first line as a reference
                 let height = self
-                    .text
+                    .editor
+                    .text_mut()
                     .measure_height(width.cast(), std::num::NonZero::new(1));
                 min = (self.lines.0 * height).cast_ceil();
                 ideal = (self.lines.1 * height).cast_ceil();
@@ -97,7 +91,7 @@ mod EditField {
                 unreachable!()
             };
 
-            let rules = self.text.size_rules(cx, axis);
+            let rules = self.editor.size_rules(cx, axis);
             ideal = ideal.max(rules.ideal_size());
 
             let stretch = if axis.is_horizontal() || self.multi_line() {
@@ -108,61 +102,26 @@ mod EditField {
             SizeRules::new(min, ideal, stretch).with_margins(cx.text_margins().extract(axis))
         }
 
+        #[inline]
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, mut hints: AlignHints) {
-            self.editor.pos = rect.pos;
             hints.vert = Some(if self.multi_line() {
                 Align::Default
             } else {
                 Align::Center
             });
-            self.text.set_rect(cx, rect, hints);
-            self.text.ensure_no_left_overhang();
-            if self.current.is_ime_enabled() {
-                self.set_ime_cursor_area(cx);
-            }
+            self.editor.set_rect(cx, rect, hints);
         }
     }
 
     impl Viewport for Self {
         #[inline]
         fn content_size(&self) -> Size {
-            if let Ok((tl, br)) = self.text.bounding_box() {
-                (br - tl).cast_ceil()
-            } else {
-                Size::ZERO
-            }
+            self.editor.content_size()
         }
 
+        #[inline]
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            let pos = self.rect().pos - offset;
-
-            if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
-                // TODO: combine underline with selection highlight
-                let effects = [
-                    Effect {
-                        start: 0,
-                        e: 0,
-                        flags: Default::default(),
-                    },
-                    Effect {
-                        start: edit_range.start,
-                        e: 0,
-                        flags: EffectFlags::UNDERLINE,
-                    },
-                    Effect {
-                        start: edit_range.end,
-                        e: 0,
-                        flags: Default::default(),
-                    },
-                ];
-                draw.text_with_effects(pos, rect, &self.text, &[], &effects);
-            } else {
-                draw.text_with_selection(pos, rect, &self.text, self.selection.range());
-            }
-
-            if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {
-                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
-            }
+            self.editor.draw_with_offset(draw, rect, offset);
         }
     }
 
@@ -173,12 +132,12 @@ mod EditField {
 
         #[inline]
         fn tooltip(&self) -> Option<&str> {
-            self.editor.tooltip()
+            self.editor.error_message()
         }
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::TextInput {
-                text: self.text.as_str(),
+                text: self.text().as_str(),
                 multi_line: self.multi_line(),
                 cursor: self.cursor_range(),
             }
@@ -200,8 +159,7 @@ mod EditField {
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            self.editor.id = self.id();
-            self.text.configure(&mut cx.size_cx());
+            self.editor.configure(cx);
             self.guard.configure(&mut self.editor, cx);
         }
 
@@ -216,279 +174,30 @@ mod EditField {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
-            match event {
-                Event::NavFocus(source) if source == FocusSource::Key => {
-                    if !self.input_handler.is_selecting() {
-                        self.request_key_focus(cx, source);
-                    }
+            match self.editor.handle_event(cx, event) {
+                EventAction::Unused => Unused,
+                EventAction::Used | EventAction::Cursor => Used,
+                EventAction::FocusGained => {
+                    self.guard.focus_gained(&mut self.editor, cx, data);
                     Used
                 }
-                Event::NavFocus(_) => Used,
-                Event::LostNavFocus => Used,
-                Event::SelFocus(source) => {
-                    // NOTE: sel focus implies key focus since we only request
-                    // the latter. We must set before calling self.set_primary.
-                    self.has_key_focus = true;
-                    if source == FocusSource::Pointer {
-                        self.set_primary(cx);
-                    }
-
+                EventAction::FocusLost => {
+                    self.guard.focus_lost(&mut self.editor, cx, data);
                     Used
                 }
-                Event::KeyFocus => {
-                    self.has_key_focus = true;
-                    self.set_view_offset_from_cursor(cx);
-                    if !self.current.is_ime_enabled() {
-                        self.guard.focus_gained(&mut self.editor, cx, data);
-                    }
-
-                    if self.current.is_none() {
-                        let hint = Default::default();
-                        let purpose = ImePurpose::Normal;
-                        let surrounding_text = self.ime_surrounding_text();
-                        cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
-                    }
+                EventAction::Activate(code) => {
+                    cx.depress_with_key(&self, code);
+                    self.guard.activate(&mut self.editor, cx, data)
+                }
+                EventAction::Edit => {
+                    self.call_guard_edit(cx, data);
                     Used
                 }
-                Event::LostKeyFocus => {
-                    self.has_key_focus = false;
-                    cx.redraw();
-                    if !self.current.is_ime_enabled() {
-                        self.guard.focus_lost(&mut self.editor, cx, data);
-                    }
-                    Used
-                }
-                Event::LostSelFocus => {
-                    // NOTE: we can assume that we will receive Ime::Disabled if IME is active
-                    if !self.selection.is_empty() {
-                        self.save_undo_state(None);
-                        self.selection.set_empty();
-                    }
-                    self.input_handler.stop_selecting();
-                    cx.redraw();
-                    Used
-                }
-                Event::Command(cmd, code) => match self.control_key(cx, data, cmd, code) {
-                    Ok(r) => r,
-                    Err(NotReady) => Used,
-                },
-                Event::Key(event, false) if event.state == ElementState::Pressed => {
-                    if let Some(text) = &event.text {
-                        self.save_undo_state(Some(EditOp::KeyInput));
-                        let used = self.received_text(cx, text);
-                        self.call_guard_edit(cx, data);
-                        used
-                    } else {
-                        let opt_cmd = cx
-                            .config()
-                            .shortcuts()
-                            .try_match_event(cx.modifiers(), event);
-                        if let Some(cmd) = opt_cmd {
-                            match self.control_key(cx, data, cmd, Some(event.physical_key)) {
-                                Ok(r) => r,
-                                Err(NotReady) => Used,
-                            }
-                        } else {
-                            Unused
-                        }
-                    }
-                }
-                Event::Ime(ime) => match ime {
-                    Ime::Enabled => {
-                        if !self.has_key_focus {
-                            self.guard.focus_gained(&mut self.editor, cx, data);
-                        }
-                        match self.current {
-                            CurrentAction::None => {
-                                self.current = CurrentAction::ImeStart;
-                                self.set_ime_cursor_area(cx);
-                            }
-                            CurrentAction::ImeStart | CurrentAction::ImePreedit { .. } => {
-                                // already enabled
-                            }
-                            CurrentAction::Selection => {
-                                // Do not interrupt selection
-                                cx.cancel_ime_focus(self.id_ref());
-                            }
-                        }
-                        Used
-                    }
-                    Ime::Disabled => {
-                        self.clear_ime();
-                        if !self.has_key_focus {
-                            self.guard.focus_lost(&mut self.editor, cx, data);
-                        }
-                        Used
-                    }
-                    Ime::Preedit { text, cursor } => {
-                        self.save_undo_state(None);
-                        let mut edit_range = match self.current.clone() {
-                            CurrentAction::ImeStart if cursor.is_some() => self.selection.range(),
-                            CurrentAction::ImeStart => return Used,
-                            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                            _ => return Used,
-                        };
-
-                        self.text.replace_range(edit_range.clone(), text);
-                        edit_range.end = edit_range.start + text.len();
-                        if let Some((start, end)) = cursor {
-                            self.selection.set_sel_index_only(edit_range.start + start);
-                            self.selection.set_edit_index(edit_range.start + end);
-                        } else {
-                            self.selection.set_cursor(edit_range.start + text.len());
-                        }
-
-                        self.current = CurrentAction::ImePreedit {
-                            edit_range: edit_range.cast(),
-                        };
-                        self.edit_x_coord = None;
-                        self.prepare_and_scroll(cx, false);
-                        Used
-                    }
-                    Ime::Commit { text } => {
-                        self.save_undo_state(Some(EditOp::Ime));
-                        let edit_range = match self.current.clone() {
-                            CurrentAction::ImeStart => self.selection.range(),
-                            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                            _ => return Used,
-                        };
-
-                        self.text.replace_range(edit_range.clone(), text);
-                        self.selection.set_cursor(edit_range.start + text.len());
-
-                        self.current = CurrentAction::ImePreedit {
-                            edit_range: self.selection.range().cast(),
-                        };
-                        self.edit_x_coord = None;
-                        self.prepare_and_scroll(cx, false);
-                        self.call_guard_edit(cx, data);
-                        Used
-                    }
-                    Ime::DeleteSurrounding {
-                        before_bytes,
-                        after_bytes,
-                    } => {
-                        self.save_undo_state(None);
-                        let edit_range = match self.current.clone() {
-                            CurrentAction::ImeStart => self.selection.range(),
-                            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                            _ => return Used,
-                        };
-
-                        if before_bytes > 0 {
-                            let end = edit_range.start;
-                            let start = end - before_bytes;
-                            if self.as_str().is_char_boundary(start) {
-                                self.text.replace_range(start..end, "");
-                                self.selection.delete_range(start..end);
-                            } else {
-                                log::warn!("buggy IME tried to delete range not at char boundary");
-                            }
-                        }
-
-                        if after_bytes > 0 {
-                            let start = edit_range.end;
-                            let end = start + after_bytes;
-                            if self.as_str().is_char_boundary(end) {
-                                self.text.replace_range(start..end, "");
-                            } else {
-                                log::warn!("buggy IME tried to delete range not at char boundary");
-                            }
-                        }
-
-                        if let Some(text) = self.ime_surrounding_text() {
-                            cx.update_ime_surrounding_text(self.id_ref(), text);
-                        }
-
-                        Used
-                    }
-                },
-                Event::PressStart(press) if press.is_tertiary() => {
-                    press.grab_click(self.id()).complete(cx)
-                }
-                Event::PressEnd { press, .. } if press.is_tertiary() => {
-                    self.set_cursor_from_coord(cx, press.coord);
-                    self.cancel_selection_and_ime(cx);
-
-                    if let Some(content) = cx.get_primary() {
-                        self.save_undo_state(Some(EditOp::Clipboard));
-
-                        let index = self.selection.edit_index();
-                        let range = self.trim_paste(&content);
-
-                        self.text
-                            .replace_range(index..index, &content[range.clone()]);
-                        self.selection.set_cursor(index + range.len());
-                        self.edit_x_coord = None;
-                        self.prepare_and_scroll(cx, false);
-
-                        self.call_guard_edit(cx, data);
-                    }
-
-                    self.request_key_focus(cx, FocusSource::Pointer);
-                    Used
-                }
-                event => match self.editor.input_handler.handle(cx, self.core.id(), event) {
-                    TextInputAction::Used => Used,
-                    TextInputAction::Unused => Unused,
-                    TextInputAction::PressStart {
-                        coord,
-                        clear,
-                        repeats,
-                    } => {
-                        if self.current.is_ime_enabled() {
-                            self.clear_ime();
-                            cx.cancel_ime_focus(self.id_ref());
-                        }
-                        self.save_undo_state(Some(EditOp::Cursor));
-                        self.current = CurrentAction::Selection;
-
-                        self.set_cursor_from_coord(cx, coord);
-                        self.selection.set_anchor(clear);
-                        if repeats > 1 {
-                            self.editor
-                                .selection
-                                .expand(&self.editor.text, repeats >= 3);
-                        }
-
-                        self.request_key_focus(cx, FocusSource::Pointer);
-                        Used
-                    }
-                    TextInputAction::PressMove { coord, repeats } => {
-                        if self.current == CurrentAction::Selection {
-                            self.set_cursor_from_coord(cx, coord);
-                            if repeats > 1 {
-                                self.editor
-                                    .selection
-                                    .expand(&self.editor.text, repeats >= 3);
-                            }
-                        }
-
-                        Used
-                    }
-                    TextInputAction::PressEnd { coord } => {
-                        if self.current.is_ime_enabled() {
-                            self.clear_ime();
-                            cx.cancel_ime_focus(self.id_ref());
-                        }
-                        self.save_undo_state(Some(EditOp::Cursor));
-                        if self.current == CurrentAction::Selection {
-                            self.set_primary(cx);
-                        } else {
-                            self.set_cursor_from_coord(cx, coord);
-                            self.selection.set_empty();
-                        }
-                        self.current = CurrentAction::None;
-
-                        self.request_key_focus(cx, FocusSource::Pointer);
-                        Used
-                    }
-                },
             }
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &G::Data) {
-            if !self.editable {
+            if !self.is_editable() {
                 return;
             }
 
@@ -522,7 +231,7 @@ mod EditField {
                 core: Default::default(),
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
-                editor: Editor::new(),
+                editor: Component::default(),
                 guard,
             }
         }
@@ -549,7 +258,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
         EditField {
-            editor: Editor::from(text),
+            editor: Component::from(text),
             ..Default::default()
         }
     }
@@ -557,7 +266,9 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
     /// Construct a read-only `EditField` displaying some `String` value
     #[inline]
     pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditField<StringGuard<A>> {
-        EditField::new(StringGuard::new(value_fn)).with_editable(false)
+        let mut field = EditField::new(StringGuard::new(value_fn));
+        field.set_editable(false);
+        field
     }
 
     /// Construct an `EditField` for a parsable value (e.g. a number)
@@ -611,7 +322,7 @@ impl<A: 'static> EditField<StringGuard<A>> {
         M: Debug + 'static,
     {
         self.guard = self.guard.with_msg(msg_fn);
-        self.editable = true;
+        self.set_editable(true);
         self
     }
 }
@@ -623,11 +334,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
-        let text = text.to_string();
-        let len = text.len();
-        self.text.set_string(text);
-        self.selection.set_cursor(len);
+        self.editor = self.editor.with_text(text);
         self
     }
 
@@ -635,20 +342,18 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_editable(mut self, editable: bool) -> Self {
-        self.editable = editable;
+        self.set_editable(editable);
         self
     }
 
     /// Set whether this `EditField` uses multi-line mode
     ///
-    /// This method does two things:
-    ///
-    /// -   Changes the text class (see [`Self::with_class`])
-    /// -   Changes the vertical height allocation (see [`Self::with_lines`])
+    /// This affects the (vertical) size allocation, alignment, text wrapping
+    /// and whether the <kbd>Enter</kbd> key may instert a line break.
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
-        self.text.set_wrap(multi_line);
+        self.editor.text_mut().set_wrap(multi_line);
         self.lines = match multi_line {
             false => (1.0, 1.0),
             true => (4.0, 7.0),
@@ -660,7 +365,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_class(mut self, class: TextClass) -> Self {
-        self.text.set_class(class);
+        self.editor.text_mut().set_class(class);
         self
     }
 
@@ -690,33 +395,5 @@ impl<G: EditGuard> EditField<G> {
     pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
         self.set_width_em(min_em, ideal_em);
         self
-    }
-
-    fn control_key(
-        &mut self,
-        cx: &mut EventCx,
-        data: &G::Data,
-        cmd: Command,
-        code: Option<PhysicalKey>,
-    ) -> Result<IsUsed, NotReady> {
-        let action = self.editor.cmd_action(cx, cmd)?;
-        if matches!(action, CmdAction::Unused) {
-            return Ok(Unused);
-        }
-
-        self.prepare_and_scroll(cx, true);
-
-        Ok(match action {
-            CmdAction::Unused => Unused,
-            CmdAction::Used | CmdAction::Cursor => Used,
-            CmdAction::Activate => {
-                cx.depress_with_key(&self, code);
-                self.guard.activate(&mut self.editor, cx, data)
-            }
-            CmdAction::Edit => {
-                self.call_guard_edit(cx, data);
-                Used
-            }
-        })
     }
 }
