@@ -71,10 +71,6 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
-    use autoimpl::ImplTrait;
-    use autoimpl_traits::ImplViewport;
-    use std::iter::once;
-
     let mut toks = item.clone();
     match syn::parse::<autoimpl::Attr>(attr) {
         Ok(autoimpl::Attr::ForDeref(ai)) => toks.extend(TokenStream::from(ai.expand(item.into()))),
@@ -85,7 +81,7 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
                 autoimpl::STD_IMPLS
                     .iter()
                     .cloned()
-                    .chain(once(&ImplViewport as &dyn ImplTrait))
+                    .chain(autoimpl_traits::KAS_IMPLS.iter().cloned())
                     .find(|impl_| impl_.path().matches_ident_or_path(path))
             };
             toks.extend(TokenStream::from(ai.expand(item.into(), find_impl)))
