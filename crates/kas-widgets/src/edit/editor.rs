@@ -33,7 +33,6 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 pub struct Editor {
     // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
     pub(super) id: Id,
-    pos: Coord,
     pub(super) editable: bool,
     pub(super) text: Text<String>,
     pub(super) selection: SelectionHelper,
@@ -59,7 +58,6 @@ impl Layout for Editor {
     }
 
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-        self.pos = rect.pos;
         self.text.set_rect(cx, rect, hints);
         self.text.ensure_no_left_overhang();
         if self.current.is_ime_enabled() {
@@ -80,7 +78,6 @@ impl Editor {
     pub(super) fn new() -> Self {
         Editor {
             id: Id::default(),
-            pos: Coord::ZERO,
             editable: true,
             text: Text::new(String::new(), TextClass::Editor, false),
             selection: Default::default(),
@@ -541,7 +538,7 @@ impl Editor {
                 return;
             };
 
-            cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.pos));
+            cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.text.rect().pos));
         }
     }
 
@@ -909,7 +906,7 @@ impl Editor {
     ///
     /// Committing undo state is the responsibility of the caller.
     fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
-        let rel_pos = (coord - self.pos).cast();
+        let rel_pos = (coord - self.text.rect().pos).cast();
         if let Ok(index) = self.text.text_index_nearest(rel_pos) {
             if index != self.selection.edit_index() {
                 self.selection.set_edit_index(index);
@@ -942,7 +939,7 @@ impl Editor {
             .and_then(|mut m| m.next_back())
         {
             let y0 = (marker.pos.1 - marker.ascent).cast_floor();
-            let pos = self.pos + Offset(marker.pos.0.cast_nearest(), y0);
+            let pos = self.text.rect().pos + Offset(marker.pos.0.cast_nearest(), y0);
             let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
             cx.set_scroll(Scroll::Rect(Rect { pos, size }));
         }
