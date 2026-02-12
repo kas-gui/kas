@@ -52,7 +52,8 @@ impl EditOp {
     }
 }
 
-enum CmdAction {
+/// Result type of [`Component::handle_event`]
+pub enum EventAction {
     /// Key not used, no action
     Unused,
     /// Key used, no action

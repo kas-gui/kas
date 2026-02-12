@@ -193,16 +193,16 @@ impl Component {
     }
 
     /// Handle an event
-    pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> CmdAction {
+    pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
         match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
                 if !self.input_handler.is_selecting() {
                     self.request_key_focus(cx, source);
                 }
-                CmdAction::Used
+                EventAction::Used
             }
-            Event::NavFocus(_) => CmdAction::Used,
-            Event::LostNavFocus => CmdAction::Used,
+            Event::NavFocus(_) => EventAction::Used,
+            Event::LostNavFocus => EventAction::Used,
             Event::SelFocus(source) => {
                 // NOTE: sel focus implies key focus since we only request
                 // the latter. We must set before calling self.set_primary.
@@ -211,7 +211,7 @@ impl Component {
                     self.set_primary(cx);
                 }
 
-                CmdAction::Used
+                EventAction::Used
             }
             Event::KeyFocus => {
                 self.has_key_focus = true;
@@ -222,18 +222,18 @@ impl Component {
                     let purpose = ImePurpose::Normal;
                     let surrounding_text = self.ime_surrounding_text();
                     cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
-                    CmdAction::FocusGained
+                    EventAction::FocusGained
                 } else {
-                    CmdAction::Used
+                    EventAction::Used
                 }
             }
             Event::LostKeyFocus => {
                 self.has_key_focus = false;
                 cx.redraw();
                 if !self.current.is_ime_enabled() {
-                    CmdAction::FocusLost
+                    EventAction::FocusLost
                 } else {
-                    CmdAction::Used
+                    EventAction::Used
                 }
             }
             Event::LostSelFocus => {
@@ -244,19 +244,19 @@ impl Component {
                 }
                 self.input_handler.stop_selecting();
                 cx.redraw();
-                CmdAction::Used
+                EventAction::Used
             }
             Event::Command(cmd, code) => match self.cmd_action(cx, cmd, code) {
                 Ok(action) => action,
-                Err(NotReady) => CmdAction::Used,
+                Err(NotReady) => EventAction::Used,
             },
             Event::Key(event, false) if event.state == ElementState::Pressed => {
                 if let Some(text) = &event.text {
                     self.save_undo_state(Some(EditOp::KeyInput));
                     if self.received_text(cx, text) == Used {
-                        CmdAction::Edit
+                        EventAction::Edit
                     } else {
-                        CmdAction::Unused
+                        EventAction::Unused
                     }
                 } else {
                     let opt_cmd = cx
@@ -266,10 +266,10 @@ impl Component {
                     if let Some(cmd) = opt_cmd {
                         match self.cmd_action(cx, cmd, Some(event.physical_key)) {
                             Ok(action) => action,
-                            Err(NotReady) => CmdAction::Used,
+                            Err(NotReady) => EventAction::Used,
                         }
                     } else {
-                        CmdAction::Unused
+                        EventAction::Unused
                     }
                 }
             }
@@ -289,26 +289,26 @@ impl Component {
                         }
                     }
                     if !self.has_key_focus {
-                        CmdAction::FocusGained
+                        EventAction::FocusGained
                     } else {
-                        CmdAction::Used
+                        EventAction::Used
                     }
                 }
                 Ime::Disabled => {
                     self.clear_ime();
                     if !self.has_key_focus {
-                        CmdAction::FocusLost
+                        EventAction::FocusLost
                     } else {
-                        CmdAction::Used
+                        EventAction::Used
                     }
                 }
                 Ime::Preedit { text, cursor } => {
                     self.save_undo_state(None);
                     let mut edit_range = match self.current.clone() {
                         CurrentAction::ImeStart if cursor.is_some() => self.selection.range(),
-                        CurrentAction::ImeStart => return CmdAction::Used,
+                        CurrentAction::ImeStart => return EventAction::Used,
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                        _ => return CmdAction::Used,
+                        _ => return EventAction::Used,
                     };
 
                     self.text.replace_range(edit_range.clone(), text);
@@ -325,14 +325,14 @@ impl Component {
                     };
                     self.edit_x_coord = None;
                     self.prepare_and_scroll(cx, false);
-                    CmdAction::Used
+                    EventAction::Used
                 }
                 Ime::Commit { text } => {
                     self.save_undo_state(Some(EditOp::Ime));
                     let edit_range = match self.current.clone() {
                         CurrentAction::ImeStart => self.selection.range(),
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                        _ => return CmdAction::Used,
+                        _ => return EventAction::Used,
                     };
 
                     self.text.replace_range(edit_range.clone(), text);
@@ -343,7 +343,7 @@ impl Component {
                     };
                     self.edit_x_coord = None;
                     self.prepare_and_scroll(cx, false);
-                    CmdAction::Edit
+                    EventAction::Edit
                 }
                 Ime::DeleteSurrounding {
                     before_bytes,
@@ -353,7 +353,7 @@ impl Component {
                     let edit_range = match self.current.clone() {
                         CurrentAction::ImeStart => self.selection.range(),
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                        _ => return CmdAction::Used,
+                        _ => return EventAction::Used,
                     };
 
                     if before_bytes > 0 {
@@ -381,13 +381,13 @@ impl Component {
                         cx.update_ime_surrounding_text(self.id_ref(), text);
                     }
 
-                    CmdAction::Used
+                    EventAction::Used
                 }
             },
             Event::PressStart(press) if press.is_tertiary() => {
                 match press.grab_click(self.id()).complete(cx) {
-                    Unused => CmdAction::Unused,
-                    Used => CmdAction::Used,
+                    Unused => EventAction::Unused,
+                    Used => EventAction::Used,
                 }
             }
             Event::PressEnd { press, .. } if press.is_tertiary() => {
@@ -407,14 +407,14 @@ impl Component {
                     self.edit_x_coord = None;
                     self.prepare_and_scroll(cx, false);
 
-                    CmdAction::Edit
+                    EventAction::Edit
                 } else {
-                    CmdAction::Used
+                    EventAction::Used
                 }
             }
             event => match self.0.input_handler.handle(cx, self.0.id.clone(), event) {
-                TextInputAction::Used => CmdAction::Used,
-                TextInputAction::Unused => CmdAction::Unused,
+                TextInputAction::Used => EventAction::Used,
+                TextInputAction::Unused => EventAction::Unused,
                 TextInputAction::PressStart {
                     coord,
                     clear,
@@ -434,7 +434,7 @@ impl Component {
                     }
 
                     self.request_key_focus(cx, FocusSource::Pointer);
-                    CmdAction::Used
+                    EventAction::Used
                 }
                 TextInputAction::PressMove { coord, repeats } => {
                     if self.current == CurrentAction::Selection {
@@ -444,7 +444,7 @@ impl Component {
                         }
                     }
 
-                    CmdAction::Used
+                    EventAction::Used
                 }
                 TextInputAction::PressEnd { coord } => {
                     if self.current.is_ime_enabled() {
@@ -461,7 +461,7 @@ impl Component {
                     self.current = CurrentAction::None;
 
                     self.request_key_focus(cx, FocusSource::Pointer);
-                    CmdAction::Used
+                    EventAction::Used
                 }
             },
         }
@@ -680,7 +680,7 @@ impl Editor {
         cx: &mut EventCx,
         cmd: Command,
         code: Option<PhysicalKey>,
-    ) -> Result<CmdAction, NotReady> {
+    ) -> Result<EventAction, NotReady> {
         let editable = self.editable;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
@@ -874,7 +874,7 @@ impl Editor {
                 }
             }
             Command::Undo | Command::Redo if editable => Action::UndoRedo(cmd == Command::Redo),
-            _ => return Ok(CmdAction::Unused),
+            _ => return Ok(EventAction::Unused),
         };
 
         // We can receive some commands without key focus as a result of
@@ -888,7 +888,7 @@ impl Editor {
         }
 
         let edit_op = match action {
-            Action::None => return Ok(CmdAction::Used),
+            Action::None => return Ok(EventAction::Used),
             Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
             Action::Activate | Action::UndoRedo(_) => None,
             Action::Insert(_, edit) | Action::Delete(_, edit) => Some(edit),
@@ -900,9 +900,9 @@ impl Editor {
             Action::Deselect => {
                 self.selection.set_empty();
                 cx.redraw();
-                CmdAction::Cursor
+                EventAction::Cursor
             }
-            Action::Activate => CmdAction::Activate(code),
+            Action::Activate => EventAction::Activate(code),
             Action::Insert(s, _) => {
                 let mut index = cursor;
                 let range = if have_sel {
@@ -914,13 +914,13 @@ impl Editor {
                 self.text.replace_range(range, s);
                 self.selection.set_cursor(index + s.len());
                 self.edit_x_coord = None;
-                CmdAction::Edit
+                EventAction::Edit
             }
             Action::Delete(sel, _) => {
                 self.text.replace_range(sel.clone(), "");
                 self.selection.set_cursor(sel.start);
                 self.edit_x_coord = None;
-                CmdAction::Edit
+                EventAction::Edit
             }
             Action::Move(index, x_coord) => {
                 self.selection.set_edit_index(index);
@@ -931,7 +931,7 @@ impl Editor {
                 }
                 self.edit_x_coord = x_coord;
                 cx.redraw();
-                CmdAction::Cursor
+                EventAction::Cursor
             }
             Action::UndoRedo(redo) => {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
@@ -939,9 +939,9 @@ impl Editor {
                         self.edit_x_coord = None;
                     }
                     self.selection = (*cursor).into();
-                    CmdAction::Edit
+                    EventAction::Edit
                 } else {
-                    CmdAction::Used
+                    EventAction::Used
                 }
             }
         };

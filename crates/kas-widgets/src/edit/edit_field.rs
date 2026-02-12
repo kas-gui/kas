@@ -175,21 +175,21 @@ mod EditField {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
             match self.editor.handle_event(cx, event) {
-                CmdAction::Unused => Unused,
-                CmdAction::Used | CmdAction::Cursor => Used,
-                CmdAction::FocusGained => {
+                EventAction::Unused => Unused,
+                EventAction::Used | EventAction::Cursor => Used,
+                EventAction::FocusGained => {
                     self.guard.focus_gained(&mut self.editor, cx, data);
                     Used
                 }
-                CmdAction::FocusLost => {
+                EventAction::FocusLost => {
                     self.guard.focus_lost(&mut self.editor, cx, data);
                     Used
                 }
-                CmdAction::Activate(code) => {
+                EventAction::Activate(code) => {
                     cx.depress_with_key(&self, code);
                     self.guard.activate(&mut self.editor, cx, data)
                 }
-                CmdAction::Edit => {
+                EventAction::Edit => {
                     self.call_guard_edit(cx, data);
                     Used
                 }
