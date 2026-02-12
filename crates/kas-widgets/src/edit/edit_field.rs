@@ -60,14 +60,14 @@ mod EditField {
     ///
     /// This is a [`Viewport`] widget.
     #[autoimpl(Debug where G: trait)]
-    #[autoimpl(Deref, DerefMut using self.editor)]
+    #[autoimpl(Deref<Target = Editor>, DerefMut using self.editor)]
     #[widget]
     #[layout(self.editor)]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
         width: (f32, f32),
         lines: (f32, f32),
-        editor: Editor,
+        editor: Component,
         /// The associated [`EditGuard`] implementation
         pub guard: G,
     }
@@ -76,13 +76,14 @@ mod EditField {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
-                let dpem = cx.dpem(self.text.class());
+                let dpem = cx.dpem(self.text().class());
                 min = (self.width.0 * dpem).cast_ceil();
                 ideal = (self.width.1 * dpem).cast_ceil();
             } else if let Some(width) = axis.other() {
                 // Use the height of the first line as a reference
                 let height = self
-                    .text
+                    .editor
+                    .text_mut()
                     .measure_height(width.cast(), std::num::NonZero::new(1));
                 min = (self.lines.0 * height).cast_ceil();
                 ideal = (self.lines.1 * height).cast_ceil();
@@ -136,7 +137,7 @@ mod EditField {
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::TextInput {
-                text: self.text.as_str(),
+                text: self.text().as_str(),
                 multi_line: self.multi_line(),
                 cursor: self.cursor_range(),
             }
@@ -230,7 +231,7 @@ mod EditField {
                 core: Default::default(),
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
-                editor: Editor::new(),
+                editor: Component::default(),
                 guard,
             }
         }
@@ -257,7 +258,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
         EditField {
-            editor: Editor::from(text),
+            editor: Component::from(text),
             ..Default::default()
         }
     }
@@ -333,11 +334,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
-        let text = text.to_string();
-        let len = text.len();
-        self.text.set_string(text);
-        self.selection.set_cursor(len);
+        self.editor = self.editor.with_text(text);
         self
     }
 
@@ -358,7 +355,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
-        self.text.set_wrap(multi_line);
+        self.editor.text_mut().set_wrap(multi_line);
         self.lines = match multi_line {
             false => (1.0, 1.0),
             true => (4.0, 7.0),
@@ -370,7 +367,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_class(mut self, class: TextClass) -> Self {
-        self.text.set_class(class);
+        self.editor.text_mut().set_class(class);
         self
     }
 

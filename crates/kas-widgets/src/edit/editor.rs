@@ -16,7 +16,30 @@ use kas::util::UndoStack;
 use std::borrow::Cow;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
+/// Text editor
+///
+/// This is not a widget; use for example [`EditBox`] or [`EditField`] instead.
+#[autoimpl(Debug)]
+pub struct Editor {
+    // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
+    id: Id,
+    editable: bool,
+    text: Text<String>,
+    selection: SelectionHelper,
+    edit_x_coord: Option<f32>,
+    last_edit: Option<EditOp>,
+    undo_stack: UndoStack<(String, CursorRange)>,
+    has_key_focus: bool,
+    current: CurrentAction,
+    error_state: bool,
+    error_message: Option<Cow<'static, str>>,
+    input_handler: TextInput,
+}
+
 /// Editor component
+///
+/// This is a component used to implement an editor widget. It is used, for
+/// example, in [`EditField`].
 ///
 /// ### Special behaviour
 ///
@@ -30,23 +53,10 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug)]
-pub struct Editor {
-    // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
-    id: Id,
-    editable: bool,
-    pub(super) text: Text<String>,
-    pub(super) selection: SelectionHelper,
-    edit_x_coord: Option<f32>,
-    last_edit: Option<EditOp>,
-    undo_stack: UndoStack<(String, CursorRange)>,
-    has_key_focus: bool,
-    pub(super) current: CurrentAction,
-    error_state: bool,
-    error_message: Option<Cow<'static, str>>,
-    pub(super) input_handler: TextInput,
-}
+#[autoimpl(Deref, DerefMut using self.0)]
+pub struct Component(Editor);
 
-impl Layout for Editor {
+impl Layout for Component {
     #[inline]
     fn rect(&self) -> Rect {
         self.text.rect()
@@ -71,12 +81,10 @@ impl Layout for Editor {
     }
 }
 
-/// API for use by `EditField`
-impl Editor {
-    /// Construct a default instance (empty string)
+impl Default for Component {
     #[inline]
-    pub(super) fn new() -> Self {
-        Editor {
+    fn default() -> Self {
+        Component(Editor {
             id: Id::default(),
             editable: true,
             text: Text::new(String::new(), TextClass::Editor, false),
@@ -89,19 +97,50 @@ impl Editor {
             error_state: false,
             error_message: None,
             input_handler: Default::default(),
-        }
+        })
     }
+}
 
-    /// Construct from a string
+impl<S: ToString> From<S> for Component {
     #[inline]
-    pub(super) fn from<S: ToString>(text: S) -> Self {
+    fn from(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
-        Editor {
+        Component(Editor {
             text: Text::new(text, TextClass::Editor, false),
             selection: SelectionHelper::from(len),
-            ..Editor::new()
-        }
+            ..Self::default().0
+        })
+    }
+}
+
+impl Component {
+    /// Access text
+    #[inline]
+    pub fn text(&self) -> &Text<String> {
+        &self.text
+    }
+
+    /// Access text (mut)
+    ///
+    /// It is left to the wrapping widget to ensure this is not mis-used.
+    #[inline]
+    pub fn text_mut(&mut self) -> &mut Text<String> {
+        &mut self.text
+    }
+
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `Editor`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
+        let text = text.to_string();
+        let len = text.len();
+        self.text.set_string(text);
+        self.selection.set_cursor(len);
+        self
     }
 
     /// Configure component
@@ -112,7 +151,7 @@ impl Editor {
     }
 
     /// Implementation of [`Viewport::content_size`]
-    pub(super) fn content_size(&self) -> Size {
+    pub fn content_size(&self) -> Size {
         if let Ok((tl, br)) = self.text.bounding_box() {
             (br - tl).cast_ceil()
         } else {
@@ -121,7 +160,7 @@ impl Editor {
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
-    pub(super) fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+    pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
         let pos = self.rect().pos - offset;
 
         if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
@@ -154,7 +193,7 @@ impl Editor {
     }
 
     /// Handle an event
-    pub(super) fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> CmdAction {
+    pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> CmdAction {
         match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
                 if !self.input_handler.is_selecting() {
@@ -373,7 +412,7 @@ impl Editor {
                     CmdAction::Used
                 }
             }
-            event => match self.input_handler.handle(cx, self.id.clone(), event) {
+            event => match self.0.input_handler.handle(cx, self.0.id.clone(), event) {
                 TextInputAction::Used => CmdAction::Used,
                 TextInputAction::Unused => CmdAction::Unused,
                 TextInputAction::PressStart {
@@ -391,7 +430,7 @@ impl Editor {
                     self.set_cursor_from_coord(cx, coord);
                     self.selection.set_anchor(clear);
                     if repeats > 1 {
-                        self.selection.expand(&self.text, repeats >= 3);
+                        self.0.selection.expand(&self.0.text, repeats >= 3);
                     }
 
                     self.request_key_focus(cx, FocusSource::Pointer);
@@ -401,7 +440,7 @@ impl Editor {
                     if self.current == CurrentAction::Selection {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
-                            self.selection.expand(&self.text, repeats >= 3);
+                            self.0.selection.expand(&self.0.text, repeats >= 3);
                         }
                     }
 
@@ -427,7 +466,9 @@ impl Editor {
             },
         }
     }
+}
 
+impl Editor {
     /// Cancel on-going selection and IME actions
     ///
     /// This should be called if e.g. key-input interrupts the current
@@ -965,6 +1006,12 @@ impl Editor {
     #[inline]
     pub fn id(&self) -> Id {
         self.id.clone()
+    }
+
+    /// Access the text object
+    #[inline]
+    pub fn text(&self) -> &Text<String> {
+        &self.text
     }
 
     /// Get text contents
