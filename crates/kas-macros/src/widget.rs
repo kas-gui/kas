@@ -723,6 +723,14 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
                 modify_draw(f, &quote! { &#core_path });
             }
+
+            if viewport_impl.is_some() {
+                let span = layout_impl.items[*index].span();
+                emit_error!(
+                    span,
+                    "Viewport widgets should implement draw_with_offset instead"
+                );
+            }
         } else if let Some(method) = fn_draw {
             layout_impl.items.push(Verbatim(method));
         }
@@ -828,6 +836,13 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 emit_error!(
                     span2, "implementation conflicts with fn try_probe";
                     note = span => "this implementation overrides fn probe"
+                );
+            }
+            if viewport_impl.is_some() {
+                let span = tile_impl.items[*index].span();
+                emit_error!(
+                    span,
+                    "Viewport widgets should implement try_probe_with_offset instead"
                 );
             }
         } else if let Some(method) = fn_try_probe {

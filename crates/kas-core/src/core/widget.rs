@@ -194,16 +194,11 @@ pub trait Widget: Tile {
 /// through which content may be viewed (approximately: see
 /// [`Self::draw_with_offset`]).
 ///
-/// If the parent widget supports scrolling over contents implementing
-/// `Viewport`, it should call [`Viewport::draw_with_offset`] instead of
-/// [`Layout::draw`].
-///
-/// It is intended that the widget implementing this trait is the child of some
-/// parent widget which supports scrolling through event handling and provision
-/// of a scroll offset, and that this parent uses the methods of this trait
-/// where applicable (see below). In case the parent does not support scrolling,
-/// the widget should remain usable (but with only a subset of content being
-/// accessible).
+/// It is intended that the parent of a `Viewport` widget use the trait methods
+/// to support scrolling of contents (see each method's documentation).
+/// If instead a `Viewport` widget is a child of a parent which doesn't handle
+/// scrolling, it should behave like a normal widget except that its size may
+/// be too small to view all of its content.
 pub trait Viewport: Widget {
     /// Get content size
     ///
@@ -296,11 +291,19 @@ pub trait Viewport: Widget {
     ///
     /// This method should be called instead of [`Tile::try_probe`].
     ///
+    /// ## Call order
+    ///
+    /// It is expected that [`Layout::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    ///
     /// # Implementation
     ///
-    /// The default implementation will normally suffice. It calls
-    /// [`Events::probe`] with `coord + offset` when
-    /// `self.rect().contains(coord)`.
+    /// In most cases widgets should implement
+    /// [`Events::probe`] instead; the `#[widget]` macro can
+    /// use it to implement `try_probe_with_offset` as follows:
+    /// ```ignore
+    /// self.rect().contains(coord).then(|| ::kas::Events::probe(self, coord + offset))
+    /// ```
     fn try_probe_with_offset(&self, coord: Coord, offset: Offset) -> Option<Id> {
         let _ = (coord, offset);
         unimplemented!() // make rustdoc show that this is a provided method
