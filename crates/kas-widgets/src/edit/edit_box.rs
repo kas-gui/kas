@@ -13,7 +13,6 @@ use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, TextClass};
 use std::fmt::{Debug, Display};
-use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 #[impl_self]
@@ -35,6 +34,7 @@ mod EditBox {
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[autoimpl(Default, Debug where G: trait)]
+    #[autoimpl(Deref<Target = Editor>, DerefMut using self.inner)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
@@ -120,7 +120,7 @@ mod EditBox {
     impl Tile for Self {
         #[inline]
         fn tooltip(&self) -> Option<&str> {
-            self.deref().error_message()
+            self.error_message()
         }
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
@@ -302,20 +302,6 @@ mod EditBox {
         pub fn guard_mut(&mut self) -> &mut G {
             &mut self.inner.guard
         }
-    }
-}
-
-impl<G: EditGuard> Deref for EditBox<G> {
-    type Target = Editor;
-
-    fn deref(&self) -> &Editor {
-        self.inner.deref()
-    }
-}
-
-impl<G: EditGuard> DerefMut for EditBox<G> {
-    fn deref_mut(&mut self) -> &mut Editor {
-        self.inner.deref_mut()
     }
 }
 
