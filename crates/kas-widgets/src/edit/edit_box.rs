@@ -23,7 +23,7 @@ mod EditBox {
     /// See also notes on [`EditField`].
     ///
     /// By default, the editor supports a single-line only;
-    /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
+    /// [`Self::with_multi_line`] can be used to change this.
     ///
     /// ### Messages
     ///
@@ -398,11 +398,8 @@ impl<G: EditGuard> EditBox<G> {
 
     /// Set whether this `EditBox` uses multi-line mode
     ///
-    /// This setting has two effects: the vertical size allocation is increased
-    /// and wrapping is enabled if true. Default: false.
-    ///
-    /// This method is ineffective if the text class is set by
-    /// [`Self::with_class`] to anything other than [`TextClass::Editor`].
+    /// This affects the (vertical) size allocation, alignment, text wrapping
+    /// and whether the <kbd>Enter</kbd> key may instert a line break.
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {

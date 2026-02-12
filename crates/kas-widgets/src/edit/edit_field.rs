@@ -21,7 +21,7 @@ mod EditField {
     /// is a component of `EditBox` and has some special behaviour.
     ///
     /// By default, the editor supports a single-line only;
-    /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
+    /// [`Self::with_multi_line`] can be used to change this.
     ///
     /// ### Event handling
     ///
@@ -348,10 +348,8 @@ impl<G: EditGuard> EditField<G> {
 
     /// Set whether this `EditField` uses multi-line mode
     ///
-    /// This method does two things:
-    ///
-    /// -   Changes the text class (see [`Self::with_class`])
-    /// -   Changes the vertical height allocation (see [`Self::with_lines`])
+    /// This affects the (vertical) size allocation, alignment, text wrapping
+    /// and whether the <kbd>Enter</kbd> key may instert a line break.
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
