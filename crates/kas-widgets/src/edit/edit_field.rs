@@ -158,8 +158,7 @@ mod EditField {
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            self.editor.id = self.id();
-            self.text.configure(&mut cx.size_cx());
+            self.editor.configure(cx);
             self.guard.configure(&mut self.editor, cx);
         }
 
@@ -197,7 +196,7 @@ mod EditField {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &G::Data) {
-            if !self.editable {
+            if !self.is_editable() {
                 return;
             }
 
@@ -266,7 +265,9 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
     /// Construct a read-only `EditField` displaying some `String` value
     #[inline]
     pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditField<StringGuard<A>> {
-        EditField::new(StringGuard::new(value_fn)).with_editable(false)
+        let mut field = EditField::new(StringGuard::new(value_fn));
+        field.set_editable(false);
+        field
     }
 
     /// Construct an `EditField` for a parsable value (e.g. a number)
@@ -320,7 +321,7 @@ impl<A: 'static> EditField<StringGuard<A>> {
         M: Debug + 'static,
     {
         self.guard = self.guard.with_msg(msg_fn);
-        self.editable = true;
+        self.set_editable(true);
         self
     }
 }
@@ -344,7 +345,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_editable(mut self, editable: bool) -> Self {
-        self.editable = editable;
+        self.set_editable(editable);
         self
     }
 

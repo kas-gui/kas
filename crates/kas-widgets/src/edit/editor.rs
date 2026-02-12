@@ -32,8 +32,8 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 #[autoimpl(Debug)]
 pub struct Editor {
     // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
-    pub(super) id: Id,
-    pub(super) editable: bool,
+    id: Id,
+    editable: bool,
     pub(super) text: Text<String>,
     pub(super) selection: SelectionHelper,
     edit_x_coord: Option<f32>,
@@ -102,6 +102,13 @@ impl Editor {
             selection: SelectionHelper::from(len),
             ..Editor::new()
         }
+    }
+
+    /// Configure component
+    #[inline]
+    pub fn configure(&mut self, cx: &mut ConfigCx) {
+        self.id = self.id();
+        self.text.configure(&mut cx.size_cx());
     }
 
     /// Implementation of [`Viewport::content_size`]
