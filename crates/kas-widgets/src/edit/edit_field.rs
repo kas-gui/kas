@@ -131,7 +131,7 @@ mod EditField {
 
         #[inline]
         fn tooltip(&self) -> Option<&str> {
-            self.editor.tooltip()
+            self.editor.error_message()
         }
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {

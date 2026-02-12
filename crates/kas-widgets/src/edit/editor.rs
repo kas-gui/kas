@@ -545,15 +545,6 @@ impl Editor {
         }
     }
 
-    pub(super) fn clear_error(&mut self) {
-        self.error_state = false;
-        self.error_message = None;
-    }
-
-    pub(super) fn tooltip(&self) -> Option<&str> {
-        self.error_message.as_deref()
-    }
-
     /// Call before an edit to (potentially) commit current state based on last_edit
     ///
     /// Call with [`None`] to force commit of any uncommitted changes.
@@ -1126,6 +1117,18 @@ impl Editor {
     #[inline]
     pub fn has_error(&self) -> bool {
         self.error_state
+    }
+
+    /// Get the error message, if any
+    #[inline]
+    pub fn error_message(&self) -> Option<&str> {
+        self.error_message.as_deref()
+    }
+
+    /// Clear the error state
+    pub fn clear_error(&mut self) {
+        self.error_state = false;
+        self.error_message = None;
     }
 
     /// Mark the input as erroneous with an optional message

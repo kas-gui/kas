@@ -120,7 +120,7 @@ mod EditBox {
     impl Tile for Self {
         #[inline]
         fn tooltip(&self) -> Option<&str> {
-            self.deref().tooltip()
+            self.deref().error_message()
         }
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
