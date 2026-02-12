@@ -9,7 +9,6 @@ use super::*;
 use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
-use kas::text::{Effect, EffectFlags};
 use kas::theme::TextClass;
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
@@ -116,43 +115,12 @@ mod EditField {
     impl Viewport for Self {
         #[inline]
         fn content_size(&self) -> Size {
-            if let Ok((tl, br)) = self.text.bounding_box() {
-                (br - tl).cast_ceil()
-            } else {
-                Size::ZERO
-            }
+            self.editor.content_size()
         }
 
+        #[inline]
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            let pos = self.rect().pos - offset;
-
-            if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
-                // TODO: combine underline with selection highlight
-                let effects = [
-                    Effect {
-                        start: 0,
-                        e: 0,
-                        flags: Default::default(),
-                    },
-                    Effect {
-                        start: edit_range.start,
-                        e: 0,
-                        flags: EffectFlags::UNDERLINE,
-                    },
-                    Effect {
-                        start: edit_range.end,
-                        e: 0,
-                        flags: Default::default(),
-                    },
-                ];
-                draw.text_with_effects(pos, rect, &self.text, &[], &effects);
-            } else {
-                draw.text_with_selection(pos, rect, &self.text, self.selection.range());
-            }
-
-            if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {
-                draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
-            }
+            self.editor.draw_with_offset(draw, rect, offset);
         }
     }
 

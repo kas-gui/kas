@@ -10,7 +10,7 @@ use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::{CursorRange, NotReady, SelectionHelper};
+use kas::text::{CursorRange, Effect, EffectFlags, NotReady, SelectionHelper};
 use kas::theme::{Text, TextClass};
 use kas::util::UndoStack;
 use std::borrow::Cow;
@@ -24,6 +24,11 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 /// allocation required to display its current text contents. The wrapping
 /// widget may wish to reserve extra space, use a higher stretch policy and
 /// potentially also set an alignment hint.
+///
+/// The wrapping widget may (optionally) wish to implement [`Viewport`] to
+/// support scrolling of text content. Since this component is not a widget it
+/// cannot implement [`Viewport`] directly, but it does provide the following
+/// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug)]
 pub struct Editor {
     // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
@@ -64,7 +69,7 @@ impl Layout for Editor {
 
     #[inline]
     fn draw(&self, draw: DrawCx) {
-        self.text.draw(draw);
+        self.draw_with_offset(draw, self.rect(), Offset::ZERO);
     }
 }
 
@@ -99,6 +104,48 @@ impl Editor {
             text: Text::new(text, TextClass::Editor, false),
             selection: SelectionHelper::from(len),
             ..Editor::new()
+        }
+    }
+
+    /// Implementation of [`Viewport::content_size`]
+    pub(super) fn content_size(&self) -> Size {
+        if let Ok((tl, br)) = self.text.bounding_box() {
+            (br - tl).cast_ceil()
+        } else {
+            Size::ZERO
+        }
+    }
+
+    /// Implementation of [`Viewport::draw_with_offset`]
+    pub(super) fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+        let pos = self.rect().pos - offset;
+
+        if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
+            // TODO: combine underline with selection highlight
+            let effects = [
+                Effect {
+                    start: 0,
+                    e: 0,
+                    flags: Default::default(),
+                },
+                Effect {
+                    start: edit_range.start,
+                    e: 0,
+                    flags: EffectFlags::UNDERLINE,
+                },
+                Effect {
+                    start: edit_range.end,
+                    e: 0,
+                    flags: Default::default(),
+                },
+            ];
+            draw.text_with_effects(pos, rect, &self.text, &[], &effects);
+        } else {
+            draw.text_with_selection(pos, rect, &self.text, self.selection.range());
+        }
+
+        if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {
+            draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
         }
     }
 
