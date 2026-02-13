@@ -145,8 +145,8 @@ impl Component {
 
     /// Configure component
     #[inline]
-    pub fn configure(&mut self, cx: &mut ConfigCx) {
-        self.id = self.id();
+    pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
+        self.id = id;
         self.text.configure(&mut cx.size_cx());
     }
 

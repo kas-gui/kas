@@ -159,7 +159,7 @@ mod EditField {
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            self.editor.configure(cx);
+            self.editor.configure(cx, self.id());
             self.guard.configure(&mut self.editor, cx);
         }
 
