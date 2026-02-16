@@ -11,7 +11,7 @@ Simplest examples
 
 A simple custom message box.
 
-![Hello](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/hello.png)
+![Hello](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/hello.png)
 
 ### Counter
 
@@ -19,25 +19,25 @@ A simple custom message box.
 
 **Variant:** `sync-counter` opens two windows with a synchronised counter.
 
-![Counter](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/counter.png)
+![Counter](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/counter.png)
 
 ### Cursors
 
 Curious what each mouse cursor available on your desktop (via winit) looks like?
 
-![Cursors](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/cursors.png)
+![Cursors](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/cursors.png)
 
 ### Layout
 
 Demonstration of complex layout and multi-paragraph text.
 
-![Layout](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/layout.png)
+![Layout](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/layout.png)
 
 ### Splitter
 
 Demonstrates resizable panes.
 
-![Splitter](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/splitter.png)
+![Splitter](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/splitter.png)
 
 
 More complex examples
@@ -47,13 +47,13 @@ More complex examples
 
 A simple calculator show-casing the grid layout and keyboard support.
 
-![Calculator](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/calculator.png)
+![Calculator](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/calculator.png)
 
 ### Stopwatch
 
 Ready? Set! Go!
 
-![Stopwatch](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/stopwatch.png)
+![Stopwatch](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/stopwatch.png)
 
 ### Sync-counter
 
@@ -62,16 +62,15 @@ A variant of [Counter](#Counter), demonstrating multiple windows and the
 
 ### Clock
 
-A simple clock. An example of a custom widget using mid-level draw routines and
-timer updates.
+A simple clock. This is example uses mid-level drawing routines over a transparent window.
 
-![Clock](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/clock.png)
+![Clock](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/clock.png)
 
 ### Times-tables
 
 A simple demonstration of the `GridView` widget.
 
-![Times-tables](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/times-tables.png)
+![Times-tables](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/times-tables.png)
 
 ### Data list
 
@@ -86,13 +85,13 @@ same UI, but different internals:
     performance is thus independent of the number of entries (though length is
     still limited by the maximum possible scroll offset; see issue #222)
 
-![Data list](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/data-list.png)
+![Data list](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/data-list.png)
 
 ### Proxy
 
 Demonstrates updating the UI in response to events from a background thread.
 
-![Async-event](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/async-event.png)
+![Async-event](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/async-event.png)
 
 
 Most-complex examples
@@ -102,14 +101,14 @@ Most-complex examples
 
 A testbed demoing most widgets, animations, data models, canvas and configuration.
 
-![Gallery](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/gallery.png)
-![Gallery](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/video/gallery.apng)
+![Gallery](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/gallery.png)
+![Gallery](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/gallery-config.png)
 
 ### Mandlebrot
 
 GPU-accelerated fractals via a custom embedded WGPU graphics pipeline.
 
-![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/mandlebrot.png)
+![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/mandlebrot.png)
 
 
 Tools
