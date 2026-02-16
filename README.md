@@ -16,16 +16,23 @@ The Kas GUI system strives to be both fast and follow Alan Kay's slogan:
 
 > Simple things should be simple, complex things should be possible.
 
+<table>
+<tr><td>
 An excerpt from examples/hello.rs:
-```rust
+<pre lang="rust"><code>
 let hello_ui = column![
     "Hello, world!",
     Button::label("&Close").with(|cx, _| cx.exit())
 ];
-```
+</code></pre>
+</td><td>
+<img src="https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/hello.png" alt="Hello">
+</td></tr>
+</table>
 
 An excerpt from examples/counter.rs:
-```rust
+<!-- NOTE: GitHub messes up the indentation and empty lines if the following code is embedded in a table. -->
+<pre lang="rust"><code>
 #[derive(Clone, Debug)]
 struct Increment(i32);
 
@@ -42,7 +49,8 @@ fn counter() -> impl Widget<Data = ()> {
     tree.with_state(0)
         .on_message(|_, count, Increment(add)| *count += add)
 }
-```
+</code></pre>
+![Counter](https://github.com/kas-gui/data-dump/blob/master/kas_0_17/image/counter.png)
 
 On the more complex end, custom widgets can be fairly complex; check the Kas
 widget library (including source code) for examples.
