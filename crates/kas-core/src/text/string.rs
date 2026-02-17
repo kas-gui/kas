@@ -11,8 +11,8 @@
 
 use crate::cast::Conv;
 use crate::event::Key;
-use crate::text::format::{FontToken, FormattableText};
-use crate::text::{Effect, EffectFlags, fonts::FontSelector};
+use crate::text::fonts::FontSelector;
+use crate::text::format::{Effect, EffectFlags, FontToken, FormattableText};
 
 /// An access key string
 ///

@@ -15,7 +15,7 @@ use crate::cast::Cast;
 use crate::geom::{Rect, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules, Stretch};
 use crate::text::fonts::FontSelector;
-use crate::text::format::FormattableText;
+use crate::text::format::{Effect, FormattableText};
 use crate::text::*;
 use std::num::NonZeroUsize;
 

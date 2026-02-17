@@ -18,7 +18,7 @@ use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Size, Vec2};
 use kas::runner::{GraphicsFeatures, RunError};
-use kas::text::{Effect, TextDisplay};
+use kas::text::{TextDisplay, format::Effect};
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct

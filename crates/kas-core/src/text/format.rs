@@ -5,9 +5,33 @@
 
 //! Formatted text traits and types
 
-use super::Effect;
 use super::fonts::FontSelector;
-pub use kas_text::format::*;
+pub use kas_text::format::FontToken;
+
+/// Effect formatting marker
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Effect {
+    /// User-specified value
+    ///
+    /// Usage is not specified by `kas-text`, but typically this field will be
+    /// used as an index into a colour palette or not used at all.
+    pub color: u16,
+    /// Effect flags
+    pub flags: EffectFlags,
+}
+
+bitflags::bitflags! {
+    /// Text effects
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    pub struct EffectFlags: u16 {
+        /// Glyph is underlined
+        const UNDERLINE = 1 << 0;
+        /// Glyph is crossed through by a center-line
+        const STRIKETHROUGH = 1 << 1;
+    }
+}
 
 /// Text, optionally with formatting data
 pub trait FormattableText: std::cmp::PartialEq {
@@ -47,19 +71,52 @@ pub trait FormattableText: std::cmp::PartialEq {
     fn effect_tokens(&self) -> &[(u32, Effect)];
 }
 
-impl<T: kas_text::format::FormattableText> FormattableText for T {
+impl FormattableText for str {
     #[inline]
     fn as_str(&self) -> &str {
-        self.as_str()
+        self
     }
 
     #[inline]
     fn font_tokens(&self, dpem: f32, font: FontSelector) -> impl Iterator<Item = FontToken> {
-        self.font_tokens(dpem, font)
+        let start = 0;
+        std::iter::once(FontToken { start, dpem, font })
     }
 
     #[inline]
     fn effect_tokens(&self) -> &[(u32, Effect)] {
-        self.effect_tokens()
+        &[]
+    }
+}
+
+impl FormattableText for String {
+    #[inline]
+    fn as_str(&self) -> &str {
+        self
+    }
+
+    #[inline]
+    fn font_tokens(&self, dpem: f32, font: FontSelector) -> impl Iterator<Item = FontToken> {
+        let start = 0;
+        std::iter::once(FontToken { start, dpem, font })
+    }
+
+    #[inline]
+    fn effect_tokens(&self) -> &[(u32, Effect)] {
+        &[]
+    }
+}
+
+impl<F: FormattableText + ?Sized> FormattableText for &F {
+    fn as_str(&self) -> &str {
+        F::as_str(self)
+    }
+
+    fn font_tokens(&self, dpem: f32, font: FontSelector) -> impl Iterator<Item = FontToken> {
+        F::font_tokens(self, dpem, font)
+    }
+
+    fn effect_tokens(&self) -> &[(u32, Effect)] {
+        F::effect_tokens(self)
     }
 }

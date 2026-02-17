@@ -9,7 +9,7 @@ use super::{AnimationState, color::Rgba};
 #[allow(unused)] use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState, WindowCommon};
 use crate::geom::{Offset, Quad, Rect, Vec2};
-use crate::text::{Effect, TextDisplay};
+use crate::text::{TextDisplay, format::Effect};
 use std::any::Any;
 use std::time::Instant;
 

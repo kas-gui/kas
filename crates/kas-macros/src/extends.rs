@@ -87,7 +87,7 @@ impl Methods {
                 rect: Rect,
                 text: &TextDisplay,
                 colors: &[Rgba],
-                effects: &[(u32, ::kas::text::Effect)],
+                effects: &[(u32, ::kas::text::format::Effect)],
             ) {
                 (#base).text_effects(id, pos, rect, text, colors, effects);
             }

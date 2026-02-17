@@ -14,7 +14,7 @@ use crate::draw::{Draw, DrawIface, DrawRounded, DrawShared, DrawSharedImpl, Imag
 use crate::event::EventState;
 #[allow(unused)] use crate::event::{Command, ConfigCx};
 use crate::geom::{Coord, Offset, Rect};
-use crate::text::{Effect, TextDisplay, format::FormattableText};
+use crate::text::{TextDisplay, format::Effect, format::FormattableText};
 use crate::theme::ColorsLinear;
 use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};

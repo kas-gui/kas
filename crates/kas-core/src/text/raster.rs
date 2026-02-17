@@ -14,8 +14,9 @@ use kas::cast::traits::*;
 use kas::config::RasterConfig;
 use kas::draw::{AllocError, Allocation, PassId, color::Rgba};
 use kas::geom::{Quad, Vec2};
+use kas::text::format::{Effect, EffectFlags};
 use kas_text::fonts::{self, FaceId};
-use kas_text::{Effect, EffectFlags, Glyph, GlyphId, TextDisplay};
+use kas_text::{Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
 use swash::zeno::Format;
 
@@ -512,7 +513,7 @@ impl State {
         text: &TextDisplay,
         col: Rgba,
     ) {
-        for run in text.runs(pos.into(), &[]) {
+        for run in text.runs::<()>(pos.into(), &[]) {
             let face = run.face_id();
             let dpem = run.dpem();
             for glyph in run.glyphs() {

@@ -10,7 +10,7 @@ use super::{DrawImpl, PassId};
 use crate::ActionRedraw;
 use crate::config::RasterConfig;
 use crate::geom::{Quad, Size, Vec2};
-use crate::text::{Effect, TextDisplay};
+use crate::text::{TextDisplay, format::Effect};
 use std::any::Any;
 use std::num::NonZeroU32;
 use std::sync::Arc;
