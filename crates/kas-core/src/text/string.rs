@@ -105,8 +105,8 @@ impl FormattableText for AccessString {
     }
 
     #[inline]
-    fn font_tokens(&self, _: f32, _: FontSelector) -> impl Iterator<Item = FontToken> {
-        std::iter::empty()
+    fn font_tokens(&self, dpem: f32, font: FontSelector) -> impl Iterator<Item = FontToken> {
+        std::iter::once(FontToken { start: 0, dpem, font })
     }
 
     fn effect_tokens(&self) -> &[(u32, Effect)] {

@@ -448,9 +448,16 @@ impl<T: FormattableText> Text<T> {
         match self.status {
             Status::New => self
                 .display
-                .prepare_runs(&self.text, self.direction, self.font, self.dpem)
+                .prepare_runs(
+                    self.text.as_str(),
+                    self.direction,
+                    self.text.font_tokens(self.dpem, self.font),
+                )
                 .expect("no suitable font found"),
-            Status::ResizeLevelRuns => self.display.resize_runs(&self.text, self.font, self.dpem),
+            Status::ResizeLevelRuns => self.display.resize_runs(
+                self.text.as_str(),
+                self.text.font_tokens(self.dpem, self.font),
+            ),
             _ => return,
         }
 
