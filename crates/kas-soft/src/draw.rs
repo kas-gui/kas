@@ -186,7 +186,7 @@ impl DrawSharedImpl for Shared {
         bb: Quad,
         text: &text::TextDisplay,
         colors: &[color::Rgba],
-        effects: &[text::Effect],
+        effects: &[(u32, text::Effect)],
     ) {
         let time = std::time::Instant::now();
         self.text.text_effects(

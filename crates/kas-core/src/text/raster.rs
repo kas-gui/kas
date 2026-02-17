@@ -543,14 +543,14 @@ impl State {
         bb: Quad,
         text: &TextDisplay,
         colors: &[Rgba],
-        effects: &[Effect],
+        effects: &[(u32, Effect)],
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
         // Optimisation: use cheaper TextDisplay::runs method
         if effects.len() <= 1
             && effects
                 .first()
-                .map(|e| e.flags == Default::default())
+                .map(|e| e.1.flags == Default::default())
                 .unwrap_or(true)
         {
             let col = colors.first().cloned().unwrap_or(Rgba::BLACK);

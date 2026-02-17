@@ -343,16 +343,16 @@ impl<'a> DrawCx<'a> {
         rect: Rect,
         display: &TextDisplay,
         colors: &[Rgba],
-        effects: &[Effect],
+        effects: &[(u32, Effect)],
     ) {
         if cfg!(debug_assertions) {
             let num_colors = if colors.is_empty() { 1 } else { colors.len() };
             let mut i = 0;
             for effect in effects {
-                assert!(effect.start >= i);
-                i = effect.start;
+                assert!(effect.0 >= i);
+                i = effect.0;
 
-                assert!(usize::from(effect.color) < num_colors);
+                assert!(usize::from(effect.1.color) < num_colors);
             }
         }
 
@@ -559,7 +559,7 @@ pub trait ThemeDraw {
         rect: Rect,
         text: &TextDisplay,
         colors: &[Rgba],
-        effects: &[Effect],
+        effects: &[(u32, Effect)],
     );
 
     /// Method used to implement [`DrawCx::text_with_selection`]

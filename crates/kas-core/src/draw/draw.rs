@@ -241,7 +241,7 @@ pub trait Draw {
         bounding_box: Quad,
         text: &TextDisplay,
         colors: &[Rgba],
-        effects: &[Effect],
+        effects: &[(u32, Effect)],
     );
 }
 
@@ -299,7 +299,7 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         bb: Quad,
         text: &TextDisplay,
         colors: &[Rgba],
-        effects: &[Effect],
+        effects: &[(u32, Effect)],
     ) {
         self.shared
             .draw

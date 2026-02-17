@@ -216,6 +216,6 @@ pub trait DrawSharedImpl: Any {
         bb: Quad,
         text: &TextDisplay,
         colors: &[Rgba],
-        effects: &[Effect],
+        effects: &[(u32, Effect)],
     );
 }

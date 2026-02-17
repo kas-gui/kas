@@ -355,7 +355,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         rect: Rect,
         text: &TextDisplay,
         colors: &[Rgba],
-        effects: &[Effect],
+        effects: &[(u32, Effect)],
     ) {
         let bb = Quad::conv(rect);
         let col;
@@ -399,21 +399,18 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         });
 
         let effects = [
-            Effect {
-                start: 0,
+            (0, Effect {
                 color: 0,
                 flags: Default::default(),
-            },
-            Effect {
-                start: range.start.cast(),
+            }),
+            (range.start.cast(), Effect {
                 color: 1,
                 flags: Default::default(),
-            },
-            Effect {
-                start: range.end.cast(),
+            }),
+            (range.end.cast(), Effect {
                 color: 0,
                 flags: Default::default(),
-            },
+            }),
         ];
         let colors = [col, sel_col];
         self.draw.text_effects(pos, bb, text, &colors, &effects);

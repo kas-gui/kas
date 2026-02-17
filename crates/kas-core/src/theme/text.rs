@@ -395,7 +395,7 @@ impl<T: FormattableText> Text<T> {
     /// preferable not to use this method (use a dummy implementation returning
     /// `&[]` and use inherent methods on the text object via [`Text::text`]).
     #[inline]
-    pub fn effect_tokens(&self) -> &[Effect] {
+    pub fn effect_tokens(&self) -> &[(u32, Effect)] {
         self.text.effect_tokens()
     }
 }

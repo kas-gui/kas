@@ -166,21 +166,18 @@ impl Component {
         if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
             // TODO: combine underline with selection highlight
             let effects = [
-                Effect {
-                    start: 0,
+                (0, Effect {
                     color: 0,
                     flags: Default::default(),
-                },
-                Effect {
-                    start: edit_range.start,
+                }),
+                (edit_range.start, Effect {
                     color: 0,
                     flags: EffectFlags::UNDERLINE,
-                },
-                Effect {
-                    start: edit_range.end,
+                }),
+                (edit_range.end, Effect {
                     color: 0,
                     flags: Default::default(),
-                },
+                }),
             ];
             if let Ok(display) = self.text.display() {
                 draw.text_with_effects(pos, rect, display, &[], &effects);

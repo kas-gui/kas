@@ -364,7 +364,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         bb: Quad,
         text: &TextDisplay,
         colors: &[Rgba],
-        effects: &[Effect],
+        effects: &[(u32, Effect)],
     ) {
         let time = std::time::Instant::now();
         self.text.text_effects(
