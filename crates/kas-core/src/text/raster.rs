@@ -15,7 +15,7 @@ use kas::config::RasterConfig;
 use kas::draw::{AllocError, Allocation, PassId, color::Rgba};
 use kas::geom::{Quad, Vec2};
 use kas_text::fonts::{self, FaceId};
-use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
+use kas_text::{Effect, EffectFlags, Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
 use swash::zeno::Format;
 
@@ -561,7 +561,7 @@ impl State {
         for run in text.runs(pos.into(), effects) {
             let face = run.face_id();
             let dpem = run.dpem();
-            let for_glyph = |glyph: Glyph, e: u16| {
+            let for_glyph = |glyph: Glyph, effect: Effect| {
                 let desc = SpriteDescriptor::new(&self.config, face, glyph, dpem);
                 let sprite = match self.glyphs.get(&desc) {
                     Some(sprite) => sprite,
@@ -573,20 +573,47 @@ impl State {
                         }
                     }
                 };
-                let col = colors.get(usize::conv(e)).cloned().unwrap_or(Rgba::BLACK);
+                let col = colors
+                    .get(usize::conv(effect.color))
+                    .cloned()
+                    .unwrap_or(Rgba::BLACK);
                 queue.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 
-            let for_rect = |x1, x2, y: f32, h: f32, e: u16| {
-                let y = y.ceil();
-                let y2 = y + h.ceil();
-                if let Some(quad) = Quad::from_coords(Vec2(x1, y), Vec2(x2, y2)).intersection(&bb) {
-                    let col = colors.get(usize::conv(e)).cloned().unwrap_or(Rgba::BLACK);
-                    draw_quad(quad, col);
+            let sf = run.scaled_face();
+            let for_range = |p: kas_text::Vec2, x2, effect: Effect| {
+                if effect.flags.is_empty() {
+                    return;
+                }
+
+                let p: Vec2 = p.into();
+                let col = colors
+                    .get(usize::conv(effect.color))
+                    .cloned()
+                    .unwrap_or(Rgba::BLACK);
+
+                if effect.flags.contains(EffectFlags::UNDERLINE)
+                    && let Some(metrics) = sf.underline_metrics()
+                {
+                    let a = Vec2(p.0, p.1 - metrics.top.ceil());
+                    let b = Vec2(x2, a.1 + metrics.thickness.ceil());
+                    if let Some(quad) = Quad::from_coords(a, b).intersection(&bb) {
+                        draw_quad(quad, col);
+                    }
+                }
+
+                if effect.flags.contains(EffectFlags::STRIKETHROUGH)
+                    && let Some(metrics) = sf.strikethrough_metrics()
+                {
+                    let a = Vec2(p.0, p.1 - metrics.top.ceil());
+                    let b = Vec2(x2, a.1 + metrics.thickness.ceil());
+                    if let Some(quad) = Quad::from_coords(a, b).intersection(&bb) {
+                        draw_quad(quad, col);
+                    }
                 }
             };
 
-            run.glyphs_with_effects(for_glyph, for_rect);
+            run.glyphs_with_effects(for_glyph, for_range);
         }
     }
 }

@@ -305,7 +305,7 @@ fn editor() -> Page<AppData> {
 Demonstration of *as-you-type* formatting from **Markdown**.
 
 1. Edit below
-2. View the result
+2. View the ~~result~~ _result_
 3. In case of error, be informed
 
 ### Not all Markdown supported
