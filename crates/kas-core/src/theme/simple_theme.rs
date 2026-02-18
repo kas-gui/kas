@@ -399,21 +399,17 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         });
 
         let effects = [
-            (0, Effect {
-                color: 0,
-                flags: Default::default(),
-            }),
+            Default::default(),
             (range.start.cast(), Effect {
                 color: 1,
                 flags: Default::default(),
             }),
-            (range.end.cast(), Effect {
-                color: 0,
-                flags: Default::default(),
-            }),
+            (range.end.cast(), Effect::default()),
         ];
+        let r0 = if range.start > 0 { 0 } else { 1 };
         let colors = [col, sel_col];
-        self.draw.text_effects(pos, bb, text, &colors, &effects);
+        self.draw
+            .text_effects(pos, bb, text, &colors, &effects[r0..]);
     }
 
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {
