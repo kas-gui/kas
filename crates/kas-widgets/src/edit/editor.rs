@@ -161,9 +161,24 @@ impl Component {
 
     /// Implementation of [`Viewport::draw_with_offset`]
     pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-        let pos = self.rect().pos - offset;
+        let Ok(display) = self.text.display() else {
+            return;
+        };
 
-        draw.text_with_selection(pos, rect, &self.text, self.selection.range());
+        let pos = self.rect().pos - offset;
+        let range: Range<u32> = self.selection.range().cast();
+
+        let mut tokens = [(0, format::Colors::default()); 3];
+        let tokens = if range.is_empty() {
+            &[]
+        } else {
+            tokens[1].0 = range.start;
+            tokens[1].1.background = Some(format::Color::default());
+            tokens[2].0 = range.end;
+            let r0 = if range.start > 0 { 0 } else { 1 };
+            &tokens[r0..]
+        };
+        draw.text_with_effects(pos, rect, display, &[], tokens);
 
         if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
             let tokens = [
@@ -175,9 +190,7 @@ impl Component {
                 (edit_range.end, Default::default()),
             ];
             let r0 = if edit_range.start > 0 { 0 } else { 1 };
-            if let Ok(display) = self.text.display() {
-                draw.decorate_text(pos, rect, display, &[], &tokens[r0..]);
-            }
+            draw.decorate_text(pos, rect, display, &[], &tokens[r0..]);
         }
 
         if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {

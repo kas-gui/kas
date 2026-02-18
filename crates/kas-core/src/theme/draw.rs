@@ -18,7 +18,6 @@ use crate::text::{TextDisplay, format, format::FormattableText};
 use crate::theme::ColorsLinear;
 use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
-use std::ops::Range;
 use std::time::Instant;
 
 /// Optional background colour
@@ -348,6 +347,7 @@ impl<'a> DrawCx<'a> {
                 assert!(*start >= i);
                 i = *start;
                 token.color.validate(palette);
+                token.background.map(|bg| bg.validate(palette));
             }
         }
 
@@ -383,29 +383,6 @@ impl<'a> DrawCx<'a> {
             self.h
                 .decorate_text(&self.id, pos, rect, display, palette, decorations);
         }
-    }
-
-    /// Draw some text with a selection
-    ///
-    /// Text is drawn like [`Self::text_with_position`] except that the subset
-    /// identified by `range` is highlighted using theme-defined colors.
-    pub fn text_with_selection<T: FormattableText>(
-        &mut self,
-        pos: Coord,
-        rect: Rect,
-        text: &Text<T>,
-        range: Range<usize>,
-    ) {
-        if range.is_empty() {
-            return self.text_with_position(pos, rect, text);
-        }
-
-        let Ok(display) = text.display() else {
-            return;
-        };
-
-        self.h
-            .text_selected_range(&self.id, pos, rect, display, range);
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -611,16 +588,6 @@ pub trait ThemeDraw {
         decorations: &[(u32, format::Decoration)],
     );
 
-    /// Method used to implement [`DrawCx::text_with_selection`]
-    fn text_selected_range(
-        &mut self,
-        id: &Id,
-        pos: Coord,
-        rect: Rect,
-        text: &TextDisplay,
-        range: Range<usize>,
-    );
-
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
     /// The `text` should be prepared before calling this method.
@@ -690,6 +657,6 @@ mod test {
         let _scale = draw.size_cx().scale_factor();
 
         let text = crate::theme::Text::new("sample", TextClass::Label, false);
-        draw.text_with_selection(Coord::ZERO, Rect::ZERO, &text, 0..6)
+        draw.text(Rect::ZERO, &text)
     }
 }

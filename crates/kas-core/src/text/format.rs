@@ -91,6 +91,17 @@ impl Color {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Colors {
     pub color: Color,
+    pub background: Option<Color>,
+}
+
+impl Colors {
+    /// Resolve the background color, if any
+    pub fn resolve_background_color(self, theme: &ColorsLinear, palette: &[Rgba]) -> Option<Rgba> {
+        self.background.map(|bg| {
+            bg.resolve_palette_color(palette)
+                .unwrap_or(theme.text_sel_bg)
+        })
+    }
 }
 
 /// Decoration types
@@ -239,7 +250,7 @@ impl<F: FormattableText + ?Sized> FormattableText for &F {
 fn sizes() {
     use std::mem::size_of;
 
-    assert_eq!(size_of::<Colors>(), 2);
+    assert_eq!(size_of::<Colors>(), 4);
     assert_eq!(size_of::<DecorationType>(), 1);
     assert_eq!(size_of::<LineStyle>(), 0);
     assert_eq!(size_of::<Decoration>(), 4);

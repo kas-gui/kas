@@ -10,7 +10,7 @@ use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
 use kas::text::SelectionHelper;
-use kas::text::format::FormattableText;
+use kas::text::format::{self, FormattableText};
 use kas::theme::{Text, TextClass};
 
 #[impl_self]
@@ -66,13 +66,26 @@ mod SelectableText {
         }
 
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            let pos = self.rect().pos - offset;
+            let Ok(display) = self.text.display() else {
+                return;
+            };
 
-            if self.selection.is_empty() {
-                draw.text_with_position(pos, rect, &self.text);
+            let pos = self.rect().pos - offset;
+            let range: std::ops::Range<u32> = self.selection.range().cast();
+
+            let mut tokens = [(0, format::Colors::default()); 3];
+            let tokens = if range.is_empty() {
+                &[]
             } else {
-                draw.text_with_selection(pos, rect, &self.text, self.selection.range());
-            }
+                tokens[1].0 = range.start;
+                tokens[1].1.background = Some(format::Color::default());
+                tokens[2].0 = range.end;
+                let r0 = if range.start > 0 { 0 } else { 1 };
+                &tokens[r0..]
+            };
+            draw.text_with_effects(pos, rect, display, &[], tokens);
+
+            draw.decorate_text(pos, rect, display, &[], self.text.decorations());
         }
     }
 

@@ -7,7 +7,6 @@
 
 use std::cell::RefCell;
 use std::f32;
-use std::ops::Range;
 use std::time::Instant;
 
 use super::ColorsSrgb;
@@ -380,46 +379,6 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         let bb = Quad::conv(rect);
         self.draw
             .decorate_text(pos.cast(), bb, text, self.cols, palette, decorations);
-    }
-
-    fn text_selected_range(
-        &mut self,
-        id: &Id,
-        pos: Coord,
-        rect: Rect,
-        text: &TextDisplay,
-        range: Range<usize>,
-    ) {
-        let pos = pos.cast();
-        let bb = Quad::conv(rect);
-        let col = if self.ev.is_disabled(id) {
-            self.cols.text_disabled
-        } else {
-            self.cols.text
-        };
-        let sel_col = self.cols.text_over(self.cols.text_sel_bg);
-
-        // Draw background:
-        text.highlight_range(range.clone(), &mut |p1, p2| {
-            let p1 = Vec2::from(p1);
-            let p2 = Vec2::from(p2);
-            if let Some(quad) = Quad::from_coords(pos + p1, pos + p2).intersection(&bb) {
-                self.draw.rect(quad, self.cols.text_sel_bg);
-            }
-        });
-
-        let tokens = [
-            Default::default(),
-            (range.start.cast(), format::Colors {
-                color: format::Color::from_index(1).unwrap(),
-                ..Default::default()
-            }),
-            (range.end.cast(), format::Colors::default()),
-        ];
-        let r0 = if range.start > 0 { 0 } else { 1 };
-        let palette = [col, sel_col];
-        self.draw
-            .text_effects(pos, bb, text, self.cols, &palette, &tokens[r0..]);
     }
 
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {

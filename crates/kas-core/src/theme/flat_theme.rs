@@ -7,7 +7,6 @@
 
 use std::cell::RefCell;
 use std::f32;
-use std::ops::Range;
 use std::time::Instant;
 
 use super::SimpleTheme;

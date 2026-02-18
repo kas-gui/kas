@@ -104,17 +104,6 @@ impl Methods {
                 (#base).decorate_text(id, pos, rect, text, palette, decorations);
             }
 
-            fn text_selected_range(
-                &mut self,
-                id: &Id,
-                pos: Coord,
-                rect: Rect,
-                text: &TextDisplay,
-                range: Range<usize>,
-            ) {
-                (#base).text_selected_range(id, pos, rect, text, range);
-            }
-
             fn text_cursor(
                 &mut self,
                 id: &Id,

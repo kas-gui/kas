@@ -580,8 +580,17 @@ impl State {
                 queue.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 
-            let sf = run.scaled_face();
-            let for_range = |p: kas_text::Vec2, x2, token: Colors| {};
+            let for_range = |p: kas_text::Vec2, x2, colors: Colors| {
+                let Some(col) = colors.resolve_background_color(theme, palette) else {
+                    return;
+                };
+
+                let a = Vec2(p.0, run.line_top());
+                let b = Vec2(x2, run.line_bottom());
+                if let Some(quad) = Quad::from_coords(a, b).intersection(&bb) {
+                    draw_quad(quad, col);
+                }
+            };
 
             run.glyphs_with_effects(for_glyph, for_range);
         }
