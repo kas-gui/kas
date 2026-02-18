@@ -120,6 +120,16 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
             pass,
         }
     }
+
+    /// Draw text with a colour
+    ///
+    /// Text is drawn from `pos` and clipped to `bounding_box`.
+    ///
+    /// The `text` display must be prepared prior to calling this method.
+    /// Typically this is done using a [`crate::theme::Text`] object.
+    pub fn text(&mut self, pos: Vec2, bounding_box: Quad, text: &TextDisplay, col: Rgba) {
+        self.text_effects(pos, bounding_box, text, &[col], &[]);
+    }
 }
 
 /// Basic draw interface for [`DrawIface`]
@@ -213,21 +223,12 @@ pub trait Draw {
     /// Draw the image in the given `rect`
     fn image(&mut self, id: ImageId, rect: Quad);
 
-    /// Draw text with a colour
-    ///
-    /// Text is drawn from `pos` and clipped to `bounding_box`.
-    ///
-    /// The `text` display must be prepared prior to calling this method.
-    /// Typically this is done using a [`crate::theme::Text`] object.
-    fn text(&mut self, pos: Vec2, bounding_box: Quad, text: &TextDisplay, col: Rgba);
-
     /// Draw text with effects
     ///
     /// Text is drawn from `pos` and clipped to `bounding_box`.
     ///
     /// The `effects` list provides underlining/strikethrough information via
-    /// [`Effect::flags`] and an index [`Effect::e`]. If `effects` is empty,
-    /// this is equivalent to [`Self::text`].
+    /// [`Effect::flags`] and an index [`Effect::e`].
     ///
     /// Text colour lookup uses index `e` and is essentially:
     /// `colors.get(e).unwrap_or(Rgba::BLACK)`.
@@ -290,12 +291,6 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
 
     fn image(&mut self, id: ImageId, rect: Quad) {
         self.shared.draw.draw_image(self.draw, self.pass, id, rect);
-    }
-
-    fn text(&mut self, pos: Vec2, bb: Quad, text: &TextDisplay, col: Rgba) {
-        self.shared
-            .draw
-            .draw_text(self.draw, self.pass, pos, bb, text, col);
     }
 
     fn text_effects(

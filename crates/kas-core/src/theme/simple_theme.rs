@@ -348,18 +348,6 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         }
     }
 
-    fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, color: Option<Rgba>) {
-        let bb = Quad::conv(rect);
-        let col = color.unwrap_or_else(|| {
-            if self.ev.is_disabled(id) {
-                self.cols.text_disabled
-            } else {
-                self.cols.text
-            }
-        });
-        self.draw.text(pos.cast(), bb, text, col);
-    }
-
     fn text_effects(
         &mut self,
         id: &Id,

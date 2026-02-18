@@ -343,25 +343,19 @@ impl<'a> DrawCx<'a> {
         effects: &[Effect],
     ) {
         if let Ok(display) = text.display() {
-            if effects.is_empty() {
-                // Use the faster and simpler implementation when we don't have effects
-                self.h
-                    .text(&self.id, pos, rect, display, colors.first().cloned());
-            } else {
-                if cfg!(debug_assertions) {
-                    let num_colors = if colors.is_empty() { 1 } else { colors.len() };
-                    let mut i = 0;
-                    for effect in effects {
-                        assert!(effect.start >= i);
-                        i = effect.start;
+            if cfg!(debug_assertions) {
+                let num_colors = if colors.is_empty() { 1 } else { colors.len() };
+                let mut i = 0;
+                for effect in effects {
+                    assert!(effect.start >= i);
+                    i = effect.start;
 
-                        assert!(usize::from(effect.e) < num_colors);
-                    }
+                    assert!(usize::from(effect.e) < num_colors);
                 }
-
-                self.h
-                    .text_effects(&self.id, pos, rect, display, colors, effects);
             }
+
+            self.h
+                .text_effects(&self.id, pos, rect, display, colors, effects);
         }
     }
 
@@ -550,19 +544,11 @@ pub trait ThemeDraw {
     /// Draw a selection highlight / frame
     fn selection(&mut self, rect: Rect, style: SelectionStyle);
 
-    /// Draw text
-    ///
-    /// The `text` should be prepared before calling this method.
-    fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, color: Option<Rgba>);
-
     /// Draw text with effects
     ///
-    /// [`ThemeDraw::text`] already supports *font* effects: bold,
-    /// emphasis, text size. In addition, this method supports underline and
-    /// strikethrough effects.
-    ///
-    /// If `effects` is empty or all [`Effect::flags`] are default then it is
-    /// equivalent (and faster) to call [`Self::text`] instead.
+    /// *Font* effects (e.g. bold, italics, text size) must be baked into the
+    /// [`TextDisplay`] during preparation. In contrast, "display" `effects`
+    /// (e.g. color, underline) are applied only when drawing.
     ///
     /// The `text` should be prepared before calling this method.
     fn text_effects(

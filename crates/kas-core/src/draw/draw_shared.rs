@@ -201,22 +201,10 @@ pub trait DrawSharedImpl: Any {
     /// Draw the image in the given `rect`
     fn draw_image(&self, draw: &mut Self::Draw, pass: PassId, id: ImageId, rect: Quad);
 
-    /// Draw text with a colour
-    fn draw_text(
-        &mut self,
-        draw: &mut Self::Draw,
-        pass: PassId,
-        pos: Vec2,
-        bb: Quad,
-        text: &TextDisplay,
-        col: Rgba,
-    );
-
     /// Draw text with effects
     ///
     /// The `effects` list provides underlining/strikethrough information via
-    /// [`Effect::flags`] and an index [`Effect::e`]. If `effects` is empty,
-    /// this is equivalent to [`Self::draw_text`].
+    /// [`Effect::flags`] and an index [`Effect::e`].
     ///
     /// Text colour lookup uses index `e` and is essentially:
     /// `colors.get(e).unwrap_or(Rgba::BLACK)`.
