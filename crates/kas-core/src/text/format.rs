@@ -8,29 +8,49 @@
 use super::fonts::FontSelector;
 pub use kas_text::format::FontToken;
 
-/// Effect formatting marker
+/// Effect formatting marker: text and background color
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Effect {
+pub struct Colors {
     /// User-specified value
     ///
     /// Usage is not specified by `kas-text`, but typically this field will be
     /// used as an index into a colour palette or not used at all.
     pub color: u16,
-    /// Effect flags
-    pub flags: EffectFlags,
 }
 
-bitflags::bitflags! {
-    /// Text effects
-    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    pub struct EffectFlags: u16 {
-        /// Glyph is underlined
-        const UNDERLINE = 1 << 0;
-        /// Glyph is crossed through by a center-line
-        const STRIKETHROUGH = 1 << 1;
-    }
+/// Decoration types
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum DecorationType {
+    /// No decoration
+    #[default]
+    None,
+    /// Glyph is underlined
+    Underline,
+    /// Glyph is crossed through by a center-line
+    Strikethrough,
+}
+
+/// Decoration styles
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum LineStyle {
+    /// A single solid line
+    #[default]
+    Solid,
+}
+
+/// Effect formatting marker: strikethrough and underline decorations
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Decoration {
+    /// Type of decoration
+    pub dec: DecorationType,
+    /// Line style
+    pub style: LineStyle,
+    /// Line color
+    pub color: u16,
 }
 
 /// Text, optionally with formatting data
@@ -56,19 +76,44 @@ pub trait FormattableText: std::cmp::PartialEq {
     /// text since this affects run breaking and font resolution.
     fn font_tokens(&self, dpem: f32, font: FontSelector) -> impl Iterator<Item = FontToken>;
 
-    /// Return the sequence of effect tokens
+    /// Return the sequence of color effect tokens
     ///
-    /// The `effects` sequence may be used for rendering effects: glyph color,
-    /// background color, strike-through, underline. Use `&[]` for no effects
-    /// (effectively using the default value of `Self::Effect` everywhere), or
-    /// use a sequence such that `effects[i].0` values are strictly increasing.
-    /// A glyph for index `j` in the source text will use effect `effects[i].1`
-    /// where `i` is the largest value such that `effects[i].0 <= j`, or the
-    /// default value of `Self::Effect` if no such `i` exists.
+    /// These tokens may be used for rendering effects: glyph color and
+    /// background color.
+    ///
+    /// Use `&[]` to use the default `Colors` everywhere, or use a sequence such
+    /// that `tokens[i].0` values are strictly increasing. A glyph for index `j`
+    /// in the source text will use the colors `tokens[i].1` where `i` is the
+    /// largest value such that `tokens[i].0 <= j`, or the default `Colors` if
+    /// no such `i` exists.
     ///
     /// Changes to the result of this method do not require any re-preparation
     /// of text.
-    fn effect_tokens(&self) -> &[(u32, Effect)];
+    ///
+    /// The default implementation returns `&[]`.
+    #[inline]
+    fn color_tokens(&self) -> &[(u32, Colors)] {
+        &[]
+    }
+
+    /// Return optional sequences of decoration tokens
+    ///
+    /// These tokens may be used for rendering effects: strike-through and
+    /// underline decorations.
+    ///
+    /// Use `&[]` for no decorations, or use a sequence such that `tokens[i].0`
+    /// values are strictly increasing. A glyph for index `j` in the source text
+    /// will use the decoration `tokens[i].1` where `i` is the largest value
+    /// such that `tokens[i].0 <= j`, or no decoration if no such `i` exists.
+    ///
+    /// Changes to the result of this method do not require any re-preparation
+    /// of text.
+    ///
+    /// The default implementation returns `&[]`.
+    #[inline]
+    fn decorations(&self) -> &[(u32, Decoration)] {
+        &[]
+    }
 }
 
 impl FormattableText for str {
@@ -81,11 +126,6 @@ impl FormattableText for str {
     fn font_tokens(&self, dpem: f32, font: FontSelector) -> impl Iterator<Item = FontToken> {
         let start = 0;
         std::iter::once(FontToken { start, dpem, font })
-    }
-
-    #[inline]
-    fn effect_tokens(&self) -> &[(u32, Effect)] {
-        &[]
     }
 }
 
@@ -100,11 +140,6 @@ impl FormattableText for String {
         let start = 0;
         std::iter::once(FontToken { start, dpem, font })
     }
-
-    #[inline]
-    fn effect_tokens(&self) -> &[(u32, Effect)] {
-        &[]
-    }
 }
 
 impl<F: FormattableText + ?Sized> FormattableText for &F {
@@ -116,7 +151,22 @@ impl<F: FormattableText + ?Sized> FormattableText for &F {
         F::font_tokens(self, dpem, font)
     }
 
-    fn effect_tokens(&self) -> &[(u32, Effect)] {
-        F::effect_tokens(self)
+    fn color_tokens(&self) -> &[(u32, Colors)] {
+        F::color_tokens(self)
     }
+
+    fn decorations(&self) -> &[(u32, Decoration)] {
+        F::decorations(self)
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn sizes() {
+    use std::mem::size_of;
+
+    assert_eq!(size_of::<Colors>(), 2);
+    assert_eq!(size_of::<DecorationType>(), 1);
+    assert_eq!(size_of::<LineStyle>(), 0);
+    assert_eq!(size_of::<Decoration>(), 4);
 }

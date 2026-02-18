@@ -12,7 +12,7 @@
 use crate::cast::Conv;
 use crate::event::Key;
 use crate::text::fonts::FontSelector;
-use crate::text::format::{Effect, EffectFlags, FontToken, FormattableText};
+use crate::text::format::{Decoration, DecorationType, FontToken, FormattableText};
 
 /// An access key string
 ///
@@ -29,7 +29,7 @@ use crate::text::format::{Effect, EffectFlags, FontToken, FormattableText};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AccessString {
     text: String,
-    key: Option<(Key, [(u32, Effect); 2])>,
+    key: Option<(Key, [(u32, Decoration); 2])>,
 }
 
 impl AccessString {
@@ -60,18 +60,15 @@ impl AccessString {
                     let k = c.to_ascii_lowercase().encode_utf8(&mut kbuf);
                     let k = Key::Character(k.into());
 
-                    let e0 = (start, Effect {
-                        color: 0,
-                        flags: EffectFlags::UNDERLINE,
+                    let e0 = (start, Decoration {
+                        dec: DecorationType::Underline,
+                        ..Decoration::default()
                     });
 
                     let i = c.len_utf8();
                     s = &s[i..];
 
-                    let e1 = (start + u32::conv(i), Effect {
-                        color: 0,
-                        flags: EffectFlags::empty(),
-                    });
+                    let e1 = (start + u32::conv(i), Decoration::default());
 
                     key = Some((k, [e0, e1]));
                 }
@@ -88,7 +85,7 @@ impl AccessString {
     }
 
     /// Get the key bindings and associated effects, if any
-    pub fn key(&self) -> Option<&(Key, [(u32, Effect); 2])> {
+    pub fn key(&self) -> Option<&(Key, [(u32, Decoration); 2])> {
         self.key.as_ref()
     }
 
@@ -113,9 +110,7 @@ impl FormattableText for AccessString {
         })
     }
 
-    fn effect_tokens(&self) -> &[(u32, Effect)] {
-        &[]
-    }
+    // Note that we do not display underline decorations by default
 }
 
 impl From<String> for AccessString {

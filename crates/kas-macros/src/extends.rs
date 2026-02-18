@@ -86,10 +86,22 @@ impl Methods {
                 pos: Coord,
                 rect: Rect,
                 text: &TextDisplay,
-                colors: &[Rgba],
-                effects: &[(u32, ::kas::text::format::Effect)],
+                palette: &[Rgba],
+                tokens: &[(u32, ::kas::text::format::Colors)],
             ) {
-                (#base).text_effects(id, pos, rect, text, colors, effects);
+                (#base).text_effects(id, pos, rect, text, palette, tokens);
+            }
+
+            fn decorate_text(
+                &mut self,
+                id: &Id,
+                pos: Coord,
+                rect: Rect,
+                text: &TextDisplay,
+                palette: &[Rgba],
+                decorations: &[(u32, ::kas::text::format::Decoration)],
+            ) {
+                (#base).decorate_text(id, pos, rect, text, palette, decorations);
             }
 
             fn text_selected_range(

@@ -17,7 +17,7 @@ use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
 use crate::event::EventState;
 use crate::geom::*;
-use crate::text::{TextDisplay, format::Effect};
+use crate::text::{TextDisplay, format};
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};
@@ -354,22 +354,46 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[(u32, Effect)],
+        palette: &[Rgba],
+        tokens: &[(u32, format::Colors)],
     ) {
         let bb = Quad::conv(rect);
         let col;
-        let mut colors = colors;
-        if colors.is_empty() {
+        let mut palette = palette;
+        if palette.is_empty() {
             col = [if self.ev.is_disabled(id) {
                 self.cols.text_disabled
             } else {
                 self.cols.text
             }];
-            colors = &col;
+            palette = &col;
         }
         self.draw
-            .text_effects(pos.cast(), bb, text, colors, effects);
+            .text_effects(pos.cast(), bb, text, palette, tokens);
+    }
+
+    fn decorate_text(
+        &mut self,
+        id: &Id,
+        pos: Coord,
+        rect: Rect,
+        text: &TextDisplay,
+        palette: &[Rgba],
+        decorations: &[(u32, format::Decoration)],
+    ) {
+        let bb = Quad::conv(rect);
+        let col;
+        let mut palette = palette;
+        if palette.is_empty() {
+            col = [if self.ev.is_disabled(id) {
+                self.cols.text_disabled
+            } else {
+                self.cols.text
+            }];
+            palette = &col;
+        }
+        self.draw
+            .decorate_text(pos.cast(), bb, text, palette, decorations);
     }
 
     fn text_selected_range(
@@ -398,18 +422,18 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
             }
         });
 
-        let effects = [
+        let tokens = [
             Default::default(),
-            (range.start.cast(), Effect {
+            (range.start.cast(), format::Colors {
                 color: 1,
-                flags: Default::default(),
+                ..Default::default()
             }),
-            (range.end.cast(), Effect::default()),
+            (range.end.cast(), format::Colors::default()),
         ];
         let r0 = if range.start > 0 { 0 } else { 1 };
-        let colors = [col, sel_col];
+        let palette = [col, sel_col];
         self.draw
-            .text_effects(pos, bb, text, &colors, &effects[r0..]);
+            .text_effects(pos, bb, text, &palette, &tokens[r0..]);
     }
 
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {

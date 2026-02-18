@@ -15,7 +15,7 @@ use crate::cast::Cast;
 use crate::geom::{Rect, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules, Stretch};
 use crate::text::fonts::FontSelector;
-use crate::text::format::{Effect, FormattableText};
+use crate::text::format::{Colors, Decoration, FormattableText};
 use crate::text::*;
 use std::num::NonZeroUsize;
 
@@ -386,17 +386,20 @@ impl<T: FormattableText> Text<T> {
         is_rtl
     }
 
-    /// Get the sequence of effect tokens
+    /// Return the sequence of color effect tokens
     ///
-    /// This method has some limitations: (1) it may only return a reference to
-    /// an existing sequence, (2) effect tokens cannot be generated dependent
-    /// on input state, and (3) it does not incorporate color information. For
-    /// most uses it should still be sufficient, but for other cases it may be
-    /// preferable not to use this method (use a dummy implementation returning
-    /// `&[]` and use inherent methods on the text object via [`Text::text`]).
+    /// This forwards to [`FormattableText::color_tokens`].
     #[inline]
-    pub fn effect_tokens(&self) -> &[(u32, Effect)] {
-        self.text.effect_tokens()
+    pub fn color_tokens(&self) -> &[(u32, Colors)] {
+        self.text.color_tokens()
+    }
+
+    /// Return optional sequences of decoration tokens
+    ///
+    /// This forwards to [`FormattableText::decorations`].
+    #[inline]
+    pub fn decorations(&self) -> &[(u32, Decoration)] {
+        self.text.decorations()
     }
 }
 

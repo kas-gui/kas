@@ -10,8 +10,7 @@ use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::format::{Effect, EffectFlags};
-use kas::text::{CursorRange, NotReady, SelectionHelper};
+use kas::text::{CursorRange, NotReady, SelectionHelper, format};
 use kas::theme::{Text, TextClass};
 use kas::util::UndoStack;
 use std::borrow::Cow;
@@ -164,22 +163,21 @@ impl Component {
     pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
         let pos = self.rect().pos - offset;
 
+        draw.text_with_selection(pos, rect, &self.text, self.selection.range());
+
         if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
-            // TODO: combine underline with selection highlight
-            let effects = [
+            let tokens = [
                 Default::default(),
-                (edit_range.start, Effect {
-                    color: 0,
-                    flags: EffectFlags::UNDERLINE,
+                (edit_range.start, format::Decoration {
+                    dec: format::DecorationType::Underline,
+                    ..Default::default()
                 }),
-                (edit_range.end, Effect::default()),
+                (edit_range.end, Default::default()),
             ];
             let r0 = if edit_range.start > 0 { 0 } else { 1 };
             if let Ok(display) = self.text.display() {
-                draw.text_with_effects(pos, rect, display, &[], &effects[r0..]);
+                draw.decorate_text(pos, rect, display, &[], &tokens[r0..]);
             }
-        } else {
-            draw.text_with_selection(pos, rect, &self.text, self.selection.range());
         }
 
         if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {

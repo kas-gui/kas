@@ -10,17 +10,16 @@
 
 //! Text drawing pipeline
 
+use crate::config::SubpixelMode;
+use crate::text::format::{Colors, Decoration, DecorationType, LineStyle};
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
 use kas::draw::{AllocError, Allocation, PassId, color::Rgba};
 use kas::geom::{Quad, Vec2};
-use kas::text::format::{Effect, EffectFlags};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
 use swash::zeno::Format;
-
-use crate::config::SubpixelMode;
 
 /// Number of sub-pixel text sizes
 ///
@@ -502,7 +501,7 @@ impl State {
         }
     }
 
-    /// Draw text as a sequence of sprites
+    /// Draw text without effects
     pub fn text(
         &mut self,
         allocator: &mut dyn SpriteAllocator,
@@ -533,7 +532,7 @@ impl State {
         }
     }
 
-    /// Draw text with effects as a sequence of sprites
+    /// Draw text with color effects
     #[allow(clippy::too_many_arguments)]
     pub fn text_effects(
         &mut self,
@@ -543,26 +542,26 @@ impl State {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[(u32, Effect)],
+        palette: &[Rgba],
+        tokens: &[(u32, Colors)],
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
         // Optimisation: use cheaper TextDisplay::runs method
-        if effects.len() <= 1
-            && effects
+        if tokens.len() <= 1
+            && tokens
                 .first()
-                .map(|e| e.1.flags == Default::default())
+                .map(|e| e.1 == Default::default())
                 .unwrap_or(true)
         {
-            let col = colors.first().cloned().unwrap_or(Rgba::BLACK);
+            let col = palette.first().cloned().unwrap_or(Rgba::BLACK);
             self.text(allocator, queue, pass, pos, bb, text, col);
             return;
         }
 
-        for run in text.runs(pos.into(), effects) {
+        for run in text.runs(pos.into(), tokens) {
             let face = run.face_id();
             let dpem = run.dpem();
-            let for_glyph = |glyph: Glyph, effect: Effect| {
+            let for_glyph = |glyph: Glyph, token: Colors| {
                 let desc = SpriteDescriptor::new(&self.config, face, glyph, dpem);
                 let sprite = match self.glyphs.get(&desc) {
                     Some(sprite) => sprite,
@@ -574,47 +573,68 @@ impl State {
                         }
                     }
                 };
-                let col = colors
-                    .get(usize::conv(effect.color))
+                let col = palette
+                    .get(usize::conv(token.color))
                     .cloned()
                     .unwrap_or(Rgba::BLACK);
                 queue.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 
             let sf = run.scaled_face();
-            let for_range = |p: kas_text::Vec2, x2, effect: Effect| {
-                if effect.flags.is_empty() {
-                    return;
-                }
+            let for_range = |p: kas_text::Vec2, x2, token: Colors| {};
 
-                let p: Vec2 = p.into();
-                let col = colors
-                    .get(usize::conv(effect.color))
+            run.glyphs_with_effects(for_glyph, for_range);
+        }
+    }
+
+    /// Draw text decorations (e.g. underlines)
+    #[allow(clippy::too_many_arguments)]
+    pub fn decorate_text(
+        &mut self,
+        pos: Vec2,
+        bb: Quad,
+        text: &TextDisplay,
+        palette: &[Rgba],
+        tokens: &[(u32, Decoration)],
+        mut draw_quad: impl FnMut(Quad, Rgba),
+    ) {
+        // Optimisation: do nothing
+        if tokens.len() <= 1
+            && tokens
+                .first()
+                .map(|e| e.1 == Default::default())
+                .unwrap_or(true)
+        {
+            return;
+        }
+
+        for run in text.runs(pos.into(), tokens) {
+            let sf = run.scaled_face();
+            let for_range = |p: kas_text::Vec2, x2, token: Decoration| {
+                let metrics = match token.dec {
+                    DecorationType::None => return,
+                    DecorationType::Underline => sf.underline_metrics(),
+                    DecorationType::Strikethrough => sf.strikethrough_metrics(),
+                };
+                let Some(metrics) = metrics else { return };
+
+                let a = Vec2(p.0, p.1 - metrics.top.ceil());
+                let b = Vec2(x2, a.1 + metrics.thickness.ceil());
+                let Some(quad) = Quad::from_coords(a, b).intersection(&bb) else {
+                    return;
+                };
+
+                let col = palette
+                    .get(usize::conv(token.color))
                     .cloned()
                     .unwrap_or(Rgba::BLACK);
 
-                if effect.flags.contains(EffectFlags::UNDERLINE)
-                    && let Some(metrics) = sf.underline_metrics()
-                {
-                    let a = Vec2(p.0, p.1 - metrics.top.ceil());
-                    let b = Vec2(x2, a.1 + metrics.thickness.ceil());
-                    if let Some(quad) = Quad::from_coords(a, b).intersection(&bb) {
-                        draw_quad(quad, col);
-                    }
-                }
-
-                if effect.flags.contains(EffectFlags::STRIKETHROUGH)
-                    && let Some(metrics) = sf.strikethrough_metrics()
-                {
-                    let a = Vec2(p.0, p.1 - metrics.top.ceil());
-                    let b = Vec2(x2, a.1 + metrics.thickness.ceil());
-                    if let Some(quad) = Quad::from_coords(a, b).intersection(&bb) {
-                        draw_quad(quad, col);
-                    }
+                match token.style {
+                    LineStyle::Solid => draw_quad(quad, col),
                 }
             };
 
-            run.glyphs_with_effects(for_glyph, for_range);
+            run.glyphs_with_effects(|_, _| (), for_range);
         }
     }
 }

@@ -14,7 +14,7 @@ use crate::draw::{Draw, DrawIface, DrawRounded, DrawShared, DrawSharedImpl, Imag
 use crate::event::EventState;
 #[allow(unused)] use crate::event::{Command, ConfigCx};
 use crate::geom::{Coord, Offset, Rect};
-use crate::text::{TextDisplay, format::Effect, format::FormattableText};
+use crate::text::{TextDisplay, format, format::FormattableText};
 use crate::theme::ColorsLinear;
 use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
@@ -300,7 +300,9 @@ impl<'a> DrawCx<'a> {
         text: &Text<T>,
     ) {
         if let Ok(display) = text.display() {
-            self.text_with_effects(pos, rect, display, &[], text.effect_tokens());
+            let tokens = text.color_tokens();
+            self.text_with_effects(pos, rect, display, &[], tokens);
+            self.decorate_text(pos, rect, display, &[], text.decorations());
         }
     }
 
@@ -313,51 +315,78 @@ impl<'a> DrawCx<'a> {
     /// The `text` should be prepared before calling this method.
     pub fn text_with_color<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, color: Rgba) {
         if let Ok(display) = text.display() {
-            self.text_with_effects(rect.pos, rect, display, &[color], text.effect_tokens());
+            let colors = &[color];
+            let tokens = text.color_tokens();
+            self.text_with_effects(rect.pos, rect, display, colors, tokens);
+            self.decorate_text(rect.pos, rect, display, colors, text.decorations());
         }
     }
 
-    /// Draw text with a given effect list
+    /// Draw text with a list of color effects
     ///
     /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
     /// the text is not scrolled.
     ///
-    /// If `colors` is empty, it is replaced with a single theme-defined color.
-    /// Text is then drawn using `colors[0]` except as specified by effects.
+    /// If `palette` is empty, it is replaced with a single theme-defined color.
+    /// Text is then drawn using `palette[0]` except as specified by effects.
     ///
-    /// The list of `effects` (if not empty) controls render effects:
-    /// [`Effect::color`] is an index into `colors` while [`Effect::flags`] controls
-    /// underline and strikethrough. [`Effect::start`] is the text index at
-    /// which this effect first takes effect, and must effects must be ordered
-    /// such that the sequence of [`Effect::start`] values is strictly
-    /// increasing. [`Effect::default()`] is used if `effects` is empty or while
-    /// `index < effects.first().unwrap().start`.
-    ///
-    /// Text objects may embed their own list of effects, accessible using
-    /// [`Text::effect_tokens`]. It is always valid to disregard these
-    /// and use a custom `effects` list or empty list.
+    /// The list of `tokens` may be the result of [`Text::color_tokens`] or any
+    /// compatible sequence (including `&[]`). See also
+    /// [`FormattableText::color_tokens`].
     #[inline]
     pub fn text_with_effects(
         &mut self,
         pos: Coord,
         rect: Rect,
         display: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[(u32, Effect)],
+        palette: &[Rgba],
+        tokens: &[(u32, format::Colors)],
     ) {
         if cfg!(debug_assertions) {
-            let num_colors = if colors.is_empty() { 1 } else { colors.len() };
+            let num_colors = if palette.is_empty() { 1 } else { palette.len() };
             let mut i = 0;
-            for effect in effects {
-                assert!(effect.0 >= i);
-                i = effect.0;
+            for (start, token) in tokens {
+                assert!(*start >= i);
+                i = *start;
 
-                assert!(usize::from(effect.1.color) < num_colors);
+                assert!(usize::from(token.color) < num_colors);
             }
         }
 
         self.h
-            .text_effects(&self.id, pos, rect, display, colors, effects);
+            .text_effects(&self.id, pos, rect, display, palette, tokens);
+    }
+
+    /// Draw text decorations (e.g. underlines)
+    ///
+    /// This does not draw the text itself, but requires most of the same inputs
+    /// as [`Self::text_with_effects`].
+    ///
+    /// The list of `decorations` may come from [`Text::decorations`] or be any
+    /// other compatible sequence. See also [`FormattableText::decorations`].
+    pub fn decorate_text(
+        &mut self,
+        pos: Coord,
+        rect: Rect,
+        display: &TextDisplay,
+        palette: &[Rgba],
+        decorations: &[(u32, format::Decoration)],
+    ) {
+        if cfg!(debug_assertions) {
+            let num_colors = if palette.is_empty() { 1 } else { palette.len() };
+            let mut i = 0;
+            for (start, token) in decorations {
+                assert!(*start >= i);
+                i = *start;
+
+                assert!(usize::from(token.color) < num_colors);
+            }
+        }
+
+        if !decorations.is_empty() {
+            self.h
+                .decorate_text(&self.id, pos, rect, display, palette, decorations);
+        }
     }
 
     /// Draw some text with a selection
@@ -545,21 +574,45 @@ pub trait ThemeDraw {
     /// Draw a selection highlight / frame
     fn selection(&mut self, rect: Rect, style: SelectionStyle);
 
-    /// Draw text with effects
+    /// Draw text with a list of color effects
+    ///
+    /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
+    /// the text is not scrolled.
+    ///
+    /// If `palette` is empty, it is replaced with a single theme-defined color.
+    /// Text is then drawn using `palette[0]` except as specified by effects.
     ///
     /// *Font* effects (e.g. bold, italics, text size) must be baked into the
-    /// [`TextDisplay`] during preparation. In contrast, "display" `effects`
-    /// (e.g. color, underline) are applied only when drawing.
-    ///
-    /// The `text` should be prepared before calling this method.
+    /// [`TextDisplay`] during preparation. In contrast, display effects
+    /// (e.g. color, underline) are applied only when drawing from the provided
+    /// list of `tokens`. This list may be the result of [`Text::color_tokens`]
+    /// or any compatible sequence (including `&[]`). See also
+    /// [`FormattableText::color_tokens`].
     fn text_effects(
         &mut self,
         id: &Id,
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[(u32, Effect)],
+        palette: &[Rgba],
+        tokens: &[(u32, format::Colors)],
+    );
+
+    /// Draw text decorations (e.g. underlines)
+    ///
+    /// This does not draw the text itself, but requires most of the same inputs
+    /// as [`Self::text_effects`].
+    ///
+    /// The list of `decorations` may come from [`Text::decorations`] or be any
+    /// other compatible sequence. See also [`FormattableText::decorations`].
+    fn decorate_text(
+        &mut self,
+        id: &Id,
+        pos: Coord,
+        rect: Rect,
+        text: &TextDisplay,
+        palette: &[Rgba],
+        decorations: &[(u32, format::Decoration)],
     );
 
     /// Method used to implement [`DrawCx::text_with_selection`]

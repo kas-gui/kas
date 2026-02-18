@@ -9,7 +9,7 @@ use super::{AnimationState, color::Rgba};
 #[allow(unused)] use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState, WindowCommon};
 use crate::geom::{Offset, Quad, Rect, Vec2};
-use crate::text::{TextDisplay, format::Effect};
+use crate::text::{TextDisplay, format};
 use std::any::Any;
 use std::time::Instant;
 
@@ -223,15 +223,9 @@ pub trait Draw {
     /// Draw the image in the given `rect`
     fn image(&mut self, id: ImageId, rect: Quad);
 
-    /// Draw text with effects
+    /// Draw text with a list of color effects
     ///
     /// Text is drawn from `pos` and clipped to `bounding_box`.
-    ///
-    /// The `effects` list provides underlining/strikethrough information via
-    /// [`Effect::flags`] and an index [`Effect::color`].
-    ///
-    /// Text colour lookup uses index `color` and is essentially:
-    /// `colors.get(color.unwrap_or(Rgba::BLACK)`.
     ///
     /// The `text` display must be prepared prior to calling this method.
     /// Typically this is done using a [`crate::theme::Text`] object.
@@ -240,8 +234,21 @@ pub trait Draw {
         pos: Vec2,
         bounding_box: Quad,
         text: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[(u32, Effect)],
+        palette: &[Rgba],
+        tokens: &[(u32, format::Colors)],
+    );
+
+    /// Draw text decorations (e.g. underlines)
+    ///
+    /// The `text` display must be prepared prior to calling this method.
+    /// Typically this is done using a [`crate::theme::Text`] object.
+    fn decorate_text(
+        &mut self,
+        pos: Vec2,
+        bounding_box: Quad,
+        text: &TextDisplay,
+        palette: &[Rgba],
+        decorations: &[(u32, format::Decoration)],
     );
 }
 
@@ -298,12 +305,25 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[(u32, Effect)],
+        palette: &[Rgba],
+        tokens: &[(u32, format::Colors)],
     ) {
         self.shared
             .draw
-            .draw_text_effects(self.draw, self.pass, pos, bb, text, colors, effects);
+            .draw_text_effects(self.draw, self.pass, pos, bb, text, palette, tokens);
+    }
+
+    fn decorate_text(
+        &mut self,
+        pos: Vec2,
+        bb: Quad,
+        text: &TextDisplay,
+        palette: &[Rgba],
+        decorations: &[(u32, format::Decoration)],
+    ) {
+        self.shared
+            .draw
+            .decorate_text(self.draw, self.pass, pos, bb, text, palette, decorations);
     }
 }
 

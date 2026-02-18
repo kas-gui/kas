@@ -18,7 +18,7 @@ use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Size, Vec2};
 use kas::runner::{GraphicsFeatures, RunError};
-use kas::text::{TextDisplay, format::Effect};
+use kas::text;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -362,9 +362,9 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         pass: PassId,
         pos: Vec2,
         bb: Quad,
-        text: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[(u32, Effect)],
+        text: &text::TextDisplay,
+        palette: &[color::Rgba],
+        tokens: &[(u32, text::format::Colors)],
     ) {
         let time = std::time::Instant::now();
         self.text.text_effects(
@@ -374,12 +374,30 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
             pos,
             bb,
             text,
-            colors,
-            effects,
+            palette,
+            tokens,
             |quad, col| {
                 draw.shaded_square.rect(pass, quad, col);
             },
         );
+        draw.common.report_dur_text(time.elapsed());
+    }
+
+    fn decorate_text(
+        &mut self,
+        draw: &mut Self::Draw,
+        pass: PassId,
+        pos: Vec2,
+        bb: Quad,
+        text: &text::TextDisplay,
+        palette: &[color::Rgba],
+        decorations: &[(u32, text::format::Decoration)],
+    ) {
+        let time = std::time::Instant::now();
+        self.text
+            .decorate_text(pos, bb, text, palette, decorations, |quad, col| {
+                draw.shaded_square.rect(pass, quad, col);
+            });
         draw.common.report_dur_text(time.elapsed());
     }
 }

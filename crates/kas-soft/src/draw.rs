@@ -180,13 +180,13 @@ impl DrawSharedImpl for Shared {
 
     fn draw_text_effects(
         &mut self,
-        draw: &mut Draw,
+        draw: &mut Self::Draw,
         pass: PassId,
         pos: Vec2,
         bb: Quad,
         text: &text::TextDisplay,
-        colors: &[color::Rgba],
-        effects: &[(u32, text::format::Effect)],
+        palette: &[color::Rgba],
+        tokens: &[(u32, text::format::Colors)],
     ) {
         let time = std::time::Instant::now();
         self.text.text_effects(
@@ -196,12 +196,30 @@ impl DrawSharedImpl for Shared {
             pos,
             bb,
             text,
-            colors,
-            effects,
+            palette,
+            tokens,
             |quad, col| {
                 draw.basic.rect(pass, quad, col);
             },
         );
+        draw.common.report_dur_text(time.elapsed());
+    }
+
+    fn decorate_text(
+        &mut self,
+        draw: &mut Self::Draw,
+        pass: PassId,
+        pos: Vec2,
+        bb: Quad,
+        text: &text::TextDisplay,
+        palette: &[color::Rgba],
+        decorations: &[(u32, text::format::Decoration)],
+    ) {
+        let time = std::time::Instant::now();
+        self.text
+            .decorate_text(pos, bb, text, palette, decorations, |quad, col| {
+                draw.basic.rect(pass, quad, col);
+            });
         draw.common.report_dur_text(time.elapsed());
     }
 }
