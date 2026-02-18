@@ -343,13 +343,11 @@ impl<'a> DrawCx<'a> {
         tokens: &[(u32, format::Colors)],
     ) {
         if cfg!(debug_assertions) {
-            let num_colors = if palette.is_empty() { 1 } else { palette.len() };
             let mut i = 0;
             for (start, token) in tokens {
                 assert!(*start >= i);
                 i = *start;
-
-                assert!(usize::from(token.color) < num_colors);
+                token.color.validate(palette);
             }
         }
 
@@ -373,13 +371,11 @@ impl<'a> DrawCx<'a> {
         decorations: &[(u32, format::Decoration)],
     ) {
         if cfg!(debug_assertions) {
-            let num_colors = if palette.is_empty() { 1 } else { palette.len() };
             let mut i = 0;
             for (start, token) in decorations {
                 assert!(*start >= i);
                 i = *start;
-
-                assert!(usize::from(token.color) < num_colors);
+                token.color.validate(palette);
             }
         }
 

@@ -10,6 +10,7 @@ use super::{AnimationState, color::Rgba};
 use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState, WindowCommon};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 use crate::text::{TextDisplay, format};
+use crate::theme::ColorsLinear;
 use std::any::Any;
 use std::time::Instant;
 
@@ -127,8 +128,15 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     ///
     /// The `text` display must be prepared prior to calling this method.
     /// Typically this is done using a [`crate::theme::Text`] object.
-    pub fn text(&mut self, pos: Vec2, bounding_box: Quad, text: &TextDisplay, col: Rgba) {
-        self.text_effects(pos, bounding_box, text, &[col], &[]);
+    pub fn text(
+        &mut self,
+        pos: Vec2,
+        bounding_box: Quad,
+        text: &TextDisplay,
+        theme: &ColorsLinear,
+        col: Rgba,
+    ) {
+        self.text_effects(pos, bounding_box, text, theme, &[col], &[]);
     }
 }
 
@@ -234,6 +242,7 @@ pub trait Draw {
         pos: Vec2,
         bounding_box: Quad,
         text: &TextDisplay,
+        theme: &ColorsLinear,
         palette: &[Rgba],
         tokens: &[(u32, format::Colors)],
     );
@@ -247,6 +256,7 @@ pub trait Draw {
         pos: Vec2,
         bounding_box: Quad,
         text: &TextDisplay,
+        theme: &ColorsLinear,
         palette: &[Rgba],
         decorations: &[(u32, format::Decoration)],
     );
@@ -305,12 +315,13 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
+        theme: &ColorsLinear,
         palette: &[Rgba],
         tokens: &[(u32, format::Colors)],
     ) {
         self.shared
             .draw
-            .draw_text_effects(self.draw, self.pass, pos, bb, text, palette, tokens);
+            .draw_text_effects(self.draw, self.pass, pos, bb, text, theme, palette, tokens);
     }
 
     fn decorate_text(
@@ -318,12 +329,20 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
+        theme: &ColorsLinear,
         palette: &[Rgba],
         decorations: &[(u32, format::Decoration)],
     ) {
-        self.shared
-            .draw
-            .decorate_text(self.draw, self.pass, pos, bb, text, palette, decorations);
+        self.shared.draw.decorate_text(
+            self.draw,
+            self.pass,
+            pos,
+            bb,
+            text,
+            theme,
+            palette,
+            decorations,
+        );
     }
 }
 

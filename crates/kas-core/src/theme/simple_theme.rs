@@ -10,6 +10,7 @@ use std::f32;
 use std::ops::Range;
 use std::time::Instant;
 
+use super::ColorsSrgb;
 use crate::Id;
 use crate::cast::traits::*;
 use crate::config::{Config, WindowConfig};
@@ -22,8 +23,6 @@ use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{SelectionStyle, ThemeDraw, ThemeSize};
-
-use super::ColorsSrgb;
 
 /// A simple theme
 ///
@@ -358,18 +357,8 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         tokens: &[(u32, format::Colors)],
     ) {
         let bb = Quad::conv(rect);
-        let col;
-        let mut palette = palette;
-        if palette.is_empty() {
-            col = [if self.ev.is_disabled(id) {
-                self.cols.text_disabled
-            } else {
-                self.cols.text
-            }];
-            palette = &col;
-        }
         self.draw
-            .text_effects(pos.cast(), bb, text, palette, tokens);
+            .text_effects(pos.cast(), bb, text, self.cols, palette, tokens);
     }
 
     fn decorate_text(
@@ -382,18 +371,8 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         decorations: &[(u32, format::Decoration)],
     ) {
         let bb = Quad::conv(rect);
-        let col;
-        let mut palette = palette;
-        if palette.is_empty() {
-            col = [if self.ev.is_disabled(id) {
-                self.cols.text_disabled
-            } else {
-                self.cols.text
-            }];
-            palette = &col;
-        }
         self.draw
-            .decorate_text(pos.cast(), bb, text, palette, decorations);
+            .decorate_text(pos.cast(), bb, text, self.cols, palette, decorations);
     }
 
     fn text_selected_range(
@@ -425,7 +404,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         let tokens = [
             Default::default(),
             (range.start.cast(), format::Colors {
-                color: 1,
+                color: format::Color::from_index(1).unwrap(),
                 ..Default::default()
             }),
             (range.end.cast(), format::Colors::default()),
@@ -433,7 +412,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         let r0 = if range.start > 0 { 0 } else { 1 };
         let palette = [col, sel_col];
         self.draw
-            .text_effects(pos, bb, text, &palette, &tokens[r0..]);
+            .text_effects(pos, bb, text, self.cols, &palette, &tokens[r0..]);
     }
 
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {

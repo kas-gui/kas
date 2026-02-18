@@ -14,6 +14,7 @@ use kas::draw::{ImageFormat, ImageId, color};
 use kas::geom::{Quad, Size, Vec2};
 use kas::prelude::{Offset, Rect};
 use kas::text::{self};
+use kas::theme::ColorsLinear;
 
 #[derive(Debug)]
 struct ClipRegion {
@@ -185,6 +186,7 @@ impl DrawSharedImpl for Shared {
         pos: Vec2,
         bb: Quad,
         text: &text::TextDisplay,
+        theme: &ColorsLinear,
         palette: &[color::Rgba],
         tokens: &[(u32, text::format::Colors)],
     ) {
@@ -196,6 +198,7 @@ impl DrawSharedImpl for Shared {
             pos,
             bb,
             text,
+            theme,
             palette,
             tokens,
             |quad, col| {
@@ -212,12 +215,13 @@ impl DrawSharedImpl for Shared {
         pos: Vec2,
         bb: Quad,
         text: &text::TextDisplay,
+        theme: &ColorsLinear,
         palette: &[color::Rgba],
         decorations: &[(u32, text::format::Decoration)],
     ) {
         let time = std::time::Instant::now();
         self.text
-            .decorate_text(pos, bb, text, palette, decorations, |quad, col| {
+            .decorate_text(pos, bb, text, theme, palette, decorations, |quad, col| {
                 draw.basic.rect(pass, quad, col);
             });
         draw.common.report_dur_text(time.elapsed());

@@ -5,21 +5,92 @@
 
 //! Formatted text traits and types
 
+use std::num::NonZeroU16;
+
 use super::fonts::FontSelector;
+use crate::{draw::color::Rgba, theme::ColorsLinear};
 pub use kas_text::format::FontToken;
 
 #[cfg(feature = "markdown")] mod markdown;
 #[cfg(feature = "markdown")] pub use markdown::Markdown;
 
+/// Palette or theme-provided color value
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Color(NonZeroU16);
+
+impl Default for Color {
+    /// Use a theme-defined color (automatic)
+    ///
+    /// For backgrounds, this uses the text-selection color.
+    fn default() -> Self {
+        Color(NonZeroU16::new(1).unwrap())
+    }
+}
+
+impl Color {
+    /// Use a color palette index
+    ///
+    /// Returns `None` if `index >= 0x8000`.
+    #[inline]
+    pub fn from_index(index: usize) -> Option<Self> {
+        (index < 0x8000)
+            .then_some(NonZeroU16::new(0x8000 | (index as u16)).map(Color))
+            .flatten()
+    }
+
+    /// Get the palette index, if any
+    #[inline]
+    pub fn as_index(self) -> Option<usize> {
+        let color = self.0.get();
+        (color & 0x8000 != 0).then_some((color & 0x7FFF) as usize)
+    }
+
+    /// Validate index values against a given palette
+    #[cfg(debug_assertions)]
+    pub fn validate(self, palette: &[Rgba]) {
+        if let Some(index) = self.as_index() {
+            assert!(
+                index < palette.len(),
+                "text::format::Color: invalid palette index"
+            );
+        }
+    }
+
+    /// Resolve color from the palette
+    ///
+    /// This returns `None` if either this does not represent a palette index or
+    /// the represented index is not present in the palette.
+    #[inline]
+    pub fn resolve_palette_color(self, palette: &[Rgba]) -> Option<Rgba> {
+        self.as_index()
+            .and_then(|index| palette.get(index).cloned())
+    }
+
+    /// Resolve color
+    ///
+    /// If this represents a valid palette index, the palette's color will be
+    /// used, otherwise the color will be inferred from the theme, using `bg`
+    /// if provided.
+    #[inline]
+    pub fn resolve_color(self, theme: &ColorsLinear, palette: &[Rgba], bg: Option<Rgba>) -> Rgba {
+        if let Some(col) = self.resolve_palette_color(palette) {
+            col
+        } else if let Some(bg) = bg {
+            theme.text_over(bg)
+        } else {
+            theme.text
+        }
+    }
+}
+
 /// Effect formatting marker: text and background color
+///
+/// By default, this uses the theme's text color without a background.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Colors {
-    /// User-specified value
-    ///
-    /// Usage is not specified by `kas-text`, but typically this field will be
-    /// used as an index into a colour palette or not used at all.
-    pub color: u16,
+    pub color: Color,
 }
 
 /// Decoration types
@@ -53,7 +124,7 @@ pub struct Decoration {
     /// Line style
     pub style: LineStyle,
     /// Line color
-    pub color: u16,
+    pub color: Color,
 }
 
 /// Text, optionally with formatting data

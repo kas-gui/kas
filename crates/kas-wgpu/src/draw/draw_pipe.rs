@@ -6,6 +6,7 @@
 //! Drawing API for `kas_wgpu`
 
 use futures_lite::future::block_on;
+use kas::theme::ColorsLinear;
 use std::f32::consts::FRAC_PI_2;
 use wgpu::util::DeviceExt;
 
@@ -363,6 +364,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         pos: Vec2,
         bb: Quad,
         text: &text::TextDisplay,
+        theme: &ColorsLinear,
         palette: &[color::Rgba],
         tokens: &[(u32, text::format::Colors)],
     ) {
@@ -374,6 +376,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
             pos,
             bb,
             text,
+            theme,
             palette,
             tokens,
             |quad, col| {
@@ -390,12 +393,13 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         pos: Vec2,
         bb: Quad,
         text: &text::TextDisplay,
+        theme: &ColorsLinear,
         palette: &[color::Rgba],
         decorations: &[(u32, text::format::Decoration)],
     ) {
         let time = std::time::Instant::now();
         self.text
-            .decorate_text(pos, bb, text, palette, decorations, |quad, col| {
+            .decorate_text(pos, bb, text, theme, palette, decorations, |quad, col| {
                 draw.shaded_square.rect(pass, quad, col);
             });
         draw.common.report_dur_text(time.elapsed());

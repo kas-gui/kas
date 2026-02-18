@@ -11,7 +11,8 @@
 //! Text drawing pipeline
 
 use crate::config::SubpixelMode;
-use crate::text::format::{Colors, Decoration, DecorationType, LineStyle};
+use crate::text::format::{Color, Colors, Decoration, DecorationType, LineStyle};
+use crate::theme::ColorsLinear;
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
 use kas::draw::{AllocError, Allocation, PassId, color::Rgba};
@@ -542,6 +543,7 @@ impl State {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
+        theme: &ColorsLinear,
         palette: &[Rgba],
         tokens: &[(u32, Colors)],
         mut draw_quad: impl FnMut(Quad, Rgba),
@@ -553,7 +555,7 @@ impl State {
                 .map(|e| e.1 == Default::default())
                 .unwrap_or(true)
         {
-            let col = palette.first().cloned().unwrap_or(Rgba::BLACK);
+            let col = Color::default().resolve_color(theme, palette, None);
             self.text(allocator, queue, pass, pos, bb, text, col);
             return;
         }
@@ -573,10 +575,8 @@ impl State {
                         }
                     }
                 };
-                let col = palette
-                    .get(usize::conv(token.color))
-                    .cloned()
-                    .unwrap_or(Rgba::BLACK);
+
+                let col = token.color.resolve_color(theme, palette, None);
                 queue.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 
@@ -594,6 +594,7 @@ impl State {
         pos: Vec2,
         bb: Quad,
         text: &TextDisplay,
+        theme: &ColorsLinear,
         palette: &[Rgba],
         tokens: &[(u32, Decoration)],
         mut draw_quad: impl FnMut(Quad, Rgba),
@@ -624,10 +625,8 @@ impl State {
                     return;
                 };
 
-                let col = palette
-                    .get(usize::conv(token.color))
-                    .cloned()
-                    .unwrap_or(Rgba::BLACK);
+                // Known limitation: this cannot depend on the background color.
+                let col = token.color.resolve_color(theme, palette, None);
 
                 match token.style {
                     LineStyle::Solid => draw_quad(quad, col),
