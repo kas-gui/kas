@@ -356,6 +356,10 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         palette: &[Rgba],
         tokens: &[(u32, format::Colors)],
     ) {
+        // NOTE: id is passed to allow usage of self.cols.text_disabled if self.ev.is_disabled(id).
+        // We could do this by passing the pair (text, text_invert) instead of self.cols.
+        let _ = id;
+
         let bb = Quad::conv(rect);
         self.draw
             .text_effects(pos.cast(), bb, text, self.cols, palette, tokens);
@@ -370,6 +374,9 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         palette: &[Rgba],
         decorations: &[(u32, format::Decoration)],
     ) {
+        // NOTE: see above note on usage of self.cols.text_disabled.
+        let _ = id;
+
         let bb = Quad::conv(rect);
         self.draw
             .decorate_text(pos.cast(), bb, text, self.cols, palette, decorations);

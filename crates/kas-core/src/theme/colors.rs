@@ -156,6 +156,8 @@ pub struct Colors<C> {
     /// Opposing text colour (e.g. white if `text` is black)
     pub text_invert: C,
     /// Disabled text colour
+    ///
+    /// NOTE: this is not currently used.
     pub text_disabled: C,
     /// Selected text background colour
     ///
