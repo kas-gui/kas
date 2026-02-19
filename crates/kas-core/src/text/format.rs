@@ -8,6 +8,9 @@
 use super::fonts::FontSelector;
 pub use kas_text::format::FontToken;
 
+#[cfg(feature = "markdown")] mod markdown;
+#[cfg(feature = "markdown")] pub use markdown::Markdown;
+
 /// Effect formatting marker: text and background color
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
