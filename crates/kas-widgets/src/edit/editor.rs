@@ -182,7 +182,9 @@ impl Component {
                     flags: Default::default(),
                 },
             ];
-            draw.text_with_effects(pos, rect, &self.text, &[], &effects);
+            if let Ok(display) = self.text.display() {
+                draw.text_with_effects(pos, rect, display, &[], &effects);
+            }
         } else {
             draw.text_with_selection(pos, rect, &self.text, self.selection.range());
         }
