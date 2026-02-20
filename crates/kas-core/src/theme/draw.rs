@@ -307,7 +307,8 @@ impl<'a> DrawCx<'a> {
 
     /// Draw text with specified color
     ///
-    /// Text is clipped to `rect` and drawn using `color`.
+    /// Text is clipped to `rect` and drawn using `color`, ignoring any color
+    /// information from [`Text::color_tokens`].
     ///
     /// This is a convenience method over [`Self::text_with_effects`].
     ///
@@ -315,8 +316,11 @@ impl<'a> DrawCx<'a> {
     pub fn text_with_color<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, color: Rgba) {
         if let Ok(display) = text.display() {
             let colors = &[color];
-            let tokens = text.color_tokens();
-            self.text_with_effects(rect.pos, rect, display, colors, tokens);
+            let tokens = [(0, format::Colors {
+                color: format::Color::from_index(0).unwrap(),
+                ..Default::default()
+            })];
+            self.text_with_effects(rect.pos, rect, display, colors, &tokens);
             self.decorate_text(rect.pos, rect, display, colors, text.decorations());
         }
     }
