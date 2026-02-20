@@ -352,7 +352,6 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
-        palette: &[Rgba],
         tokens: &[(u32, format::Colors)],
     ) {
         // NOTE: id is passed to allow usage of self.cols.text_disabled if self.ev.is_disabled(id).
@@ -360,8 +359,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         let _ = id;
 
         let bb = Quad::conv(rect);
-        self.draw
-            .text(pos.cast(), bb, text, self.cols, palette, tokens);
+        self.draw.text(pos.cast(), bb, text, self.cols, tokens);
     }
 
     fn decorate_text(
@@ -370,7 +368,6 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
-        palette: &[Rgba],
         decorations: &[(u32, format::Decoration)],
     ) {
         // NOTE: see above note on usage of self.cols.text_disabled.
@@ -378,7 +375,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
 
         let bb = Quad::conv(rect);
         self.draw
-            .decorate_text(pos.cast(), bb, text, self.cols, palette, decorations);
+            .decorate_text(pos.cast(), bb, text, self.cols, decorations);
     }
 
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {

@@ -5,66 +5,65 @@
 
 //! Formatted text traits and types
 
-use std::num::NonZeroU16;
+use std::num::NonZeroU32;
 
 use super::fonts::FontSelector;
-use crate::{draw::color::Rgba, theme::ColorsLinear};
+use crate::draw::color::{Rgba, Rgba8Srgb};
+use crate::theme::ColorsLinear;
 pub use kas_text::format::FontToken;
 
 #[cfg(feature = "markdown")] mod markdown;
 #[cfg(feature = "markdown")] pub use markdown::Markdown;
 
-/// Palette or theme-provided color value
+/// Rgba or theme-provided color value
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Color(NonZeroU16);
+pub struct Color(NonZeroU32);
 
 impl Default for Color {
     /// Use a theme-defined color (automatic)
     ///
     /// For backgrounds, this uses the text-selection color.
     fn default() -> Self {
-        Color(NonZeroU16::new(1).unwrap())
+        let color = Rgba8Srgb::rgba(1, 0, 0, 0);
+        Color(NonZeroU32::new(u32::from_ne_bytes(color.0)).unwrap())
     }
 }
 
 impl Color {
-    /// Use a color palette index
+    /// Use an RGBA sRGB color
     ///
-    /// Returns `None` if `index >= 0x8000`.
+    /// This will resolve to the default theme color if `color.a() == 0`.
     #[inline]
-    pub fn from_index(index: usize) -> Option<Self> {
-        (index < 0x8000)
-            .then_some(NonZeroU16::new(0x8000 | (index as u16)).map(Color))
-            .flatten()
-    }
-
-    /// Get the palette index, if any
-    #[inline]
-    pub fn as_index(self) -> Option<usize> {
-        let color = self.0.get();
-        (color & 0x8000 != 0).then_some((color & 0x7FFF) as usize)
-    }
-
-    /// Validate index values against a given palette
-    #[cfg(debug_assertions)]
-    pub fn validate(self, palette: &[Rgba]) {
-        if let Some(index) = self.as_index() {
-            assert!(
-                index < palette.len(),
-                "text::format::Color: invalid palette index"
-            );
+    pub fn from_rgba_srgb(color: Rgba8Srgb) -> Self {
+        if color.a() == 0 {
+            return Self::default();
         }
+        Color(NonZeroU32::new(u32::from_ne_bytes(color.0)).unwrap())
     }
 
-    /// Resolve color from the palette
+    /// Use an RGBA color
     ///
-    /// This returns `None` if either this does not represent a palette index or
-    /// the represented index is not present in the palette.
+    /// Note that this converts to [`Rgba8Srgb`] internally, thus some color
+    /// information may be lost.
+    ///
+    /// This will resolve to the default theme color if `Rgba8Srgb::from(color).a() == 0`.
     #[inline]
-    pub fn resolve_palette_color(self, palette: &[Rgba]) -> Option<Rgba> {
-        self.as_index()
-            .and_then(|index| palette.get(index).cloned())
+    pub fn from_rgba(color: Rgba) -> Self {
+        Self::from_rgba_srgb(color.into())
+    }
+
+    /// Get the RGBA sRGB color, if any
+    #[inline]
+    pub fn as_rgba_srgb(self) -> Option<Rgba8Srgb> {
+        let col = Rgba8Srgb(u32::to_ne_bytes(self.0.get()));
+        (col.a() != 0).then_some(col)
+    }
+
+    /// Get the RGBA color, if any
+    #[inline]
+    pub fn as_rgba(self) -> Option<Rgba> {
+        self.as_rgba_srgb().map(|c| c.into())
     }
 
     /// Resolve color
@@ -73,8 +72,8 @@ impl Color {
     /// used, otherwise the color will be inferred from the theme, using `bg`
     /// if provided.
     #[inline]
-    pub fn resolve_color(self, theme: &ColorsLinear, palette: &[Rgba], bg: Option<Rgba>) -> Rgba {
-        if let Some(col) = self.resolve_palette_color(palette) {
+    pub fn resolve_color(self, theme: &ColorsLinear, bg: Option<Rgba>) -> Rgba {
+        if let Some(col) = self.as_rgba() {
             col
         } else if let Some(bg) = bg {
             theme.text_over(bg)
@@ -96,11 +95,9 @@ pub struct Colors {
 
 impl Colors {
     /// Resolve the background color, if any
-    pub fn resolve_background_color(self, theme: &ColorsLinear, palette: &[Rgba]) -> Option<Rgba> {
-        self.background.map(|bg| {
-            bg.resolve_palette_color(palette)
-                .unwrap_or(theme.text_sel_bg)
-        })
+    pub fn resolve_background_color(self, theme: &ColorsLinear) -> Option<Rgba> {
+        self.background
+            .map(|bg| bg.as_rgba().unwrap_or(theme.text_sel_bg))
     }
 }
 
@@ -250,8 +247,8 @@ impl<F: FormattableText + ?Sized> FormattableText for &F {
 fn sizes() {
     use std::mem::size_of;
 
-    assert_eq!(size_of::<Colors>(), 4);
+    assert_eq!(size_of::<Colors>(), 8);
     assert_eq!(size_of::<DecorationType>(), 1);
     assert_eq!(size_of::<LineStyle>(), 0);
-    assert_eq!(size_of::<Decoration>(), 4);
+    assert_eq!(size_of::<Decoration>(), 8);
 }

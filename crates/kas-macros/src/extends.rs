@@ -86,10 +86,9 @@ impl Methods {
                 pos: Coord,
                 rect: Rect,
                 text: &TextDisplay,
-                palette: &[Rgba],
                 tokens: &[(u32, ::kas::text::format::Colors)],
             ) {
-                (#base).text(id, pos, rect, text, palette, tokens);
+                (#base).text(id, pos, rect, text, tokens);
             }
 
             fn decorate_text(
@@ -98,10 +97,9 @@ impl Methods {
                 pos: Coord,
                 rect: Rect,
                 text: &TextDisplay,
-                palette: &[Rgba],
                 decorations: &[(u32, ::kas::text::format::Decoration)],
             ) {
-                (#base).decorate_text(id, pos, rect, text, palette, decorations);
+                (#base).decorate_text(id, pos, rect, text, decorations);
             }
 
             fn text_cursor(

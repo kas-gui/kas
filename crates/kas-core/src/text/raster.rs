@@ -544,7 +544,6 @@ impl State {
         bb: Quad,
         text: &TextDisplay,
         theme: &ColorsLinear,
-        palette: &[Rgba],
         tokens: &[(u32, Colors)],
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
@@ -555,7 +554,7 @@ impl State {
                 .map(|e| e.1 == Default::default())
                 .unwrap_or(true)
         {
-            let col = Color::default().resolve_color(theme, palette, None);
+            let col = Color::default().resolve_color(theme, None);
             self.text_with_color(allocator, queue, pass, pos, bb, text, col);
             return;
         }
@@ -576,12 +575,12 @@ impl State {
                     }
                 };
 
-                let col = token.color.resolve_color(theme, palette, None);
+                let col = token.color.resolve_color(theme, None);
                 queue.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 
             let for_range = |p: kas_text::Vec2, x2, colors: Colors| {
-                let Some(col) = colors.resolve_background_color(theme, palette) else {
+                let Some(col) = colors.resolve_background_color(theme) else {
                     return;
                 };
 
@@ -604,7 +603,6 @@ impl State {
         bb: Quad,
         text: &TextDisplay,
         theme: &ColorsLinear,
-        palette: &[Rgba],
         tokens: &[(u32, Decoration)],
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
@@ -635,7 +633,7 @@ impl State {
                 };
 
                 // Known limitation: this cannot depend on the background color.
-                let col = token.color.resolve_color(theme, palette, None);
+                let col = token.color.resolve_color(theme, None);
 
                 match token.style {
                     LineStyle::Solid => draw_quad(quad, col),

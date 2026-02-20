@@ -303,8 +303,8 @@ impl<'a> DrawCx<'a> {
     ) {
         if let Ok(display) = text.display() {
             let tokens = text.color_tokens();
-            self.text_with_colors(pos, rect, display, &[], tokens);
-            self.decorate_text(pos, rect, display, &[], text.decorations());
+            self.text_with_colors(pos, rect, display, tokens);
+            self.decorate_text(pos, rect, display, text.decorations());
         }
     }
 
@@ -319,13 +319,12 @@ impl<'a> DrawCx<'a> {
     /// The `text` should be prepared before calling this method.
     pub fn text_with_color<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, color: Rgba) {
         if let Ok(display) = text.display() {
-            let colors = &[color];
             let tokens = [(0, format::Colors {
-                color: format::Color::from_index(0).unwrap(),
+                color: format::Color::from_rgba(color),
                 ..Default::default()
             })];
-            self.text_with_colors(rect.pos, rect, display, colors, &tokens);
-            self.decorate_text(rect.pos, rect, display, colors, text.decorations());
+            self.text_with_colors(rect.pos, rect, display, &tokens);
+            self.decorate_text(rect.pos, rect, display, text.decorations());
         }
     }
 
@@ -348,20 +347,17 @@ impl<'a> DrawCx<'a> {
         pos: Coord,
         rect: Rect,
         display: &TextDisplay,
-        palette: &[Rgba],
         tokens: &[(u32, format::Colors)],
     ) {
         if cfg!(debug_assertions) {
             let mut i = 0;
-            for (start, token) in tokens {
+            for (start, _) in tokens {
                 assert!(*start >= i);
                 i = *start;
-                token.color.validate(palette);
-                token.background.map(|bg| bg.validate(palette));
             }
         }
 
-        self.h.text(&self.id, pos, rect, display, palette, tokens);
+        self.h.text(&self.id, pos, rect, display, tokens);
     }
 
     /// Draw text decorations (e.g. underlines)
@@ -376,21 +372,19 @@ impl<'a> DrawCx<'a> {
         pos: Coord,
         rect: Rect,
         display: &TextDisplay,
-        palette: &[Rgba],
         decorations: &[(u32, format::Decoration)],
     ) {
         if cfg!(debug_assertions) {
             let mut i = 0;
-            for (start, token) in decorations {
+            for (start, _) in decorations {
                 assert!(*start >= i);
                 i = *start;
-                token.color.validate(palette);
             }
         }
 
         if !decorations.is_empty() {
             self.h
-                .decorate_text(&self.id, pos, rect, display, palette, decorations);
+                .decorate_text(&self.id, pos, rect, display, decorations);
         }
     }
 
@@ -573,7 +567,6 @@ pub trait ThemeDraw {
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
-        palette: &[Rgba],
         tokens: &[(u32, format::Colors)],
     );
 
@@ -590,7 +583,6 @@ pub trait ThemeDraw {
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
-        palette: &[Rgba],
         decorations: &[(u32, format::Decoration)],
     );
 
