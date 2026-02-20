@@ -10,7 +10,7 @@ use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::{CursorRange, Effect, EffectFlags, NotReady, SelectionHelper};
+use kas::text::{CursorRange, NotReady, SelectionHelper, format};
 use kas::theme::{Text, TextClass};
 use kas::util::UndoStack;
 use std::borrow::Cow;
@@ -161,32 +161,36 @@ impl Component {
 
     /// Implementation of [`Viewport::draw_with_offset`]
     pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+        let Ok(display) = self.text.display() else {
+            return;
+        };
+
         let pos = self.rect().pos - offset;
+        let range: Range<u32> = self.selection.range().cast();
+
+        let mut tokens = [(0, format::Colors::default()); 3];
+        let tokens = if range.is_empty() {
+            &[]
+        } else {
+            tokens[1].0 = range.start;
+            tokens[1].1.background = Some(format::Color::default());
+            tokens[2].0 = range.end;
+            let r0 = if range.start > 0 { 0 } else { 1 };
+            &tokens[r0..]
+        };
+        draw.text_with_colors(pos, rect, display, &[], tokens);
 
         if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
-            // TODO: combine underline with selection highlight
-            let effects = [
-                Effect {
-                    start: 0,
-                    color: 0,
-                    flags: Default::default(),
-                },
-                Effect {
-                    start: edit_range.start,
-                    color: 0,
-                    flags: EffectFlags::UNDERLINE,
-                },
-                Effect {
-                    start: edit_range.end,
-                    color: 0,
-                    flags: Default::default(),
-                },
+            let tokens = [
+                Default::default(),
+                (edit_range.start, format::Decoration {
+                    dec: format::DecorationType::Underline,
+                    ..Default::default()
+                }),
+                (edit_range.end, Default::default()),
             ];
-            if let Ok(display) = self.text.display() {
-                draw.text_with_effects(pos, rect, display, &[], &effects);
-            }
-        } else {
-            draw.text_with_selection(pos, rect, &self.text, self.selection.range());
+            let r0 = if edit_range.start > 0 { 0 } else { 1 };
+            draw.decorate_text(pos, rect, display, &[], &tokens[r0..]);
         }
 
         if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {

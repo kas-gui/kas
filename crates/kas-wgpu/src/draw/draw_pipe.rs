@@ -6,6 +6,7 @@
 //! Drawing API for `kas_wgpu`
 
 use futures_lite::future::block_on;
+use kas::theme::ColorsLinear;
 use std::f32::consts::FRAC_PI_2;
 use wgpu::util::DeviceExt;
 
@@ -18,7 +19,7 @@ use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Size, Vec2};
 use kas::runner::{GraphicsFeatures, RunError};
-use kas::text::{Effect, TextDisplay};
+use kas::text;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -356,30 +357,51 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         };
     }
 
-    fn draw_text_effects(
+    fn draw_text(
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
         pos: Vec2,
         bb: Quad,
-        text: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[Effect],
+        text: &text::TextDisplay,
+        theme: &ColorsLinear,
+        palette: &[color::Rgba],
+        tokens: &[(u32, text::format::Colors)],
     ) {
         let time = std::time::Instant::now();
-        self.text.text_effects(
+        self.text.text(
             &mut self.images,
             &mut draw.images,
             pass,
             pos,
             bb,
             text,
-            colors,
-            effects,
+            theme,
+            palette,
+            tokens,
             |quad, col| {
                 draw.shaded_square.rect(pass, quad, col);
             },
         );
+        draw.common.report_dur_text(time.elapsed());
+    }
+
+    fn decorate_text(
+        &mut self,
+        draw: &mut Self::Draw,
+        pass: PassId,
+        pos: Vec2,
+        bb: Quad,
+        text: &text::TextDisplay,
+        theme: &ColorsLinear,
+        palette: &[color::Rgba],
+        decorations: &[(u32, text::format::Decoration)],
+    ) {
+        let time = std::time::Instant::now();
+        self.text
+            .decorate_text(pos, bb, text, theme, palette, decorations, |quad, col| {
+                draw.shaded_square.rect(pass, quad, col);
+            });
         draw.common.report_dur_text(time.elapsed());
     }
 }

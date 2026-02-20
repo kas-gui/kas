@@ -130,15 +130,14 @@ mod AccessLabel {
 
         fn draw(&self, mut draw: DrawCx) {
             let rect = self.text.rect();
-            if let Some((key, effects)) = self.text.text().key()
+            draw.text(rect, &self.text);
+            if let Some((key, decoration)) = self.text.text().key()
                 && draw.access_key(&self.target, key)
             {
                 // Stop on first successful binding and draw
                 if let Ok(display) = self.text.display() {
-                    draw.text_with_effects(rect.pos, rect, display, &[], effects);
+                    draw.decorate_text(rect.pos, rect, display, &[], decoration);
                 }
-            } else {
-                draw.text(rect, &self.text);
             }
         }
     }

@@ -7,9 +7,9 @@
 
 use std::cell::RefCell;
 use std::f32;
-use std::ops::Range;
 use std::time::Instant;
 
+use super::ColorsSrgb;
 use crate::Id;
 use crate::cast::traits::*;
 use crate::config::{Config, WindowConfig};
@@ -17,13 +17,11 @@ use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
 use crate::event::EventState;
 use crate::geom::*;
-use crate::text::{Effect, TextDisplay};
+use crate::text::{TextDisplay, format};
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{SelectionStyle, ThemeDraw, ThemeSize};
-
-use super::ColorsSrgb;
 
 /// A simple theme
 ///
@@ -348,75 +346,39 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         }
     }
 
-    fn text_effects(
+    fn text(
         &mut self,
         id: &Id,
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[Effect],
+        palette: &[Rgba],
+        tokens: &[(u32, format::Colors)],
     ) {
+        // NOTE: id is passed to allow usage of self.cols.text_disabled if self.ev.is_disabled(id).
+        // We could do this by passing the pair (text, text_invert) instead of self.cols.
+        let _ = id;
+
         let bb = Quad::conv(rect);
-        let col;
-        let mut colors = colors;
-        if colors.is_empty() {
-            col = [if self.ev.is_disabled(id) {
-                self.cols.text_disabled
-            } else {
-                self.cols.text
-            }];
-            colors = &col;
-        }
         self.draw
-            .text_effects(pos.cast(), bb, text, colors, effects);
+            .text(pos.cast(), bb, text, self.cols, palette, tokens);
     }
 
-    fn text_selected_range(
+    fn decorate_text(
         &mut self,
         id: &Id,
         pos: Coord,
         rect: Rect,
         text: &TextDisplay,
-        range: Range<usize>,
+        palette: &[Rgba],
+        decorations: &[(u32, format::Decoration)],
     ) {
-        let pos = pos.cast();
+        // NOTE: see above note on usage of self.cols.text_disabled.
+        let _ = id;
+
         let bb = Quad::conv(rect);
-        let col = if self.ev.is_disabled(id) {
-            self.cols.text_disabled
-        } else {
-            self.cols.text
-        };
-        let sel_col = self.cols.text_over(self.cols.text_sel_bg);
-
-        // Draw background:
-        text.highlight_range(range.clone(), &mut |p1, p2| {
-            let p1 = Vec2::from(p1);
-            let p2 = Vec2::from(p2);
-            if let Some(quad) = Quad::from_coords(pos + p1, pos + p2).intersection(&bb) {
-                self.draw.rect(quad, self.cols.text_sel_bg);
-            }
-        });
-
-        let effects = [
-            Effect {
-                start: 0,
-                color: 0,
-                flags: Default::default(),
-            },
-            Effect {
-                start: range.start.cast(),
-                color: 1,
-                flags: Default::default(),
-            },
-            Effect {
-                start: range.end.cast(),
-                color: 0,
-                flags: Default::default(),
-            },
-        ];
-        let colors = [col, sel_col];
-        self.draw.text_effects(pos, bb, text, &colors, &effects);
+        self.draw
+            .decorate_text(pos.cast(), bb, text, self.cols, palette, decorations);
     }
 
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {

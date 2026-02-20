@@ -14,9 +14,11 @@
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
 pub use kas_text::{
-    Align, DPU, Direction, Effect, EffectFlags, Line, LineIterator, MarkerPos, MarkerPosIter,
-    NotReady, Status, TextDisplay, Vec2, fonts, format,
+    Align, DPU, Direction, Line, LineIterator, MarkerPos, MarkerPosIter, NotReady, Status,
+    TextDisplay, Vec2, fonts,
 };
+
+pub mod format;
 
 /// Glyph rastering
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

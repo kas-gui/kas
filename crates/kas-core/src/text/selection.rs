@@ -5,9 +5,9 @@
 
 //! Tools for text selection
 
+use crate::text::format::FormattableText;
 use crate::theme::Text;
 use kas_macros::autoimpl;
-use kas_text::format::FormattableText;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 

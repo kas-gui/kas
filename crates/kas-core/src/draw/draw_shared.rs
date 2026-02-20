@@ -10,7 +10,8 @@ use super::{DrawImpl, PassId};
 use crate::ActionRedraw;
 use crate::config::RasterConfig;
 use crate::geom::{Quad, Size, Vec2};
-use crate::text::{Effect, TextDisplay};
+use crate::text::{TextDisplay, format};
+use crate::theme::ColorsLinear;
 use std::any::Any;
 use std::num::NonZeroU32;
 use std::sync::Arc;
@@ -201,21 +202,37 @@ pub trait DrawSharedImpl: Any {
     /// Draw the image in the given `rect`
     fn draw_image(&self, draw: &mut Self::Draw, pass: PassId, id: ImageId, rect: Quad);
 
-    /// Draw text with effects
+    /// Draw text with a list of color effects
     ///
-    /// The `effects` list provides underlining/strikethrough information via
-    /// [`Effect::flags`] and an index [`Effect::color`].
+    /// Text is drawn from `pos` and clipped to `bounding_box`.
     ///
-    /// Text colour lookup uses index `color` and is essentially:
-    /// `colors.get(color.unwrap_or(Rgba::BLACK)`.
-    fn draw_text_effects(
+    /// The `text` display must be prepared prior to calling this method.
+    /// Typically this is done using a [`crate::theme::Text`] object.
+    fn draw_text(
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
         pos: Vec2,
-        bb: Quad,
+        bounding_box: Quad,
         text: &TextDisplay,
-        colors: &[Rgba],
-        effects: &[Effect],
+        theme: &ColorsLinear,
+        palette: &[Rgba],
+        tokens: &[(u32, format::Colors)],
+    );
+
+    /// Draw text decorations (e.g. underlines)
+    ///
+    /// The `text` display must be prepared prior to calling this method.
+    /// Typically this is done using a [`crate::theme::Text`] object.
+    fn decorate_text(
+        &mut self,
+        draw: &mut Self::Draw,
+        pass: PassId,
+        pos: Vec2,
+        bounding_box: Quad,
+        text: &TextDisplay,
+        theme: &ColorsLinear,
+        palette: &[Rgba],
+        decorations: &[(u32, format::Decoration)],
     );
 }

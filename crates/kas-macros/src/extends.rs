@@ -80,27 +80,28 @@ impl Methods {
                 (#base).selection(rect, style);
             }
 
-            fn text_effects(
+            fn text(
                 &mut self,
                 id: &Id,
                 pos: Coord,
                 rect: Rect,
                 text: &TextDisplay,
-                colors: &[Rgba],
-                effects: &[::kas::text::Effect],
+                palette: &[Rgba],
+                tokens: &[(u32, ::kas::text::format::Colors)],
             ) {
-                (#base).text_effects(id, pos, rect, text, colors, effects);
+                (#base).text(id, pos, rect, text, palette, tokens);
             }
 
-            fn text_selected_range(
+            fn decorate_text(
                 &mut self,
                 id: &Id,
                 pos: Coord,
                 rect: Rect,
                 text: &TextDisplay,
-                range: Range<usize>,
+                palette: &[Rgba],
+                decorations: &[(u32, ::kas::text::format::Decoration)],
             ) {
-                (#base).text_selected_range(id, pos, rect, text, range);
+                (#base).decorate_text(id, pos, rect, text, palette, decorations);
             }
 
             fn text_cursor(
