@@ -278,23 +278,11 @@ impl<'a> DrawCx<'a> {
     ///
     /// Text is clipped to `rect`.
     ///
-    /// This is a convenience method over [`Self::text_with_effects`].
+    /// This is a convenience method over [`Self::text_with_position`].
     ///
     /// The `text` should be prepared before calling this method.
     pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
         self.text_with_position(rect.pos, rect, text);
-    }
-
-    /// Draw text with specified color
-    ///
-    /// Text is clipped to `rect` and drawn using `color`.
-    ///
-    /// This is a convenience method over [`Self::text_with_effects`].
-    ///
-    /// The `text` should be prepared before calling this method.
-    pub fn text_with_color<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, color: Rgba) {
-        let effects = text.effect_tokens();
-        self.text_with_effects(rect.pos, rect, text, &[color], effects);
     }
 
     /// Draw text with effects and an offset
@@ -311,8 +299,22 @@ impl<'a> DrawCx<'a> {
         rect: Rect,
         text: &Text<T>,
     ) {
-        let effects = text.effect_tokens();
-        self.text_with_effects(pos, rect, text, &[], effects);
+        if let Ok(display) = text.display() {
+            self.text_with_effects(pos, rect, display, &[], text.effect_tokens());
+        }
+    }
+
+    /// Draw text with specified color
+    ///
+    /// Text is clipped to `rect` and drawn using `color`.
+    ///
+    /// This is a convenience method over [`Self::text_with_effects`].
+    ///
+    /// The `text` should be prepared before calling this method.
+    pub fn text_with_color<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, color: Rgba) {
+        if let Ok(display) = text.display() {
+            self.text_with_effects(rect.pos, rect, display, &[color], text.effect_tokens());
+        }
     }
 
     /// Draw text with a given effect list
@@ -324,7 +326,7 @@ impl<'a> DrawCx<'a> {
     /// Text is then drawn using `colors[0]` except as specified by effects.
     ///
     /// The list of `effects` (if not empty) controls render effects:
-    /// [`Effect::e`] is an index into `colors` while [`Effect::flags`] controls
+    /// [`Effect::color`] is an index into `colors` while [`Effect::flags`] controls
     /// underline and strikethrough. [`Effect::start`] is the text index at
     /// which this effect first takes effect, and must effects must be ordered
     /// such that the sequence of [`Effect::start`] values is strictly
@@ -334,35 +336,28 @@ impl<'a> DrawCx<'a> {
     /// Text objects may embed their own list of effects, accessible using
     /// [`Text::effect_tokens`]. It is always valid to disregard these
     /// and use a custom `effects` list or empty list.
-    pub fn text_with_effects<T: FormattableText>(
+    #[inline]
+    pub fn text_with_effects(
         &mut self,
         pos: Coord,
         rect: Rect,
-        text: &Text<T>,
+        display: &TextDisplay,
         colors: &[Rgba],
         effects: &[Effect],
     ) {
-        if let Ok(display) = text.display() {
-            if effects.is_empty() {
-                // Use the faster and simpler implementation when we don't have effects
-                self.h
-                    .text(&self.id, pos, rect, display, colors.first().cloned());
-            } else {
-                if cfg!(debug_assertions) {
-                    let num_colors = if colors.is_empty() { 1 } else { colors.len() };
-                    let mut i = 0;
-                    for effect in effects {
-                        assert!(effect.start >= i);
-                        i = effect.start;
+        if cfg!(debug_assertions) {
+            let num_colors = if colors.is_empty() { 1 } else { colors.len() };
+            let mut i = 0;
+            for effect in effects {
+                assert!(effect.start >= i);
+                i = effect.start;
 
-                        assert!(usize::from(effect.e) < num_colors);
-                    }
-                }
-
-                self.h
-                    .text_effects(&self.id, pos, rect, display, colors, effects);
+                assert!(usize::from(effect.color) < num_colors);
             }
         }
+
+        self.h
+            .text_effects(&self.id, pos, rect, display, colors, effects);
     }
 
     /// Draw some text with a selection
@@ -550,19 +545,11 @@ pub trait ThemeDraw {
     /// Draw a selection highlight / frame
     fn selection(&mut self, rect: Rect, style: SelectionStyle);
 
-    /// Draw text
-    ///
-    /// The `text` should be prepared before calling this method.
-    fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, color: Option<Rgba>);
-
     /// Draw text with effects
     ///
-    /// [`ThemeDraw::text`] already supports *font* effects: bold,
-    /// emphasis, text size. In addition, this method supports underline and
-    /// strikethrough effects.
-    ///
-    /// If `effects` is empty or all [`Effect::flags`] are default then it is
-    /// equivalent (and faster) to call [`Self::text`] instead.
+    /// *Font* effects (e.g. bold, italics, text size) must be baked into the
+    /// [`TextDisplay`] during preparation. In contrast, "display" `effects`
+    /// (e.g. color, underline) are applied only when drawing.
     ///
     /// The `text` should be prepared before calling this method.
     fn text_effects(

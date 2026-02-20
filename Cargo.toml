@@ -169,3 +169,7 @@ members = [
     "examples/file-explorer",
 ]
 resolver = "2"
+
+[patch.crates-io.kas-text]
+git = "https://github.com/kas-gui/kas-text.git"
+rev = "f8d88435996ccacebc4893793dc47580be2251b7"

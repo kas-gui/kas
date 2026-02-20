@@ -178,22 +178,6 @@ impl DrawSharedImpl for Shared {
         }
     }
 
-    #[inline]
-    fn draw_text(
-        &mut self,
-        draw: &mut Draw,
-        pass: PassId,
-        pos: Vec2,
-        bb: Quad,
-        text: &text::TextDisplay,
-        col: color::Rgba,
-    ) {
-        let time = std::time::Instant::now();
-        self.text
-            .text(&mut self.images, &mut draw.images, pass, pos, bb, text, col);
-        draw.common.report_dur_text(time.elapsed());
-    }
-
     fn draw_text_effects(
         &mut self,
         draw: &mut Draw,

@@ -168,21 +168,23 @@ impl Component {
             let effects = [
                 Effect {
                     start: 0,
-                    e: 0,
+                    color: 0,
                     flags: Default::default(),
                 },
                 Effect {
                     start: edit_range.start,
-                    e: 0,
+                    color: 0,
                     flags: EffectFlags::UNDERLINE,
                 },
                 Effect {
                     start: edit_range.end,
-                    e: 0,
+                    color: 0,
                     flags: Default::default(),
                 },
             ];
-            draw.text_with_effects(pos, rect, &self.text, &[], &effects);
+            if let Ok(display) = self.text.display() {
+                draw.text_with_effects(pos, rect, display, &[], &effects);
+            }
         } else {
             draw.text_with_selection(pos, rect, &self.text, self.selection.range());
         }

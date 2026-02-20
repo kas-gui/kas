@@ -80,10 +80,6 @@ impl Methods {
                 (#base).selection(rect, style);
             }
 
-            fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, color: Option<Rgba>) {
-                (#base).text(id, pos, rect, text, color);
-            }
-
             fn text_effects(
                 &mut self,
                 id: &Id,
