@@ -178,7 +178,7 @@ impl Component {
             let r0 = if range.start > 0 { 0 } else { 1 };
             &tokens[r0..]
         };
-        draw.text_with_colors(pos, rect, display, &[], tokens);
+        draw.text_with_colors(pos, rect, display, tokens);
 
         if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
             let tokens = [
@@ -190,7 +190,7 @@ impl Component {
                 (edit_range.end, Default::default()),
             ];
             let r0 = if edit_range.start > 0 { 0 } else { 1 };
-            draw.decorate_text(pos, rect, display, &[], &tokens[r0..]);
+            draw.decorate_text(pos, rect, display, &tokens[r0..]);
         }
 
         if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {
