@@ -208,7 +208,7 @@ pub trait DrawSharedImpl: Any {
     ///
     /// The `text` display must be prepared prior to calling this method.
     /// Typically this is done using a [`crate::theme::Text`] object.
-    fn draw_text_effects(
+    fn draw_text(
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,

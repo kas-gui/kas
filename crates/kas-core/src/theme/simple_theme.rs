@@ -346,7 +346,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         }
     }
 
-    fn text_effects(
+    fn text(
         &mut self,
         id: &Id,
         pos: Coord,
@@ -361,7 +361,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
 
         let bb = Quad::conv(rect);
         self.draw
-            .text_effects(pos.cast(), bb, text, self.cols, palette, tokens);
+            .text(pos.cast(), bb, text, self.cols, palette, tokens);
     }
 
     fn decorate_text(

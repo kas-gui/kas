@@ -80,7 +80,7 @@ impl Methods {
                 (#base).selection(rect, style);
             }
 
-            fn text_effects(
+            fn text(
                 &mut self,
                 id: &Id,
                 pos: Coord,
@@ -89,7 +89,7 @@ impl Methods {
                 palette: &[Rgba],
                 tokens: &[(u32, ::kas::text::format::Colors)],
             ) {
-                (#base).text_effects(id, pos, rect, text, palette, tokens);
+                (#base).text(id, pos, rect, text, palette, tokens);
             }
 
             fn decorate_text(

@@ -275,9 +275,11 @@ impl<'a> DrawCx<'a> {
 
     /// Draw text
     ///
-    /// Text is clipped to `rect`.
+    /// Text colors are inferred from [`Text::color_tokens`] and decorations
+    /// from [`Text::decorations`].
     ///
-    /// This is a convenience method over [`Self::text_with_position`].
+    /// Text is clipped to `rect` and drawn without offset (see
+    /// [`Self::text_with_position`]).
     ///
     /// The `text` should be prepared before calling this method.
     pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
@@ -286,10 +288,11 @@ impl<'a> DrawCx<'a> {
 
     /// Draw text with effects and an offset
     ///
+    /// Text colors are inferred from [`Text::color_tokens`] and decorations
+    /// from [`Text::decorations`].
+    ///
     /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
     /// the text is not scrolled.
-    ///
-    /// This is a convenience method over [`Self::text_with_effects`].
     ///
     /// The `text` should be prepared before calling this method.
     pub fn text_with_position<T: FormattableText>(
@@ -300,17 +303,18 @@ impl<'a> DrawCx<'a> {
     ) {
         if let Ok(display) = text.display() {
             let tokens = text.color_tokens();
-            self.text_with_effects(pos, rect, display, &[], tokens);
+            self.text_with_colors(pos, rect, display, &[], tokens);
             self.decorate_text(pos, rect, display, &[], text.decorations());
         }
     }
 
     /// Draw text with specified color
     ///
-    /// Text is clipped to `rect` and drawn using `color`, ignoring any color
-    /// information from [`Text::color_tokens`].
+    /// The given `color` is used, ignoring [`Text::color_tokens`]
+    /// Decorations are inferred from [`Text::decorations`].
     ///
-    /// This is a convenience method over [`Self::text_with_effects`].
+    /// Text is clipped to `rect` and drawn without offset (see
+    /// [`Self::text_with_position`]).
     ///
     /// The `text` should be prepared before calling this method.
     pub fn text_with_color<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, color: Rgba) {
@@ -320,24 +324,26 @@ impl<'a> DrawCx<'a> {
                 color: format::Color::from_index(0).unwrap(),
                 ..Default::default()
             })];
-            self.text_with_effects(rect.pos, rect, display, colors, &tokens);
+            self.text_with_colors(rect.pos, rect, display, colors, &tokens);
             self.decorate_text(rect.pos, rect, display, colors, text.decorations());
         }
     }
 
-    /// Draw text with a list of color effects
+    /// Draw text with a list of color tokens
+    ///
+    /// Color `tokens` specify both foreground (text) and background colors.
+    /// Use `&[]` for no effects (uses the theme-default colors), or use a
+    /// sequence such that `effects[i].0` values are strictly increasing.
+    /// A glyph for index `j` in the source text will use effect `tokens[i].1`
+    /// where `i` is the largest value such that `tokens[i].0 <= j`, or the
+    /// default value of `format::Colors` if no such `i` exists.
+    ///
+    /// This method does not draw decorations; see also [`Self::decorate_text`].
     ///
     /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
     /// the text is not scrolled.
-    ///
-    /// If `palette` is empty, it is replaced with a single theme-defined color.
-    /// Text is then drawn using `palette[0]` except as specified by effects.
-    ///
-    /// The list of `tokens` may be the result of [`Text::color_tokens`] or any
-    /// compatible sequence (including `&[]`). See also
-    /// [`FormattableText::color_tokens`].
     #[inline]
-    pub fn text_with_effects(
+    pub fn text_with_colors(
         &mut self,
         pos: Coord,
         rect: Rect,
@@ -355,14 +361,13 @@ impl<'a> DrawCx<'a> {
             }
         }
 
-        self.h
-            .text_effects(&self.id, pos, rect, display, palette, tokens);
+        self.h.text(&self.id, pos, rect, display, palette, tokens);
     }
 
     /// Draw text decorations (e.g. underlines)
     ///
     /// This does not draw the text itself, but requires most of the same inputs
-    /// as [`Self::text_with_effects`].
+    /// as [`Self::text_with_colors`].
     ///
     /// The list of `decorations` may come from [`Text::decorations`] or be any
     /// other compatible sequence. See also [`FormattableText::decorations`].
@@ -556,16 +561,13 @@ pub trait ThemeDraw {
     /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
     /// the text is not scrolled.
     ///
-    /// If `palette` is empty, it is replaced with a single theme-defined color.
-    /// Text is then drawn using `palette[0]` except as specified by effects.
-    ///
     /// *Font* effects (e.g. bold, italics, text size) must be baked into the
     /// [`TextDisplay`] during preparation. In contrast, display effects
     /// (e.g. color, underline) are applied only when drawing from the provided
     /// list of `tokens`. This list may be the result of [`Text::color_tokens`]
     /// or any compatible sequence (including `&[]`). See also
     /// [`FormattableText::color_tokens`].
-    fn text_effects(
+    fn text(
         &mut self,
         id: &Id,
         pos: Coord,
@@ -578,7 +580,7 @@ pub trait ThemeDraw {
     /// Draw text decorations (e.g. underlines)
     ///
     /// This does not draw the text itself, but requires most of the same inputs
-    /// as [`Self::text_effects`].
+    /// as [`Self::text`].
     ///
     /// The list of `decorations` may come from [`Text::decorations`] or be any
     /// other compatible sequence. See also [`FormattableText::decorations`].

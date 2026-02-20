@@ -502,8 +502,8 @@ impl State {
         }
     }
 
-    /// Draw text without effects
-    pub fn text(
+    /// Draw text with a single color
+    pub fn text_with_color(
         &mut self,
         allocator: &mut dyn SpriteAllocator,
         queue: &mut dyn RenderQueue,
@@ -535,7 +535,7 @@ impl State {
 
     /// Draw text with color effects
     #[allow(clippy::too_many_arguments)]
-    pub fn text_effects(
+    pub fn text(
         &mut self,
         allocator: &mut dyn SpriteAllocator,
         queue: &mut dyn RenderQueue,
@@ -556,7 +556,7 @@ impl State {
                 .unwrap_or(true)
         {
             let col = Color::default().resolve_color(theme, palette, None);
-            self.text(allocator, queue, pass, pos, bb, text, col);
+            self.text_with_color(allocator, queue, pass, pos, bb, text, col);
             return;
         }
 

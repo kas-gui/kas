@@ -128,7 +128,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     ///
     /// The `text` display must be prepared prior to calling this method.
     /// Typically this is done using a [`crate::theme::Text`] object.
-    pub fn text(
+    pub fn text_with_color(
         &mut self,
         pos: Vec2,
         bounding_box: Quad,
@@ -140,7 +140,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
             color: format::Color::from_index(0).unwrap(),
             ..Default::default()
         })];
-        self.text_effects(pos, bounding_box, text, theme, &[col], &tokens);
+        self.text(pos, bounding_box, text, theme, &[col], &tokens);
     }
 }
 
@@ -241,7 +241,7 @@ pub trait Draw {
     ///
     /// The `text` display must be prepared prior to calling this method.
     /// Typically this is done using a [`crate::theme::Text`] object.
-    fn text_effects(
+    fn text(
         &mut self,
         pos: Vec2,
         bounding_box: Quad,
@@ -314,7 +314,7 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         self.shared.draw.draw_image(self.draw, self.pass, id, rect);
     }
 
-    fn text_effects(
+    fn text(
         &mut self,
         pos: Vec2,
         bb: Quad,
@@ -325,7 +325,7 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
     ) {
         self.shared
             .draw
-            .draw_text_effects(self.draw, self.pass, pos, bb, text, theme, palette, tokens);
+            .draw_text(self.draw, self.pass, pos, bb, text, theme, palette, tokens);
     }
 
     fn decorate_text(

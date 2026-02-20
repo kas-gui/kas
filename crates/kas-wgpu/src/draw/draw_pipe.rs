@@ -357,7 +357,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         };
     }
 
-    fn draw_text_effects(
+    fn draw_text(
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
@@ -369,7 +369,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         tokens: &[(u32, text::format::Colors)],
     ) {
         let time = std::time::Instant::now();
-        self.text.text_effects(
+        self.text.text(
             &mut self.images,
             &mut draw.images,
             pass,
