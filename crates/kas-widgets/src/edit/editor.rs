@@ -1032,6 +1032,16 @@ impl Editor {
         self.text.clone_string()
     }
 
+    /// Get the (horizontal) text direction
+    ///
+    /// This returns `true` if the text is inferred to have right-to-left;
+    /// in other cases (including when the text is empty) it returns `false`.
+    /// TODO: support defaulting to RTL.
+    #[inline]
+    pub fn text_is_rtl(&self) -> bool {
+        self.text.text_is_rtl()
+    }
+
     /// Commit outstanding changes to the undo history
     ///
     /// Call this *before* changing the text with `set_str` or `set_string`

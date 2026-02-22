@@ -168,6 +168,15 @@ mod SelectableText {
             true
         }
 
+        /// Get the (horizontal) text direction
+        ///
+        /// This returns `true` if the text is inferred to have right-to-left;
+        /// in other cases (including when the text is empty) it returns `false`.
+        #[inline]
+        pub fn text_is_rtl(&self) -> bool {
+            self.text.text_is_rtl()
+        }
+
         /// Get text class
         #[inline]
         pub fn class(&self) -> TextClass {
@@ -379,14 +388,19 @@ mod ScrollText {
             rules.with_stretch(Stretch::Low)
         }
 
-        fn set_rect(&mut self, cx: &mut SizeCx, mut rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             self.core.set_rect(rect);
             self.text.set_rect(cx, rect, hints);
 
-            let w = cx.scroll_bar_width().min(rect.size.0);
-            rect.pos.0 += rect.size.0 - w;
-            rect.size.0 = w;
-            self.vert_bar.set_rect(cx, rect, AlignHints::NONE);
+            // Set bar position, dependent on text direction. TODO: move on text-dir-change.
+            let bar_width = cx.scroll_bar_width();
+            let x0 = if !self.text.text_is_rtl() {
+                rect.pos.0 + rect.size.0 - bar_width
+            } else {
+                rect.pos.0
+            };
+            let bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
+            self.vert_bar.set_rect(cx, bar_rect, AlignHints::NONE);
 
             self.update_content_size(cx);
         }
