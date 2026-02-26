@@ -587,6 +587,7 @@ impl State {
 
                 let a = Vec2(p.0, run.line_top());
                 let b = Vec2(x2, run.line_bottom());
+                debug_assert!(a <= b, "expected {a:?} <= {b:?}");
                 if let Some(quad) = Quad::from_coords(a, b).intersection(&bb) {
                     draw_quad(quad, col);
                 }
