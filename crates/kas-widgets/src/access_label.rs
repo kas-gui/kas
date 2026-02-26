@@ -136,7 +136,7 @@ mod AccessLabel {
             {
                 // Stop on first successful binding and draw
                 if let Ok(display) = self.text.display() {
-                    draw.decorate_text(rect.pos, rect, display, &[], decoration);
+                    draw.decorate_text(rect.pos, rect, display, decoration);
                 }
             }
         }

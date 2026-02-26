@@ -365,7 +365,6 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         bb: Quad,
         text: &text::TextDisplay,
         theme: &ColorsLinear,
-        palette: &[color::Rgba],
         tokens: &[(u32, text::format::Colors)],
     ) {
         let time = std::time::Instant::now();
@@ -377,7 +376,6 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
             bb,
             text,
             theme,
-            palette,
             tokens,
             |quad, col| {
                 draw.shaded_square.rect(pass, quad, col);
@@ -394,12 +392,11 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         bb: Quad,
         text: &text::TextDisplay,
         theme: &ColorsLinear,
-        palette: &[color::Rgba],
         decorations: &[(u32, text::format::Decoration)],
     ) {
         let time = std::time::Instant::now();
         self.text
-            .decorate_text(pos, bb, text, theme, palette, decorations, |quad, col| {
+            .decorate_text(pos, bb, text, theme, decorations, |quad, col| {
                 draw.shaded_square.rect(pass, quad, col);
             });
         draw.common.report_dur_text(time.elapsed());
