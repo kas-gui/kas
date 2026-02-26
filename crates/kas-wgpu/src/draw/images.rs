@@ -171,12 +171,9 @@ impl Images {
         );
 
         let mut atlas_rgba_mask = None;
-        // FIXME: This is disabled because of a wgpu validation error
-        #[allow(clippy::overly_complex_bool_expr)]
-        if false
-            && device
-                .features()
-                .contains(wgpu::Features::DUAL_SOURCE_BLENDING)
+        if device
+            .features()
+            .contains(wgpu::Features::DUAL_SOURCE_BLENDING)
         {
             atlas_rgba_mask = Some(atlases::Pipeline::new(
                 device,
