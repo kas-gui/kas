@@ -78,9 +78,16 @@ impl Shortcuts {
             let shortcuts = [
                 (NamedKey::ArrowLeft.into(), Command::WordLeft),
                 (NamedKey::ArrowRight.into(), Command::WordRight),
+                (NamedKey::Delete.into(), Command::DelWordBack),
             ];
+            map.extend(shortcuts.iter().cloned());
 
-            map.insert(NamedKey::Delete.into(), Command::DelWordBack);
+            let modifiers = ModifiersState::ALT | ModifiersState::SHIFT;
+            let map = self.map.entry(modifiers).or_insert_with(Default::default);
+            let shortcuts = [
+                (NamedKey::ArrowLeft.into(), Command::WordLeft),
+                (NamedKey::ArrowRight.into(), Command::WordRight),
+            ];
             map.extend(shortcuts.iter().cloned());
         }
 
@@ -166,6 +173,14 @@ impl Shortcuts {
                 (NamedKey::ArrowDown.into(), Command::DocEnd),
                 (NamedKey::ArrowLeft.into(), Command::Home),
                 (NamedKey::ArrowRight.into(), Command::End),
+            ];
+            map.extend(shortcuts.iter().cloned());
+        } else {
+            let shortcuts = [
+                (NamedKey::ArrowLeft.into(), Command::WordLeft),
+                (NamedKey::ArrowRight.into(), Command::WordRight),
+                (NamedKey::Home.into(), Command::DocHome),
+                (NamedKey::End.into(), Command::DocEnd),
             ];
             map.extend(shortcuts.iter().cloned());
         }

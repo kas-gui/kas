@@ -86,9 +86,17 @@ mod EditBox {
 
             let mut bar_rect = Rect::ZERO;
             if self.multi_line() {
+                // Set bar position, dependent on text direction. TODO: move on text-dir-change.
                 let bar_width = cx.scroll_bar_width();
-                let x1 = rect.pos.0 + rect.size.0;
-                let x0 = x1 - bar_width;
+                let (x0, x1);
+                if !self.inner.text_is_rtl() {
+                    x1 = rect.pos.0 + rect.size.0;
+                    x0 = x1 - bar_width;
+                } else {
+                    x0 = rect.pos.0;
+                    x1 = x0 + bar_width;
+                    rect.pos.0 = x1;
+                }
                 bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
                 rect.size.0 = (rect.size.0 - bar_width - self.inner_margin).max(0);
             }

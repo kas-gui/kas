@@ -684,7 +684,7 @@ impl Editor {
     fn cmd_action(
         &mut self,
         cx: &mut EventCx,
-        cmd: Command,
+        mut cmd: Command,
         code: Option<PhysicalKey>,
     ) -> Result<EventAction, NotReady> {
         let editable = self.editable;
@@ -696,6 +696,16 @@ impl Editor {
         let selection = self.selection.range();
         let have_sel = selection.end > selection.start;
         let string;
+
+        if self.text_is_rtl() {
+            match cmd {
+                Command::Left => cmd = Command::Right,
+                Command::Right => cmd = Command::Left,
+                Command::WordLeft => cmd = Command::WordRight,
+                Command::WordRight => cmd = Command::WordLeft,
+                _ => (),
+            };
+        }
 
         enum Action<'a> {
             None,
@@ -1030,6 +1040,16 @@ impl Editor {
     #[inline]
     pub fn clone_string(&self) -> String {
         self.text.clone_string()
+    }
+
+    /// Get the (horizontal) text direction
+    ///
+    /// This returns `true` if the text is inferred to have right-to-left;
+    /// in other cases (including when the text is empty) it returns `false`.
+    /// TODO: support defaulting to RTL.
+    #[inline]
+    pub fn text_is_rtl(&self) -> bool {
+        self.text.text_is_rtl()
     }
 
     /// Commit outstanding changes to the undo history
