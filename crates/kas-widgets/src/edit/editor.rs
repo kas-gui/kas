@@ -684,7 +684,7 @@ impl Editor {
     fn cmd_action(
         &mut self,
         cx: &mut EventCx,
-        cmd: Command,
+        mut cmd: Command,
         code: Option<PhysicalKey>,
     ) -> Result<EventAction, NotReady> {
         let editable = self.editable;
@@ -696,6 +696,16 @@ impl Editor {
         let selection = self.selection.range();
         let have_sel = selection.end > selection.start;
         let string;
+
+        if self.text_is_rtl() {
+            match cmd {
+                Command::Left => cmd = Command::Right,
+                Command::Right => cmd = Command::Left,
+                Command::WordLeft => cmd = Command::WordRight,
+                Command::WordRight => cmd = Command::WordLeft,
+                _ => (),
+            };
+        }
 
         enum Action<'a> {
             None,
