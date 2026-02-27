@@ -95,11 +95,6 @@ impl MessageStack {
         self.stack.push(msg);
     }
 
-    /// Drop messages above the stack base.
-    pub(crate) fn drop_unsent(&mut self) {
-        self.stack.drain(self.base..);
-    }
-
     /// Drop remaining messages and reset
     pub(crate) fn clear(&mut self) {
         for msg in self.stack.drain(..) {

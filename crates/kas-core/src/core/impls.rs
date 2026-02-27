@@ -154,19 +154,12 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
         if let Some(scroll) = cx.post_send(index) {
             widget.handle_scroll(cx, data, scroll);
         }
+    } else if cfg!(debug_assertions) && id != widget.id_ref() {
+        log::debug!("_replay: broken path {id} after {}", widget.identify());
+    }
 
-        if cx.has_msg() {
-            widget.handle_messages(cx, data);
-        }
-    } else if id == widget.id_ref() {
+    if cx.has_msg() {
         widget.handle_messages(cx, data);
-    } else {
-        // This implies use of send_async / send_spawn from a widget which was
-        // unmapped or removed.
-        #[cfg(debug_assertions)]
-        log::debug!("_replay: {} cannot find path to {id}", widget.identify());
-
-        cx.drop_unsent();
     }
 }
 

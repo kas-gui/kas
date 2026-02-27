@@ -212,11 +212,6 @@ impl<'a> EventCx<'a> {
         self.runner.message_stack().get_op_count()
     }
 
-    /// Drop messages above the stack base.
-    pub(crate) fn drop_unsent(&mut self) {
-        self.runner.message_stack_mut().drop_unsent();
-    }
-
     /// Set a scroll action
     ///
     /// When setting [`Scroll::Rect`], use the widget's own coordinate space.
