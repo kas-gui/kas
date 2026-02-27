@@ -135,12 +135,14 @@ where
 
     fn about_to_wait(&mut self, el: &dyn ActiveEventLoop) {
         self.flush_pending(el);
-        self.shared.handle_messages(&mut self.data);
 
         // Distribute inter-window messages.
         // NOTE: sending of these messages will be delayed until the next call to flush_pending.
+        self.shared.redirect_messages_by_type();
         while let Some((id, msg)) = self.shared.send_queue.pop_front() {
-            if let Some(mut window_id) = id.window_id() {
+            if id.is_valid()
+                && let Some(mut window_id) = id.window_id()
+            {
                 if let Some(win_id) = self.popups.get(&window_id) {
                     window_id = *win_id;
                 }
@@ -148,9 +150,13 @@ where
                     window.send_erased(id, msg);
                 }
             } else {
-                log::warn!("unable to send message (no target): {msg:?}");
+                if cfg!(debug_assertions) && id.is_valid() {
+                    log::debug!("send queue: window not found for {id}");
+                }
+                self.shared.messages.push_erased(msg);
             }
         }
+        self.shared.handle_messages(&mut self.data);
 
         self.resumes.sort_by_key(|item| item.0);
 

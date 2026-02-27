@@ -88,23 +88,30 @@ where
         })
     }
 
+    /// Redirect messages with a target defined by the type
+    pub(crate) fn redirect_messages_by_type(&mut self) {
+        if !self.messages.reset_and_has_any() {
+            return;
+        }
+
+        let mut i = self.messages.stack.len();
+        while i > 0 {
+            i -= 1;
+            if self.messages.stack[i].is_sent() {
+                continue;
+            }
+
+            let type_id = self.messages.stack[i].type_id();
+            if let Some(target) = self.send_targets.get(&type_id) {
+                let msg = self.messages.stack.remove(i);
+                self.send_queue.push_back((target.clone(), msg));
+            }
+        }
+    }
+
     /// Flush pending messages
     pub(crate) fn handle_messages<Data: AppData>(&mut self, data: &mut Data) {
         if self.messages.reset_and_has_any() {
-            let mut i = self.messages.stack.len();
-            while i > 0 {
-                i -= 1;
-                if self.messages.stack[i].is_sent() {
-                    continue;
-                }
-
-                let type_id = self.messages.stack[i].type_id();
-                if let Some(target) = self.send_targets.get(&type_id) {
-                    let msg = self.messages.stack.remove(i);
-                    self.send_queue.push_back((target.clone(), msg));
-                }
-            }
-
             let start_count = self.messages.get_op_count();
             let mut last_count = start_count;
             while !self.messages.stack.is_empty() {
