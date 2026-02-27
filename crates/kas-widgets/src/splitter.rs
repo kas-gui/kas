@@ -144,8 +144,8 @@ mod Splitter {
         }
 
         #[inline]
-        fn dim(&self) -> (D, usize) {
-            (self.direction, self.widgets.len() + self.grips.len())
+        fn dim(&self) -> (D, usize, bool) {
+            (self.direction, self.widgets.len() + self.grips.len(), false)
         }
     }
 

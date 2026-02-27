@@ -323,8 +323,8 @@ impl SizeRules {
     ///
     /// 1.  All widths are at least their minimum size requirement
     /// 2.  The sum of widths plus margins between items equals `target`
-    /// 3.  No width exceeds its ideal size while other widths are below their
-    ///     own ideal size
+    /// 3.  If `reallocate`, then do not allow widths to exceed their ideal size
+    ///     while other widths are below their own ideal size
     /// 4.  No item with a [`Stretch`] priority less than the highest in `rules`
     ///     exceeds its ideal size
     /// 5.  When extra space is available and some widgets are below their ideal
@@ -344,9 +344,9 @@ impl SizeRules {
     /// revert to the previous solution. (The reverse may not hold if widths
     /// had previously been affected by a different agent.)
     #[inline]
-    pub fn solve_widths(widths: &mut [i32], rules: &[Self], target: i32) {
+    pub fn solve_widths(widths: &mut [i32], rules: &[Self], target: i32, reallocate: bool) {
         let total = SizeRules::sum(rules);
-        Self::solve_widths_with_total(widths, rules, total, target);
+        Self::solve_widths_with_total(widths, rules, total, target, reallocate);
     }
 
     /// Solve a sequence of rules
@@ -357,8 +357,14 @@ impl SizeRules {
     /// Input requirements:
     /// - `rules.len() == widths.len()`
     /// - `SizeRules::sum(rules) == total`
-    pub fn solve_widths_with_total(widths: &mut [i32], rules: &[Self], total: Self, target: i32) {
-        Self::solve_widths_impl(widths, rules, total, target, Even)
+    pub fn solve_widths_with_total(
+        widths: &mut [i32],
+        rules: &[Self],
+        total: Self,
+        target: i32,
+        reallocate: bool,
+    ) {
+        Self::solve_widths_impl(widths, rules, total, target, Even(reallocate))
     }
 
     /// Solve a sequence of rules with priority distribution
@@ -455,9 +461,14 @@ impl SizeRules {
         let target = target - margin_sum;
 
         // Shrink: sum - target
-        // + dist_under_b because this lets us increase targets under b
-        let mut to_shrink = sum + dist_under_b - target;
-        if dist_over_b <= to_shrink {
+        let mut to_shrink = sum - target;
+        if pri.reallocate() {
+            // + dist_under_b because this lets us increase targets under b
+            to_shrink += dist_under_b;
+        }
+        if to_shrink <= 0 {
+            // No shrinking
+        } else if dist_over_b <= to_shrink {
             // Ensure nothing exceeds the ideal and consider shrinking anything over min:
             let mut targets = Targets::new();
             sum = 0;
@@ -539,7 +550,10 @@ impl SizeRules {
                     }
                     sum += out[i];
                 }
-                let to_shrink = sum + dist_under_b - target;
+                let mut to_shrink = sum - target;
+                if pri.reallocate() {
+                    to_shrink += dist_under_b;
+                }
                 if 0 < to_shrink && to_shrink <= avail {
                     avail -= to_shrink;
                     reduce_targets(out, &mut targets, |i| rules[i].b, avail);
@@ -607,7 +621,7 @@ impl SizeRules {
 
         debug_assert_eq!(
             target,
-            (0..N).fold(0, |x, i| x + out[i]),
+            out.iter().sum::<i32>(),
             "widths {out:?} not equal to target {target}"
         );
     }
@@ -679,6 +693,9 @@ impl SizeRules {
 }
 
 trait SolvePriority: std::fmt::Debug {
+    /// Reallocate size above the ideal to bring other sizes up to the ideal?
+    fn reallocate(&self) -> bool;
+
     /// Are we giving priority to some widget when increasing/decreasing size?
     ///
     /// - `None` means even distribution
@@ -688,8 +705,13 @@ trait SolvePriority: std::fmt::Debug {
 }
 
 #[derive(Debug)]
-struct Even;
+struct Even(bool);
 impl SolvePriority for Even {
+    #[inline]
+    fn reallocate(&self) -> bool {
+        self.0
+    }
+
     #[inline]
     fn priority(&self) -> Option<bool> {
         None
@@ -701,6 +723,11 @@ struct Prioritize {
     last: bool,
 }
 impl SolvePriority for Prioritize {
+    #[inline]
+    fn reallocate(&self) -> bool {
+        false
+    }
+
     #[inline]
     fn priority(&self) -> Option<bool> {
         Some(self.last)

@@ -270,7 +270,7 @@ mod List {
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-            let dim = (self.direction, self.widgets.len());
+            let dim = (self.direction, self.widgets.len(), true);
             let mut solver = RowSolver::new(axis, dim, &mut self.layout);
             for n in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_mut_tile(n) {
@@ -282,7 +282,7 @@ mod List {
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             self.core.set_rect(rect);
-            let dim = (self.direction, self.widgets.len());
+            let dim = (self.direction, self.widgets.len(), true);
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout);
 
             for n in 0..self.widgets.len() {
