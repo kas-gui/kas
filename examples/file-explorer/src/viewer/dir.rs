@@ -48,33 +48,34 @@ impl clerk::AsyncClerk<usize> for Clerk {
             self.entries.clear();
 
             let path = data.path.clone();
-            cx.send_spawn(id, async move {
-                match std::fs::read_dir(&path) {
-                    Ok(dirs) => NewEntries(
-                        dirs.filter_map(|entry| match entry {
-                            Ok(entry) => Some(entry.path()),
-                            Err(err) => {
-                                report_io_error(&path, err);
-                                None
-                            }
-                        })
-                        .filter(|path| {
-                            if !show_hidden
-                                && let Some(name) = path.file_name()
-                                && name.as_encoded_bytes().first() == Some(&b'.')
-                            {
-                                false
-                            } else {
-                                true
-                            }
-                        })
-                        .collect(),
-                    ),
+            cx.send_spawn_opt(id, async move {
+                let dirs = match std::fs::read_dir(&path) {
+                    Ok(dirs) => dirs,
                     Err(err) => {
                         report_io_error(&path, err);
-                        NewEntries(vec![])
+                        return None;
                     }
-                }
+                };
+                let entries = dirs
+                    .filter_map(|entry| match entry {
+                        Ok(entry) => Some(entry.path()),
+                        Err(err) => {
+                            report_io_error(&path, err);
+                            None
+                        }
+                    })
+                    .filter(|path| {
+                        if !show_hidden
+                            && let Some(name) = path.file_name()
+                            && name.as_encoded_bytes().first() == Some(&b'.')
+                        {
+                            false
+                        } else {
+                            true
+                        }
+                    })
+                    .collect();
+                Some(NewEntries(entries))
             });
 
             clerk::Changes::Any

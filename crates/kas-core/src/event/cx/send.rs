@@ -108,7 +108,18 @@ impl EventState {
         Fut: IntoFuture<Output = M> + 'static,
         M: Debug + 'static,
     {
-        self.send_async_erased(id, async { Erased::new(fut.await) });
+        self.send_async_opt(id, async { Some(fut.await) })
+    }
+
+    /// Optionally send a message to `id` via a [`Future`]
+    ///
+    /// This is a variant of [`Self::send_async`].
+    pub fn send_async_opt<Fut, M>(&mut self, id: Id, fut: Fut)
+    where
+        Fut: IntoFuture<Output = Option<M>> + 'static,
+        M: Debug + 'static,
+    {
+        self.send_async_erased(id, async { fut.await.map(Erased::new) });
     }
 
     /// Send a type-erased message to `id` via a [`Future`]
@@ -116,7 +127,7 @@ impl EventState {
     /// This is a low-level variant of [`Self::send_async`].
     pub fn send_async_erased<Fut>(&mut self, id: Id, fut: Fut)
     where
-        Fut: IntoFuture<Output = Erased> + 'static,
+        Fut: IntoFuture<Output = Option<Erased>> + 'static,
     {
         let fut = Box::pin(fut.into_future());
         self.fut_messages.push((id, fut));
@@ -140,6 +151,19 @@ impl EventState {
         M: Debug + Send + 'static,
     {
         self.send_async(id, async_global_executor::spawn(fut.into_future()));
+    }
+
+    /// Spawn a task, run on a thread pool
+    ///
+    /// This is a variant of [`Self::send_spawn`].
+    #[cfg(feature = "spawn")]
+    pub fn send_spawn_opt<Fut, M>(&mut self, id: Id, fut: Fut)
+    where
+        Fut: IntoFuture<Output = Option<M>> + 'static,
+        Fut::IntoFuture: Send,
+        M: Debug + Send + 'static,
+    {
+        self.send_async_opt(id, async_global_executor::spawn(fut.into_future()));
     }
 }
 
@@ -310,11 +334,13 @@ impl<'a> EventCx<'a> {
                 Poll::Pending => {
                     i += 1;
                 }
-                Poll::Ready(msg) => {
+                Poll::Ready(opt_msg) => {
                     let (id, _) = self.state.fut_messages.remove(i);
 
                     // Send via queue to support send targets and inter-window sending
-                    self.send_queue.push_back((id, msg));
+                    if let Some(msg) = opt_msg {
+                        self.send_queue.push_back((id, msg));
+                    }
                 }
             }
         }
