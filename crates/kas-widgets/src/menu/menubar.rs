@@ -71,7 +71,7 @@ mod MenuBar {
             // but the frame does not adjust the children's rects.
 
             let len = self.widgets.len();
-            let dim = (self.direction, len + 1);
+            let dim = (self.direction, len + 1, true);
             let mut solver = RowSolver::new(axis, dim, &mut self.layout_store);
             let frame_rules = cx.frame(FrameStyle::MenuEntry, axis);
             for (n, child) in self.widgets.iter_mut().enumerate() {
@@ -92,7 +92,7 @@ mod MenuBar {
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
             self.core.set_rect(rect);
-            let dim = (self.direction, self.widgets.len() + 1);
+            let dim = (self.direction, self.widgets.len() + 1, true);
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout_store);
             let hints = AlignHints::CENTER;
 

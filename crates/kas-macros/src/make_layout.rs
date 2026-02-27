@@ -661,7 +661,7 @@ impl Layout {
             Layout::List(stor, dir, list) => {
                 let len = list.len();
                 let mut toks = quote! {
-                    let dim = (#dir, #len);
+                    let dim = (#dir, #len, true);
                     let mut solver = ::kas::layout::RowSolver::new(axis, dim, &mut #core_path.#stor);
                 };
                 for (index, item) in list.iter().enumerate() {
@@ -760,7 +760,7 @@ impl Layout {
             Layout::List(stor, dir, list) => {
                 let len = list.len();
                 let mut toks = quote! {
-                    let dim = (#dir, #len);
+                    let dim = (#dir, #len, true);
                     let mut setter = ::kas::layout::RowSetter::<_, Vec<i32>, _>::new(rect, dim, &mut #core_path.#stor);
                 };
                 for (index, item) in list.iter().enumerate() {

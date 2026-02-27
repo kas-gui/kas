@@ -34,9 +34,14 @@ impl<S: RowStorage> RowSolver<S> {
     /// Argument order is consistent with other [`RulesSolver`]s.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `(dir, len)`: direction and number of items
+    /// - `(direction, len, reallocate)`: direction and number of items; whether
+    ///   to reallocate size-over-ideal to bring other items up to ideal
     /// - `storage`: reference to persistent storage
-    pub fn new<D: Directional>(axis: AxisInfo, (dir, len): (D, usize), storage: &mut S) -> Self {
+    pub fn new<D: Directional>(
+        axis: AxisInfo,
+        (dir, len, reallocate): (D, usize, bool),
+        storage: &mut S,
+    ) -> Self {
         storage.set_dim(len);
 
         let axis_is_vertical = axis.is_vertical() ^ dir.is_vertical();
@@ -44,7 +49,7 @@ impl<S: RowStorage> RowSolver<S> {
         if axis.has_fixed && axis_is_vertical {
             // Assume we already have rules for the other axis; solve for the given width
             let (widths, rules) = storage.widths_and_rules();
-            SizeRules::solve_widths(widths, rules, axis.other_axis);
+            SizeRules::solve_widths(widths, rules, axis.other_axis, reallocate);
         }
 
         RowSolver {
@@ -116,10 +121,15 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     ///
     /// Argument order is consistent with other [`RulesSetter`]s.
     ///
-    /// -   `rect`: the [`Rect`] within which to position children
-    /// - `(direction, len)`: direction and number of items
-    /// -   `storage`: access to the solver's storage
-    pub fn new(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
+    /// - `rect`: the [`Rect`] within which to position children
+    /// - `(direction, len, reallocate)`: direction and number of items; whether
+    ///   to reallocate size-over-ideal to bring other items up to ideal
+    /// - `storage`: access to the solver's storage
+    pub fn new(
+        rect: Rect,
+        (direction, len, reallocate): (D, usize, bool),
+        storage: &mut S,
+    ) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);
         storage.set_dim(len);
@@ -128,7 +138,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
             let is_horiz = direction.is_horizontal();
             let width = if is_horiz { rect.size.0 } else { rect.size.1 };
             let (widths, rules) = storage.widths_and_rules();
-            SizeRules::solve_widths(widths, rules, width);
+            SizeRules::solve_widths(widths, rules, width, reallocate);
         }
 
         let _s = Default::default();
@@ -148,7 +158,11 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     /// previous `RowSetter`. The user should optionally call `solve_range` on
     /// any ranges needing updating and finally call `update_offsets` before
     /// using this `RowSetter` to calculate child positions.
-    pub fn new_unsolved(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
+    pub fn new_unsolved(
+        rect: Rect,
+        (direction, len, _reallocate): (D, usize, bool),
+        storage: &mut S,
+    ) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);
         storage.set_dim(len);

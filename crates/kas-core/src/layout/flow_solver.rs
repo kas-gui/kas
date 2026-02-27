@@ -88,6 +88,7 @@ impl FlowSolver {
                     &storage.rules[start..i],
                     total,
                     width,
+                    true,
                 );
                 storage.breaks.push(i);
                 start = i;
@@ -100,6 +101,7 @@ impl FlowSolver {
                 &storage.rules[start..],
                 total,
                 width,
+                true,
             );
         }
 
@@ -267,7 +269,7 @@ impl FlowSetter {
         if len != 0 {
             let height = rect.size.extract(direction.flipped());
             heights = vec![0; storage.height_rules.len()];
-            SizeRules::solve_widths(&mut heights, &storage.height_rules, height);
+            SizeRules::solve_widths(&mut heights, &storage.height_rules, height, true);
         }
 
         let mut row = FlowSetter {
