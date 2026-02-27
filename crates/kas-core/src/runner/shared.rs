@@ -212,9 +212,6 @@ pub(crate) trait RunnerT {
     /// Set send targets
     fn set_send_targets(&mut self, targets: &mut Vec<(TypeId, Id)>);
 
-    /// Find a send target for `type_id`, if any
-    fn send_target_for(&self, type_id: TypeId) -> Option<Id>;
-
     /// Attempt to get clipboard contents
     ///
     /// In case of failure, paste actions will simply fail. The implementation
@@ -327,11 +324,6 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         for (type_id, id) in targets.drain(..) {
             self.send_targets.insert(type_id, id);
         }
-    }
-
-    /// Find a send target for `type_id`, if any
-    fn send_target_for(&self, type_id: TypeId) -> Option<Id> {
-        self.send_targets.get(&type_id).cloned()
     }
 
     fn get_clipboard(&mut self) -> Option<String> {
