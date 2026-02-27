@@ -88,23 +88,30 @@ where
         })
     }
 
+    /// Redirect messages with a target defined by the type
+    pub(crate) fn redirect_messages_by_type(&mut self) {
+        if !self.messages.reset_and_has_any() {
+            return;
+        }
+
+        let mut i = self.messages.stack.len();
+        while i > 0 {
+            i -= 1;
+            if self.messages.stack[i].is_sent() {
+                continue;
+            }
+
+            let type_id = self.messages.stack[i].type_id();
+            if let Some(target) = self.send_targets.get(&type_id) {
+                let msg = self.messages.stack.remove(i);
+                self.send_queue.push_back((target.clone(), msg));
+            }
+        }
+    }
+
     /// Flush pending messages
     pub(crate) fn handle_messages<Data: AppData>(&mut self, data: &mut Data) {
         if self.messages.reset_and_has_any() {
-            let mut i = self.messages.stack.len();
-            while i > 0 {
-                i -= 1;
-                if self.messages.stack[i].is_sent() {
-                    continue;
-                }
-
-                let type_id = self.messages.stack[i].type_id();
-                if let Some(target) = self.send_targets.get(&type_id) {
-                    let msg = self.messages.stack.remove(i);
-                    self.send_queue.push_back((target.clone(), msg));
-                }
-            }
-
             let start_count = self.messages.get_op_count();
             let mut last_count = start_count;
             while !self.messages.stack.is_empty() {
@@ -204,9 +211,6 @@ pub(crate) trait RunnerT {
 
     /// Set send targets
     fn set_send_targets(&mut self, targets: &mut Vec<(TypeId, Id)>);
-
-    /// Find a send target for `type_id`, if any
-    fn send_target_for(&self, type_id: TypeId) -> Option<Id>;
 
     /// Attempt to get clipboard contents
     ///
@@ -320,11 +324,6 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         for (type_id, id) in targets.drain(..) {
             self.send_targets.insert(type_id, id);
         }
-    }
-
-    /// Find a send target for `type_id`, if any
-    fn send_target_for(&self, type_id: TypeId) -> Option<Id> {
-        self.send_targets.get(&type_id).cloned()
     }
 
     fn get_clipboard(&mut self) -> Option<String> {

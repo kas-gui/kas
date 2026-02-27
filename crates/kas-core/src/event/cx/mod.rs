@@ -89,7 +89,7 @@ pub struct EventState {
     // Set of messages awaiting sending
     send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget
-    fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
+    fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Option<Erased>>>>)>,
     pub(super) pending_send_targets: Vec<(TypeId, Id)>,
     action_moved: Option<ActionMoved>,
     pub(crate) action_redraw: Option<ActionRedraw>,

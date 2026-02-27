@@ -152,7 +152,7 @@ mod Tile {
                 write!(self.generic, "{}", entry.display()).unwrap();
 
                 let path = self.path.clone();
-                cx.send_spawn(self.id(), async move { detect(&path) });
+                cx.send_spawn_opt(self.id(), async move { detect(&path) });
             }
 
             // Always reset the page to 0 on change
@@ -160,7 +160,7 @@ mod Tile {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(Some(SendBoxedWidget(w))) = cx.try_pop() {
+            if let Some(SendBoxedWidget(w)) = cx.try_pop() {
                 self.stack.truncate(cx, 1);
                 self.stack.push(cx, &self.generic, Page::new_boxed(w));
                 self.stack.set_active(cx, &self.generic, 1);
