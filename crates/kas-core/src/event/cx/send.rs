@@ -18,57 +18,56 @@ use std::task::Poll;
 impl EventState {
     /// Send a message to `id`
     ///
-    /// When calling this method, be aware that some widgets use an inner
-    /// component to handle events, thus calling with the outer widget's `id`
-    /// may not have the desired effect. [`Tile::try_probe`] and
-    /// [`EventCx::next_nav_focus`] are usually able to find the appropriate
-    /// event-handling target.
+    /// # Resolving the target `id`
     ///
-    /// This uses a tree traversal as with event handling, thus ancestors will
-    /// have a chance to handle an unhandled event and any messages on the stack
-    /// after their child.
+    /// If `id` is [valid] (the usual case), the message is sent to this target
+    /// using tree traversal (see below). This may be under same or another
+    /// window and may or may not actually resolve to a widget.
     ///
-    /// ### Special cases sent as an [`Event`]
+    /// If `id` is *not* [valid] and a
+    /// [send target](super::ConfigCx::set_send_target_for) has been assigned
+    /// for the message's type `M`, `msg` will be sent to that target instead.
     ///
-    /// When `M` is `Command`, this will send [`Event::Command`] to the widget.
+    /// If `id` is *not* [valid] without a type-defined send target, then only
+    /// [`AppData::handle_message`] will be called.
     ///
-    /// When `M` is `ScrollDelta`, this will send [`Event::Scroll`] to the
-    /// widget.
+    /// # Sending the message
     ///
-    /// ### Other messages
+    /// Message sending uses tree traversal: resolve the owning window, the
+    /// appropriate child widget, its child and so on until the target `id` is
+    /// reached. This target widget will may [pop](EventCx::try_pop) or
+    /// [peek](EventCx::try_peek) the message from [`Events::handle_messages`].
+    /// In case the widget does not pop the message, each parent will get a
+    /// chance to do so in its own [`Events::handle_messages`] method until
+    /// eventually [`AppData::handle_message`] will be called if no widget
+    /// handles the message.
     ///
-    /// The message is pushed to the message stack. The target widget may
-    /// [pop](EventCx::try_pop) or [peek](EventCx::try_peek) the message from
-    /// [`Events::handle_messages`].
+    /// This tree traversal is mostly the same as that used by the
+    /// [event handling model] except that there is no [`Event`]; instead `msg`
+    /// is pushed to the message stack directly.
     ///
-    /// ### Send target
+    /// Tree traversal may fail to reach the target `id` in a number of cases,
+    /// for example if the target widget has been removed, remapped (see
+    /// [`kas::view`]) or is inaccessible widget (e.g. [`Stack`] may make
+    /// inactive pages inaccessible). In this case [`Events::handle_messages`]
+    /// will be called as above from the last reachable widget in `id`'s path,
+    /// eventually calling [`AppData::handle_message`] as above.
     ///
-    /// The target `id` may be under another window. In this case, sending may
-    /// be delayed slightly.
+    /// ## Special cases sent as an [`Event`]
     ///
-    /// If `id = Id::default()` and a [send target](super::ConfigCx::set_send_target_for)
-    /// has been assigned for `M`, then `msg` will be sent to that target.
+    /// Some types of message are instead sent as an [`Event`]:
     ///
-    /// If `id` identifies a widget, that widget must be configured but does not
-    /// need to be sized.
+    /// -   When `M` is [`Command`], this will sent as [`Event::Command`]
+    /// -   When `M` is [`ScrollDelta`], this will sent as [`Event::Scroll`]
     ///
-    /// If `id` does not resolve a widget, the message is dropped with only a
-    /// DEBUG log message of the form `_replay: $WIDGET cannot find path to $ID`.
-    /// This is not considered an error since it happens frequently (e.g. any
-    /// widget using asynchronous loading sends itself a message; if the view
-    /// changes before loading completes then that widget may no longer be
-    /// accessible or no longer exist).
+    /// In this case the event may be received by [`Events::handle_event`];
+    /// see the [event handling model].
     ///
-    /// ### Ordering and failure
-    ///
-    /// Messages sent via `send` and [`send_erased`](Self::send_erased) should
-    /// be received in the same order sent relative to other messages sent from
-    /// the same window via these methods.
-    ///
-    /// Message delivery may fail for widgets not currently visible. This is
-    /// dependent on widgets implementation of [`Widget::child_node`] (e.g. in
-    /// the case of virtual scrolling, the target may have scrolled out of
-    /// range).
+    /// [`AppData::handle_message`]: crate::runner::AppData::handle_message
+    /// [valid]: Id::is_valid
+    /// [event handling model]: crate::event#event-handling-model
+    /// [`kas::view`]: https://docs.rs/kas/latest/kas/view/index.html
+    /// [`Stack`]: https://docs.rs/kas/latest/kas/widgets/struct.Stack.html
     pub fn send<M: Debug + 'static>(&mut self, id: Id, msg: M) {
         self.send_erased(id, Erased::new(msg));
     }
@@ -82,12 +81,13 @@ impl EventState {
 
     /// Send a message to `id` via a [`Future`]
     ///
+    /// This is a non-blocking variant of [`Self::send`]: when the future `fut`
+    /// completes, its result is sent as a message exactly as if it were sent by
+    /// [`Self::send`].
+    ///
     /// The future is polled after event handling and after drawing and is able
     /// to wake the event loop. This future is executed on the main thread; for
     /// high-CPU tasks use [`Self::send_spawn`] instead.
-    ///
-    /// The future must resolve to a message on completion. Its message is then
-    /// sent to `id` via stack traversal identically to [`Self::send`].
     ///
     /// ### Cancellation, ordering and failure
     ///
@@ -128,10 +128,10 @@ impl EventState {
     /// sleeps, and is able to wake the loop on completion. Tasks involving
     /// significant CPU work should use this method over [`Self::send_async`].
     ///
-    /// This method is simply a wrapper around [`async_global_executor::spawn`]
-    /// and [`Self::send_async`]; if a different multi-threaded executor is
-    /// available, that may be used instead. See also [`async_global_executor`]
-    /// documentation of configuration.
+    /// This method simply uses [`async_global_executor`] to spawn a task which
+    /// executes on a global thread pool.
+    ///
+    /// [`async_global_executor`]: https://docs.rs/async-global-executor/
     #[cfg(feature = "spawn")]
     pub fn send_spawn<Fut, M>(&mut self, id: Id, fut: Fut)
     where
@@ -168,6 +168,10 @@ impl<'a> EventCx<'a> {
     /// If not handled during the widget tree traversal and
     /// [a target is set for `M`](ConfigCx::set_send_target_for) then `msg` is
     /// sent to this target.
+    ///
+    /// Finally, the message may be handled by [`AppData::handle_message`].
+    ///
+    /// [`AppData::handle_message`]: crate::runner::AppData::handle_message
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
     }

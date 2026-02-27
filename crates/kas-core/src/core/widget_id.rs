@@ -368,9 +368,12 @@ impl Id {
 
     /// Is the identifier valid?
     ///
-    /// Default-constructed identifiers are invalid. Comparing invalid ids is
-    /// considered a logic error and thus will panic in debug builds.
-    /// This method may be used to check an identifier's validity.
+    /// A valid [`Id`] represents a [path](Self::iter). Valid [`Id`] values are
+    /// assigned through [widget configuration](crate::Events#configuration).
+    ///
+    /// [`Id::default()`] is not valid. Most operations on invalid [`Id`] values
+    /// will panic (attempting to perform such an operations is considered a
+    /// logic error).
     pub fn is_valid(&self) -> bool {
         self.0.get() != Variant::Invalid
     }

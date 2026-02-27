@@ -74,6 +74,10 @@ use crate::{Id, geom::Coord};
 /// Sizing must happen after initial configuration but is not necessarily
 /// repeated after reconfiguration. See [`Layout#sizing`].
 ///
+/// ### Event handling
+///
+/// See [Event handling model](crate::event#event-handling-model).
+///
 /// [`#widget`]: macros::widget
 pub trait Events: Widget + Sized {
     /// Does this widget have a different appearance on mouse over?
