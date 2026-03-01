@@ -10,7 +10,7 @@ use std::ops::{Index, IndexMut};
 
 use super::{GripMsg, GripPart};
 use kas::Collection;
-use kas::layout::{self, RulesSetter, RulesSolver};
+use kas::layout::{self, RowStorage, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::Feature;
 
@@ -144,8 +144,8 @@ mod Splitter {
         }
 
         #[inline]
-        fn dim(&self) -> (D, usize) {
-            (self.direction, self.widgets.len() + self.grips.len())
+        fn dim(&self) -> (D, usize, bool) {
+            (self.direction, self.widgets.len() + self.grips.len(), false)
         }
     }
 
@@ -332,8 +332,17 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
         let index = 2 * n + 1;
 
         let hrect = self.grips[n].rect();
-        let width1 = (hrect.pos - self.rect().pos).extract(self.direction);
-        let width2 = (self.rect().size - hrect.size).extract(self.direction) - width1;
+        let mut width1 = (hrect.pos - self.rect().pos).extract(self.direction);
+        let mut width2 = (self.rect().size - hrect.size).extract(self.direction) - width1;
+        let rules = self.data.rules();
+        width1 -= rules[index - 1]
+            .margins_i32()
+            .1
+            .max(rules[index].margins_i32().0);
+        width2 -= rules[index]
+            .margins_i32()
+            .1
+            .max(rules[index + 1].margins_i32().0);
 
         let dim = self.dim();
         let mut setter =
