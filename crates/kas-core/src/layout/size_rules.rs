@@ -466,6 +466,8 @@ impl SizeRules {
             // + dist_under_b because this lets us increase targets under b
             to_shrink += dist_under_b;
         }
+        eprintln!(
+            "[{pri:?}] shrinking by {to_shrink}; thresholds dist_over_b={dist_over_b}, dist_over_b_lower_stretch={dist_over_b_lower_stretch}"
         );
         if to_shrink <= 0 {
             // No shrinking
@@ -561,6 +563,10 @@ impl SizeRules {
         }
 
         if sum < target {
+            eprintln!(
+                "[{pri:?}] expanding by {}; thresholds dist_under_b={dist_under_b}",
+                target - sum
+            );
             if target - sum >= dist_under_b {
                 // We can increase all sizes to their ideal. Since this may
                 // not be enough, we also count the number with highest
