@@ -339,7 +339,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
             } else {
                 "".to_string()
             };
-            self.label.set_string(cx, string);
+            self.label.set_text(cx, string);
         }
     }
 

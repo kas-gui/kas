@@ -138,7 +138,7 @@ impl Component {
         debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
         let text = text.to_string();
         let len = text.len();
-        self.text.set_string(text);
+        self.text.set_text(text);
         self.selection.set_cursor(len);
         self
     }
@@ -1039,7 +1039,7 @@ impl Editor {
     /// Get the text contents as a `String`
     #[inline]
     pub fn clone_string(&self) -> String {
-        self.text.clone_string()
+        self.text.as_str().to_string()
     }
 
     /// Get the (horizontal) text direction
@@ -1103,7 +1103,7 @@ impl Editor {
     pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
         self.cancel_selection_and_ime(cx);
 
-        if !self.text.set_string(string) {
+        if !self.text.set_text(string) {
             return false;
         }
 

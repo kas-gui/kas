@@ -20,7 +20,7 @@ mod Label {
     /// A text label
     ///
     /// `Label` text is set at construction time. It may also be set by
-    /// [`Self::set_text`] or [`Self::set_string`].
+    /// [`Self::set_text`].
     ///
     /// By default, this uses [`TextClass::Label`]; see [`Self::set_class`] and
     /// [`Self::with_class`].
@@ -106,8 +106,9 @@ mod Label {
 
         /// Set text in an existing `Label`
         pub fn set_text(&mut self, cx: &mut ConfigCx, text: T) {
-            self.text.set_text(text);
-            self.text.reprepare_action(cx);
+            if self.text.set_text(text) {
+                self.text.reprepare_action(cx);
+            }
         }
 
         /// Get text contents
@@ -134,15 +135,6 @@ mod Label {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.text.configure(&mut cx.size_cx());
-        }
-    }
-
-    impl Label<String> {
-        /// Set text contents from a string
-        pub fn set_string(&mut self, cx: &mut ConfigCx, string: String) {
-            if self.text.set_string(string) {
-                self.text.reprepare_action(cx);
-            }
         }
     }
 }

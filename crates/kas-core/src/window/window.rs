@@ -401,7 +401,7 @@ mod Window {
         }
 
         fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String) {
-            self.tooltip.inner.set_string(cx, text);
+            self.tooltip.inner.set_text(cx, text);
             self.tooltip.open(cx, &(), id, false);
         }
 

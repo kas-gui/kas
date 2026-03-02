@@ -170,7 +170,7 @@ mod TitleBar {
 
         /// Set the title
         pub fn set_title(&mut self, cx: &mut ConfigCx, title: String) {
-            self.title.set_string(cx, title)
+            self.title.set_text(cx, title)
         }
     }
 
