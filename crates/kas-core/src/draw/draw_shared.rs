@@ -5,7 +5,6 @@
 
 //! Drawing APIs — shared draw state
 
-use super::color::Rgba;
 use super::{DrawImpl, PassId};
 use crate::ActionRedraw;
 use crate::config::RasterConfig;
@@ -216,7 +215,6 @@ pub trait DrawSharedImpl: Any {
         bounding_box: Quad,
         text: &TextDisplay,
         theme: &ColorsLinear,
-        palette: &[Rgba],
         tokens: &[(u32, format::Colors)],
     );
 
@@ -232,7 +230,6 @@ pub trait DrawSharedImpl: Any {
         bounding_box: Quad,
         text: &TextDisplay,
         theme: &ColorsLinear,
-        palette: &[Rgba],
         decorations: &[(u32, format::Decoration)],
     );
 }

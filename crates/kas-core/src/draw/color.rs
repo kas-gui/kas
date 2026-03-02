@@ -360,6 +360,26 @@ impl Rgba8Srgb {
         Self::rgba(s, s, s, a)
     }
 
+    /// Get the red component
+    pub const fn r(self) -> u8 {
+        self.0[0]
+    }
+
+    /// Get the green component
+    pub const fn g(self) -> u8 {
+        self.0[1]
+    }
+
+    /// Get the blue component
+    pub const fn b(self) -> u8 {
+        self.0[2]
+    }
+
+    /// Get the alpha component
+    pub const fn a(self) -> u8 {
+        self.0[3]
+    }
+
     /// Format to a string
     ///
     /// This looks like `#123456` if the alpha component is opaque, otherwise

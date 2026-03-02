@@ -137,10 +137,10 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
         col: Rgba,
     ) {
         let tokens = [(0, format::Colors {
-            color: format::Color::from_index(0).unwrap(),
+            color: format::Color::from_rgba(col),
             ..Default::default()
         })];
-        self.text(pos, bounding_box, text, theme, &[col], &tokens);
+        self.text(pos, bounding_box, text, theme, &tokens);
     }
 }
 
@@ -247,7 +247,6 @@ pub trait Draw {
         bounding_box: Quad,
         text: &TextDisplay,
         theme: &ColorsLinear,
-        palette: &[Rgba],
         tokens: &[(u32, format::Colors)],
     );
 
@@ -261,7 +260,6 @@ pub trait Draw {
         bounding_box: Quad,
         text: &TextDisplay,
         theme: &ColorsLinear,
-        palette: &[Rgba],
         decorations: &[(u32, format::Decoration)],
     );
 }
@@ -320,12 +318,11 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         bb: Quad,
         text: &TextDisplay,
         theme: &ColorsLinear,
-        palette: &[Rgba],
         tokens: &[(u32, format::Colors)],
     ) {
         self.shared
             .draw
-            .draw_text(self.draw, self.pass, pos, bb, text, theme, palette, tokens);
+            .draw_text(self.draw, self.pass, pos, bb, text, theme, tokens);
     }
 
     fn decorate_text(
@@ -334,19 +331,11 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         bb: Quad,
         text: &TextDisplay,
         theme: &ColorsLinear,
-        palette: &[Rgba],
         decorations: &[(u32, format::Decoration)],
     ) {
-        self.shared.draw.decorate_text(
-            self.draw,
-            self.pass,
-            pos,
-            bb,
-            text,
-            theme,
-            palette,
-            decorations,
-        );
+        self.shared
+            .draw
+            .decorate_text(self.draw, self.pass, pos, bb, text, theme, decorations);
     }
 }
 
