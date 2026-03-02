@@ -31,7 +31,7 @@ pub use crate::core::*;
 pub(crate) use action::{ActionClose, WindowActions};
 pub use action::{ActionMoved, ActionRedraw, ActionResize, ConfigAction};
 pub use kas_macros::{autoimpl, extends, impl_default};
-pub use kas_macros::{cell_collection, collection, impl_anon, impl_scope, impl_self};
+pub use kas_macros::{cell_collection, collection, impl_anon, impl_scope, impl_self, split_impl};
 pub use kas_macros::{layout, widget, widget_index};
 
 // public implementations:
