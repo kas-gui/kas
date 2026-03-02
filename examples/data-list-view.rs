@@ -99,16 +99,16 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = MyItem;
 
-    fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &MyItem) {
+    fn update(&mut self, edit: &mut dyn Editor, cx: &mut ConfigCx, data: &MyItem) {
         edit.set_string(cx, data.1.to_string());
     }
 
-    fn activate(&mut self, _: &mut Editor, cx: &mut EventCx, _: &MyItem) -> IsUsed {
+    fn activate(&mut self, _: &mut dyn Editor, cx: &mut EventCx, _: &MyItem) -> IsUsed {
         cx.push(Control::Select(self.0));
         Used
     }
 
-    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &MyItem) {
+    fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, _: &MyItem) {
         cx.push(Control::Update(self.0, edit.clone_string()));
     }
 }

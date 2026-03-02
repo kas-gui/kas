@@ -16,11 +16,15 @@ use kas::util::UndoStack;
 use std::borrow::Cow;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
-/// Text editor
+/// Inner editor component
 ///
-/// This is not a widget; use for example [`EditBox`] or [`EditField`] instead.
+/// This type is made public for use as the associated `Target` type of the
+/// [`Deref`](std::ops::Deref) impl on `EditField` and `EditBox`. It will no
+/// longer be needed once `impl trait` is stabilised for associated types.
+/// (Alternatively, [`Editor`] could be re-implemented on the above widgets;
+/// this is preferable in theory but requires a lot of tedious code.)
 #[autoimpl(Debug)]
-pub struct Editor {
+pub struct EditorComponent {
     // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
     id: Id,
     editable: bool,
@@ -54,7 +58,7 @@ pub struct Editor {
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug)]
 #[autoimpl(Deref, DerefMut using self.0)]
-pub struct Component(Editor);
+pub struct Component(EditorComponent);
 
 impl Layout for Component {
     #[inline]
@@ -84,7 +88,7 @@ impl Layout for Component {
 impl Default for Component {
     #[inline]
     fn default() -> Self {
-        Component(Editor {
+        Component(EditorComponent {
             id: Id::default(),
             editable: true,
             text: Text::new(String::new(), TextClass::Editor, false),
@@ -106,7 +110,7 @@ impl<S: ToString> From<S> for Component {
     fn from(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
-        Component(Editor {
+        Component(EditorComponent {
             text: Text::new(text, TextClass::Editor, false),
             selection: SelectionHelper::from(len),
             ..Self::default().0
@@ -474,7 +478,7 @@ impl Component {
     }
 }
 
-impl Editor {
+impl EditorComponent {
     /// Cancel on-going selection and IME actions
     ///
     /// This should be called if e.g. key-input interrupts the current
@@ -1010,35 +1014,36 @@ impl Editor {
     }
 }
 
-/// API for use by `EditGuard` implementations
-impl Editor {
+/// Text editor interface
+#[kas::split_impl(for EditorComponent)]
+pub trait Editor {
     /// Get a reference to the widget's identifier
     #[inline]
-    pub fn id_ref(&self) -> &Id {
+    fn id_ref(&self) -> &Id {
         &self.id
     }
 
     /// Get the widget's identifier
     #[inline]
-    pub fn id(&self) -> Id {
+    fn id(&self) -> Id {
         self.id.clone()
     }
 
     /// Access the text object
     #[inline]
-    pub fn text(&self) -> &Text<String> {
+    fn text(&self) -> &Text<String> {
         &self.text
     }
 
     /// Get text contents
     #[inline]
-    pub fn as_str(&self) -> &str {
+    fn as_str(&self) -> &str {
         self.text.as_str()
     }
 
     /// Get the text contents as a `String`
     #[inline]
-    pub fn clone_string(&self) -> String {
+    fn clone_string(&self) -> String {
         self.text.as_str().to_string()
     }
 
@@ -1048,16 +1053,16 @@ impl Editor {
     /// in other cases (including when the text is empty) it returns `false`.
     /// TODO: support defaulting to RTL.
     #[inline]
-    pub fn text_is_rtl(&self) -> bool {
+    fn text_is_rtl(&self) -> bool {
         self.text.text_is_rtl()
     }
 
     /// Commit outstanding changes to the undo history
     ///
-    /// Call this *before* changing the text with `set_str` or `set_string`
-    /// to commit changes to the undo history.
+    /// Call this *before* changing the text with [`Self::set_str`] or
+    /// [`Self::set_string`] to commit changes to the undo history.
     #[inline]
-    pub fn pre_commit(&mut self) {
+    fn pre_commit(&mut self) {
         self.save_undo_state(Some(EditOp::Synthetic));
     }
 
@@ -1066,7 +1071,7 @@ impl Editor {
     /// This method does not call any [`EditGuard`] actions; consider also
     /// calling [`EditField::call_guard_edit`].
     #[inline]
-    pub fn clear(&mut self, cx: &mut EventState) {
+    fn clear(&mut self, cx: &mut EventState) {
         self.last_edit = Some(EditOp::Initial);
         self.undo_stack.clear();
         self.set_string(cx, String::new());
@@ -1082,7 +1087,7 @@ impl Editor {
     ///
     /// Returns `true` if the text may have changed.
     #[inline]
-    pub fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
+    fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
         if self.text.as_str() != text {
             self.set_string(cx, text.to_string());
             true
@@ -1100,7 +1105,7 @@ impl Editor {
     /// actions; consider also calling [`EditField::call_guard_edit`].
     ///
     /// Returns `true` if the text is ready and may have changed.
-    pub fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
+    fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
         self.cancel_selection_and_ime(cx);
 
         if !self.text.set_text(string) {
@@ -1124,7 +1129,7 @@ impl Editor {
     ///
     /// Returns `true` if the text is ready and may have changed.
     #[inline]
-    pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) -> bool {
+    fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) -> bool {
         self.cancel_selection_and_ime(cx);
 
         let index = self.selection.edit_index();
@@ -1144,7 +1149,7 @@ impl Editor {
 
     /// Access the cursor index / selection range
     #[inline]
-    pub fn cursor_range(&self) -> CursorRange {
+    fn cursor_range(&self) -> CursorRange {
         *self.selection
     }
 
@@ -1153,32 +1158,32 @@ impl Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     #[inline]
-    pub fn set_cursor_range(&mut self, range: impl Into<CursorRange>) {
+    fn set_cursor_range(&mut self, range: CursorRange) {
         self.edit_x_coord = None;
-        self.selection = range.into().into();
+        self.selection = range.into();
     }
 
     /// Get whether this `EditField` is editable
     #[inline]
-    pub fn is_editable(&self) -> bool {
+    fn is_editable(&self) -> bool {
         self.editable
     }
 
     /// Set whether this `EditField` is editable
     #[inline]
-    pub fn set_editable(&mut self, editable: bool) {
+    fn set_editable(&mut self, editable: bool) {
         self.editable = editable;
     }
 
     /// True if the editor uses multi-line mode
     #[inline]
-    pub fn multi_line(&self) -> bool {
+    fn multi_line(&self) -> bool {
         self.text.wrap()
     }
 
     /// Get the text class used
     #[inline]
-    pub fn class(&self) -> TextClass {
+    fn class(&self) -> TextClass {
         self.text.class()
     }
 
@@ -1186,24 +1191,24 @@ impl Editor {
     ///
     /// This is true when the widget is has keyboard or IME focus.
     #[inline]
-    pub fn has_input_focus(&self) -> bool {
+    fn has_input_focus(&self) -> bool {
         self.has_key_focus || self.current.is_ime_enabled()
     }
 
     /// Get whether the input state is erroneous
     #[inline]
-    pub fn has_error(&self) -> bool {
+    fn has_error(&self) -> bool {
         self.error_state
     }
 
     /// Get the error message, if any
     #[inline]
-    pub fn error_message(&self) -> Option<&str> {
+    fn error_message(&self) -> Option<&str> {
         self.error_message.as_deref()
     }
 
     /// Clear the error state
-    pub fn clear_error(&mut self) {
+    fn clear_error(&mut self) {
         self.error_state = false;
         self.error_message = None;
     }
@@ -1216,7 +1221,7 @@ impl Editor {
     ///
     /// When set, the input field's background is drawn red. If a message is
     /// supplied, then a tooltip will be available on mouse-hover.
-    pub fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
+    fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
         self.error_state = true;
         self.error_message = message;
         cx.redraw(&self.id);
