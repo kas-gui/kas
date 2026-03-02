@@ -706,45 +706,33 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 }
 
+#[crate::split_impl(for<G: GraphicsInstance> WindowData<G>)]
 pub(crate) trait WindowDataErased {
     /// Get the window identifier
-    fn window_id(&self) -> WindowId;
-
-    /// Access the wayland clipboard object, if available
-    #[cfg(all(wayland_platform, feature = "clipboard"))]
-    fn wayland_clipboard(&self) -> Option<&smithay_clipboard::Clipboard>;
-
-    /// Set the mouse pointer icon
-    fn set_pointer_icon(&self, icon: CursorIcon);
-
-    /// Enable / update / disable the Input Method Editor
-    fn ime_request(&self, request: ImeRequest) -> Result<(), ImeRequestError>;
-
-    /// Directly access Winit Window
-    ///
-    /// This is a temporary API, allowing e.g. to minimize the window.
-    fn winit_window(&self) -> Option<&dyn winit::window::Window>;
-}
-
-impl<G: GraphicsInstance> WindowDataErased for WindowData<G> {
     fn window_id(&self) -> WindowId {
         self.window_id
     }
 
+    /// Access the wayland clipboard object, if available
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     fn wayland_clipboard(&self) -> Option<&smithay_clipboard::Clipboard> {
         self.wayland_clipboard.as_ref()
     }
 
+    /// Set the mouse pointer icon
     #[inline]
     fn set_pointer_icon(&self, icon: CursorIcon) {
         self.window.set_cursor(icon.into());
     }
 
+    /// Enable / update / disable the Input Method Editor
     fn ime_request(&self, request: ImeRequest) -> Result<(), ImeRequestError> {
         self.window.request_ime_update(request)
     }
 
+    /// Directly access Winit Window
+    ///
+    /// This is a temporary API, allowing e.g. to minimize the window.
     #[inline]
     fn winit_window(&self) -> Option<&dyn winit::window::Window> {
         Some(&**self.window)
