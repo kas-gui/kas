@@ -19,43 +19,23 @@ use kas::geom::Quad;
 /// from the closed range `[-1, 1]`, where -1 points towards the inside of the
 /// feature, 1 points away from the feature, and 0 is perpendicular to the
 /// screen towards the viewer.
+#[kas::split_impl(for<'a, DS: DrawSharedImpl> DrawIface<'a, DS> where DS::Draw: DrawShadedImpl)]
 pub trait DrawShaded {
     /// Add a shaded square to the draw buffer
     ///
     /// For shading purposes, the mid-point is considered the inner edge.
-    fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba);
-
-    /// Add a shaded circle to the draw buffer
-    ///
-    /// For shading purposes, the mid-point is considered the inner edge.
-    fn shaded_circle(&mut self, rect: Quad, norm: (f32, f32), col: Rgba);
-
-    /// Add a shaded frame with square corners to the draw buffer
-    fn shaded_square_frame(
-        &mut self,
-        outer: Quad,
-        inner: Quad,
-        norm: (f32, f32),
-        outer_col: Rgba,
-        inner_col: Rgba,
-    );
-
-    /// Add a shaded frame with rounded corners to the draw buffer
-    fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba);
-}
-
-impl<'a, DS: DrawSharedImpl> DrawShaded for DrawIface<'a, DS>
-where
-    DS::Draw: DrawShadedImpl,
-{
     fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.draw.shaded_square(self.pass, rect, norm, col);
     }
 
+    /// Add a shaded circle to the draw buffer
+    ///
+    /// For shading purposes, the mid-point is considered the inner edge.
     fn shaded_circle(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.draw.shaded_circle(self.pass, rect, norm, col);
     }
 
+    /// Add a shaded frame with square corners to the draw buffer
     fn shaded_square_frame(
         &mut self,
         outer: Quad,
@@ -68,6 +48,7 @@ where
             .shaded_square_frame(self.pass, outer, inner, norm, outer_col, inner_col);
     }
 
+    /// Add a shaded frame with rounded corners to the draw buffer
     fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba) {
         self.draw
             .shaded_round_frame(self.pass, outer, inner, norm, col);
