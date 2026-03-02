@@ -162,9 +162,12 @@ where
 /// Runner shared-state type-erased interface
 ///
 /// A `dyn RunnerT` object is used by [`crate::event::EventCx`].
+#[crate::split_impl(for<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Shared<Data, G, T>)]
 pub(crate) trait RunnerT {
     /// Require configuration updates
-    fn config_update(&mut self, action: ConfigAction);
+    fn config_update(&mut self, action: ConfigAction) {
+        self.pending.push_back(Pending::ConfigUpdate(action));
+    }
 
     /// Add a pop-up
     ///
@@ -176,13 +179,25 @@ pub(crate) trait RunnerT {
     ///
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
-    fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId;
+    fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId {
+        let id = self.window_id_factory.make_next();
+        self.pending
+            .push_back(Pending::AddPopup(parent_id, id, popup));
+        id
+    }
 
     /// Resize and reposition an existing pop-up
-    fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor);
+    fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor) {
+        self.pending.push_back(Pending::RepositionPopup(id, popup));
+    }
 
     /// Add a window to the UI at run-time.
-    fn add_dataless_window(&mut self, window: WindowWidget<()>) -> WindowId;
+    fn add_dataless_window(&mut self, window: WindowWidget<()>) -> WindowId {
+        let id = self.window_id_factory.make_next();
+        self.pending
+            .push_back(Pending::AddWindow(id, window.map_any().boxed()));
+        id
+    }
 
     /// Add a window to the UI at run-time.
     ///
@@ -192,93 +207,6 @@ pub(crate) trait RunnerT {
     /// type accepted by the widget as input). As an alternative we require the
     /// caller to type-cast `Window<Data>` to `Window<()>` and pass in
     /// `TypeId::of::<Data>()`.
-    unsafe fn add_window(&mut self, window: WindowWidget<()>, data_type_id: TypeId) -> WindowId;
-
-    /// Close a window
-    fn close_window(&mut self, id: WindowId);
-
-    /// Exit the application
-    fn exit(&mut self);
-
-    /// Access the message stack (read-only)
-    fn message_stack(&self) -> &MessageStack;
-
-    /// Access the message stack (mutable)
-    fn message_stack_mut(&mut self) -> &mut MessageStack;
-
-    /// Send a message to another window
-    fn send_erased(&mut self, id: Id, msg: Erased);
-
-    /// Set send targets
-    fn set_send_targets(&mut self, targets: &mut Vec<(TypeId, Id)>);
-
-    /// Attempt to get clipboard contents
-    ///
-    /// In case of failure, paste actions will simply fail. The implementation
-    /// may wish to log an appropriate warning message.
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
-    fn get_clipboard(&mut self) -> Option<String>;
-
-    /// Attempt to set clipboard contents
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
-    fn set_clipboard(&mut self, content: String);
-
-    /// Get contents of primary buffer
-    ///
-    /// Linux has a "primary buffer" with implicit copy on text selection and
-    /// paste on middle-click. This method does nothing on other platforms.
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
-    fn get_primary(&mut self) -> Option<String>;
-
-    /// Set contents of primary buffer
-    ///
-    /// Linux has a "primary buffer" with implicit copy on text selection and
-    /// paste on middle-click. This method does nothing on other platforms.
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
-    fn set_primary(&mut self, content: String);
-
-    /// Access the [`DrawShared`] object
-    fn draw_shared(&mut self) -> &mut dyn DrawShared;
-
-    /// Access a Waker
-    fn waker(&self) -> &std::task::Waker;
-}
-
-impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared<Data, G, T> {
-    fn config_update(&mut self, action: ConfigAction) {
-        self.pending.push_back(Pending::ConfigUpdate(action));
-    }
-
-    fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId {
-        let id = self.window_id_factory.make_next();
-        self.pending
-            .push_back(Pending::AddPopup(parent_id, id, popup));
-        id
-    }
-
-    fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor) {
-        self.pending.push_back(Pending::RepositionPopup(id, popup));
-    }
-
-    fn add_dataless_window(&mut self, window: WindowWidget<()>) -> WindowId {
-        let id = self.window_id_factory.make_next();
-        self.pending
-            .push_back(Pending::AddWindow(id, window.map_any().boxed()));
-        id
-    }
-
     unsafe fn add_window(&mut self, window: WindowWidget<()>, data_type_id: TypeId) -> WindowId {
         // Safety: the window should be `Window<Data>`. We cast to that.
         if data_type_id != TypeId::of::<Data>() {
@@ -299,22 +227,27 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         id
     }
 
+    /// Close a window
     fn close_window(&mut self, id: WindowId) {
         self.pending.push_back(Pending::CloseWindow(id));
     }
 
+    /// Exit the application
     fn exit(&mut self) {
         self.pending.push_back(Pending::Exit);
     }
 
+    /// Access the message stack (read-only)
     fn message_stack(&self) -> &MessageStack {
         &self.messages
     }
 
+    /// Access the message stack (mutable)
     fn message_stack_mut(&mut self) -> &mut MessageStack {
         &mut self.messages
     }
 
+    /// Send a message to another window
     fn send_erased(&mut self, id: Id, msg: Erased) {
         self.send_queue.push_back((id, msg));
     }
@@ -326,6 +259,14 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         }
     }
 
+    /// Attempt to get clipboard contents
+    ///
+    /// In case of failure, paste actions will simply fail. The implementation
+    /// may wish to log an appropriate warning message.
+    ///
+    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
+    /// This split API probably can't be resolved until Winit integrates
+    /// clipboard support.
     fn get_clipboard(&mut self) -> Option<String> {
         #[cfg(feature = "clipboard")]
         {
@@ -340,16 +281,32 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         None
     }
 
-    fn set_clipboard<'c>(&mut self, _content: String) {
+    /// Attempt to set clipboard contents
+    ///
+    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
+    /// This split API probably can't be resolved until Winit integrates
+    /// clipboard support.
+    fn set_clipboard(&mut self, content: String) {
+        #[cfg(not(feature = "clipboard"))]
+        let _ = content;
+
         #[cfg(feature = "clipboard")]
         if let Some(cb) = self.clipboard.as_mut() {
-            match cb.set_text(_content) {
+            match cb.set_text(content) {
                 Ok(()) => (),
                 Err(e) => warn_about_error("Failed to set clipboard contents", &e),
             }
         }
     }
 
+    /// Get contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    ///
+    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
+    /// This split API probably can't be resolved until Winit integrates
+    /// clipboard support.
     fn get_primary(&mut self) -> Option<String> {
         #[cfg(all(
             unix,
@@ -369,7 +326,22 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         None
     }
 
-    fn set_primary(&mut self, _content: String) {
+    /// Set contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    ///
+    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
+    /// This split API probably can't be resolved until Winit integrates
+    /// clipboard support.
+    fn set_primary(&mut self, content: String) {
+        #[cfg(any(
+            not(unix),
+            any(target_os = "macos", target_os = "android", target_os = "emscripten"),
+            not(feature = "clipboard"),
+        ))]
+        let _ = content;
+
         #[cfg(all(
             unix,
             not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
@@ -380,7 +352,7 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
             match cb
                 .set()
                 .clipboard(LinuxClipboardKind::Primary)
-                .text(_content)
+                .text(content)
             {
                 Ok(()) => (),
                 Err(e) => warn_about_error("Failed to set clipboard contents", &e),
@@ -388,11 +360,13 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         }
     }
 
+    /// Access the [`DrawShared`] object
     fn draw_shared(&mut self) -> &mut dyn DrawShared {
         // We can expect draw to be initialized from any context where this trait is used
         self.draw.as_mut().unwrap()
     }
 
+    /// Access a Waker
     #[inline]
     fn waker(&self) -> &std::task::Waker {
         &self.waker

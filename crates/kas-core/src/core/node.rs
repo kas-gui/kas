@@ -14,27 +14,8 @@ use crate::util::IdentifyWidget;
 use crate::{Id, Tile};
 
 #[cfg(not(feature = "unsafe_node"))]
+#[crate::split_impl(for<'a, T> (&'a mut dyn Widget<Data = T>, &'a T))]
 trait NodeT {
-    fn id_ref(&self) -> &Id;
-    fn rect(&self) -> Rect;
-
-    fn clone_node(&mut self) -> Node<'_>;
-    fn as_tile(&self) -> &dyn Tile;
-
-    fn find_child_index(&self, id: &Id) -> Option<usize>;
-    fn child_node(&mut self, index: usize) -> Option<Node<'_>>;
-
-    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules;
-    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints);
-
-    fn _configure(&mut self, cx: &mut ConfigCx, id: Id);
-    fn _update(&mut self, cx: &mut ConfigCx);
-
-    fn _send(&mut self, cx: &mut EventCx, id: Id, event: Event) -> IsUsed;
-    fn _replay(&mut self, cx: &mut EventCx, id: Id);
-}
-#[cfg(not(feature = "unsafe_node"))]
-impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn id_ref(&self) -> &Id {
         self.0.id_ref()
     }
@@ -52,7 +33,6 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn find_child_index(&self, id: &Id) -> Option<usize> {
         self.0.find_child_index(id)
     }
-
     fn child_node(&mut self, index: usize) -> Option<Node<'_>> {
         self.0.child_node(self.1, index)
     }

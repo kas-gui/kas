@@ -12,6 +12,7 @@ use crate::geom::{Quad, Vec2};
 /// Extended draw interface for [`DrawIface`] providing rounded drawing
 ///
 /// All methods draw some feature.
+#[crate::split_impl(for<'a, DS: DrawSharedImpl> DrawIface<'a, DS> where DS::Draw: DrawRoundedImpl)]
 pub trait DrawRounded: Draw {
     /// Draw a line with rounded ends and uniform colour
     ///
@@ -21,7 +22,9 @@ pub trait DrawRounded: Draw {
     ///
     /// Note that for rectangular, axis-aligned lines, [`DrawImpl::rect`] should be
     /// preferred.
-    fn rounded_line(&mut self, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
+    fn rounded_line(&mut self, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
+        self.draw.rounded_line(self.pass, p1, p2, radius, col);
+    }
 
     /// Draw a circle or oval of uniform colour
     ///
@@ -30,7 +33,9 @@ pub trait DrawRounded: Draw {
     /// The `inner_radius` parameter gives the inner radius relative to the
     /// outer radius: a value of `0.0` will result in the whole shape being
     /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn circle(&mut self, rect: Quad, inner_radius: f32, col: Rgba);
+    fn circle(&mut self, rect: Quad, inner_radius: f32, col: Rgba) {
+        self.draw.circle(self.pass, rect, inner_radius, col);
+    }
 
     /// Draw a circle or oval with two colours
     ///
@@ -41,7 +46,9 @@ pub trait DrawRounded: Draw {
     ///
     /// Note: this is drawn *before* other drawables, allowing it to be used
     /// for shadows without masking.
-    fn circle_2col(&mut self, rect: Quad, col1: Rgba, col2: Rgba);
+    fn circle_2col(&mut self, rect: Quad, col1: Rgba, col2: Rgba) {
+        self.draw.circle_2col(self.pass, rect, col1, col2);
+    }
 
     /// Draw a frame with rounded corners and uniform colour
     ///
@@ -54,7 +61,10 @@ pub trait DrawRounded: Draw {
     /// painted, while `1.0` will result in a zero-width line on the outer edge.
     /// When `inner_radius > 0`, the frame will be visually thinner than the
     /// allocated area.
-    fn rounded_frame(&mut self, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba);
+    fn rounded_frame(&mut self, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba) {
+        self.draw
+            .rounded_frame(self.pass, outer, inner, inner_radius, col);
+    }
 
     /// Draw a frame with rounded corners with two colours
     ///
@@ -63,31 +73,6 @@ pub trait DrawRounded: Draw {
     ///
     /// Note: this is drawn *before* other drawables, allowing it to be used
     /// for shadows without masking.
-    fn rounded_frame_2col(&mut self, outer: Quad, inner: Quad, c1: Rgba, c2: Rgba);
-}
-
-impl<'a, DS: DrawSharedImpl> DrawRounded for DrawIface<'a, DS>
-where
-    DS::Draw: DrawRoundedImpl,
-{
-    #[inline]
-    fn rounded_line(&mut self, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
-        self.draw.rounded_line(self.pass, p1, p2, radius, col);
-    }
-    #[inline]
-    fn circle(&mut self, rect: Quad, inner_radius: f32, col: Rgba) {
-        self.draw.circle(self.pass, rect, inner_radius, col);
-    }
-    #[inline]
-    fn circle_2col(&mut self, rect: Quad, col1: Rgba, col2: Rgba) {
-        self.draw.circle_2col(self.pass, rect, col1, col2);
-    }
-    #[inline]
-    fn rounded_frame(&mut self, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba) {
-        self.draw
-            .rounded_frame(self.pass, outer, inner, inner_radius, col);
-    }
-    #[inline]
     fn rounded_frame_2col(&mut self, outer: Quad, inner: Quad, c1: Rgba, c2: Rgba) {
         self.draw
             .rounded_frame_2col(self.pass, outer, inner, c1, c2);

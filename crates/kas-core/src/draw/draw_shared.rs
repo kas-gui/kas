@@ -106,11 +106,17 @@ impl<DS: DrawSharedImpl> SharedState<DS> {
 /// Interface over [`SharedState`]
 ///
 /// All methods concern management of resources for drawing.
+#[crate::split_impl(for<DS: DrawSharedImpl> SharedState<DS>)]
 pub trait DrawShared {
     /// Allocate an image
     ///
     /// Use [`SharedState::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, format: ImageFormat, size: Size) -> Result<ImageHandle, AllocError>;
+    #[inline]
+    fn image_alloc(&mut self, format: ImageFormat, size: Size) -> Result<ImageHandle, AllocError> {
+        self.draw
+            .image_alloc(format, size)
+            .map(|id| ImageHandle(id, Arc::new(())))
+    }
 
     /// Upload an image to the GPU
     ///
@@ -123,30 +129,6 @@ pub trait DrawShared {
     ///
     /// On success, this returns an [`ActionRedraw`] to indicate that any
     /// widgets using this image will require a redraw.
-    fn image_upload(
-        &mut self,
-        handle: &ImageHandle,
-        data: &[u8],
-    ) -> Result<ActionRedraw, UploadError>;
-
-    /// Potentially free an image
-    ///
-    /// The input `handle` is consumed. If this reduces its reference count to
-    /// zero, then the image is freed.
-    fn image_free(&mut self, handle: ImageHandle);
-
-    /// Get the size of an image
-    fn image_size(&self, handle: &ImageHandle) -> Option<Size>;
-}
-
-impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
-    #[inline]
-    fn image_alloc(&mut self, format: ImageFormat, size: Size) -> Result<ImageHandle, AllocError> {
-        self.draw
-            .image_alloc(format, size)
-            .map(|id| ImageHandle(id, Arc::new(())))
-    }
-
     #[inline]
     fn image_upload(
         &mut self,
@@ -156,6 +138,10 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
         self.draw.image_upload(handle.0, data).map(|_| ActionRedraw)
     }
 
+    /// Potentially free an image
+    ///
+    /// The input `handle` is consumed. If this reduces its reference count to
+    /// zero, then the image is freed.
     #[inline]
     fn image_free(&mut self, handle: ImageHandle) {
         if let Ok(()) = Arc::try_unwrap(handle.1) {
@@ -163,6 +149,7 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
         }
     }
 
+    /// Get the size of an image
     #[inline]
     fn image_size(&self, handle: &ImageHandle) -> Option<Size> {
         self.draw.image_size(handle.0)

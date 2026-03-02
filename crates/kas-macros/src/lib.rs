@@ -95,6 +95,64 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     toks
 }
 
+/// Support simultaneous definition of a trait and its implementation
+///
+/// Sometimes a trait is used only (or primarily) to provide an interface over a
+/// single object. In such cases, writing out the method prototypes twice (in
+/// both the trait and its implementation) should be unnecessary.
+///
+/// This attribute splits an implementation for a specified target off from a
+/// trait definition.
+///
+/// # Details
+///
+/// This attribute must be applied to a trait definition. This trait definition
+/// is retained with only modifications being that method *implementations* and
+/// `#[inline]` attributes are removed. An implied limitation of this attribute
+/// is that methods of the trait cannot have default implementations.
+///
+/// Meanwhile, an implementation of the trait is generated for the given target.
+/// This implementation uses all method implementations from the trait.
+///
+/// Generics may be introduced for the implementation only using syntax like
+/// `#[split_impl(for<'a, T> Target<'a, T>)]`. Implementation generics are
+/// combined with trait generics.
+///
+/// Specific attributes of the trait are copied to the implementation: `cfg`,
+/// `allow`, `warn`, `deny`, `forbid`. All trait method attributes except `doc`
+/// are copied to the implementation.
+///
+/// # Example
+///
+/// ```
+/// # use kas_macros::split_impl;
+/// #[split_impl(for str)]
+/// trait Greet {
+///     /// Introduce yourself
+///     fn greet(&self) {
+///         println!("Hello world, I am {self}!");
+///     }
+/// }
+///
+/// fn main() {
+///     "Ferris".greet();
+/// }
+/// ```
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn split_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
+    match syn::parse::<impl_tools_lib::SplitImpl>(attr) {
+        Ok(attr) => match syn::parse::<syn::ItemTrait>(item) {
+            Ok(trait_) => attr.process(trait_).into(),
+            Err(err) => err.to_compile_error().into(),
+        },
+        Err(err) => {
+            emit_call_site_error!(err);
+            item
+        }
+    }
+}
+
 const IMPL_SCOPE_RULES: [&dyn scope::ScopeAttr; 3] = [
     &scope::AttrImplDefault,
     &widget_args::AttrImplWidget,

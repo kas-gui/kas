@@ -112,27 +112,16 @@ impl MessageStack {
 }
 
 /// This trait allows peeking and popping messages from the stack
+#[crate::split_impl(for MessageStack)]
 pub trait ReadMessage {
     /// Pop a type-erased message from the stack, if non-empty
-    fn pop_erased(&mut self) -> Option<Erased>;
-
-    /// Try popping the last message from the stack with the given type
-    fn try_pop<M: Debug + 'static>(&mut self) -> Option<M>;
-
-    /// Try observing the last message on the stack without popping
-    fn try_peek<M: Debug + 'static>(&self) -> Option<&M>;
-
-    /// Debug the last message on the stack, if any
-    fn peek_debug(&self) -> Option<&dyn Debug>;
-}
-
-impl ReadMessage for MessageStack {
     #[inline]
     fn pop_erased(&mut self) -> Option<Erased> {
         self.count = self.count.wrapping_add(1);
         self.stack.pop()
     }
 
+    /// Try popping the last message from the stack with the given type
     fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
         if self.has_any() && self.stack.last().map(|m| m.is::<M>()).unwrap_or(false) {
             self.count = self.count.wrapping_add(1);
@@ -142,6 +131,7 @@ impl ReadMessage for MessageStack {
         }
     }
 
+    /// Try observing the last message on the stack without popping
     fn try_peek<M: Debug + 'static>(&self) -> Option<&M> {
         if self.has_any() {
             self.stack.last().and_then(|m| m.downcast_ref::<M>())
@@ -150,6 +140,7 @@ impl ReadMessage for MessageStack {
         }
     }
 
+    /// Debug the last message on the stack, if any
     fn peek_debug(&self) -> Option<&dyn Debug> {
         self.stack.last().map(Erased::debug)
     }
