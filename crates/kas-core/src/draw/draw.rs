@@ -153,29 +153,40 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
 /// on the graphics backend. Since Rust does not (yet) support trait-object-downcast,
 /// accessing these requires reconstruction of the implementing type via
 /// [`DrawIface::downcast_from`].
+#[crate::split_impl(for<'a, DS: DrawSharedImpl> DrawIface<'a, DS>)]
 pub trait Draw {
     /// Access shared draw state
-    fn shared(&mut self) -> &mut dyn DrawShared;
+    fn shared(&mut self) -> &mut dyn DrawShared {
+        self.shared
+    }
 
     /// Request redraw at the next frame time
     ///
     /// Animations should call this each frame until complete.
-    fn animate(&mut self);
+    fn animate(&mut self) {
+        self.draw.animate();
+    }
 
     /// Request a redraw at a specific time
     ///
     /// This may be used for animations with delays, e.g. flashing. Calling this
     /// method only ensures that the *next* draw happens *no later* than `time`,
     /// thus the method should be called again in each following frame.
-    fn animate_at(&mut self, time: Instant);
+    fn animate_at(&mut self, time: Instant) {
+        self.draw.animate_at(time);
+    }
 
     /// Get the current draw pass
-    fn get_pass(&self) -> PassId;
+    fn get_pass(&self) -> PassId {
+        self.pass
+    }
 
     /// Cast fields to [`Any`] references
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    fn get_fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any);
+    fn get_fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any) {
+        (self.draw, self.shared)
+    }
 
     /// Add a draw pass
     ///
@@ -197,7 +208,9 @@ pub trait Draw {
         rect: Rect,
         offset: Offset,
         class: PassType,
-    ) -> Box<dyn Draw + 'b>;
+    ) -> Box<dyn Draw + 'b> {
+        Box::new(self.new_pass(rect, offset, class))
+    }
 
     /// Get drawable rect for a draw `pass`
     ///
@@ -206,19 +219,25 @@ pub trait Draw {
     ///
     /// (This is not guaranteed to equal the rect passed to
     /// [`DrawIface::new_pass`].)
-    fn get_clip_rect(&self) -> Rect;
+    fn get_clip_rect(&self) -> Rect {
+        self.draw.get_clip_rect(self.pass)
+    }
 
     /// Draw a rectangle of uniform colour
     ///
     /// Note: where the implementation batches and/or re-orders draw calls,
     /// this should be one of the first items drawn such that almost anything
     /// else will draw "in front of" a rect.
-    fn rect(&mut self, rect: Quad, col: Rgba);
+    fn rect(&mut self, rect: Quad, col: Rgba) {
+        self.draw.rect(self.pass, rect, col);
+    }
 
     /// Draw a frame of uniform colour
     ///
     /// The frame is defined by the area inside `outer` and not inside `inner`.
-    fn frame(&mut self, outer: Quad, inner: Quad, col: Rgba);
+    fn frame(&mut self, outer: Quad, inner: Quad, col: Rgba) {
+        self.draw.frame(self.pass, outer, inner, col);
+    }
 
     /// Draw a line with uniform colour
     ///
@@ -230,10 +249,14 @@ pub trait Draw {
     ///
     /// Note that for rectangular, axis-aligned lines, [`DrawImpl::rect`] should be
     /// preferred.
-    fn line(&mut self, p1: Vec2, p2: Vec2, width: f32, col: Rgba);
+    fn line(&mut self, p1: Vec2, p2: Vec2, width: f32, col: Rgba) {
+        self.draw.line(self.pass, p1, p2, width, col);
+    }
 
     /// Draw the image in the given `rect`
-    fn image(&mut self, id: ImageId, rect: Quad);
+    fn image(&mut self, id: ImageId, rect: Quad) {
+        self.shared.draw.draw_image(self.draw, self.pass, id, rect);
+    }
 
     /// Draw text with a list of color effects
     ///
@@ -248,7 +271,11 @@ pub trait Draw {
         text: &TextDisplay,
         theme: &ColorsLinear,
         tokens: &[(u32, format::Colors)],
-    );
+    ) {
+        self.shared
+            .draw
+            .draw_text(self.draw, self.pass, pos, bounding_box, text, theme, tokens);
+    }
 
     /// Draw text decorations (e.g. underlines)
     ///
@@ -261,81 +288,16 @@ pub trait Draw {
         text: &TextDisplay,
         theme: &ColorsLinear,
         decorations: &[(u32, format::Decoration)],
-    );
-}
-
-impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
-    fn shared(&mut self) -> &mut dyn DrawShared {
-        self.shared
-    }
-
-    fn animate(&mut self) {
-        self.draw.animate();
-    }
-
-    fn animate_at(&mut self, time: Instant) {
-        self.draw.animate_at(time);
-    }
-
-    fn get_pass(&self) -> PassId {
-        self.pass
-    }
-
-    fn get_fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any) {
-        (self.draw, self.shared)
-    }
-
-    fn new_dyn_pass<'b>(
-        &'b mut self,
-        rect: Rect,
-        offset: Offset,
-        class: PassType,
-    ) -> Box<dyn Draw + 'b> {
-        Box::new(self.new_pass(rect, offset, class))
-    }
-
-    fn get_clip_rect(&self) -> Rect {
-        self.draw.get_clip_rect(self.pass)
-    }
-
-    fn rect(&mut self, rect: Quad, col: Rgba) {
-        self.draw.rect(self.pass, rect, col);
-    }
-    fn frame(&mut self, outer: Quad, inner: Quad, col: Rgba) {
-        self.draw.frame(self.pass, outer, inner, col);
-    }
-    fn line(&mut self, p1: Vec2, p2: Vec2, width: f32, col: Rgba) {
-        self.draw.line(self.pass, p1, p2, width, col);
-    }
-
-    fn image(&mut self, id: ImageId, rect: Quad) {
-        self.shared.draw.draw_image(self.draw, self.pass, id, rect);
-    }
-
-    fn text(
-        &mut self,
-        pos: Vec2,
-        bb: Quad,
-        text: &TextDisplay,
-        theme: &ColorsLinear,
-        tokens: &[(u32, format::Colors)],
     ) {
-        self.shared
-            .draw
-            .draw_text(self.draw, self.pass, pos, bb, text, theme, tokens);
-    }
-
-    fn decorate_text(
-        &mut self,
-        pos: Vec2,
-        bb: Quad,
-        text: &TextDisplay,
-        theme: &ColorsLinear,
-        decorations: &[(u32, format::Decoration)],
-    ) {
-        self.shared
-            .draw
-            .decorate_text(self.draw, self.pass, pos, bb, text, theme, decorations);
+        self.shared.draw.decorate_text(
+            self.draw,
+            self.pass,
+            pos,
+            bounding_box,
+            text,
+            theme,
+            decorations,
+        );
     }
 }
 
