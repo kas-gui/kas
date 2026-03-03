@@ -13,9 +13,9 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
-use crate::{
-    AccessLabel, Button, EditBox, Filler, ScrollLabel, SelectableLabel, adapt::AdaptWidgetAny,
-};
+use crate::adapt::AdaptWidgetAny;
+use crate::edit::Editor;
+use crate::{AccessLabel, Button, EditBox, Filler, ScrollLabel, SelectableLabel};
 use kas::prelude::*;
 use kas::runner::AppData;
 use kas::text::format::FormattableText;

@@ -152,18 +152,15 @@ mod SelectableText {
             self.text.as_str()
         }
 
-        /// Set text in an existing `Label`
-        ///
-        /// Note: this must not be called before fonts have been initialised
-        /// (usually done by the theme when the main loop starts).
+        /// Replace text contents
         ///
         /// Returns `true` when the content size may have changed.
         pub fn set_text(&mut self, text: T) -> bool {
-            self.text.set_text(text);
-            if !self.text.prepare() {
+            if !self.text.set_text(text) {
                 return false;
             }
 
+            self.text.prepare();
             self.selection.set_max_len(self.text.str_len());
             true
         }
@@ -232,21 +229,6 @@ mod SelectableText {
                 let pos = Coord(marker.pos.0.cast_nearest(), y0);
                 let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
                 cx.set_scroll(Scroll::Rect(Rect { pos, size }));
-            }
-        }
-    }
-
-    impl SelectableText<(), String> {
-        /// Set text contents from a string
-        ///
-        /// Returns `true` when the content size may have changed.
-        #[inline]
-        pub fn set_string(&mut self, string: String) -> bool {
-            if self.text.set_string(string) {
-                self.text.prepare();
-                true
-            } else {
-                false
             }
         }
     }
@@ -482,10 +464,7 @@ mod ScrollText {
             self.text.as_str()
         }
 
-        /// Replace text
-        ///
-        /// Note: this must not be called before fonts have been initialised
-        /// (usually done by the theme when the main loop starts).
+        /// Replace text contents
         pub fn set_text(&mut self, cx: &mut EventState, text: T) {
             if self.text.set_text(text) {
                 self.update_content_size(cx);
@@ -525,15 +504,6 @@ mod ScrollText {
             self.vert_bar
                 .set_limits(cx, self.scroll.max_offset().1, size.1);
             self.vert_bar.set_value(cx, self.scroll.offset().1);
-        }
-    }
-
-    impl ScrollText<(), String> {
-        /// Set text contents from a string
-        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
-            if self.text.set_string(string) {
-                self.update_content_size(cx);
-            }
         }
     }
 

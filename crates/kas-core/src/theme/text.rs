@@ -135,20 +135,6 @@ impl<T: FormattableText> Text<T> {
         self
     }
 
-    /// Clone the formatted text
-    pub fn clone_text(&self) -> T
-    where
-        T: Clone,
-    {
-        self.text.clone()
-    }
-
-    /// Extract text object, discarding the rest
-    #[inline]
-    pub fn take_text(self) -> T {
-        self.text
-    }
-
     /// Access the formattable text object
     #[inline]
     pub fn text(&self) -> &T {
@@ -198,15 +184,17 @@ impl<T: FormattableText> Text<T> {
 
     /// Set the text
     ///
-    /// One must call [`Text::prepare`] afterwards and may wish to inspect its
-    /// return value to check the size allocation meets requirements.
-    pub fn set_text(&mut self, text: T) {
+    /// Returns `true` when new `text` contents do not match old contents. In
+    /// this case the new `text` is assigned, but the caller must also call
+    /// [`Text::prepare`] afterwards.
+    pub fn set_text(&mut self, text: T) -> bool {
         if self.text == text {
-            return; // no change
+            return false; // no change
         }
 
         self.text = text;
         self.set_max_status(Status::New);
+        true
     }
 
     /// Length of text
@@ -227,12 +215,6 @@ impl<T: FormattableText> Text<T> {
     #[inline]
     pub fn as_str(&self) -> &str {
         self.text.as_str()
-    }
-
-    /// Clone the unformatted text as a `String`
-    #[inline]
-    pub fn clone_string(&self) -> String {
-        self.text.as_str().to_string()
     }
 
     /// Get text class
@@ -701,22 +683,6 @@ impl Text<String> {
         }
 
         self.text = text.to_string();
-        self.set_max_status(Status::New);
-        true
-    }
-
-    /// Set text to a raw `String`
-    ///
-    /// Returns `true` when new `text` contents do not match old contents. In
-    /// this case the new `text` is assigned, but the caller must also call
-    /// [`Text::prepare`] afterwards.
-    #[inline]
-    pub fn set_string(&mut self, text: String) -> bool {
-        if self.text.as_str() == text {
-            return false; // no change
-        }
-
-        self.text = text;
         self.set_max_status(Status::New);
         true
     }

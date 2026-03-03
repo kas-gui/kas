@@ -206,7 +206,7 @@ mod DirItem {
             if let Some(name) = entry.file_name() {
                 file_name = name.to_string_lossy().into();
             }
-            self.label.set_string(cx, file_name);
+            self.label.set_text(cx, file_name);
         }
     }
 

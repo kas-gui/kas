@@ -34,7 +34,7 @@ mod EditBox {
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[autoimpl(Default, Debug where G: trait)]
-    #[autoimpl(Deref<Target = Editor>, DerefMut using self.inner)]
+    #[autoimpl(Deref<Target = EditorComponent>, DerefMut using self.inner)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
@@ -247,56 +247,6 @@ mod EditBox {
 
         fn update_scroll_offset(&mut self, cx: &mut EventState) {
             self.vert_bar.set_value(cx, self.scroll.offset().1);
-        }
-
-        /// Clear text contents and undo history
-        #[inline]
-        pub fn clear(&mut self, cx: &mut EventState) {
-            self.inner.clear(cx);
-        }
-
-        /// Commit outstanding changes to the undo history
-        ///
-        /// Call this *before* changing the text with `set_str` or `set_string`
-        /// to commit changes to the undo history.
-        #[inline]
-        pub fn pre_commit(&mut self) {
-            self.inner.pre_commit();
-        }
-
-        // Set text contents from a `str`
-        ///
-        /// This does not interact with undo history; see also [`Self::clear`],
-        /// [`Self::pre_commit`].
-        #[inline]
-        pub fn set_str(&mut self, cx: &mut EventState, text: &str) {
-            if self.inner.set_str(cx, text) {
-                self.update_content_size(cx);
-            }
-        }
-
-        /// Set text contents from a `String`
-        ///
-        /// This does not interact with undo history; see also [`Self::clear`],
-        /// [`Self::pre_commit`].
-        ///
-        /// This method does not call action handlers on the [`EditGuard`].
-        #[inline]
-        pub fn set_string(&mut self, cx: &mut EventState, text: String) {
-            if self.inner.set_string(cx, text) {
-                self.update_content_size(cx);
-            }
-        }
-
-        /// Replace selected text
-        ///
-        /// This does not interact with undo history or call action handlers on the
-        /// guard.
-        #[inline]
-        pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
-            if self.inner.replace_selected_text(cx, text) {
-                self.update_content_size(cx);
-            }
         }
 
         /// Access the edit guard
