@@ -6,6 +6,7 @@
 //! The [`EditField`] and [`EditBox`] widgets, plus supporting items
 
 use super::*;
+use crate::edit::highlight::{Highlighter, Plain};
 use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
@@ -60,15 +61,15 @@ mod EditField {
     /// ### Special behaviour
     ///
     /// This is a [`Viewport`] widget.
-    #[autoimpl(Debug where G: trait)]
-    #[autoimpl(Deref<Target = EditorComponent>, DerefMut using self.editor)]
+    #[autoimpl(Debug where G: trait, H: trait)]
+    #[autoimpl(Deref<Target = EditorComponent<H>>, DerefMut using self.editor)]
     #[widget]
     #[layout(self.editor)]
-    pub struct EditField<G: EditGuard = DefaultGuard<()>> {
+    pub struct EditField<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
         core: widget_core!(),
         width: (f32, f32),
         lines: (f32, f32),
-        editor: Component,
+        editor: Component<H>,
         /// The associated [`EditGuard`] implementation
         pub guard: G,
     }
@@ -214,7 +215,7 @@ mod EditField {
         }
     }
 
-    impl Default for Self
+    impl<G: EditGuard> Default for EditField<G, Plain>
     where
         G: Default,
     {
@@ -224,7 +225,7 @@ mod EditField {
         }
     }
 
-    impl Self {
+    impl<G: EditGuard> EditField<G, Plain> {
         /// Construct an `EditBox` with an [`EditGuard`]
         #[inline]
         pub fn new(guard: G) -> EditField<G> {
@@ -236,7 +237,9 @@ mod EditField {
                 guard,
             }
         }
+    }
 
+    impl Self {
         /// Call the [`EditGuard`]'s `activate` method
         #[inline]
         pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {
@@ -328,7 +331,7 @@ impl<A: 'static> EditField<StringGuard<A>> {
     }
 }
 
-impl<G: EditGuard> EditField<G> {
+impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `EditField`.

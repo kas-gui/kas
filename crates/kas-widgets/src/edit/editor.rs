@@ -5,11 +5,13 @@
 
 //! Text editor component
 
+use super::highlight::{self, Highlighter};
 use super::*;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
+use kas::text::format::FormattableText;
 use kas::text::{CursorRange, NotReady, SelectionHelper, format};
 use kas::theme::{Text, TextClass};
 use kas::util::UndoStack;
@@ -23,12 +25,12 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 /// longer be needed once `impl trait` is stabilised for associated types.
 /// (Alternatively, [`Editor`] could be re-implemented on the above widgets;
 /// this is preferable in theory but requires a lot of tedious code.)
-#[autoimpl(Debug)]
-pub struct EditorComponent {
+#[autoimpl(Debug where H: trait)]
+pub struct EditorComponent<H: Highlighter> {
     // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
     id: Id,
     editable: bool,
-    text: Text<String>,
+    text: Text<highlight::Text<H>>,
     selection: SelectionHelper,
     edit_x_coord: Option<f32>,
     last_edit: Option<EditOp>,
@@ -56,11 +58,11 @@ pub struct EditorComponent {
 /// support scrolling of text content. Since this component is not a widget it
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
-#[autoimpl(Debug)]
+#[autoimpl(Debug where H: trait)]
 #[autoimpl(Deref, DerefMut using self.0)]
-pub struct Component(EditorComponent);
+pub struct Component<H: Highlighter>(EditorComponent<H>);
 
-impl Layout for Component {
+impl<H: Highlighter> Layout for Component<H> {
     #[inline]
     fn rect(&self) -> Rect {
         self.text.rect()
@@ -85,13 +87,13 @@ impl Layout for Component {
     }
 }
 
-impl Default for Component {
+impl<H: Default + Highlighter> Default for Component<H> {
     #[inline]
     fn default() -> Self {
         Component(EditorComponent {
             id: Id::default(),
             editable: true,
-            text: Text::new(String::new(), TextClass::Editor, false),
+            text: Text::new(Default::default(), TextClass::Editor, false),
             selection: Default::default(),
             edit_x_coord: None,
             last_edit: Some(EditOp::Initial),
@@ -105,11 +107,12 @@ impl Default for Component {
     }
 }
 
-impl<S: ToString> From<S> for Component {
+impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
     #[inline]
     fn from(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
+        let text = highlight::Text::new(H::default(), text);
         Component(EditorComponent {
             text: Text::new(text, TextClass::Editor, false),
             selection: SelectionHelper::from(len),
@@ -118,10 +121,10 @@ impl<S: ToString> From<S> for Component {
     }
 }
 
-impl Component {
+impl<H: Highlighter> Component<H> {
     /// Access text
     #[inline]
-    pub fn text(&self) -> &Text<String> {
+    pub fn text(&self) -> &Text<impl FormattableText> {
         &self.text
     }
 
@@ -129,7 +132,7 @@ impl Component {
     ///
     /// It is left to the wrapping widget to ensure this is not mis-used.
     #[inline]
-    pub fn text_mut(&mut self) -> &mut Text<String> {
+    pub fn text_mut(&mut self) -> &mut Text<impl FormattableText> {
         &mut self.text
     }
 
@@ -142,7 +145,7 @@ impl Component {
         debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
         let text = text.to_string();
         let len = text.len();
-        self.text.set_text(text);
+        self.text.text_mut().set_text(text);
         self.selection.set_cursor(len);
         self
     }
@@ -478,7 +481,7 @@ impl Component {
     }
 }
 
-impl EditorComponent {
+impl<H: Highlighter> EditorComponent<H> {
     /// Cancel on-going selection and IME actions
     ///
     /// This should be called if e.g. key-input interrupts the current
@@ -1015,7 +1018,7 @@ impl EditorComponent {
 }
 
 /// Text editor interface
-#[kas::split_impl(for EditorComponent)]
+#[kas::split_impl(for<H: Highlighter> EditorComponent<H>)]
 pub trait Editor {
     /// Get a reference to the widget's identifier
     #[inline]
@@ -1102,7 +1105,7 @@ pub trait Editor {
     fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
         self.cancel_selection_and_ime(cx);
 
-        if !self.text.set_text(string) {
+        if !self.text.set_str(&string) {
             return false;
         }
 
