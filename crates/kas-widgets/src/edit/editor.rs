@@ -735,7 +735,7 @@ impl EditorComponent {
                 Action::Move(selection.start, None)
             }
             Command::Left if cursor > 0 => GraphemeCursor::new(cursor, len, true)
-                .prev_boundary(self.text.text(), 0)
+                .prev_boundary(self.text.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
                 .unwrap_or(Action::None),
@@ -743,14 +743,14 @@ impl EditorComponent {
                 Action::Move(selection.end, None)
             }
             Command::Right if cursor < len => GraphemeCursor::new(cursor, len, true)
-                .next_boundary(self.text.text(), 0)
+                .next_boundary(self.text.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
                 .unwrap_or(Action::None),
             Command::WordLeft if cursor > 0 => {
-                let mut iter = self.text.text()[0..cursor].split_word_bound_indices();
+                let mut iter = self.text.as_str()[0..cursor].split_word_bound_indices();
                 let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
-                while self.text.text()[p..]
+                while self.text.as_str()[p..]
                     .chars()
                     .next()
                     .map(|c| c.is_whitespace())
@@ -765,11 +765,11 @@ impl EditorComponent {
                 Action::Move(p, None)
             }
             Command::WordRight if cursor < len => {
-                let mut iter = self.text.text()[cursor..]
+                let mut iter = self.text.as_str()[cursor..]
                     .split_word_bound_indices()
                     .skip(1);
                 let mut p = iter.next().map(|(index, _)| cursor + index).unwrap_or(len);
-                while self.text.text()[p..]
+                while self.text.as_str()[p..]
                     .chars()
                     .next()
                     .map(|c| c.is_whitespace())
@@ -846,17 +846,17 @@ impl EditorComponent {
                 Action::Delete(selection.clone(), EditOp::Delete)
             }
             Command::Delete if editable => GraphemeCursor::new(cursor, len, true)
-                .next_boundary(self.text.text(), 0)
+                .next_boundary(self.text.as_str(), 0)
                 .unwrap()
                 .map(|next| Action::Delete(cursor..next, EditOp::Delete))
                 .unwrap_or(Action::None),
             Command::DelBack if editable => GraphemeCursor::new(cursor, len, true)
-                .prev_boundary(self.text.text(), 0)
+                .prev_boundary(self.text.as_str(), 0)
                 .unwrap()
                 .map(|prev| Action::Delete(prev..cursor, EditOp::Delete))
                 .unwrap_or(Action::None),
             Command::DelWord if editable => {
-                let next = self.text.text()[cursor..]
+                let next = self.text.as_str()[cursor..]
                     .split_word_bound_indices()
                     .nth(1)
                     .map(|(index, _)| cursor + index)
@@ -864,7 +864,7 @@ impl EditorComponent {
                 Action::Delete(cursor..next, EditOp::Delete)
             }
             Command::DelWordBack if editable => {
-                let prev = self.text.text()[0..cursor]
+                let prev = self.text.as_str()[0..cursor]
                     .split_word_bound_indices()
                     .next_back()
                     .map(|(index, _)| index)
@@ -877,11 +877,11 @@ impl EditorComponent {
                 Action::Move(len, None)
             }
             Command::Cut if editable && have_sel => {
-                cx.set_clipboard((self.text.text()[selection.clone()]).into());
+                cx.set_clipboard((self.text.as_str()[selection.clone()]).into());
                 Action::Delete(selection.clone(), EditOp::Clipboard)
             }
             Command::Copy if have_sel => {
-                cx.set_clipboard((self.text.text()[selection.clone()]).into());
+                cx.set_clipboard((self.text.as_str()[selection.clone()]).into());
                 Action::None
             }
             Command::Paste if editable => {
