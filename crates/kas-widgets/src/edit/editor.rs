@@ -122,6 +122,30 @@ impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
 }
 
 impl<H: Highlighter> Component<H> {
+    /// Replace the highlighter
+    #[inline]
+    pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
+        let class = self.class();
+        let wrap = self.multi_line();
+        let text = self.0.text.take_text().take_text();
+        let text = highlight::Text::new(highlighter, text);
+
+        Component(EditorComponent {
+            id: self.0.id,
+            editable: self.0.editable,
+            text: Text::new(text, class, wrap),
+            selection: self.0.selection,
+            edit_x_coord: self.0.edit_x_coord,
+            last_edit: self.0.last_edit,
+            undo_stack: self.0.undo_stack,
+            has_key_focus: self.0.has_key_focus,
+            current: self.0.current,
+            error_state: self.0.error_state,
+            error_message: self.0.error_message,
+            input_handler: self.0.input_handler,
+        })
+    }
+
     /// Access text
     #[inline]
     pub fn text(&self) -> &Text<impl FormattableText> {

@@ -150,6 +150,12 @@ impl<T: FormattableText> Text<T> {
         &mut self.text
     }
 
+    /// Deconstruct, taking the embedded text
+    #[inline]
+    pub fn take_text(self) -> T {
+        self.text
+    }
+
     /// Set the font and font size (dpem) according to configuration
     ///
     /// Font selection depends on the [`TextClass`], [theme configuration] and

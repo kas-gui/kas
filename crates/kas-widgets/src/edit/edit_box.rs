@@ -247,6 +247,24 @@ mod EditBox {
     }
 
     impl Self {
+        /// Replace the highlighter
+        ///
+        /// This function reconstructs the text with a new highlighter.
+        #[inline]
+        pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> EditBox<G, H2> {
+            EditBox {
+                core: self.core,
+                scroll: self.scroll,
+                inner: self.inner.with_highlighter(highlighter),
+                vert_bar: self.vert_bar,
+                frame_offset: self.frame_offset,
+                frame_size: self.frame_size,
+                frame_offset_ex_margin: self.frame_offset_ex_margin,
+                inner_margin: self.inner_margin,
+                clip_rect: self.clip_rect,
+            }
+        }
+
         fn update_content_size(&mut self, cx: &mut EventState) {
             if !self.core.status.is_sized() {
                 return;

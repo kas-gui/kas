@@ -240,6 +240,20 @@ mod EditField {
     }
 
     impl Self {
+        /// Replace the highlighter
+        ///
+        /// This function reconstructs the text with a new highlighter.
+        #[inline]
+        pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> EditField<G, H2> {
+            EditField {
+                core: self.core,
+                width: self.width,
+                lines: self.lines,
+                editor: self.editor.with_highlighter(highlighter),
+                guard: self.guard,
+            }
+        }
+
         /// Call the [`EditGuard`]'s `activate` method
         #[inline]
         pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {

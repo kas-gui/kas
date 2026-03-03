@@ -59,6 +59,12 @@ impl<H: Highlighter> Text<H> {
         self.highlight();
     }
 
+    /// Deconstruct, taking the embedded text
+    #[inline]
+    pub fn take_text(self) -> String {
+        self.text
+    }
+
     fn highlight(&mut self) {
         self.fonts.clear();
         self.fonts.push(Fmt::default());
