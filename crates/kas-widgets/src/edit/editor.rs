@@ -1029,12 +1029,6 @@ pub trait Editor {
         self.id.clone()
     }
 
-    /// Access the text object
-    #[inline]
-    fn text(&self) -> &Text<String> {
-        &self.text
-    }
-
     /// Get text contents
     #[inline]
     fn as_str(&self) -> &str {

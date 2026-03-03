@@ -15,7 +15,7 @@ use crate::cast::Cast;
 use crate::geom::{Rect, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules, Stretch};
 use crate::text::fonts::FontSelector;
-use crate::text::format::{Colors, Decoration, FormattableText};
+use crate::text::format::{Colors, Decoration, EditableText, FormattableText};
 use crate::text::*;
 use std::num::NonZeroUsize;
 
@@ -629,20 +629,7 @@ impl<T: FormattableText> Text<T> {
 }
 
 /// Text editing operations
-impl Text<String> {
-    /// Insert a char at the given position
-    ///
-    /// This may be used to edit the raw text instead of replacing it.
-    /// One must call [`Text::prepare`] afterwards.
-    ///
-    /// Currently this is not significantly more efficient than
-    /// [`Text::set_text`]. This may change in the future (TODO).
-    #[inline]
-    pub fn insert_char(&mut self, index: usize, c: char) {
-        self.text.insert(index, c);
-        self.set_max_status(Status::New);
-    }
-
+impl<T: EditableText> Text<T> {
     /// Insert a `text` at the given position
     ///
     /// This may be used to edit the raw text instead of replacing it.
@@ -671,7 +658,7 @@ impl Text<String> {
         self.set_max_status(Status::New);
     }
 
-    /// Set text to a raw `&str`
+    /// Replace the whole text
     ///
     /// Returns `true` when new `text` contents do not match old contents. In
     /// this case the new `text` is assigned, but the caller must also call
@@ -682,21 +669,8 @@ impl Text<String> {
             return false; // no change
         }
 
-        self.text = text.to_string();
+        self.text.set_str(text);
         self.set_max_status(Status::New);
         true
-    }
-
-    /// Swap the raw text with a `String`
-    ///
-    /// This may be used to edit the raw text instead of replacing it.
-    /// One must call [`Text::prepare`] afterwards.
-    ///
-    /// Currently this is not significantly more efficient than
-    /// [`Text::set_text`]. This may change in the future (TODO).
-    #[inline]
-    pub fn swap_string(&mut self, string: &mut String) {
-        std::mem::swap(&mut self.text, string);
-        self.set_max_status(Status::New);
     }
 }

@@ -8,7 +8,7 @@
 use super::*;
 use kas::cast::Cast;
 use kas::text::fonts::{FontSelector, FontStyle, FontWeight};
-use kas::text::format::{Colors, Decoration, FontToken, FormattableText};
+use kas::text::format::{Colors, Decoration, EditableText, FontToken, FormattableText};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 struct Fmt {
@@ -131,5 +131,26 @@ impl<H: Highlighter> FormattableText for Text<H> {
     #[inline]
     fn decorations(&self) -> &[(u32, Decoration)] {
         &self.decorations
+    }
+}
+
+impl<H: Highlighter> EditableText for Text<H> {
+    #[inline]
+    fn insert_str(&mut self, index: usize, text: &str) {
+        self.text.insert_str(index, text);
+        self.highlight();
+    }
+
+    #[inline]
+    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
+        self.text.replace_range(range, replace_with);
+        self.highlight();
+    }
+
+    #[inline]
+    fn set_str(&mut self, text: &str) {
+        self.text.clear();
+        self.text.push_str(text);
+        self.highlight();
     }
 }

@@ -77,7 +77,7 @@ mod EditField {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
-                let dpem = cx.dpem(self.text().class());
+                let dpem = cx.dpem(self.class());
                 min = (self.width.0 * dpem).cast_ceil();
                 ideal = (self.width.1 * dpem).cast_ceil();
             } else if let Some(width) = axis.other() {
@@ -138,7 +138,7 @@ mod EditField {
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::TextInput {
-                text: self.text().as_str(),
+                text: self.as_str(),
                 multi_line: self.multi_line(),
                 cursor: self.cursor_range(),
             }
