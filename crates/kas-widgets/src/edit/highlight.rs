@@ -5,8 +5,11 @@
 
 //! Supporting elements for syntax highlighting
 
+#[cfg(feature = "syntect")] mod syntect;
 mod text;
 
+#[cfg(feature = "syntect")]
+pub use syntect::SyntectHighlighter;
 pub use text::Text;
 
 use kas::text::fonts::{FontStyle, FontWeight};
