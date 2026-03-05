@@ -146,6 +146,11 @@ impl<H: Highlighter> Component<H> {
         })
     }
 
+    /// Set a new highlighter of the same type
+    pub fn set_highlighter(&mut self, highlighter: H) {
+        self.text.text_mut().set_highlighter(highlighter);
+    }
+
     /// Access text
     #[inline]
     pub fn text(&self) -> &Text<impl FormattableText> {

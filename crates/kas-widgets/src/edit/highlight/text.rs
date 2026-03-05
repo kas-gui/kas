@@ -52,6 +52,12 @@ impl<H: Highlighter> Text<H> {
         text
     }
 
+    /// Set a new highlighter
+    pub fn set_highlighter(&mut self, highlighter: H) {
+        let text = std::mem::take(&mut self.text);
+        *self = Self::new(highlighter, text);
+    }
+
     /// Assign new contents
     #[inline]
     pub fn set_text(&mut self, text: String) {

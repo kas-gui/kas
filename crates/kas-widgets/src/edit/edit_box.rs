@@ -265,6 +265,11 @@ mod EditBox {
             }
         }
 
+        /// Set a new highlighter of the same type
+        pub fn set_highlighter(&mut self, highlighter: H) {
+            self.inner.set_highlighter(highlighter);
+        }
+
         fn update_content_size(&mut self, cx: &mut EventState) {
             if !self.core.status.is_sized() {
                 return;

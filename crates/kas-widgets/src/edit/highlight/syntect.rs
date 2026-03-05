@@ -14,7 +14,9 @@ use std::sync::OnceLock;
 use syntect::highlighting::{
     FontStyle, HighlightState, Highlighter, RangedHighlightIterator, ThemeSet,
 };
-use syntect::parsing::{ParseState, ParsingError, SyntaxReference, SyntaxSet};
+use syntect::parsing::{ParseState, ParsingError};
+
+pub use syntect::parsing::{SyntaxReference, SyntaxSet};
 
 fn themes() -> &'static ThemeSet {
     static SET: OnceLock<ThemeSet> = OnceLock::new();
@@ -45,6 +47,12 @@ impl SyntectHighlighter {
             syntax,
             highlighter: Highlighter::new(theme),
         }
+    }
+
+    /// Construct a new "highlighter" for plain text
+    #[inline]
+    pub fn new_plain() -> Self {
+        Self::new(Self::syntaxes().find_syntax_plain_text())
     }
 
     /// Construct a new highlighter for a given language by name
