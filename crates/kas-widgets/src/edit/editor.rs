@@ -199,15 +199,67 @@ impl<H: Highlighter> Component<H> {
         let pos = self.rect().pos - offset;
         let range: Range<u32> = self.selection.range().cast();
 
-        let mut tokens = [(0, format::Colors::default()); 3];
+        let color_tokens = self.text.color_tokens();
+        let mut buf = [(0, format::Colors::default()); 3];
+        let mut vec = vec![];
         let tokens = if range.is_empty() {
-            &[]
-        } else {
-            tokens[1].0 = range.start;
-            tokens[1].1.background = Some(format::Color::default());
-            tokens[2].0 = range.end;
+            color_tokens
+        } else if color_tokens.is_empty() {
+            buf[1].0 = range.start;
+            buf[1].1.background = Some(format::Color::default());
+            buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
-            &tokens[r0..]
+            &buf[r0..]
+        } else {
+            vec.reserve(color_tokens.len() + 2);
+            let mut i = 0;
+            let mut change_index = range.start;
+            let mut in_selection = false;
+            while i < color_tokens.len() {
+                let (start, mut colors) = color_tokens[i];
+                if start < change_index {
+                    if in_selection {
+                        colors.background = Some(format::Color::default());
+                    }
+                } else if start == change_index {
+                    in_selection = change_index == range.start;
+                    if in_selection {
+                        colors.background = Some(format::Color::default());
+                        change_index = range.end;
+                    } else {
+                        change_index = u32::MAX;
+                    }
+                } else {
+                    let index = change_index;
+                    let mut colors = if i > 0 {
+                        color_tokens[i - 1].1
+                    } else {
+                        Default::default()
+                    };
+                    in_selection = change_index == range.start;
+                    if in_selection {
+                        change_index = range.end;
+                        colors.background = Some(Default::default());
+                    } else {
+                        change_index = u32::MAX;
+                    };
+                    vec.push((index, colors));
+                    continue;
+                }
+                vec.push((start, colors));
+                i += 1;
+            }
+            if change_index == range.start {
+                vec.push((range.start, format::Colors {
+                    color: Default::default(),
+                    background: Some(Default::default()),
+                }));
+                change_index = range.end;
+            }
+            if change_index == range.end {
+                vec.push((range.end, format::Colors::default()));
+            }
+            &vec
         };
         draw.text_with_colors(pos, rect, display, tokens);
 
