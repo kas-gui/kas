@@ -26,27 +26,40 @@ pub struct Token {
 }
 
 pub trait Highlighter {
+    /// Error type
+    ///
+    /// TODO(associated_type_defaults): default to [`std::convert::Infallible`]
+    type Error: std::error::Error;
+
     /// Highlight a `text` as a single item
     ///
     /// The method should yield a sequence of tokens each with a text index
     /// using `push_token`. These must be yielded in order (i.e. `index` must be
     /// strictly increasing).
+    ///
+    /// # Error handling
+    ///
+    /// In debug builds errors returned by this method or errors in the order of
+    /// tokens' `index` value will result in a panic, while in release builds
+    /// these will merely result in a log error and interrupt highlighting.
     fn highlight_text(
         &mut self,
         text: &str,
         push_token: &mut dyn FnMut(usize, Token),
-    ) -> Result<(), impl std::error::Error>;
+    ) -> Result<(), Self::Error>;
 }
 
 /// An implementation of [`Highlighter`] which doesn't highlight anything
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Plain;
 impl Highlighter for Plain {
+    type Error = std::convert::Infallible;
+
     fn highlight_text(
         &mut self,
         _: &str,
         _: &mut dyn FnMut(usize, Token),
-    ) -> Result<(), impl std::error::Error> {
+    ) -> Result<(), Self::Error> {
         Ok::<(), std::convert::Infallible>(())
     }
 }

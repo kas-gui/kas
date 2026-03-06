@@ -73,39 +73,43 @@ impl<H: Highlighter> Text<H> {
 
         let mut last_index = None;
         let mut state = Token::default();
-        self.highlighter
-            .highlight_text(&self.text, &mut |index: usize, token: Token| {
-                if let Some(last) = last_index {
-                    assert!(
-                        index > last,
-                        "Highlighter: the sequence of token indices must be strictly increasing"
-                    );
+        let mut push_token = |index: usize, token: Token| {
+            if let Some(last) = last_index
+                && index <= last
+            {
+                log::error!("Highlighting failed: token start indices are not strictly increasing");
+                debug_assert!(false, "Highlighter: token start index order");
+                return;
+            }
+
+            if token.weight != state.weight || token.style != state.style {
+                if index == 0 {
+                    self.fonts.clear();
                 }
 
-                if token.weight != state.weight || token.style != state.style {
-                    if index == 0 {
-                        self.fonts.clear();
-                    }
+                self.fonts.push(Fmt {
+                    start: index.cast(),
+                    weight: token.weight,
+                    style: token.style,
+                });
+            }
 
-                    self.fonts.push(Fmt {
-                        start: index.cast(),
-                        weight: token.weight,
-                        style: token.style,
-                    });
-                }
+            if token.colors != state.colors {
+                self.colors.push((index.cast(), token.colors));
+            }
 
-                if token.colors != state.colors {
-                    self.colors.push((index.cast(), token.colors));
-                }
+            if token.decoration != state.decoration {
+                self.decorations.push((index.cast(), token.decoration));
+            }
 
-                if token.decoration != state.decoration {
-                    self.decorations.push((index.cast(), token.decoration));
-                }
+            last_index = Some(index);
+            state = token;
+        };
 
-                last_index = Some(index);
-                state = token;
-            })
-            .expect("highlighting failed");
+        if let Err(err) = self.highlighter.highlight_text(&self.text, &mut push_token) {
+            log::error!("Highlighting failed: {err}");
+            debug_assert!(false, "Highlighter: {err}");
+        }
     }
 }
 
