@@ -16,11 +16,6 @@ use syntect::highlighting::{
 };
 use syntect::parsing::{ParseState, ParsingError, SyntaxReference, SyntaxSet};
 
-fn syntaxes() -> &'static SyntaxSet {
-    static SET: OnceLock<SyntaxSet> = OnceLock::new();
-    SET.get_or_init(|| SyntaxSet::load_defaults_newlines())
-}
-
 fn themes() -> &'static ThemeSet {
     static SET: OnceLock<ThemeSet> = OnceLock::new();
     SET.get_or_init(|| ThemeSet::load_defaults())
@@ -33,21 +28,49 @@ pub struct SyntectHighlighter {
 }
 
 impl SyntectHighlighter {
-    /// Get a highlighter
-    #[inline]
-    pub fn new() -> Self {
-        let syntaxes = syntaxes();
-        let syntax = syntaxes
-            .find_syntax_by_name("Rust")
-            .unwrap_or_else(|| syntaxes.find_syntax_plain_text());
+    /// Access the compiled-in syntax set
+    ///
+    /// See [`SyntaxSet::load_defaults_newlines`] documentation.
+    pub fn syntaxes() -> &'static SyntaxSet {
+        static SET: OnceLock<SyntaxSet> = OnceLock::new();
+        SET.get_or_init(|| SyntaxSet::load_defaults_newlines())
+    }
 
+    /// Construct a new highlighter for the given [`SyntaxReference`]
+    #[inline]
+    pub fn new(syntax: &'static SyntaxReference) -> Self {
         let theme = themes().themes.get("InspiredGitHub").unwrap();
-        let highlighter = Highlighter::new(theme);
 
         SyntectHighlighter {
             syntax,
-            highlighter,
+            highlighter: Highlighter::new(theme),
         }
+    }
+
+    /// Construct a new highlighter for a given language by name
+    ///
+    /// Falls back to plain text mode if `name` is not found.
+    #[inline]
+    pub fn new_by_name(name: &str) -> Self {
+        let syntaxes = Self::syntaxes();
+        let syntax = syntaxes
+            .find_syntax_by_name(name)
+            .unwrap_or_else(|| syntaxes.find_syntax_plain_text());
+
+        Self::new(syntax)
+    }
+
+    /// Construct a new highlighter for a given language by extension
+    ///
+    /// Falls back to plain text mode if `ext` is not found.
+    #[inline]
+    pub fn new_by_extension(ext: &str) -> Self {
+        let syntaxes = Self::syntaxes();
+        let syntax = syntaxes
+            .find_syntax_by_extension(ext)
+            .unwrap_or_else(|| syntaxes.find_syntax_plain_text());
+
+        Self::new(syntax)
     }
 }
 
@@ -59,7 +82,7 @@ impl super::Highlighter for SyntectHighlighter {
         text: &str,
         push_token: &mut dyn FnMut(usize, Token),
     ) -> Result<(), Self::Error> {
-        let syntaxes = syntaxes();
+        let syntaxes = Self::syntaxes();
 
         let mut state = HighlightState::new(&self.highlighter, Default::default());
         let mut parse_state = ParseState::new(&self.syntax);
