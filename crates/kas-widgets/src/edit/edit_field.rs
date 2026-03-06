@@ -6,6 +6,7 @@
 //! The [`EditField`] and [`EditBox`] widgets, plus supporting items
 
 use super::*;
+use crate::edit::highlight::{Highlighter, Plain};
 use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
@@ -60,15 +61,15 @@ mod EditField {
     /// ### Special behaviour
     ///
     /// This is a [`Viewport`] widget.
-    #[autoimpl(Debug where G: trait)]
-    #[autoimpl(Deref<Target = EditorComponent>, DerefMut using self.editor)]
+    #[autoimpl(Debug where G: trait, H: trait)]
+    #[autoimpl(Deref<Target = EditorComponent<H>>, DerefMut using self.editor)]
     #[widget]
     #[layout(self.editor)]
-    pub struct EditField<G: EditGuard = DefaultGuard<()>> {
+    pub struct EditField<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
         core: widget_core!(),
         width: (f32, f32),
         lines: (f32, f32),
-        editor: Component,
+        editor: Component<H>,
         /// The associated [`EditGuard`] implementation
         pub guard: G,
     }
@@ -77,7 +78,7 @@ mod EditField {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
-                let dpem = cx.dpem(self.text().class());
+                let dpem = cx.dpem(self.class());
                 min = (self.width.0 * dpem).cast_ceil();
                 ideal = (self.width.1 * dpem).cast_ceil();
             } else if let Some(width) = axis.other() {
@@ -138,7 +139,7 @@ mod EditField {
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::TextInput {
-                text: self.text().as_str(),
+                text: self.as_str(),
                 multi_line: self.multi_line(),
                 cursor: self.cursor_range(),
             }
@@ -214,7 +215,7 @@ mod EditField {
         }
     }
 
-    impl Default for Self
+    impl<G: EditGuard> Default for EditField<G, Plain>
     where
         G: Default,
     {
@@ -224,7 +225,7 @@ mod EditField {
         }
     }
 
-    impl Self {
+    impl<G: EditGuard> EditField<G, Plain> {
         /// Construct an `EditBox` with an [`EditGuard`]
         #[inline]
         pub fn new(guard: G) -> EditField<G> {
@@ -234,6 +235,22 @@ mod EditField {
                 lines: (1.0, 1.0),
                 editor: Component::default(),
                 guard,
+            }
+        }
+    }
+
+    impl Self {
+        /// Replace the highlighter
+        ///
+        /// This function reconstructs the text with a new highlighter.
+        #[inline]
+        pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> EditField<G, H2> {
+            EditField {
+                core: self.core,
+                width: self.width,
+                lines: self.lines,
+                editor: self.editor.with_highlighter(highlighter),
+                guard: self.guard,
             }
         }
 
@@ -328,7 +345,7 @@ impl<A: 'static> EditField<StringGuard<A>> {
     }
 }
 
-impl<G: EditGuard> EditField<G> {
+impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `EditField`.

@@ -5,11 +5,13 @@
 
 //! Text editor component
 
+use super::highlight::{self, Highlighter};
 use super::*;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
+use kas::text::format::FormattableText;
 use kas::text::{CursorRange, NotReady, SelectionHelper, format};
 use kas::theme::{Text, TextClass};
 use kas::util::UndoStack;
@@ -23,12 +25,12 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 /// longer be needed once `impl trait` is stabilised for associated types.
 /// (Alternatively, [`Editor`] could be re-implemented on the above widgets;
 /// this is preferable in theory but requires a lot of tedious code.)
-#[autoimpl(Debug)]
-pub struct EditorComponent {
+#[autoimpl(Debug where H: trait)]
+pub struct EditorComponent<H: Highlighter> {
     // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
     id: Id,
     editable: bool,
-    text: Text<String>,
+    text: Text<highlight::Text<H>>,
     selection: SelectionHelper,
     edit_x_coord: Option<f32>,
     last_edit: Option<EditOp>,
@@ -56,11 +58,11 @@ pub struct EditorComponent {
 /// support scrolling of text content. Since this component is not a widget it
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
-#[autoimpl(Debug)]
+#[autoimpl(Debug where H: trait)]
 #[autoimpl(Deref, DerefMut using self.0)]
-pub struct Component(EditorComponent);
+pub struct Component<H: Highlighter>(EditorComponent<H>);
 
-impl Layout for Component {
+impl<H: Highlighter> Layout for Component<H> {
     #[inline]
     fn rect(&self) -> Rect {
         self.text.rect()
@@ -85,13 +87,13 @@ impl Layout for Component {
     }
 }
 
-impl Default for Component {
+impl<H: Default + Highlighter> Default for Component<H> {
     #[inline]
     fn default() -> Self {
         Component(EditorComponent {
             id: Id::default(),
             editable: true,
-            text: Text::new(String::new(), TextClass::Editor, false),
+            text: Text::new(Default::default(), TextClass::Editor, false),
             selection: Default::default(),
             edit_x_coord: None,
             last_edit: Some(EditOp::Initial),
@@ -105,11 +107,12 @@ impl Default for Component {
     }
 }
 
-impl<S: ToString> From<S> for Component {
+impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
     #[inline]
     fn from(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
+        let text = highlight::Text::new(H::default(), text);
         Component(EditorComponent {
             text: Text::new(text, TextClass::Editor, false),
             selection: SelectionHelper::from(len),
@@ -118,10 +121,34 @@ impl<S: ToString> From<S> for Component {
     }
 }
 
-impl Component {
+impl<H: Highlighter> Component<H> {
+    /// Replace the highlighter
+    #[inline]
+    pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
+        let class = self.class();
+        let wrap = self.multi_line();
+        let text = self.0.text.take_text().take_text();
+        let text = highlight::Text::new(highlighter, text);
+
+        Component(EditorComponent {
+            id: self.0.id,
+            editable: self.0.editable,
+            text: Text::new(text, class, wrap),
+            selection: self.0.selection,
+            edit_x_coord: self.0.edit_x_coord,
+            last_edit: self.0.last_edit,
+            undo_stack: self.0.undo_stack,
+            has_key_focus: self.0.has_key_focus,
+            current: self.0.current,
+            error_state: self.0.error_state,
+            error_message: self.0.error_message,
+            input_handler: self.0.input_handler,
+        })
+    }
+
     /// Access text
     #[inline]
-    pub fn text(&self) -> &Text<String> {
+    pub fn text(&self) -> &Text<impl FormattableText> {
         &self.text
     }
 
@@ -129,7 +156,7 @@ impl Component {
     ///
     /// It is left to the wrapping widget to ensure this is not mis-used.
     #[inline]
-    pub fn text_mut(&mut self) -> &mut Text<String> {
+    pub fn text_mut(&mut self) -> &mut Text<impl FormattableText> {
         &mut self.text
     }
 
@@ -142,7 +169,7 @@ impl Component {
         debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
         let text = text.to_string();
         let len = text.len();
-        self.text.set_text(text);
+        self.text.text_mut().set_text(text);
         self.selection.set_cursor(len);
         self
     }
@@ -172,15 +199,67 @@ impl Component {
         let pos = self.rect().pos - offset;
         let range: Range<u32> = self.selection.range().cast();
 
-        let mut tokens = [(0, format::Colors::default()); 3];
+        let color_tokens = self.text.color_tokens();
+        let mut buf = [(0, format::Colors::default()); 3];
+        let mut vec = vec![];
         let tokens = if range.is_empty() {
-            &[]
-        } else {
-            tokens[1].0 = range.start;
-            tokens[1].1.background = Some(format::Color::default());
-            tokens[2].0 = range.end;
+            color_tokens
+        } else if color_tokens.is_empty() {
+            buf[1].0 = range.start;
+            buf[1].1.background = Some(format::Color::default());
+            buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
-            &tokens[r0..]
+            &buf[r0..]
+        } else {
+            vec.reserve(color_tokens.len() + 2);
+            let mut i = 0;
+            let mut change_index = range.start;
+            let mut in_selection = false;
+            while i < color_tokens.len() {
+                let (start, mut colors) = color_tokens[i];
+                if start < change_index {
+                    if in_selection {
+                        colors.background = Some(format::Color::default());
+                    }
+                } else if start == change_index {
+                    in_selection = change_index == range.start;
+                    if in_selection {
+                        colors.background = Some(format::Color::default());
+                        change_index = range.end;
+                    } else {
+                        change_index = u32::MAX;
+                    }
+                } else {
+                    let index = change_index;
+                    let mut colors = if i > 0 {
+                        color_tokens[i - 1].1
+                    } else {
+                        Default::default()
+                    };
+                    in_selection = change_index == range.start;
+                    if in_selection {
+                        change_index = range.end;
+                        colors.background = Some(Default::default());
+                    } else {
+                        change_index = u32::MAX;
+                    };
+                    vec.push((index, colors));
+                    continue;
+                }
+                vec.push((start, colors));
+                i += 1;
+            }
+            if change_index == range.start {
+                vec.push((range.start, format::Colors {
+                    color: Default::default(),
+                    background: Some(Default::default()),
+                }));
+                change_index = range.end;
+            }
+            if change_index == range.end {
+                vec.push((range.end, format::Colors::default()));
+            }
+            &vec
         };
         draw.text_with_colors(pos, rect, display, tokens);
 
@@ -478,7 +557,7 @@ impl Component {
     }
 }
 
-impl EditorComponent {
+impl<H: Highlighter> EditorComponent<H> {
     /// Cancel on-going selection and IME actions
     ///
     /// This should be called if e.g. key-input interrupts the current
@@ -735,7 +814,7 @@ impl EditorComponent {
                 Action::Move(selection.start, None)
             }
             Command::Left if cursor > 0 => GraphemeCursor::new(cursor, len, true)
-                .prev_boundary(self.text.text(), 0)
+                .prev_boundary(self.text.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
                 .unwrap_or(Action::None),
@@ -743,14 +822,14 @@ impl EditorComponent {
                 Action::Move(selection.end, None)
             }
             Command::Right if cursor < len => GraphemeCursor::new(cursor, len, true)
-                .next_boundary(self.text.text(), 0)
+                .next_boundary(self.text.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
                 .unwrap_or(Action::None),
             Command::WordLeft if cursor > 0 => {
-                let mut iter = self.text.text()[0..cursor].split_word_bound_indices();
+                let mut iter = self.text.as_str()[0..cursor].split_word_bound_indices();
                 let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
-                while self.text.text()[p..]
+                while self.text.as_str()[p..]
                     .chars()
                     .next()
                     .map(|c| c.is_whitespace())
@@ -765,11 +844,11 @@ impl EditorComponent {
                 Action::Move(p, None)
             }
             Command::WordRight if cursor < len => {
-                let mut iter = self.text.text()[cursor..]
+                let mut iter = self.text.as_str()[cursor..]
                     .split_word_bound_indices()
                     .skip(1);
                 let mut p = iter.next().map(|(index, _)| cursor + index).unwrap_or(len);
-                while self.text.text()[p..]
+                while self.text.as_str()[p..]
                     .chars()
                     .next()
                     .map(|c| c.is_whitespace())
@@ -846,17 +925,17 @@ impl EditorComponent {
                 Action::Delete(selection.clone(), EditOp::Delete)
             }
             Command::Delete if editable => GraphemeCursor::new(cursor, len, true)
-                .next_boundary(self.text.text(), 0)
+                .next_boundary(self.text.as_str(), 0)
                 .unwrap()
                 .map(|next| Action::Delete(cursor..next, EditOp::Delete))
                 .unwrap_or(Action::None),
             Command::DelBack if editable => GraphemeCursor::new(cursor, len, true)
-                .prev_boundary(self.text.text(), 0)
+                .prev_boundary(self.text.as_str(), 0)
                 .unwrap()
                 .map(|prev| Action::Delete(prev..cursor, EditOp::Delete))
                 .unwrap_or(Action::None),
             Command::DelWord if editable => {
-                let next = self.text.text()[cursor..]
+                let next = self.text.as_str()[cursor..]
                     .split_word_bound_indices()
                     .nth(1)
                     .map(|(index, _)| cursor + index)
@@ -864,7 +943,7 @@ impl EditorComponent {
                 Action::Delete(cursor..next, EditOp::Delete)
             }
             Command::DelWordBack if editable => {
-                let prev = self.text.text()[0..cursor]
+                let prev = self.text.as_str()[0..cursor]
                     .split_word_bound_indices()
                     .next_back()
                     .map(|(index, _)| index)
@@ -877,11 +956,11 @@ impl EditorComponent {
                 Action::Move(len, None)
             }
             Command::Cut if editable && have_sel => {
-                cx.set_clipboard((self.text.text()[selection.clone()]).into());
+                cx.set_clipboard((self.text.as_str()[selection.clone()]).into());
                 Action::Delete(selection.clone(), EditOp::Clipboard)
             }
             Command::Copy if have_sel => {
-                cx.set_clipboard((self.text.text()[selection.clone()]).into());
+                cx.set_clipboard((self.text.as_str()[selection.clone()]).into());
                 Action::None
             }
             Command::Paste if editable => {
@@ -1015,7 +1094,7 @@ impl EditorComponent {
 }
 
 /// Text editor interface
-#[kas::split_impl(for EditorComponent)]
+#[kas::split_impl(for<H: Highlighter> EditorComponent<H>)]
 pub trait Editor {
     /// Get a reference to the widget's identifier
     #[inline]
@@ -1027,12 +1106,6 @@ pub trait Editor {
     #[inline]
     fn id(&self) -> Id {
         self.id.clone()
-    }
-
-    /// Access the text object
-    #[inline]
-    fn text(&self) -> &Text<String> {
-        &self.text
     }
 
     /// Get text contents
@@ -1108,7 +1181,7 @@ pub trait Editor {
     fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
         self.cancel_selection_and_ime(cx);
 
-        if !self.text.set_text(string) {
+        if !self.text.set_str(&string) {
             return false;
         }
 

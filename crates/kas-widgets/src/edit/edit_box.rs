@@ -6,6 +6,7 @@
 //! The [`EditField`] and [`EditBox`] widgets, plus supporting items
 
 use super::*;
+use crate::edit::highlight::{Highlighter, Plain};
 use crate::{ScrollBar, ScrollBarMsg};
 use kas::event::Scroll;
 use kas::event::components::ScrollComponent;
@@ -33,15 +34,15 @@ mod EditBox {
     /// handlers [`EditGuard::edit`] followed by [`EditGuard::activate`].
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[autoimpl(Default, Debug where G: trait)]
-    #[autoimpl(Deref<Target = EditorComponent>, DerefMut using self.inner)]
+    #[autoimpl(Debug where G: trait, H: trait)]
+    #[autoimpl(Deref<Target = EditorComponent<H>>, DerefMut using self.inner)]
     #[widget]
-    pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
+    pub struct EditBox<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
         core: widget_core!(),
         scroll: ScrollComponent,
         // NOTE: inner is a Viewport which doesn't use update methods, therefore we don't call them.
         #[widget]
-        inner: EditField<G>,
+        inner: EditField<G, H>,
         #[widget(&())]
         vert_bar: ScrollBar<kas::dir::Down>,
         frame_offset: Offset,
@@ -217,7 +218,17 @@ mod EditBox {
         }
     }
 
-    impl Self {
+    impl<G: EditGuard> Default for EditBox<G, Plain>
+    where
+        G: Default,
+    {
+        #[inline]
+        fn default() -> Self {
+            EditBox::new(G::default())
+        }
+    }
+
+    impl<G: EditGuard> EditBox<G, Plain> {
         /// Construct an `EditBox` with an [`EditGuard`]
         #[inline]
         pub fn new(guard: G) -> Self {
@@ -231,6 +242,26 @@ mod EditBox {
                 frame_offset_ex_margin: Default::default(),
                 inner_margin: Default::default(),
                 clip_rect: Default::default(),
+            }
+        }
+    }
+
+    impl Self {
+        /// Replace the highlighter
+        ///
+        /// This function reconstructs the text with a new highlighter.
+        #[inline]
+        pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> EditBox<G, H2> {
+            EditBox {
+                core: self.core,
+                scroll: self.scroll,
+                inner: self.inner.with_highlighter(highlighter),
+                vert_bar: self.vert_bar,
+                frame_offset: self.frame_offset,
+                frame_size: self.frame_size,
+                frame_offset_ex_margin: self.frame_offset_ex_margin,
+                inner_margin: self.inner_margin,
+                clip_rect: self.clip_rect,
             }
         }
 
@@ -335,7 +366,7 @@ impl<A: 'static> EditBox<StringGuard<A>> {
     }
 }
 
-impl<G: EditGuard> EditBox<G> {
+impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `EditBox`.

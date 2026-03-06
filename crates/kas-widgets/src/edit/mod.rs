@@ -9,6 +9,7 @@ mod edit_box;
 mod edit_field;
 mod editor;
 mod guard;
+pub mod highlight;
 
 pub use edit_box::EditBox;
 pub use edit_field::EditField;
