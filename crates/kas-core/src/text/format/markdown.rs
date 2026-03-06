@@ -232,8 +232,8 @@ enum State {
 impl State {
     fn start_block(&mut self, text: &mut String) {
         match *self {
-            State::None | State::BlockStart => (),
-            State::BlockEnd | State::ListItem | State::Part => text.push_str("\n\n"),
+            State::None | State::BlockStart | State::ListItem => (),
+            State::BlockEnd | State::Part => text.push_str("\n\n"),
         }
         *self = State::BlockStart;
     }
@@ -249,10 +249,9 @@ impl State {
     }
     fn list_item(&mut self, text: &mut String) {
         match *self {
-            State::None | State::BlockStart | State::BlockEnd => {
-                debug_assert_eq!(*self, State::BlockStart);
-            }
-            State::ListItem | State::Part => text.push('\n'),
+            State::None => debug_assert!(false),
+            State::BlockStart => (),
+            State::BlockEnd | State::ListItem | State::Part => text.push('\n'),
         }
         *self = State::ListItem;
     }
