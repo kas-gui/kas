@@ -5,8 +5,13 @@
 
 //! Supporting elements for syntax highlighting
 
+#[cfg(feature = "syntect")] mod syntect;
 mod text;
 
+#[cfg(feature = "syntect")]
+pub use syntect::{
+    SyntaxReference as SyntectSyntax, SyntaxSet as SyntectSyntaxSet, SyntectHighlighter,
+};
 pub use text::Text;
 
 use kas::text::fonts::{FontStyle, FontWeight};
@@ -16,12 +21,19 @@ use kas::text::format::{Colors, Decoration};
 ///
 /// This token is designed to support all capabilities required by syntax
 /// highlighters.
+///
+/// Some extensions could be possible: font width, (relative) font size,
+/// generic font family (Serif/Sans-Serif/Monospace).
 #[derive(Clone, Debug, Default, PartialEq)]
 #[non_exhaustive]
 pub struct Token {
+    /// Text (foreground) and background color
     pub colors: Colors,
+    /// Text weight (bold/medium/light)
     pub weight: FontWeight,
+    /// Text style (normal/italic/oblique)
     pub style: FontStyle,
+    /// Text decorations (strikethrough, underline)
     pub decoration: Decoration,
 }
 

@@ -254,6 +254,11 @@ mod EditField {
             }
         }
 
+        /// Set a new highlighter of the same type
+        pub fn set_highlighter(&mut self, highlighter: H) {
+            self.editor.set_highlighter(highlighter);
+        }
+
         /// Call the [`EditGuard`]'s `activate` method
         #[inline]
         pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {

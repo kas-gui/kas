@@ -146,6 +146,11 @@ impl<H: Highlighter> Component<H> {
         })
     }
 
+    /// Set a new highlighter of the same type
+    pub fn set_highlighter(&mut self, highlighter: H) {
+        self.text.text_mut().set_highlighter(highlighter);
+    }
+
     /// Access text
     #[inline]
     pub fn text(&self) -> &Text<impl FormattableText> {
@@ -1185,6 +1190,7 @@ pub trait Editor {
             return false;
         }
 
+        cx.redraw(self.id());
         let len = self.text.str_len();
         self.selection.set_max_len(len);
         self.edit_x_coord = None;

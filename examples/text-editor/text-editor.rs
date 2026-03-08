@@ -6,6 +6,7 @@
 //! A simple text editor
 
 use kas::prelude::*;
+use kas::widgets::edit::highlight::{SyntectHighlighter, SyntectSyntax};
 use kas::widgets::edit::{self, Editor as _};
 use kas::widgets::{Button, EditBox, Filler, column, dialog, row};
 use rfd::FileHandle;
@@ -25,7 +26,7 @@ struct OpenFile(Option<FileHandle>);
 struct SaveFile(Option<FileHandle>);
 
 #[derive(Debug)]
-struct SetContents(Vec<u8>);
+struct SetContents(&'static SyntectSyntax, Vec<u8>);
 
 #[derive(Debug)]
 struct Saved(std::io::Result<()>);
@@ -59,7 +60,7 @@ mod Editor {
     struct Editor {
         core: widget_core!(),
         #[widget]
-        editor: EditBox<Guard>,
+        editor: EditBox<Guard, SyntectHighlighter>,
         pending: Option<EditorAction>,
         file: Option<FileHandle>,
     }
@@ -103,14 +104,24 @@ mod Editor {
                 // Assume that no actions handled since the open was requested
                 self.file = file.clone();
                 if let Some(file) = file {
-                    cx.send_async(self.id(), async move { SetContents(file.read().await) });
+                    let syntaxes = SyntectHighlighter::syntaxes();
+                    let syntax = file
+                        .path()
+                        .extension()
+                        .and_then(|ext| ext.to_str())
+                        .and_then(|ext| syntaxes.find_syntax_by_extension(ext))
+                        .unwrap_or_else(|| syntaxes.find_syntax_plain_text());
+                    cx.send_async(
+                        self.id(),
+                        async move { SetContents(syntax, file.read().await) },
+                    );
                 }
                 return;
             } else if let Some(SaveFile(file)) = cx.try_pop() {
                 self.file = file;
                 self.do_action(cx, EditorAction::Save);
                 return;
-            } else if let Some(SetContents(bytes)) = cx.try_pop() {
+            } else if let Some(SetContents(syntax, bytes)) = cx.try_pop() {
                 let text = match String::from_utf8(bytes) {
                     Ok(text) => text,
                     Err(err) => {
@@ -121,6 +132,7 @@ mod Editor {
                 };
 
                 self.editor.clear(cx);
+                self.editor.set_highlighter(SyntectHighlighter::new(syntax));
                 self.editor.set_string(cx, text);
                 self.editor.guard_mut().edited = false;
             } else if let Some(Saved(result)) = cx.try_pop() {
@@ -148,6 +160,7 @@ mod Editor {
             Editor {
                 core: Default::default(),
                 editor: EditBox::new(Guard::default())
+                    .with_highlighter(SyntectHighlighter::new_plain())
                     .with_multi_line(true)
                     .with_lines(5.0, 20.0)
                     .with_width_em(10.0, 30.0),
@@ -165,9 +178,7 @@ mod Editor {
                     self.file = None;
                 }
                 EditorAction::Open => {
-                    let mut picker = rfd::AsyncFileDialog::new()
-                        .add_filter("Plain text", &["txt"])
-                        .set_title("Open file");
+                    let mut picker = rfd::AsyncFileDialog::new().set_title("Open file");
                     if let Some(window) = cx.winit_window() {
                         picker = picker.set_parent(window);
                     }
@@ -182,9 +193,7 @@ mod Editor {
                             Saved(file.write(contents.as_bytes()).await)
                         });
                     } else {
-                        let mut picker = rfd::AsyncFileDialog::new()
-                            .add_filter("Plain text", &["txt"])
-                            .set_title("Save file");
+                        let mut picker = rfd::AsyncFileDialog::new().set_title("Save file");
                         if let Some(window) = cx.winit_window() {
                             picker = picker.set_parent(window);
                         }
