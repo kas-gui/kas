@@ -1190,6 +1190,7 @@ pub trait Editor {
             return false;
         }
 
+        cx.redraw(self.id());
         let len = self.text.str_len();
         self.selection.set_max_len(len);
         self.edit_x_coord = None;
