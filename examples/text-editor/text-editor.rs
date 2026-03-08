@@ -178,9 +178,7 @@ mod Editor {
                     self.file = None;
                 }
                 EditorAction::Open => {
-                    let mut picker = rfd::AsyncFileDialog::new()
-                        .add_filter("Plain text", &["txt"])
-                        .set_title("Open file");
+                    let mut picker = rfd::AsyncFileDialog::new().set_title("Open file");
                     if let Some(window) = cx.winit_window() {
                         picker = picker.set_parent(window);
                     }
@@ -195,9 +193,7 @@ mod Editor {
                             Saved(file.write(contents.as_bytes()).await)
                         });
                     } else {
-                        let mut picker = rfd::AsyncFileDialog::new()
-                            .add_filter("Plain text", &["txt"])
-                            .set_title("Save file");
+                        let mut picker = rfd::AsyncFileDialog::new().set_title("Save file");
                         if let Some(window) = cx.winit_window() {
                             picker = picker.set_parent(window);
                         }
