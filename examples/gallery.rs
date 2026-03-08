@@ -17,7 +17,7 @@ use kas::dir::{Down, Right};
 use kas::image::Svg;
 use kas::prelude::*;
 use kas::theme::{MarginStyle, TextClass};
-use kas::widgets::edit::{EditGuard, Editor};
+use kas::widgets::edit::{EditGuard, Editor, highlight::SyntectHighlighter};
 use kas::widgets::{column, *};
 use kas::window::Popup;
 use std::ops::Range;
@@ -327,7 +327,8 @@ Demonstration of *as-you-type* formatting from **Markdown**.
             EditBox::new(Guard)
                 .with_multi_line(true)
                 .with_lines(4.0, 12.0)
-                .with_text(DOC),
+                .with_text(DOC)
+                .with_highlighter(SyntectHighlighter::new_by_name("Markdown")),
             ScrollLabel::new(Markdown::new(DOC).unwrap())
                 .on_configure(|cx, label| {
                     cx.send(label.id(), SetLabelId(label.id()));

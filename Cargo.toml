@@ -116,6 +116,9 @@ svg = ["dep:kas-image", "kas-image/svg", "kas-dylib?/image"]
 # Enable Canvas widget
 canvas = ["dep:kas-image", "kas-image/canvas", "kas-dylib?/image"]
 
+# Enable SyntectHighlighter
+syntect = ["kas-widgets/syntect"]
+
 # Support spawning async tasks
 spawn = ["kas-core/spawn"]
 
@@ -149,7 +152,7 @@ optional = true
 default-features = false
 
 [dev-dependencies]
-kas = { path = ".", default-features = false, features = ["view", "markdown", "svg", "canvas"] }
+kas = { path = ".", default-features = false, features = ["view", "markdown", "svg", "canvas", "syntect"] }
 chrono = "0.4"
 env_logger = "0.11"
 log = "0.4"
