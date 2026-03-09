@@ -7,6 +7,7 @@
 
 use super::Token;
 use kas::draw::color::Rgba8Srgb;
+use kas::event::ConfigCx;
 use kas::text::LineIterator;
 use kas::text::fonts::FontWeight;
 use kas::text::format::{Color, DecorationType};
@@ -26,6 +27,7 @@ fn themes() -> &'static ThemeSet {
 /// A highlighter using [`syntect`](https://crates.io/crates/syntect)
 pub struct SyntectHighlighter {
     syntax: &'static SyntaxReference,
+    dark: bool,
     highlighter: Highlighter<'static>,
 }
 
@@ -45,6 +47,7 @@ impl SyntectHighlighter {
 
         SyntectHighlighter {
             syntax,
+            dark: false,
             highlighter: Highlighter::new(theme),
         }
     }
@@ -84,6 +87,19 @@ impl SyntectHighlighter {
 
 impl super::Highlighter for SyntectHighlighter {
     type Error = ParsingError;
+
+    fn configure(&mut self, cx: &mut ConfigCx) -> bool {
+        let dark = cx.config().theme().get_active_scheme().is_dark;
+        if dark == self.dark {
+            return false;
+        }
+
+        self.dark = dark;
+        let name = if dark { "base16-ocean.dark" } else { "InspiredGitHub" };
+        let theme = themes().themes.get(name).unwrap();
+        self.highlighter = Highlighter::new(theme);
+        true
+    }
 
     fn highlight_text(
         &mut self,

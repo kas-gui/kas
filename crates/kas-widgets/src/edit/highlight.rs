@@ -14,6 +14,7 @@ pub use syntect::{
 };
 pub use text::Text;
 
+use kas::event::ConfigCx;
 use kas::text::fonts::{FontStyle, FontWeight};
 use kas::text::format::{Colors, Decoration};
 
@@ -43,6 +44,14 @@ pub trait Highlighter {
     /// TODO(associated_type_defaults): default to [`std::convert::Infallible`]
     type Error: std::error::Error;
 
+    /// Configure the highlighter
+    ///
+    /// This is called when the widget is configured. It may be used to set the
+    /// theme / color scheme.
+    ///
+    /// The method should return `true` when the highlighter should be re-run.
+    fn configure(&mut self, cx: &mut ConfigCx) -> bool;
+
     /// Highlight a `text` as a single item
     ///
     /// The method should yield a sequence of tokens each with a text index
@@ -66,6 +75,10 @@ pub trait Highlighter {
 pub struct Plain;
 impl Highlighter for Plain {
     type Error = std::convert::Infallible;
+
+    fn configure(&mut self, _: &mut ConfigCx) -> bool {
+        false
+    }
 
     fn highlight_text(
         &mut self,

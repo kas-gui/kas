@@ -183,6 +183,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.id = id;
+        self.text.text_mut().configure(cx);
         self.text.configure(&mut cx.size_cx());
     }
 
