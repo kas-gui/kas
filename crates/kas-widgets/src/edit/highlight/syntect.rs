@@ -21,7 +21,15 @@ pub use syntect::parsing::{SyntaxReference, SyntaxSet};
 
 fn themes() -> &'static ThemeSet {
     static SET: OnceLock<ThemeSet> = OnceLock::new();
-    SET.get_or_init(|| ThemeSet::load_defaults())
+    SET.get_or_init(|| {
+        let mut set = ThemeSet::load_defaults();
+        for theme in set.themes.values_mut() {
+            if let Some(c) = theme.settings.background.as_mut() {
+                c.a = 0;
+            }
+        }
+        set
+    })
 }
 
 /// A highlighter using [`syntect`](https://crates.io/crates/syntect)
@@ -110,6 +118,15 @@ impl super::Highlighter for SyntectHighlighter {
                 .settings
                 .foreground
                 .and_then(|c| into_kas_text_color(c))
+                .unwrap_or_default(),
+            background: self
+                .theme
+                .settings
+                .background
+                .and_then(|mut c| {
+                    c.a = 255;
+                    into_kas_text_color(c)
+                })
                 .unwrap_or_default(),
             cursor: self
                 .theme

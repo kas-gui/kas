@@ -10,7 +10,7 @@ use crate::edit::highlight::{Highlighter, Plain};
 use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
-use kas::theme::TextClass;
+use kas::theme::{Background, TextClass};
 use std::fmt::{Debug, Display};
 use std::ops::DerefMut;
 use std::str::FromStr;
@@ -255,8 +255,15 @@ mod EditField {
         }
 
         /// Set a new highlighter of the same type
+        #[inline]
         pub fn set_highlighter(&mut self, highlighter: H) {
             self.editor.set_highlighter(highlighter);
+        }
+
+        /// Get the background color
+        #[inline]
+        pub fn background_color(&self) -> Background {
+            self.editor.background_color()
         }
 
         /// Call the [`EditGuard`]'s `activate` method

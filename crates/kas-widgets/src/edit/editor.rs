@@ -13,7 +13,7 @@ use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::text::{CursorRange, NotReady, SelectionHelper, format};
-use kas::theme::{Text, TextClass};
+use kas::theme::{Background, Text, TextClass};
 use kas::util::UndoStack;
 use std::borrow::Cow;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
@@ -152,6 +152,17 @@ impl<H: Highlighter> Component<H> {
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
         self.text.text_mut().set_highlighter(highlighter);
+    }
+
+    /// Get the background color
+    pub fn background_color(&self) -> Background {
+        if self.error_state {
+            Background::Error
+        } else if let Some(c) = self.colors.background.as_rgba() {
+            Background::Rgb(c.as_rgb())
+        } else {
+            Background::Default
+        }
     }
 
     /// Access text

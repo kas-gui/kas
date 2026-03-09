@@ -26,6 +26,8 @@ use kas::text::format::{Color, Colors, Decoration};
 pub struct SchemeColors {
     /// The default text color
     pub foreground: Color,
+    /// The default background color
+    pub background: Color,
     /// The color of the text cursor (sometimes called caret)
     pub cursor: Color,
     /// The color of selected text

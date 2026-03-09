@@ -12,7 +12,7 @@ use kas::event::Scroll;
 use kas::event::components::ScrollComponent;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
-use kas::theme::{Background, FrameStyle, TextClass};
+use kas::theme::{FrameStyle, TextClass};
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
 
@@ -110,11 +110,7 @@ mod EditBox {
         fn draw(&self, mut draw: DrawCx) {
             let mut draw_inner = draw.re();
             draw_inner.set_id(self.inner.id());
-            let bg = if self.inner.has_error() {
-                Background::Error
-            } else {
-                Background::Default
-            };
+            let bg = self.inner.background_color();
             draw_inner.frame(self.rect(), FrameStyle::EditBox, bg);
 
             self.inner
