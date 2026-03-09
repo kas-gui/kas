@@ -109,8 +109,9 @@ impl Methods {
                 rect: Rect,
                 text: &TextDisplay,
                 byte: usize,
+                color: Option<::kas::text::format::Color>,
             ) {
-                (#base).text_cursor(id, pos, rect, text, byte);
+                (#base).text_cursor(id, pos, rect, text, byte, color);
             }
 
             fn check_box(&mut self, id: &Id, rect: Rect, checked: bool, last_change: Option<Instant>) {

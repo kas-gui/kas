@@ -111,6 +111,12 @@ impl super::Highlighter for SyntectHighlighter {
                 .foreground
                 .and_then(|c| into_kas_text_color(c))
                 .unwrap_or_default(),
+            cursor: self
+                .theme
+                .settings
+                .caret
+                .and_then(|c| into_kas_text_color(c))
+                .unwrap_or_default(),
             selection_foreground: self
                 .theme
                 .settings

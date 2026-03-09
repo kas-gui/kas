@@ -378,7 +378,15 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
             .decorate_text(pos.cast(), bb, text, self.cols, decorations);
     }
 
-    fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize) {
+    fn text_cursor(
+        &mut self,
+        id: &Id,
+        pos: Coord,
+        rect: Rect,
+        text: &TextDisplay,
+        byte: usize,
+        color: Option<format::Color>,
+    ) {
         if self.ev.window_has_focus() && !self.w.anim.text_cursor(self.draw.draw, id, byte) {
             return;
         }
@@ -388,7 +396,10 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         let bb = Quad::conv(rect);
         let l_half = (0.5 * width).floor();
 
-        let mut col = self.cols.nav_focus;
+        let mut col = color
+            .and_then(|c| c.as_rgba())
+            .unwrap_or(self.cols.nav_focus);
+
         for cursor in text.text_glyph_pos(byte).rev() {
             let mut p1 = pos + Vec2::from(cursor.pos);
             let mut p2 = p1;

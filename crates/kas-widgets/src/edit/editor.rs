@@ -307,7 +307,13 @@ impl<H: Highlighter> Component<H> {
         }
 
         if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {
-            draw.text_cursor(pos, rect, &self.text, self.selection.edit_index());
+            draw.text_cursor(
+                pos,
+                rect,
+                &self.text,
+                self.selection.edit_index(),
+                Some(self.colors.cursor),
+            );
         }
     }
 

@@ -399,9 +399,10 @@ impl<'a> DrawCx<'a> {
         rect: Rect,
         text: &Text<T>,
         byte: usize,
+        color: Option<format::Color>,
     ) {
         if let Ok(text) = text.display() {
-            self.h.text_cursor(&self.id, pos, rect, text, byte);
+            self.h.text_cursor(&self.id, pos, rect, text, byte, color);
         }
     }
 
@@ -589,7 +590,15 @@ pub trait ThemeDraw {
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
     /// The `text` should be prepared before calling this method.
-    fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize);
+    fn text_cursor(
+        &mut self,
+        id: &Id,
+        pos: Coord,
+        rect: Rect,
+        text: &TextDisplay,
+        byte: usize,
+        color: Option<format::Color>,
+    );
 
     /// Draw UI element: check box
     ///
