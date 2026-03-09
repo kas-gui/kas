@@ -5,7 +5,7 @@
 
 //! Syntax highlighting using [`syntect`](https://crates.io/crates/syntect)
 
-use super::Token;
+use super::{SchemeColors, Token};
 use kas::draw::color::Rgba8Srgb;
 use kas::event::ConfigCx;
 use kas::text::LineIterator;
@@ -13,7 +13,7 @@ use kas::text::fonts::FontWeight;
 use kas::text::format::{Color, DecorationType};
 use std::sync::OnceLock;
 use syntect::highlighting::{
-    FontStyle, HighlightState, Highlighter, RangedHighlightIterator, ThemeSet,
+    FontStyle, HighlightState, Highlighter, RangedHighlightIterator, Theme, ThemeSet,
 };
 use syntect::parsing::{ParseState, ParsingError};
 
@@ -28,6 +28,7 @@ fn themes() -> &'static ThemeSet {
 pub struct SyntectHighlighter {
     syntax: &'static SyntaxReference,
     dark: bool,
+    theme: &'static Theme,
     highlighter: Highlighter<'static>,
 }
 
@@ -48,6 +49,7 @@ impl SyntectHighlighter {
         SyntectHighlighter {
             syntax,
             dark: false,
+            theme,
             highlighter: Highlighter::new(theme),
         }
     }
@@ -96,9 +98,32 @@ impl super::Highlighter for SyntectHighlighter {
 
         self.dark = dark;
         let name = if dark { "base16-ocean.dark" } else { "InspiredGitHub" };
-        let theme = themes().themes.get(name).unwrap();
-        self.highlighter = Highlighter::new(theme);
+        self.theme = themes().themes.get(name).unwrap();
+        self.highlighter = Highlighter::new(self.theme);
         true
+    }
+
+    fn scheme_colors(&self) -> SchemeColors {
+        SchemeColors {
+            foreground: self
+                .theme
+                .settings
+                .foreground
+                .and_then(|c| into_kas_text_color(c))
+                .unwrap_or_default(),
+            selection_foreground: self
+                .theme
+                .settings
+                .selection_foreground
+                .and_then(|c| into_kas_text_color(c))
+                .unwrap_or_default(),
+            selection_background: self
+                .theme
+                .settings
+                .selection
+                .and_then(|c| into_kas_text_color(c))
+                .unwrap_or_default(),
+        }
     }
 
     fn highlight_text(

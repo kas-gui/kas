@@ -63,6 +63,14 @@ impl<H: Highlighter> Text<H> {
         }
     }
 
+    /// Get scheme colors
+    ///
+    /// This method allows usage of the highlighter's colors by the editor.
+    #[inline]
+    pub fn scheme_colors(&self) -> SchemeColors {
+        self.highlighter.scheme_colors()
+    }
+
     /// Set a new highlighter
     pub fn set_highlighter(&mut self, highlighter: H) {
         let text = std::mem::take(&mut self.text);

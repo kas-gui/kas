@@ -5,7 +5,7 @@
 
 //! Text editor component
 
-use super::highlight::{self, Highlighter};
+use super::highlight::{self, Highlighter, SchemeColors};
 use super::*;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll};
@@ -31,6 +31,7 @@ pub struct EditorComponent<H: Highlighter> {
     id: Id,
     editable: bool,
     text: Text<highlight::Text<H>>,
+    colors: SchemeColors,
     selection: SelectionHelper,
     edit_x_coord: Option<f32>,
     last_edit: Option<EditOp>,
@@ -94,6 +95,7 @@ impl<H: Default + Highlighter> Default for Component<H> {
             id: Id::default(),
             editable: true,
             text: Text::new(Default::default(), TextClass::Editor, false),
+            colors: SchemeColors::default(),
             selection: Default::default(),
             edit_x_coord: None,
             last_edit: Some(EditOp::Initial),
@@ -134,6 +136,7 @@ impl<H: Highlighter> Component<H> {
             id: self.0.id,
             editable: self.0.editable,
             text: Text::new(text, class, wrap),
+            colors: self.0.colors,
             selection: self.0.selection,
             edit_x_coord: self.0.edit_x_coord,
             last_edit: self.0.last_edit,
@@ -184,6 +187,7 @@ impl<H: Highlighter> Component<H> {
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.id = id;
         self.text.text_mut().configure(cx);
+        self.0.colors = self.text.text().scheme_colors();
         self.text.configure(&mut cx.size_cx());
     }
 
@@ -206,17 +210,33 @@ impl<H: Highlighter> Component<H> {
         let range: Range<u32> = self.selection.range().cast();
 
         let color_tokens = self.text.color_tokens();
-        let mut buf = [(0, format::Colors::default()); 3];
+        let default_colors = format::Colors {
+            color: self.colors.foreground,
+            background: None,
+        };
+        let mut buf = [(0, default_colors); 3];
         let mut vec = vec![];
         let tokens = if range.is_empty() {
-            color_tokens
+            if color_tokens.is_empty() {
+                &buf[..1]
+            } else {
+                color_tokens
+            }
         } else if color_tokens.is_empty() {
             buf[1].0 = range.start;
-            buf[1].1.background = Some(format::Color::default());
+            buf[1].1.color = self.colors.selection_foreground;
+            buf[1].1.background = Some(self.colors.selection_background);
             buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
             &buf[r0..]
         } else {
+            let set_selection_colors = |colors: &mut format::Colors| {
+                if colors.color == self.colors.foreground {
+                    colors.color = self.colors.selection_foreground;
+                }
+                colors.background = Some(self.colors.selection_background);
+            };
+
             vec.reserve(color_tokens.len() + 2);
             let mut i = 0;
             let mut change_index = range.start;
@@ -225,12 +245,12 @@ impl<H: Highlighter> Component<H> {
                 let (start, mut colors) = color_tokens[i];
                 if start < change_index {
                     if in_selection {
-                        colors.background = Some(format::Color::default());
+                        set_selection_colors(&mut colors);
                     }
                 } else if start == change_index {
                     in_selection = change_index == range.start;
                     if in_selection {
-                        colors.background = Some(format::Color::default());
+                        set_selection_colors(&mut colors);
                         change_index = range.end;
                     } else {
                         change_index = u32::MAX;
@@ -245,7 +265,7 @@ impl<H: Highlighter> Component<H> {
                     in_selection = change_index == range.start;
                     if in_selection {
                         change_index = range.end;
-                        colors.background = Some(Default::default());
+                        set_selection_colors(&mut colors);
                     } else {
                         change_index = u32::MAX;
                     };
@@ -255,15 +275,19 @@ impl<H: Highlighter> Component<H> {
                 vec.push((start, colors));
                 i += 1;
             }
+            let last_colors = if i > 0 {
+                color_tokens[i - 1].1
+            } else {
+                Default::default()
+            };
             if change_index == range.start {
-                vec.push((range.start, format::Colors {
-                    color: Default::default(),
-                    background: Some(Default::default()),
-                }));
+                let mut colors = last_colors;
+                set_selection_colors(&mut colors);
+                vec.push((range.start, colors));
                 change_index = range.end;
             }
             if change_index == range.end {
-                vec.push((range.end, format::Colors::default()));
+                vec.push((range.end, last_colors));
             }
             &vec
         };
