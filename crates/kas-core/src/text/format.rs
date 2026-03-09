@@ -87,7 +87,9 @@ impl Color {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Colors {
-    pub color: Color,
+    /// The default text color
+    pub foreground: Color,
+    /// The text background (highlight) color
     pub background: Option<Color>,
 }
 

@@ -137,7 +137,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
         col: Rgba,
     ) {
         let tokens = [(0, format::Colors {
-            color: format::Color::from_rgba(col),
+            foreground: format::Color::from_rgba(col),
             ..Default::default()
         })];
         self.text(pos, bounding_box, text, theme, &tokens);

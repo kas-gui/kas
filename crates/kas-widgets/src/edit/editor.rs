@@ -222,7 +222,7 @@ impl<H: Highlighter> Component<H> {
 
         let color_tokens = self.text.color_tokens();
         let default_colors = format::Colors {
-            color: self.colors.foreground,
+            foreground: self.colors.foreground,
             background: None,
         };
         let mut buf = [(0, default_colors); 3];
@@ -235,15 +235,15 @@ impl<H: Highlighter> Component<H> {
             }
         } else if color_tokens.is_empty() {
             buf[1].0 = range.start;
-            buf[1].1.color = self.colors.selection_foreground;
+            buf[1].1.foreground = self.colors.selection_foreground;
             buf[1].1.background = Some(self.colors.selection_background);
             buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
             &buf[r0..]
         } else {
             let set_selection_colors = |colors: &mut format::Colors| {
-                if colors.color == self.colors.foreground {
-                    colors.color = self.colors.selection_foreground;
+                if colors.foreground == self.colors.foreground {
+                    colors.foreground = self.colors.selection_foreground;
                 }
                 colors.background = Some(self.colors.selection_background);
             };

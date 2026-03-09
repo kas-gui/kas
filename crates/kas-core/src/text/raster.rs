@@ -575,7 +575,7 @@ impl State {
                     }
                 };
 
-                let col = token.color.resolve_color(theme, None);
+                let col = token.foreground.resolve_color(theme, None);
                 queue.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 

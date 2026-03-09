@@ -320,7 +320,7 @@ impl<'a> DrawCx<'a> {
     pub fn text_with_color<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, color: Rgba) {
         if let Ok(display) = text.display() {
             let tokens = [(0, format::Colors {
-                color: format::Color::from_rgba(color),
+                foreground: format::Color::from_rgba(color),
                 ..Default::default()
             })];
             self.text_with_colors(rect.pos, rect, display, &tokens);

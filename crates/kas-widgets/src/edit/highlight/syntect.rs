@@ -168,7 +168,7 @@ impl super::Highlighter for SyntectHighlighter {
 
             for (style, _, range) in line_highlighter {
                 let mut token = Token::default();
-                token.colors.color =
+                token.colors.foreground =
                     into_kas_text_color(style.foreground).unwrap_or(Default::default());
                 token.colors.background = into_kas_text_color(style.background);
                 if style.font_style.contains(FontStyle::BOLD) {
