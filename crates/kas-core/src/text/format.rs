@@ -23,12 +23,28 @@ pub struct Color(NonZeroU32);
 impl Default for Color {
     /// Use a theme-defined color (automatic)
     fn default() -> Self {
-        let color = Rgba8Srgb::rgba(1, 0, 0, 0);
-        Color(NonZeroU32::new(u32::from_ne_bytes(color.0)).unwrap())
+        Self::DEFAULT
     }
 }
 
 impl Color {
+    /// Use the default theme-defined color
+    ///
+    /// As a foreground color, this maps to [`ColorsLinear::text`] or
+    /// [`ColorsLinear::text_invert`] depending on the background.
+    ///
+    /// As a background color, this maps to [`ColorsLinear::edit_bg`].
+    pub const DEFAULT: Self =
+        Color(NonZeroU32::new(u32::from_ne_bytes(Rgba8Srgb::rgba(1, 0, 0, 0).0)).unwrap());
+
+    /// Use the text-selection color
+    ///
+    /// As a foreground color this is identical to [`Self::DEFAULT`].
+    ///
+    /// As a background color, this maps to [`ColorsLinear::text_sel_bg`].
+    pub const SELECTION: Self =
+        Color(NonZeroU32::new(u32::from_ne_bytes(Rgba8Srgb::rgba(1, 1, 0, 0).0)).unwrap());
+
     /// Use an RGBA sRGB color
     ///
     /// This will resolve to the default theme color if `color.a() == 0`.
@@ -64,19 +80,27 @@ impl Color {
         self.as_rgba_srgb().map(|c| c.into())
     }
 
-    /// Resolve color
-    ///
-    /// If this represents a valid palette index, the palette's color will be
-    /// used, otherwise the color will be inferred from the theme, using `bg`
-    /// if provided.
+    /// Resolve as (foreground) text color
     #[inline]
-    pub fn resolve_color(self, theme: &ColorsLinear, bg: Option<Rgba>) -> Rgba {
+    pub fn resolve_foreground(self, theme: &ColorsLinear, bg: Option<Rgba>) -> Rgba {
         if let Some(col) = self.as_rgba() {
             col
         } else if let Some(bg) = bg {
             theme.text_over(bg)
         } else {
             theme.text
+        }
+    }
+
+    /// Resolve as background color
+    #[inline]
+    pub fn resolve_background(self, theme: &ColorsLinear) -> Rgba {
+        if let Some(col) = self.as_rgba() {
+            col
+        } else if self == Self::SELECTION {
+            theme.text_sel_bg
+        } else {
+            theme.edit_bg
         }
     }
 }
@@ -91,14 +115,6 @@ pub struct Colors {
     pub foreground: Color,
     /// The text background (highlight) color
     pub background: Option<Color>,
-}
-
-impl Colors {
-    /// Resolve the background color, if any
-    pub fn resolve_background_color(self, theme: &ColorsLinear) -> Option<Rgba> {
-        self.background
-            .map(|bg| bg.as_rgba().unwrap_or(theme.edit_bg))
-    }
 }
 
 /// Decoration types

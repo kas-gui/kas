@@ -554,7 +554,7 @@ impl State {
                 .map(|e| e.1 == Default::default())
                 .unwrap_or(true)
         {
-            let col = Color::default().resolve_color(theme, None);
+            let col = Color::default().resolve_foreground(theme, None);
             self.text_with_color(allocator, queue, pass, pos, bb, text, col);
             return;
         }
@@ -575,12 +575,12 @@ impl State {
                     }
                 };
 
-                let col = token.foreground.resolve_color(theme, None);
+                let col = token.foreground.resolve_foreground(theme, None);
                 queue.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 
             let for_range = |p: kas_text::Vec2, x2, colors: Colors| {
-                let Some(col) = colors.resolve_background_color(theme) else {
+                let Some(col) = colors.background.map(|col| col.resolve_background(theme)) else {
                     return;
                 };
 
@@ -634,7 +634,7 @@ impl State {
                 };
 
                 // Known limitation: this cannot depend on the background color.
-                let col = token.color.resolve_color(theme, None);
+                let col = token.color.resolve_foreground(theme, None);
 
                 match token.style {
                     LineStyle::Solid => draw_quad(quad, col),

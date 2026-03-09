@@ -11,7 +11,7 @@ use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::format::FormattableText;
+use kas::text::format::{Color, FormattableText};
 use kas::text::{CursorRange, NotReady, SelectionHelper, format};
 use kas::theme::{Background, Text, TextClass};
 use kas::util::UndoStack;
@@ -199,6 +199,12 @@ impl<H: Highlighter> Component<H> {
         self.id = id;
         self.text.text_mut().configure(cx);
         self.0.colors = self.text.text().scheme_colors();
+        if self.0.colors.selection_foreground == Color::default() {
+            self.0.colors.selection_foreground = Color::SELECTION;
+        }
+        if self.0.colors.selection_background == Color::default() {
+            self.0.colors.selection_background = Color::SELECTION;
+        }
         self.text.configure(&mut cx.size_cx());
     }
 
