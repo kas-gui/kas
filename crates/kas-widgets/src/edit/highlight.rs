@@ -14,8 +14,27 @@ pub use syntect::{
 };
 pub use text::Text;
 
+use kas::event::ConfigCx;
 use kas::text::fonts::{FontStyle, FontWeight};
-use kas::text::format::{Colors, Decoration};
+use kas::text::format::{Color, Colors, Decoration};
+
+/// Colors provided by the highlighter's color scheme
+///
+/// Note that in each case [`Color::default()`] will resolve to the UI color
+/// scheme's color for this property.
+#[derive(Debug, Default)]
+pub struct SchemeColors {
+    /// The default text color
+    pub foreground: Color,
+    /// The default background color
+    pub background: Color,
+    /// The color of the text cursor (sometimes called caret)
+    pub cursor: Color,
+    /// The color of selected text
+    pub selection_foreground: Color,
+    /// The background color of selected text
+    pub selection_background: Color,
+}
 
 /// A highlighting token
 ///
@@ -43,6 +62,19 @@ pub trait Highlighter {
     /// TODO(associated_type_defaults): default to [`std::convert::Infallible`]
     type Error: std::error::Error;
 
+    /// Configure the highlighter
+    ///
+    /// This is called when the widget is configured. It may be used to set the
+    /// theme / color scheme.
+    ///
+    /// The method should return `true` when the highlighter should be re-run.
+    fn configure(&mut self, cx: &mut ConfigCx) -> bool;
+
+    /// Get scheme colors
+    ///
+    /// This method allows usage of the highlighter's colors by the editor.
+    fn scheme_colors(&self) -> SchemeColors;
+
     /// Highlight a `text` as a single item
     ///
     /// The method should yield a sequence of tokens each with a text index
@@ -67,6 +99,17 @@ pub struct Plain;
 impl Highlighter for Plain {
     type Error = std::convert::Infallible;
 
+    #[inline]
+    fn configure(&mut self, _: &mut ConfigCx) -> bool {
+        false
+    }
+
+    #[inline]
+    fn scheme_colors(&self) -> SchemeColors {
+        SchemeColors::default()
+    }
+
+    #[inline]
     fn highlight_text(
         &mut self,
         _: &str,

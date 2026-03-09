@@ -22,8 +22,6 @@ pub struct Color(NonZeroU32);
 
 impl Default for Color {
     /// Use a theme-defined color (automatic)
-    ///
-    /// For backgrounds, this uses the text-selection color.
     fn default() -> Self {
         let color = Rgba8Srgb::rgba(1, 0, 0, 0);
         Color(NonZeroU32::new(u32::from_ne_bytes(color.0)).unwrap())
@@ -89,7 +87,9 @@ impl Color {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Colors {
-    pub color: Color,
+    /// The default text color
+    pub foreground: Color,
+    /// The text background (highlight) color
     pub background: Option<Color>,
 }
 
@@ -97,7 +97,7 @@ impl Colors {
     /// Resolve the background color, if any
     pub fn resolve_background_color(self, theme: &ColorsLinear) -> Option<Rgba> {
         self.background
-            .map(|bg| bg.as_rgba().unwrap_or(theme.text_sel_bg))
+            .map(|bg| bg.as_rgba().unwrap_or(theme.edit_bg))
     }
 }
 

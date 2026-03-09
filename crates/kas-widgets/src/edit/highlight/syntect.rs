@@ -5,14 +5,15 @@
 
 //! Syntax highlighting using [`syntect`](https://crates.io/crates/syntect)
 
-use super::Token;
+use super::{SchemeColors, Token};
 use kas::draw::color::Rgba8Srgb;
+use kas::event::ConfigCx;
 use kas::text::LineIterator;
 use kas::text::fonts::FontWeight;
 use kas::text::format::{Color, DecorationType};
 use std::sync::OnceLock;
 use syntect::highlighting::{
-    FontStyle, HighlightState, Highlighter, RangedHighlightIterator, ThemeSet,
+    FontStyle, HighlightState, Highlighter, RangedHighlightIterator, Theme, ThemeSet,
 };
 use syntect::parsing::{ParseState, ParsingError};
 
@@ -20,12 +21,22 @@ pub use syntect::parsing::{SyntaxReference, SyntaxSet};
 
 fn themes() -> &'static ThemeSet {
     static SET: OnceLock<ThemeSet> = OnceLock::new();
-    SET.get_or_init(|| ThemeSet::load_defaults())
+    SET.get_or_init(|| {
+        let mut set = ThemeSet::load_defaults();
+        for theme in set.themes.values_mut() {
+            if let Some(c) = theme.settings.background.as_mut() {
+                c.a = 0;
+            }
+        }
+        set
+    })
 }
 
 /// A highlighter using [`syntect`](https://crates.io/crates/syntect)
 pub struct SyntectHighlighter {
     syntax: &'static SyntaxReference,
+    dark: bool,
+    theme: &'static Theme,
     highlighter: Highlighter<'static>,
 }
 
@@ -45,6 +56,8 @@ impl SyntectHighlighter {
 
         SyntectHighlighter {
             syntax,
+            dark: false,
+            theme,
             highlighter: Highlighter::new(theme),
         }
     }
@@ -85,6 +98,57 @@ impl SyntectHighlighter {
 impl super::Highlighter for SyntectHighlighter {
     type Error = ParsingError;
 
+    fn configure(&mut self, cx: &mut ConfigCx) -> bool {
+        let dark = cx.config().theme().get_active_scheme().is_dark;
+        if dark == self.dark {
+            return false;
+        }
+
+        self.dark = dark;
+        let name = if dark { "base16-ocean.dark" } else { "InspiredGitHub" };
+        self.theme = themes().themes.get(name).unwrap();
+        self.highlighter = Highlighter::new(self.theme);
+        true
+    }
+
+    fn scheme_colors(&self) -> SchemeColors {
+        SchemeColors {
+            foreground: self
+                .theme
+                .settings
+                .foreground
+                .and_then(|c| into_kas_text_color(c))
+                .unwrap_or_default(),
+            background: self
+                .theme
+                .settings
+                .background
+                .and_then(|mut c| {
+                    c.a = 255;
+                    into_kas_text_color(c)
+                })
+                .unwrap_or_default(),
+            cursor: self
+                .theme
+                .settings
+                .caret
+                .and_then(|c| into_kas_text_color(c))
+                .unwrap_or_default(),
+            selection_foreground: self
+                .theme
+                .settings
+                .selection_foreground
+                .and_then(|c| into_kas_text_color(c))
+                .unwrap_or_default(),
+            selection_background: self
+                .theme
+                .settings
+                .selection
+                .and_then(|c| into_kas_text_color(c))
+                .unwrap_or_default(),
+        }
+    }
+
     fn highlight_text(
         &mut self,
         text: &str,
@@ -104,7 +168,7 @@ impl super::Highlighter for SyntectHighlighter {
 
             for (style, _, range) in line_highlighter {
                 let mut token = Token::default();
-                token.colors.color =
+                token.colors.foreground =
                     into_kas_text_color(style.foreground).unwrap_or(Default::default());
                 token.colors.background = into_kas_text_color(style.background);
                 if style.font_style.contains(FontStyle::BOLD) {

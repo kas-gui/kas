@@ -52,6 +52,25 @@ impl<H: Highlighter> Text<H> {
         text
     }
 
+    /// Configure the highlighter
+    ///
+    /// This is called when the widget is configured. It may be used to set the
+    /// theme / color scheme.
+    #[inline]
+    pub fn configure(&mut self, cx: &mut ConfigCx) {
+        if self.highlighter.configure(cx) {
+            self.highlight();
+        }
+    }
+
+    /// Get scheme colors
+    ///
+    /// This method allows usage of the highlighter's colors by the editor.
+    #[inline]
+    pub fn scheme_colors(&self) -> SchemeColors {
+        self.highlighter.scheme_colors()
+    }
+
     /// Set a new highlighter
     pub fn set_highlighter(&mut self, highlighter: H) {
         let text = std::mem::take(&mut self.text);
