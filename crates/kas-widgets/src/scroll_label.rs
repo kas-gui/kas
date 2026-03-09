@@ -78,7 +78,8 @@ mod SelectableText {
                 &[]
             } else {
                 tokens[1].0 = range.start;
-                tokens[1].1.background = Some(format::Color::default());
+                tokens[1].1.foreground = format::Color::SELECTION;
+                tokens[1].1.background = Some(format::Color::SELECTION);
                 tokens[2].0 = range.end;
                 let r0 = if range.start > 0 { 0 } else { 1 };
                 &tokens[r0..]
