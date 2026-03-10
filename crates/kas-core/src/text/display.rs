@@ -5,10 +5,15 @@
 
 //! Theme-applied Text element
 
-use crate::geom::Vec2;
+use crate::Layout;
+use crate::cast::{Cast, CastFloat};
+use crate::geom::{Rect, Vec2};
+use crate::layout::{AlignHints, AxisInfo, SizeRules, Stretch};
 use crate::text::fonts::FontSelector;
+use crate::text::format::FontToken;
 use crate::text::*;
-use crate::theme::{SizeCx, TextClass};
+use crate::theme::{DrawCx, SizeCx, TextClass};
+use std::num::NonZeroUsize;
 
 /// A [`TextDisplay`] plus configuration and state tracking
 #[derive(Clone, Debug)]
@@ -26,7 +31,71 @@ pub struct ConfiguredDisplay {
     direction: Direction,
     status: Status,
 
+    rect: Rect,
     display: TextDisplay,
+}
+
+impl Layout for ConfiguredDisplay {
+    fn rect(&self) -> Rect {
+        self.rect
+    }
+
+    /// The display should be prepared before calling this method, otherwise the
+    /// result will have zero size.
+    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        let rules = if axis.is_horizontal() {
+            if self.wrap() {
+                let (min, ideal) = cx.wrapped_line_len(self.class(), self.font_size());
+                let bound: i32 = self
+                    .measure_width(ideal.cast())
+                    .map(|b| b.cast_ceil())
+                    .unwrap_or_default();
+                SizeRules::new(bound.min(min), bound.min(ideal), Stretch::Filler)
+            } else {
+                let bound: i32 = self
+                    .measure_width(f32::INFINITY)
+                    .map(|b| b.cast_ceil())
+                    .unwrap_or_default();
+                SizeRules::new(bound, bound, Stretch::Filler)
+            }
+        } else {
+            let wrap_width = self
+                .wrap()
+                .then(|| axis.other().map(|w| w.cast()))
+                .flatten()
+                .unwrap_or(f32::INFINITY);
+            let bound: i32 = self
+                .measure_height(wrap_width, None)
+                .map(|b| b.cast_ceil())
+                .unwrap_or_default();
+            SizeRules::new(bound, bound, Stretch::Filler)
+        };
+
+        rules.with_margins(cx.text_margins().extract(axis))
+    }
+
+    /// Uses default alignment where alignment is not provided
+    fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, hints: AlignHints) {
+        self.set_align(hints.complete_default().into());
+        if rect.size != self.rect.size {
+            if rect.size.0 != self.rect.size.0 {
+                self.set_max_status(Status::LevelRuns);
+            } else {
+                self.set_max_status(Status::Wrapped);
+            }
+        }
+        self.rect = rect;
+        self.rewrap();
+    }
+
+    /// Text color and decorations are not present here; derivative types will
+    /// likely need their own implementation of this method.
+    fn draw(&self, mut draw: DrawCx) {
+        if let Ok(display) = self.display() {
+            let rect = self.rect();
+            draw.text_with_colors(rect.pos, rect, display, &[]);
+        }
+    }
 }
 
 impl ConfiguredDisplay {
@@ -41,6 +110,7 @@ impl ConfiguredDisplay {
             align: Default::default(),
             direction: Direction::default(),
             status: Status::New,
+            rect: Rect::default(),
             display: Default::default(),
         }
     }
@@ -260,6 +330,49 @@ impl ConfiguredDisplay {
         self.status = status;
     }
 
+    /// Prepare runs, given `text` and `font_tokens`
+    pub(crate) fn prepare_runs(
+        &mut self,
+        text: &str,
+        font_tokens: impl Iterator<Item = FontToken>,
+    ) {
+        let direction = self.direction();
+        match self.status() {
+            Status::New => self
+                .unchecked_display_mut()
+                .prepare_runs(text, direction, font_tokens)
+                .expect("no suitable font found"),
+            Status::ResizeLevelRuns => self.unchecked_display_mut().resize_runs(text, font_tokens),
+            _ => return,
+        }
+
+        self.set_status(Status::LevelRuns);
+    }
+
+    /// Re-wrap
+    ///
+    /// This is a partial form of re-preparation
+    pub(crate) fn rewrap(&mut self) {
+        if self.status() < Status::LevelRuns {
+            return;
+        }
+        let align = self.align();
+
+        if self.status() == Status::LevelRuns {
+            let align_width = self.rect.size.0.cast();
+            let wrap_width = if !self.wrap() { f32::INFINITY } else { align_width };
+            self.unchecked_display_mut()
+                .prepare_lines(wrap_width, align_width, align.0);
+        }
+
+        if self.status() <= Status::Wrapped {
+            let h = self.rect.size.1.cast();
+            self.unchecked_display_mut().vertically_align(h, align.1);
+        }
+
+        self.set_status(Status::Ready);
+    }
+
     /// Read the [`TextDisplay`], without checking status
     #[inline]
     pub fn unchecked_display(&self) -> &TextDisplay {
@@ -370,6 +483,36 @@ impl ConfiguredDisplay {
     #[inline]
     pub fn line_index_nearest(&self, line: usize, x: f32) -> Result<Option<usize>, NotReady> {
         Ok(self.wrapped_display()?.line_index_nearest(line, x))
+    }
+
+    /// Measure required width, up to some `max_width`
+    ///
+    /// This method allows calculation of the width requirement of a text object
+    /// without full wrapping and glyph placement. Whenever the requirement
+    /// exceeds `max_width`, the algorithm stops early, returning `max_width`.
+    ///
+    /// The return value is unaffected by alignment and wrap configuration.
+    pub fn measure_width(&self, max_width: f32) -> Result<f32, NotReady> {
+        if self.status >= Status::LevelRuns {
+            Ok(self.display.measure_width(max_width))
+        } else {
+            Err(NotReady)
+        }
+    }
+
+    /// Measure required vertical height, wrapping as configured
+    ///
+    /// Stops after `max_lines`, if provided.
+    pub fn measure_height(
+        &self,
+        wrap_width: f32,
+        max_lines: Option<NonZeroUsize>,
+    ) -> Result<f32, NotReady> {
+        if self.status >= Status::LevelRuns {
+            Ok(self.display.measure_height(wrap_width, max_lines))
+        } else {
+            Err(NotReady)
+        }
     }
 
     /// Find the starting position (top-left) of the glyph at the given index

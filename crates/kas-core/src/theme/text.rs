@@ -11,11 +11,10 @@ use crate::Layout;
 use crate::cast::Cast;
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::geom::{Rect, Vec2};
-use crate::layout::{AlignHints, AxisInfo, SizeRules, Stretch};
+use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::text::ConfiguredDisplay;
 use crate::text::format::{Colors, Decoration, EditableText, FormattableText};
 use crate::text::*;
-use cast::CastFloat;
 use kas_macros::autoimpl;
 use std::num::NonZeroUsize;
 
@@ -41,55 +40,31 @@ use std::num::NonZeroUsize;
 #[derive(Clone, Debug)]
 #[autoimpl(Deref, DerefMut using self.inner)]
 pub struct Text<T: FormattableText> {
-    rect: Rect,
     inner: ConfiguredDisplay,
     text: T,
 }
 
 /// Implement [`Layout`], using default alignment where alignment is not provided
 impl<T: FormattableText> Layout for Text<T> {
+    #[inline]
     fn rect(&self) -> Rect {
-        self.rect
+        self.inner.rect()
     }
 
+    #[inline]
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-        let rules = if axis.is_horizontal() {
-            if self.wrap() {
-                let (min, ideal) = cx.wrapped_line_len(self.class(), self.font_size());
-                let bound: i32 = self.measure_width(ideal.cast()).cast_ceil();
-                SizeRules::new(bound.min(min), bound.min(ideal), Stretch::Filler)
-            } else {
-                let bound: i32 = self.measure_width(f32::INFINITY).cast_ceil();
-                SizeRules::new(bound, bound, Stretch::Filler)
-            }
-        } else {
-            let wrap_width = self
-                .wrap()
-                .then(|| axis.other().map(|w| w.cast()))
-                .flatten()
-                .unwrap_or(f32::INFINITY);
-            let bound: i32 = self.measure_height(wrap_width, None).cast_ceil();
-            SizeRules::new(bound, bound, Stretch::Filler)
-        };
-
-        rules.with_margins(cx.text_margins().extract(axis))
+        self.prepare_runs();
+        self.inner.size_rules(cx, axis)
     }
 
-    fn set_rect(&mut self, _: &mut SizeCx, rect: Rect, hints: AlignHints) {
-        self.set_align(hints.complete_default().into());
-        if rect.size != self.rect.size {
-            if rect.size.0 != self.rect.size.0 {
-                self.set_max_status(Status::LevelRuns);
-            } else {
-                self.set_max_status(Status::Wrapped);
-            }
-        }
-        self.rect = rect;
-        self.rewrap();
+    #[inline]
+    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
+        self.inner.set_rect(cx, rect, hints);
     }
 
+    #[inline]
     fn draw(&self, mut draw: DrawCx) {
-        draw.text(self.rect, self);
+        draw.text(self.rect(), self);
     }
 }
 
@@ -100,7 +75,6 @@ impl<T: FormattableText> Text<T> {
     #[inline]
     pub fn new(text: T, class: TextClass, wrap: bool) -> Self {
         Text {
-            rect: Rect::default(),
             inner: ConfiguredDisplay::new(class, wrap),
             text,
         }
@@ -207,27 +181,13 @@ impl<T: FormattableText> Text<T> {
         self.text.decorations()
     }
 
+    #[inline]
     fn prepare_runs(&mut self) {
-        let (dpem, font) = (self.font_size(), self.font());
-        let direction = self.direction();
-        match self.status() {
-            Status::New => self
-                .inner
-                .unchecked_display_mut()
-                .prepare_runs(
-                    self.text.as_str(),
-                    direction,
-                    self.text.font_tokens(dpem, font),
-                )
-                .expect("no suitable font found"),
-            Status::ResizeLevelRuns => self
-                .inner
-                .unchecked_display_mut()
-                .resize_runs(self.text.as_str(), self.text.font_tokens(dpem, font)),
-            _ => return,
+        if self.status() < Status::LevelRuns {
+            let (dpem, font) = (self.font_size(), self.font());
+            self.inner
+                .prepare_runs(self.text.as_str(), self.text.font_tokens(dpem, font));
         }
-
-        self.set_status(Status::LevelRuns);
     }
 
     /// Measure required width, up to some `max_width`
@@ -272,33 +232,8 @@ impl<T: FormattableText> Text<T> {
 
         self.prepare_runs();
         debug_assert!(self.status() >= Status::LevelRuns);
-        self.rewrap();
+        self.inner.rewrap();
         true
-    }
-
-    /// Re-wrap
-    ///
-    /// This is a partial form of re-preparation
-    fn rewrap(&mut self) {
-        if self.status() < Status::LevelRuns {
-            return;
-        }
-        let align = self.align();
-
-        if self.status() == Status::LevelRuns {
-            let align_width = self.rect.size.0.cast();
-            let wrap_width = if !self.wrap() { f32::INFINITY } else { align_width };
-            self.unchecked_display_mut()
-                .prepare_lines(wrap_width, align_width, align.0);
-        }
-
-        if self.status() <= Status::Wrapped {
-            self.inner
-                .unchecked_display_mut()
-                .vertically_align(self.rect.size.1.cast(), align.1);
-        }
-
-        self.set_status(Status::Ready);
     }
 
     /// Re-prepare, requesting a redraw or resize as required
@@ -310,7 +245,7 @@ impl<T: FormattableText> Text<T> {
     pub fn reprepare_action(&mut self, cx: &mut ConfigCx) {
         if self.prepare() {
             let (tl, br) = self.unchecked_display().bounding_box();
-            let bounds: Vec2 = self.rect.size.cast();
+            let bounds: Vec2 = self.rect().size.cast();
             if tl.0 < 0.0 || tl.1 < 0.0 || br.0 > bounds.0 || br.1 > bounds.1 {
                 cx.resize();
             }
