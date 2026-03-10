@@ -25,6 +25,9 @@ pub mod format;
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub mod raster;
 
+mod display;
+pub use display::ConfiguredDisplay;
+
 mod selection;
 pub use selection::{CursorRange, SelectionHelper};
 
