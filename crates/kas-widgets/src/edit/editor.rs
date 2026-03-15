@@ -572,7 +572,9 @@ impl<H: Highlighter> Component<H> {
                     self.set_cursor_from_coord(cx, coord);
                     self.selection.set_anchor(clear);
                     if repeats > 1 {
-                        self.0.selection.expand(&self.0.text, repeats >= 3);
+                        self.0
+                            .selection
+                            .expand(self.0.text.as_str(), &self.0.text, repeats >= 3);
                     }
 
                     self.request_key_focus(cx, FocusSource::Pointer);
@@ -582,7 +584,11 @@ impl<H: Highlighter> Component<H> {
                     if self.current == CurrentAction::Selection {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
-                            self.0.selection.expand(&self.0.text, repeats >= 3);
+                            self.0.selection.expand(
+                                self.0.text.as_str(),
+                                &self.0.text,
+                                repeats >= 3,
+                            );
                         }
                     }
 

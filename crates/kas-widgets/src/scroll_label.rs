@@ -300,7 +300,8 @@ mod SelectableText {
                         self.set_cursor_from_coord(cx, coord);
                         self.selection.set_anchor(clear);
                         if repeats > 1 {
-                            self.selection.expand(&self.text, repeats >= 3);
+                            self.selection
+                                .expand(self.text.as_str(), &self.text, repeats >= 3);
                         }
 
                         if !self.has_sel_focus {
@@ -311,7 +312,8 @@ mod SelectableText {
                     TextInputAction::PressMove { coord, repeats } => {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
-                            self.selection.expand(&self.text, repeats >= 3);
+                            self.selection
+                                .expand(self.text.as_str(), &self.text, repeats >= 3);
                         }
                         Used
                     }

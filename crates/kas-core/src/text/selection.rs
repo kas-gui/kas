@@ -5,8 +5,7 @@
 
 //! Tools for text selection
 
-use crate::text::format::FormattableText;
-use crate::theme::Text;
+use super::ConfiguredDisplay;
 use kas_macros::autoimpl;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
@@ -183,39 +182,38 @@ impl SelectionHelper {
     ///
     /// The selection is expanded by words or lines (if `lines`). Line expansion
     /// requires that text has been prepared ([`Text::prepare`]).
-    pub fn expand<T: FormattableText>(&mut self, text: &Text<T>, lines: bool) {
-        let string = text.as_str();
+    pub fn expand(&mut self, text: &str, display: &ConfiguredDisplay, lines: bool) {
         let mut range = self.edit..self.anchor;
         if range.start > range.end {
             std::mem::swap(&mut range.start, &mut range.end);
         }
         let (mut start, mut end);
         if !lines {
-            end = string[range.start..]
+            end = text[range.start..]
                 .char_indices()
                 .nth(1)
                 .map(|(i, _)| range.start + i)
-                .unwrap_or(string.len());
-            start = string[0..end]
+                .unwrap_or(text.len());
+            start = text[0..end]
                 .split_word_bound_indices()
                 .next_back()
                 .map(|(index, _)| index)
                 .unwrap_or(0);
-            end = string[start..]
+            end = text[start..]
                 .split_word_bound_indices()
                 .find_map(|(index, _)| {
                     let pos = start + index;
                     (pos >= range.end).then_some(pos)
                 })
-                .unwrap_or(string.len());
+                .unwrap_or(text.len());
         } else {
-            start = match text.find_line(range.start) {
+            start = match display.find_line(range.start) {
                 Ok(Some(r)) => r.1.start,
                 _ => 0,
             };
-            end = match text.find_line(range.end) {
+            end = match display.find_line(range.end) {
                 Ok(Some(r)) => r.1.end,
-                _ => string.len(),
+                _ => text.len(),
             };
         }
 
