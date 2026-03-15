@@ -110,8 +110,8 @@ mod Clock {
             line_seg(a_min, 0.0, half * 0.8, half * 0.02, col_hands);
             line_seg(a_sec, 0.0, half * 0.9, half * 0.01, col_secs);
 
-            cx.text_with_color(self.date.rect(), &self.date, col_date);
-            cx.text_with_color(self.time.rect(), &self.time, col_time);
+            self.date.draw_with_color(cx.re(), col_date);
+            self.time.draw_with_color(cx, col_time);
         }
     }
 

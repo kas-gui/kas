@@ -9,6 +9,7 @@ use super::TextClass;
 #[allow(unused)] use super::{DrawCx, SizeCx};
 use crate::Layout;
 use crate::cast::Cast;
+use crate::draw::color::Rgba;
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::geom::{Rect, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
@@ -64,7 +65,12 @@ impl<T: FormattableText> Layout for Text<T> {
 
     #[inline]
     fn draw(&self, mut draw: DrawCx) {
-        draw.text(self.rect(), self);
+        if let Ok(display) = self.display() {
+            let rect = self.rect();
+            let tokens = self.color_tokens();
+            draw.text(rect.pos, rect, display, tokens);
+            draw.decorate_text(rect.pos, rect, display, self.decorations());
+        }
     }
 }
 
@@ -251,6 +257,22 @@ impl<T: FormattableText> Text<T> {
             }
         }
         cx.redraw();
+    }
+
+    /// Draw text with specified color
+    ///
+    /// The given `color` is used, ignoring [`Self::color_tokens`]
+    /// Decorations are inferred from [`Text::decorations`].
+    pub fn draw_with_color(&self, mut draw: DrawCx, color: Rgba) {
+        if let Ok(display) = self.display() {
+            let rect = self.rect();
+            let tokens = [(0, format::Colors {
+                foreground: format::Color::from_rgba(color),
+                ..Default::default()
+            })];
+            draw.text(rect.pos, rect, display, &tokens);
+            draw.decorate_text(rect.pos, rect, display, self.decorations());
+        }
     }
 }
 

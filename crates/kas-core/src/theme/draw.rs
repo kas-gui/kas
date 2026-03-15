@@ -7,14 +7,14 @@
 
 use winit::keyboard::Key;
 
-use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, ThemeSize};
+use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, ThemeSize};
 use crate::dir::Direction;
-use crate::draw::color::{ParseError, Rgb, Rgba};
+use crate::draw::color::{ParseError, Rgb};
 use crate::draw::{Draw, DrawIface, DrawRounded, DrawShared, DrawSharedImpl, ImageId, PassType};
 use crate::event::EventState;
 #[allow(unused)] use crate::event::{Command, ConfigCx};
 use crate::geom::{Coord, Offset, Rect};
-use crate::text::{TextDisplay, format, format::FormattableText};
+use crate::text::{TextDisplay, format};
 use crate::theme::ColorsLinear;
 use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
@@ -273,61 +273,6 @@ impl<'a> DrawCx<'a> {
         self.h.selection(rect, style);
     }
 
-    /// Draw text
-    ///
-    /// Text colors are inferred from [`Text::color_tokens`] and decorations
-    /// from [`Text::decorations`].
-    ///
-    /// Text is clipped to `rect` and drawn without offset (see
-    /// [`Self::text_with_position`]).
-    ///
-    /// The `text` should be prepared before calling this method.
-    pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
-        self.text_with_position(rect.pos, rect, text);
-    }
-
-    /// Draw text with effects and an offset
-    ///
-    /// Text colors are inferred from [`Text::color_tokens`] and decorations
-    /// from [`Text::decorations`].
-    ///
-    /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
-    /// the text is not scrolled.
-    ///
-    /// The `text` should be prepared before calling this method.
-    pub fn text_with_position<T: FormattableText>(
-        &mut self,
-        pos: Coord,
-        rect: Rect,
-        text: &Text<T>,
-    ) {
-        if let Ok(display) = text.display() {
-            let tokens = text.color_tokens();
-            self.text_with_colors(pos, rect, display, tokens);
-            self.decorate_text(pos, rect, display, text.decorations());
-        }
-    }
-
-    /// Draw text with specified color
-    ///
-    /// The given `color` is used, ignoring [`Text::color_tokens`]
-    /// Decorations are inferred from [`Text::decorations`].
-    ///
-    /// Text is clipped to `rect` and drawn without offset (see
-    /// [`Self::text_with_position`]).
-    ///
-    /// The `text` should be prepared before calling this method.
-    pub fn text_with_color<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, color: Rgba) {
-        if let Ok(display) = text.display() {
-            let tokens = [(0, format::Colors {
-                foreground: format::Color::from_rgba(color),
-                ..Default::default()
-            })];
-            self.text_with_colors(rect.pos, rect, display, &tokens);
-            self.decorate_text(rect.pos, rect, display, text.decorations());
-        }
-    }
-
     /// Draw text with a list of color tokens
     ///
     /// Color `tokens` specify both foreground (text) and background colors.
@@ -335,14 +280,14 @@ impl<'a> DrawCx<'a> {
     /// sequence such that `effects[i].0` values are strictly increasing.
     /// A glyph for index `j` in the source text will use effect `tokens[i].1`
     /// where `i` is the largest value such that `tokens[i].0 <= j`, or the
-    /// default value of `format::Colors` if no such `i` exists.
+    /// default value of [`format::Colors`] if no such `i` exists.
     ///
     /// This method does not draw decorations; see also [`Self::decorate_text`].
     ///
     /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
     /// the text is not scrolled.
     #[inline]
-    pub fn text_with_colors(
+    pub fn text(
         &mut self,
         pos: Coord,
         rect: Rect,
@@ -363,7 +308,7 @@ impl<'a> DrawCx<'a> {
     /// Draw text decorations (e.g. underlines)
     ///
     /// This does not draw the text itself, but requires most of the same inputs
-    /// as [`Self::text_with_colors`].
+    /// as [`Self::text`].
     ///
     /// The list of `decorations` may come from [`Text::decorations`] or be any
     /// other compatible sequence. See also [`FormattableText::decorations`].
@@ -391,19 +336,16 @@ impl<'a> DrawCx<'a> {
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
     /// The text cursor is draw from `rect.pos` and clipped to `rect`.
-    ///
-    /// The `text` should be prepared before calling this method.
-    pub fn text_cursor<T: FormattableText>(
+    pub fn text_cursor(
         &mut self,
         pos: Coord,
         rect: Rect,
-        text: &Text<T>,
+        display: &TextDisplay,
         byte: usize,
         color: Option<format::Color>,
     ) {
-        if let Ok(text) = text.display() {
-            self.h.text_cursor(&self.id, pos, rect, text, byte, color);
-        }
+        self.h
+            .text_cursor(&self.id, pos, rect, display, byte, color);
     }
 
     /// Draw UI element: check box (without label)

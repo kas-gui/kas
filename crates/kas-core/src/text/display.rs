@@ -93,7 +93,7 @@ impl Layout for ConfiguredDisplay {
     fn draw(&self, mut draw: DrawCx) {
         if let Ok(display) = self.display() {
             let rect = self.rect();
-            draw.text_with_colors(rect.pos, rect, display, &[]);
+            draw.text(rect.pos, rect, display, &[]);
         }
     }
 }

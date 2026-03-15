@@ -308,7 +308,7 @@ impl<H: Highlighter> Component<H> {
             }
             &vec
         };
-        draw.text_with_colors(pos, rect, display, tokens);
+        draw.text(pos, rect, display, tokens);
 
         if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
             let tokens = [
@@ -327,7 +327,7 @@ impl<H: Highlighter> Component<H> {
             draw.text_cursor(
                 pos,
                 rect,
-                &self.text,
+                display,
                 self.selection.edit_index(),
                 Some(self.colors.cursor),
             );
