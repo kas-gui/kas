@@ -6,8 +6,8 @@
 //! Text widgets
 
 use kas::prelude::*;
-use kas::text::format::FormattableText;
-use kas::theme::{self, TextClass};
+use kas::text::{self, format::FormattableText};
+use kas::theme::TextClass;
 
 // NOTE: Text maintains a copy of the (formatted) string internally. Most
 // importantly this allows change detection.
@@ -33,7 +33,7 @@ mod Text {
     #[layout(self.text)]
     pub struct Text<A, T: Default + FormattableText + 'static = String> {
         core: widget_core!(),
-        text: theme::Text<T>,
+        text: text::Text<T>,
         text_fn: Box<dyn Fn(&ConfigCx, &A, &mut T) -> bool + Send>,
     }
 
@@ -44,7 +44,7 @@ mod Text {
         fn default() -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(T::default(), TextClass::Standard, true),
+                text: text::Text::new(T::default(), TextClass::Standard, true),
                 text_fn: Box::new(|_, data, text| {
                     let new_text = data.into();
                     let changed = new_text != *text;
@@ -62,7 +62,7 @@ mod Text {
         pub fn new_str(as_str: impl Fn(&A) -> &str + Send + 'static) -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(String::new(), TextClass::Standard, true),
+                text: text::Text::new(String::new(), TextClass::Standard, true),
                 text_fn: Box::new(move |_, data, text| {
                     let s = as_str(data);
                     let changed = *text != *s;
@@ -83,7 +83,7 @@ mod Text {
         pub fn new_gen(gen_text: impl Fn(&ConfigCx, &A) -> T + Send + 'static) -> Self {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(T::default(), TextClass::Standard, true),
+                text: text::Text::new(T::default(), TextClass::Standard, true),
                 text_fn: Box::new(move |cx, data, text| {
                     let new_text = gen_text(cx, data);
                     let changed = new_text != *text;
@@ -108,7 +108,7 @@ mod Text {
         {
             Text {
                 core: Default::default(),
-                text: theme::Text::new(T::default(), TextClass::Standard, true),
+                text: text::Text::new(T::default(), TextClass::Standard, true),
                 text_fn: Box::new(update_text),
             }
         }
@@ -159,7 +159,7 @@ mod Text {
 
         /// Get read access to the text object
         #[inline]
-        pub fn text(&self) -> &theme::Text<T> {
+        pub fn text(&self) -> &text::Text<T> {
             &self.text
         }
 

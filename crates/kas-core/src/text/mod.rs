@@ -18,18 +18,17 @@ pub use kas_text::{
     TextDisplay, Vec2, fonts,
 };
 
+mod display;
 pub mod format;
-
 /// Glyph rastering
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub mod raster;
-
-mod display;
-pub use display::ConfiguredDisplay;
-
 mod selection;
-pub use selection::{CursorRange, SelectionHelper};
-
 mod string;
+mod text;
+
+pub use display::ConfiguredDisplay;
+pub use selection::{CursorRange, SelectionHelper};
 pub use string::AccessString;
+pub use text::Text;

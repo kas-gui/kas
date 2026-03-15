@@ -21,7 +21,8 @@ use kas::draw::color::Rgba;
 use kas::event::TimerHandle;
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
-use kas::theme::{Text, TextClass};
+use kas::text::Text;
+use kas::theme::TextClass;
 
 const TIMER: TimerHandle = TimerHandle::new(0, true);
 

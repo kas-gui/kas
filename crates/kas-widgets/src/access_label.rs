@@ -7,7 +7,8 @@
 
 #[allow(unused)] use super::Label;
 use kas::prelude::*;
-use kas::theme::{Text, TextClass};
+use kas::text::Text;
+use kas::theme::TextClass;
 
 #[impl_self]
 mod AccessLabel {

@@ -9,9 +9,9 @@ use super::{ScrollBar, ScrollBarMsg};
 use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
-use kas::text::SelectionHelper;
 use kas::text::format::{self, FormattableText};
-use kas::theme::{Text, TextClass};
+use kas::text::{SelectionHelper, Text};
+use kas::theme::TextClass;
 
 #[impl_self]
 mod SelectableText {

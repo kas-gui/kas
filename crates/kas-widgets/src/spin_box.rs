@@ -11,7 +11,8 @@ use crate::{
 };
 use kas::messages::{DecrementStep, IncrementStep, ReplaceSelectedText, SetValueF64, SetValueText};
 use kas::prelude::*;
-use kas::theme::{Background, FrameStyle, MarkStyle, Text, TextClass};
+use kas::text::Text;
+use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use std::ops::RangeInclusive;
 
 /// Requirements on type used by [`SpinBox`]

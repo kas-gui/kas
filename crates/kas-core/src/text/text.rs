@@ -5,18 +5,15 @@
 
 //! Theme-applied Text element
 
-use super::TextClass;
-#[allow(unused)] use super::{DrawCx, SizeCx};
-use crate::Layout;
+use super::format::{Colors, Decoration, EditableText, FormattableText};
+use super::*;
 use crate::cast::Cast;
 use crate::draw::color::Rgba;
-#[allow(unused)] use crate::event::ConfigCx;
+use crate::event::ConfigCx;
 use crate::geom::{Rect, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
-use crate::text::ConfiguredDisplay;
-use crate::text::format::{Colors, Decoration, EditableText, FormattableText};
-use crate::text::*;
-use kas_macros::autoimpl;
+use crate::theme::{DrawCx, SizeCx, TextClass};
+use crate::{Layout, autoimpl};
 use std::num::NonZeroUsize;
 
 /// Text type-setting object (theme aware)

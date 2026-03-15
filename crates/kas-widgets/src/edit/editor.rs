@@ -12,8 +12,8 @@ use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText,
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{Color, FormattableText};
-use kas::text::{CursorRange, NotReady, SelectionHelper, format};
-use kas::theme::{Background, Text, TextClass};
+use kas::text::{CursorRange, NotReady, SelectionHelper, Text, format};
+use kas::theme::{Background, TextClass};
 use kas::util::UndoStack;
 use std::borrow::Cow;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
