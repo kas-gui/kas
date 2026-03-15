@@ -224,7 +224,7 @@ impl<T: FormattableText> Text<T> {
 
         self.prepare_runs();
         debug_assert!(self.status() >= Status::LevelRuns);
-        self.inner.rewrap();
+        self.inner.prepare_wrap();
         true
     }
 

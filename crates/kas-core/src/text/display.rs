@@ -85,7 +85,7 @@ impl Layout for ConfiguredDisplay {
             }
         }
         self.rect = rect;
-        self.rewrap();
+        self.prepare_wrap();
     }
 
     /// Text color and decorations are not present here; derivative types will
@@ -309,9 +309,9 @@ impl ConfiguredDisplay {
         is_rtl
     }
 
-    /// Get the status
+    /// Get the status of preparation
     #[inline]
-    pub(crate) fn status(&self) -> Status {
+    pub fn status(&self) -> Status {
         self.status
     }
 
@@ -343,12 +343,32 @@ impl ConfiguredDisplay {
         self.status = status;
     }
 
-    /// Prepare runs, given `text` and `font_tokens`
-    pub(crate) fn prepare_runs(
-        &mut self,
-        text: &str,
-        font_tokens: impl Iterator<Item = FontToken>,
-    ) {
+    /// Prepare text: perform run-breaking and shaping
+    ///
+    /// This method advances the [status of preparation](Self::status) from
+    /// [`Status::New`] or [`Status::ResizeLevelRuns`] to [`Status::LevelRuns`].
+    /// This is the slowest step of text preparation and requires access to the
+    /// `text` and `font_tokens`.
+    ///
+    /// The `font_tokens` iterator must not be empty and the first token yielded
+    /// must have [`FontToken::start`] == 0. (Failure to do so will result in an
+    /// error on debug builds and usage of default values on release builds.)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use kas::text::{ConfiguredDisplay, format::FontToken};
+    /// # use kas::theme::TextClass;
+    /// let mut display = ConfiguredDisplay::new(TextClass::default(), true);
+    /// display.prepare_runs("Hello world", std::iter::once(|| FontToken {
+    ///     start: 0,
+    ///     dpem: 16.0,
+    ///     font: Default::default(),
+    /// }));
+    /// display.prepare_wrap();
+    /// // display is now ready
+    /// ```
+    pub fn prepare_runs(&mut self, text: &str, font_tokens: impl Iterator<Item = FontToken>) {
         let direction = self.direction();
         match self.status() {
             Status::New => self
@@ -362,10 +382,17 @@ impl ConfiguredDisplay {
         self.set_status(Status::LevelRuns);
     }
 
-    /// Re-wrap
+    /// Prepare text: perform line wrapping and alignment
     ///
-    /// This is a partial form of re-preparation
-    pub(crate) fn rewrap(&mut self) {
+    /// Actions depend on the [status of preparation](Self::status),
+    ///
+    /// -   If less than [`Status::LevelRuns`], this method will do nothing.
+    ///     [`Self::prepare_runs`] should be called first.
+    /// -   If at exactly [`Status::LevelRuns`], this method will perform line
+    ///     wrapping (see also next item).
+    /// -   If at [`Status::LevelRuns`] or [`Status::Wrapped`], this method will
+    ///     align the text vertically and advance to [`Status::Ready`].
+    pub fn prepare_wrap(&mut self) {
         if self.status() < Status::LevelRuns {
             return;
         }
