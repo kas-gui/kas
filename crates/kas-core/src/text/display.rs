@@ -287,13 +287,26 @@ impl ConfiguredDisplay {
         }
     }
 
-    /// Get the base directionality of the text, if prepared
-    pub fn text_is_rtl(&self) -> Option<bool> {
-        match self.line_is_rtl(0) {
+    /// Get the base directionality of the text
+    ///
+    /// This does not require that the text is prepared.
+    pub fn text_is_rtl(&self, text: &str) -> bool {
+        let cached_is_rtl = match self.line_is_rtl(0) {
             Ok(None) => Some(self.direction == Direction::Rtl),
             Ok(Some(is_rtl)) => Some(is_rtl),
             Err(NotReady) => None,
+        };
+
+        #[cfg(not(debug_assertions))]
+        if let Some(cached) = cached_is_rtl {
+            return cached;
         }
+
+        let is_rtl = self.unchecked_display().text_is_rtl(text, self.direction());
+        if let Some(cached) = cached_is_rtl {
+            debug_assert_eq!(cached, is_rtl);
+        }
+        is_rtl
     }
 
     /// Get the status

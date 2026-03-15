@@ -152,20 +152,9 @@ impl<T: FormattableText> Text<T> {
     /// Get the base directionality of the text
     ///
     /// This does not require that the text is prepared.
+    #[inline]
     pub fn text_is_rtl(&self) -> bool {
-        let cached_is_rtl = self.inner.text_is_rtl();
-        #[cfg(not(debug_assertions))]
-        if let Some(cached) = cached_is_rtl {
-            return cached;
-        }
-
-        let is_rtl = self
-            .unchecked_display()
-            .text_is_rtl(self.as_str(), self.direction());
-        if let Some(cached) = cached_is_rtl {
-            debug_assert_eq!(cached, is_rtl);
-        }
-        is_rtl
+        self.inner.text_is_rtl(self.text.as_str())
     }
 
     /// Return the sequence of color effect tokens
