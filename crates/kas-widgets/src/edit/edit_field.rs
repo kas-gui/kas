@@ -12,7 +12,7 @@ use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, TextClass};
 use std::fmt::{Debug, Display};
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 #[impl_self]
@@ -62,7 +62,6 @@ mod EditField {
     ///
     /// This is a [`Viewport`] widget.
     #[autoimpl(Debug where G: trait, H: trait)]
-    #[autoimpl(Deref<Target = EditorComponent<H>>, DerefMut using self.editor)]
     #[widget]
     #[layout(self.editor)]
     pub struct EditField<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
@@ -72,6 +71,19 @@ mod EditField {
         editor: Component<H>,
         /// The associated [`EditGuard`] implementation
         pub guard: G,
+    }
+
+    impl Deref for Self {
+        type Target = EditorComponent<H>;
+        fn deref(&self) -> &Self::Target {
+            &self.editor.0
+        }
+    }
+
+    impl DerefMut for Self {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.editor.0
+        }
     }
 
     impl Layout for Self {
@@ -134,7 +146,7 @@ mod EditField {
 
         #[inline]
         fn tooltip(&self) -> Option<&str> {
-            self.editor.error_message()
+            self.editor.0.error_message()
         }
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
@@ -162,13 +174,13 @@ mod EditField {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.editor.configure(cx, self.id());
-            self.guard.configure(self.editor.deref_mut(), cx);
+            self.guard.configure(&mut self.editor.0, cx);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
             let size = self.content_size();
             if !self.has_input_focus() {
-                self.guard.update(self.editor.deref_mut(), cx, data);
+                self.guard.update(&mut self.editor.0, cx, data);
             }
             if size != self.content_size() {
                 cx.resize();
@@ -180,16 +192,16 @@ mod EditField {
                 EventAction::Unused => Unused,
                 EventAction::Used | EventAction::Cursor => Used,
                 EventAction::FocusGained => {
-                    self.guard.focus_gained(self.editor.deref_mut(), cx, data);
+                    self.guard.focus_gained(&mut self.editor.0, cx, data);
                     Used
                 }
                 EventAction::FocusLost => {
-                    self.guard.focus_lost(self.editor.deref_mut(), cx, data);
+                    self.guard.focus_lost(&mut self.editor.0, cx, data);
                     Used
                 }
                 EventAction::Activate(code) => {
                     cx.depress_with_key(&self, code);
-                    self.guard.activate(self.editor.deref_mut(), cx, data)
+                    self.guard.activate(&mut self.editor.0, cx, data)
                 }
                 EventAction::Edit => {
                     self.call_guard_edit(cx, data);
@@ -269,7 +281,7 @@ mod EditField {
         /// Call the [`EditGuard`]'s `activate` method
         #[inline]
         pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {
-            self.guard.activate(self.editor.deref_mut(), cx, data);
+            self.guard.activate(&mut self.editor.0, cx, data);
         }
 
         /// Call the [`EditGuard`]'s `edit` method
@@ -278,7 +290,7 @@ mod EditField {
         #[inline]
         pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
             self.clear_error();
-            self.guard.edit(self.editor.deref_mut(), cx, data);
+            self.guard.edit(&mut self.editor.0, cx, data);
         }
     }
 }
