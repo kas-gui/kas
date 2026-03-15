@@ -7,15 +7,22 @@
 
 use super::highlight::{self, Highlighter, SchemeColors};
 use super::*;
+use kas::cast::Cast;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll};
-use kas::geom::Vec2;
+use kas::event::{
+    ConfigCx, ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll,
+};
+use kas::geom::{Rect, Vec2};
+use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
-use kas::text::format::{Color, FormattableText};
-use kas::text::{CursorRange, NotReady, SelectionHelper, Text, format};
-use kas::theme::{Background, TextClass};
+use kas::text::format::{Color, EditableText, FormattableText};
+use kas::text::{ConfiguredDisplay, CursorRange, NotReady, SelectionHelper, Status, format};
+use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
+use kas::{Layout, autoimpl};
 use std::borrow::Cow;
+use std::num::NonZeroUsize;
+use std::ops::{Deref, DerefMut};
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 /// Inner editor component
@@ -30,7 +37,8 @@ pub struct EditorComponent<H: Highlighter> {
     // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
     id: Id,
     editable: bool,
-    text: Text<highlight::Text<H>>,
+    display: ConfiguredDisplay,
+    text: highlight::Text<H>,
     colors: SchemeColors,
     selection: SelectionHelper,
     edit_x_coord: Option<f32>,
@@ -62,20 +70,33 @@ pub struct EditorComponent<H: Highlighter> {
 #[autoimpl(Debug where H: trait)]
 pub struct Component<H: Highlighter>(pub EditorComponent<H>);
 
+impl<H: Highlighter> Deref for Component<H> {
+    type Target = ConfiguredDisplay;
+    fn deref(&self) -> &Self::Target {
+        &self.0.display
+    }
+}
+
+impl<H: Highlighter> DerefMut for Component<H> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0.display
+    }
+}
+
 impl<H: Highlighter> Layout for Component<H> {
     #[inline]
     fn rect(&self) -> Rect {
-        self.0.text.rect()
+        self.0.display.rect()
     }
 
     #[inline]
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-        self.0.text.size_rules(cx, axis)
+        self.0.display.size_rules(cx, axis)
     }
 
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-        self.0.text.set_rect(cx, rect, hints);
-        self.0.text.ensure_no_left_overhang();
+        self.0.display.set_rect(cx, rect, hints);
+        self.0.display.ensure_no_left_overhang();
         if self.0.current.is_ime_enabled() {
             self.0.set_ime_cursor_area(cx);
         }
@@ -93,7 +114,8 @@ impl<H: Default + Highlighter> Default for Component<H> {
         Component(EditorComponent {
             id: Id::default(),
             editable: true,
-            text: Text::new(Default::default(), TextClass::Editor, false),
+            display: ConfiguredDisplay::new(TextClass::Editor, false),
+            text: Default::default(),
             colors: SchemeColors::default(),
             selection: Default::default(),
             edit_x_coord: None,
@@ -113,9 +135,8 @@ impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
     fn from(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
-        let text = highlight::Text::new(H::default(), text);
         Component(EditorComponent {
-            text: Text::new(text, TextClass::Editor, false),
+            text: highlight::Text::new(H::default(), text),
             selection: SelectionHelper::from(len),
             ..Self::default().0
         })
@@ -128,13 +149,13 @@ impl<H: Highlighter> Component<H> {
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
         let class = self.0.class();
         let wrap = self.0.multi_line();
-        let text = self.0.text.take_text().take_text();
-        let text = highlight::Text::new(highlighter, text);
+        let text = self.0.text.take_text();
 
         Component(EditorComponent {
             id: self.0.id,
             editable: self.0.editable,
-            text: Text::new(text, class, wrap),
+            display: ConfiguredDisplay::new(class, wrap),
+            text: highlight::Text::new(highlighter, text),
             colors: self.0.colors,
             selection: self.0.selection,
             edit_x_coord: self.0.edit_x_coord,
@@ -150,7 +171,7 @@ impl<H: Highlighter> Component<H> {
 
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
-        self.0.text.text_mut().set_highlighter(highlighter);
+        self.0.text.set_highlighter(highlighter);
     }
 
     /// Get the background color
@@ -164,20 +185,6 @@ impl<H: Highlighter> Component<H> {
         }
     }
 
-    /// Access text
-    #[inline]
-    pub fn text(&self) -> &Text<impl FormattableText> {
-        &self.0.text
-    }
-
-    /// Access text (mut)
-    ///
-    /// It is left to the wrapping widget to ensure this is not mis-used.
-    #[inline]
-    pub fn text_mut(&mut self) -> &mut Text<impl FormattableText> {
-        &mut self.0.text
-    }
-
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `Editor`.
@@ -189,7 +196,7 @@ impl<H: Highlighter> Component<H> {
         );
         let text = text.to_string();
         let len = text.len();
-        self.0.text.text_mut().set_text(text);
+        self.0.text.set_text(text);
         self.0.selection.set_cursor(len);
         self
     }
@@ -198,20 +205,34 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.0.id = id;
-        self.0.text.text_mut().configure(cx);
-        self.0.colors = self.0.text.text().scheme_colors();
+        self.0.text.configure(cx);
+        self.0.colors = self.0.text.scheme_colors();
         if self.0.colors.selection_foreground == Color::default() {
             self.0.colors.selection_foreground = Color::SELECTION;
         }
         if self.0.colors.selection_background == Color::default() {
             self.0.colors.selection_background = Color::SELECTION;
         }
-        self.0.text.configure(&mut cx.size_cx());
+        self.0.display.configure(&mut cx.size_cx());
+    }
+
+    /// Measure required vertical height, wrapping as configured
+    ///
+    /// Stops after `max_lines`, if provided.
+    ///
+    /// May partially prepare the text for display, but does not otherwise
+    /// modify `self`.
+    pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
+        self.0.prepare_runs();
+        self.0
+            .display
+            .unchecked_display()
+            .measure_height(wrap_width, max_lines)
     }
 
     /// Implementation of [`Viewport::content_size`]
     pub fn content_size(&self) -> Size {
-        if let Ok((tl, br)) = self.0.text.bounding_box() {
+        if let Ok((tl, br)) = self.0.display.bounding_box() {
             (br - tl).cast_ceil()
         } else {
             Size::ZERO
@@ -220,7 +241,7 @@ impl<H: Highlighter> Component<H> {
 
     /// Implementation of [`Viewport::draw_with_offset`]
     pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-        let Ok(display) = self.0.text.display() else {
+        let Ok(display) = self.0.display.display() else {
             return;
         };
 
@@ -454,7 +475,7 @@ impl<H: Highlighter> Component<H> {
                         _ => return EventAction::Used,
                     };
 
-                    self.0.text.replace_range(edit_range.clone(), text);
+                    self.0.replace_range(edit_range.clone(), text);
                     edit_range.end = edit_range.start + text.len();
                     if let Some((start, end)) = cursor {
                         self.0
@@ -480,7 +501,7 @@ impl<H: Highlighter> Component<H> {
                         _ => return EventAction::Used,
                     };
 
-                    self.0.text.replace_range(edit_range.clone(), text);
+                    self.0.replace_range(edit_range.clone(), text);
                     self.0.selection.set_cursor(edit_range.start + text.len());
 
                     self.0.current = CurrentAction::ImePreedit {
@@ -505,7 +526,7 @@ impl<H: Highlighter> Component<H> {
                         let end = edit_range.start;
                         let start = end - before_bytes;
                         if self.0.as_str().is_char_boundary(start) {
-                            self.0.text.replace_range(start..end, "");
+                            self.0.replace_range(start..end, "");
                             self.0.selection.delete_range(start..end);
                         } else {
                             log::warn!("buggy IME tried to delete range not at char boundary");
@@ -516,7 +537,7 @@ impl<H: Highlighter> Component<H> {
                         let start = edit_range.end;
                         let end = start + after_bytes;
                         if self.0.as_str().is_char_boundary(end) {
-                            self.0.text.replace_range(start..end, "");
+                            self.0.replace_range(start..end, "");
                         } else {
                             log::warn!("buggy IME tried to delete range not at char boundary");
                         }
@@ -546,9 +567,7 @@ impl<H: Highlighter> Component<H> {
                     let index = self.0.selection.edit_index();
                     let range = self.0.trim_paste(&content);
 
-                    self.0
-                        .text
-                        .replace_range(index..index, &content[range.clone()]);
+                    self.0.replace_range(index..index, &content[range.clone()]);
                     self.0.selection.set_cursor(index + range.len());
                     self.0.edit_x_coord = None;
                     self.0.prepare_and_scroll(cx, false);
@@ -576,9 +595,11 @@ impl<H: Highlighter> Component<H> {
                     self.0.set_cursor_from_coord(cx, coord);
                     self.0.selection.set_anchor(clear);
                     if repeats > 1 {
-                        self.0
-                            .selection
-                            .expand(self.0.text.as_str(), &self.0.text, repeats >= 3);
+                        self.0.selection.expand(
+                            self.0.text.as_str(),
+                            &self.0.display,
+                            repeats >= 3,
+                        );
                     }
 
                     self.0.request_key_focus(cx, FocusSource::Pointer);
@@ -590,7 +611,7 @@ impl<H: Highlighter> Component<H> {
                         if repeats > 1 {
                             self.0.selection.expand(
                                 self.0.text.as_str(),
-                                &self.0.text,
+                                &self.0.display,
                                 repeats >= 3,
                             );
                         }
@@ -621,6 +642,63 @@ impl<H: Highlighter> Component<H> {
 }
 
 impl<H: Highlighter> EditorComponent<H> {
+    /// Insert a `text` at the given position
+    ///
+    /// This may be used to edit the raw text instead of replacing it.
+    /// One must call [`Text::prepare`] afterwards.
+    ///
+    /// Currently this is not significantly more efficient than
+    /// [`Text::set_text`]. This may change in the future (TODO).
+    #[inline]
+    fn insert_str(&mut self, index: usize, text: &str) {
+        self.text.insert_str(index, text);
+        self.display.set_max_status(Status::New);
+    }
+
+    /// Replace a section of text
+    ///
+    /// This may be used to edit the raw text instead of replacing it.
+    /// One must call [`Text::prepare`] afterwards.
+    ///
+    /// One may simulate an unbounded range by via `start..usize::MAX`.
+    ///
+    /// Currently this is not significantly more efficient than
+    /// [`Text::set_text`]. This may change in the future (TODO).
+    #[inline]
+    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
+        self.text.replace_range(range, replace_with);
+        self.display.set_max_status(Status::New);
+    }
+
+    #[inline]
+    fn prepare_runs(&mut self) {
+        if self.display.status() < Status::LevelRuns {
+            let (dpem, font) = (self.display.font_size(), self.display.font());
+            self.display
+                .prepare_runs(self.text.as_str(), self.text.font_tokens(dpem, font));
+        }
+    }
+
+    /// Prepare text for display, as necessary
+    ///
+    /// [`Self::set_rect`] must be called before this method.
+    ///
+    /// Does all preparation steps necessary in order to display or query the
+    /// layout of this text. Text is aligned within the set [`Rect`].
+    ///
+    /// Returns `true` on success when some action is performed, `false`
+    /// when the text is already prepared.
+    fn prepare(&mut self) -> bool {
+        if self.display.is_prepared() {
+            return false;
+        }
+
+        self.prepare_runs();
+        debug_assert!(self.display.status() >= Status::LevelRuns);
+        self.display.prepare_wrap();
+        true
+    }
+
     /// Cancel on-going selection and IME actions
     ///
     /// This should be called if e.g. key-input interrupts the current
@@ -644,7 +722,7 @@ impl<H: Highlighter> EditorComponent<H> {
             let action = std::mem::replace(&mut self.current, CurrentAction::None);
             if let CurrentAction::ImePreedit { edit_range } = action {
                 self.selection.set_cursor(edit_range.start.cast());
-                self.text.replace_range(edit_range.cast(), "");
+                self.replace_range(edit_range.cast(), "");
             }
         }
     }
@@ -661,22 +739,22 @@ impl<H: Highlighter> EditorComponent<H> {
         let initial_range = range.clone();
         let edit_len = edit_range.clone().map(|r| r.len()).unwrap_or(0);
 
-        if let Ok(Some((_, line_range))) = self.text.find_line(range.start) {
+        if let Ok(Some((_, line_range))) = self.display.find_line(range.start) {
             range.start = line_range.start;
         }
-        if let Ok(Some((_, line_range))) = self.text.find_line(range.end) {
+        if let Ok(Some((_, line_range))) = self.display.find_line(range.end) {
             range.end = line_range.end;
         }
 
         if range.len() - edit_len > MAX_TEXT_BYTES {
             range.end = range.end.min(initial_range.end + MAX_TEXT_BYTES / 2);
-            while !self.text.as_str().is_char_boundary(range.end) {
+            while !self.as_str().is_char_boundary(range.end) {
                 range.end -= 1;
             }
 
             if range.len() - edit_len > MAX_TEXT_BYTES {
                 range.start = range.start.max(initial_range.start - MAX_TEXT_BYTES / 2);
-                while !self.text.as_str().is_char_boundary(range.start) {
+                while !self.as_str().is_char_boundary(range.start) {
                     range.start += 1;
                 }
             }
@@ -685,10 +763,10 @@ impl<H: Highlighter> EditorComponent<H> {
         let start = range.start;
         let mut text = String::with_capacity(range.len() - edit_len);
         if let Some(er) = edit_range {
-            text.push_str(&self.text.as_str()[range.start..er.start]);
-            text.push_str(&self.text.as_str()[er.end..range.end]);
+            text.push_str(&self.as_str()[range.start..er.start]);
+            text.push_str(&self.as_str()[er.end..range.end]);
         } else {
-            text = self.text.as_str()[range].to_string();
+            text = self.as_str()[range].to_string();
         }
 
         let cursor = self.selection.edit_index().saturating_sub(start);
@@ -705,7 +783,7 @@ impl<H: Highlighter> EditorComponent<H> {
 
     /// Call to set IME position only while IME is active
     fn set_ime_cursor_area(&self, cx: &mut EventState) {
-        if let Ok(text) = self.text.display() {
+        if let Ok(text) = self.display.display() {
             let range = match self.current.clone() {
                 CurrentAction::ImeStart => self.selection.range(),
                 CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
@@ -738,7 +816,7 @@ impl<H: Highlighter> EditorComponent<H> {
                 return;
             };
 
-            cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.text.rect().pos));
+            cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.display.rect().pos));
         }
     }
 
@@ -762,14 +840,14 @@ impl<H: Highlighter> EditorComponent<H> {
     /// Updates the view offset (scroll position) if the content size changes or
     /// `force_set_offset`. Requests redraw and resize as appropriate.
     fn prepare_and_scroll(&mut self, cx: &mut EventCx, force_set_offset: bool) {
-        let bb = self.text.bounding_box();
-        if self.text.prepare() {
-            self.text.ensure_no_left_overhang();
+        let bb = self.display.bounding_box();
+        if self.prepare() {
+            self.display.ensure_no_left_overhang();
             cx.redraw();
         }
 
         let mut set_offset = force_set_offset;
-        if bb != self.text.bounding_box() {
+        if bb != self.display.bounding_box() {
             cx.resize();
             set_offset = true;
         }
@@ -791,10 +869,10 @@ impl<H: Highlighter> EditorComponent<H> {
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
         if have_sel {
-            self.text.replace_range(selection.clone(), text);
+            self.replace_range(selection.clone(), text);
             self.selection.set_cursor(selection.start + text.len());
         } else {
-            self.text.insert_str(index, text);
+            self.insert_str(index, text);
             self.selection.set_cursor(index + text.len());
         }
         self.edit_x_coord = None;
@@ -837,7 +915,7 @@ impl<H: Highlighter> EditorComponent<H> {
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let cursor = self.selection.edit_index();
-        let len = self.text.str_len();
+        let len = self.as_str().len();
         let multi_line = self.multi_line();
         let selection = self.selection.range();
         let have_sel = selection.end > selection.start;
@@ -877,7 +955,7 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Move(selection.start, None)
             }
             Command::Left if cursor > 0 => GraphemeCursor::new(cursor, len, true)
-                .prev_boundary(self.text.as_str(), 0)
+                .prev_boundary(self.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
                 .unwrap_or(Action::None),
@@ -885,14 +963,14 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Move(selection.end, None)
             }
             Command::Right if cursor < len => GraphemeCursor::new(cursor, len, true)
-                .next_boundary(self.text.as_str(), 0)
+                .next_boundary(self.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
                 .unwrap_or(Action::None),
             Command::WordLeft if cursor > 0 => {
-                let mut iter = self.text.as_str()[0..cursor].split_word_bound_indices();
+                let mut iter = self.as_str()[0..cursor].split_word_bound_indices();
                 let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
-                while self.text.as_str()[p..]
+                while self.as_str()[p..]
                     .chars()
                     .next()
                     .map(|c| c.is_whitespace())
@@ -907,11 +985,9 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Move(p, None)
             }
             Command::WordRight if cursor < len => {
-                let mut iter = self.text.as_str()[cursor..]
-                    .split_word_bound_indices()
-                    .skip(1);
+                let mut iter = self.as_str()[cursor..].split_word_bound_indices().skip(1);
                 let mut p = iter.next().map(|(index, _)| cursor + index).unwrap_or(len);
-                while self.text.as_str()[p..]
+                while self.as_str()[p..]
                     .chars()
                     .next()
                     .map(|c| c.is_whitespace())
@@ -931,13 +1007,13 @@ impl<H: Highlighter> EditorComponent<H> {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => self
-                        .text
+                        .display
                         .text_glyph_pos(cursor)?
                         .next_back()
                         .map(|r| r.pos.0)
                         .unwrap_or(0.0),
                 };
-                let mut line = self.text.find_line(cursor)?.map(|r| r.0).unwrap_or(0);
+                let mut line = self.display.find_line(cursor)?.map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
                 line = match cmd {
                     Command::Up => line.wrapping_sub(1),
@@ -949,17 +1025,25 @@ impl<H: Highlighter> EditorComponent<H> {
                     0..=HALF => len,
                     _ => 0,
                 };
-                self.text
+                self.display
                     .line_index_nearest(line, x)?
                     .map(|index| Action::Move(index, Some(x)))
                     .unwrap_or(Action::Move(nearest_end, None))
             }
             Command::Home if cursor > 0 => {
-                let index = self.text.find_line(cursor)?.map(|r| r.1.start).unwrap_or(0);
+                let index = self
+                    .display
+                    .find_line(cursor)?
+                    .map(|r| r.1.start)
+                    .unwrap_or(0);
                 Action::Move(index, None)
             }
             Command::End if cursor < len => {
-                let index = self.text.find_line(cursor)?.map(|r| r.1.end).unwrap_or(len);
+                let index = self
+                    .display
+                    .find_line(cursor)?
+                    .map(|r| r.1.end)
+                    .unwrap_or(len);
                 Action::Move(index, None)
             }
             Command::DocHome if cursor > 0 => Action::Move(0, None),
@@ -968,7 +1052,7 @@ impl<H: Highlighter> EditorComponent<H> {
             Command::Home | Command::End | Command::DocHome | Command::DocEnd => Action::None,
             Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = self
-                    .text
+                    .display
                     .text_glyph_pos(cursor)?
                     .next_back()
                     .map(|r| r.pos.into())
@@ -977,28 +1061,28 @@ impl<H: Highlighter> EditorComponent<H> {
                     v.0 = x;
                 }
                 const FACTOR: f32 = 2.0 / 3.0;
-                let mut h_dist = f32::conv(self.text.rect().size.1) * FACTOR;
+                let mut h_dist = f32::conv(self.display.rect().size.1) * FACTOR;
                 if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
-                Action::Move(self.text.text_index_nearest(v)?, Some(v.0))
+                Action::Move(self.display.text_index_nearest(v)?, Some(v.0))
             }
             Command::Delete | Command::DelBack if editable && have_sel => {
                 Action::Delete(selection.clone(), EditOp::Delete)
             }
             Command::Delete if editable => GraphemeCursor::new(cursor, len, true)
-                .next_boundary(self.text.as_str(), 0)
+                .next_boundary(self.as_str(), 0)
                 .unwrap()
                 .map(|next| Action::Delete(cursor..next, EditOp::Delete))
                 .unwrap_or(Action::None),
             Command::DelBack if editable => GraphemeCursor::new(cursor, len, true)
-                .prev_boundary(self.text.as_str(), 0)
+                .prev_boundary(self.as_str(), 0)
                 .unwrap()
                 .map(|prev| Action::Delete(prev..cursor, EditOp::Delete))
                 .unwrap_or(Action::None),
             Command::DelWord if editable => {
-                let next = self.text.as_str()[cursor..]
+                let next = self.as_str()[cursor..]
                     .split_word_bound_indices()
                     .nth(1)
                     .map(|(index, _)| cursor + index)
@@ -1006,7 +1090,7 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Delete(cursor..next, EditOp::Delete)
             }
             Command::DelWordBack if editable => {
-                let prev = self.text.as_str()[0..cursor]
+                let prev = self.as_str()[0..cursor]
                     .split_word_bound_indices()
                     .next_back()
                     .map(|(index, _)| index)
@@ -1019,11 +1103,11 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Move(len, None)
             }
             Command::Cut if editable && have_sel => {
-                cx.set_clipboard((self.text.as_str()[selection.clone()]).into());
+                cx.set_clipboard((self.as_str()[selection.clone()]).into());
                 Action::Delete(selection.clone(), EditOp::Clipboard)
             }
             Command::Copy if have_sel => {
-                cx.set_clipboard((self.text.as_str()[selection.clone()]).into());
+                cx.set_clipboard((self.as_str()[selection.clone()]).into());
                 Action::None
             }
             Command::Paste if editable => {
@@ -1073,13 +1157,13 @@ impl<H: Highlighter> EditorComponent<H> {
                 } else {
                     index..index
                 };
-                self.text.replace_range(range, s);
+                self.replace_range(range, s);
                 self.selection.set_cursor(index + s.len());
                 self.edit_x_coord = None;
                 EventAction::Edit
             }
             Action::Delete(sel, _) => {
-                self.text.replace_range(sel.clone(), "");
+                self.replace_range(sel.clone(), "");
                 self.selection.set_cursor(sel.start);
                 self.edit_x_coord = None;
                 EventAction::Edit
@@ -1097,7 +1181,9 @@ impl<H: Highlighter> EditorComponent<H> {
             }
             Action::UndoRedo(redo) => {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
-                    if self.text.set_str(text) {
+                    if self.text.as_str() != text {
+                        self.text.set_str(text);
+                        self.display.set_max_status(Status::New);
                         self.edit_x_coord = None;
                     }
                     self.selection = (*cursor).into();
@@ -1116,8 +1202,8 @@ impl<H: Highlighter> EditorComponent<H> {
     ///
     /// Committing undo state is the responsibility of the caller.
     fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
-        let rel_pos = (coord - self.text.rect().pos).cast();
-        if let Ok(index) = self.text.text_index_nearest(rel_pos) {
+        let rel_pos = (coord - self.display.rect().pos).cast();
+        if let Ok(index) = self.display.text_index_nearest(rel_pos) {
             if index != self.selection.edit_index() {
                 self.selection.set_edit_index(index);
                 self.set_view_offset_from_cursor(cx);
@@ -1131,7 +1217,7 @@ impl<H: Highlighter> EditorComponent<H> {
     fn set_primary(&self, cx: &mut EventCx) {
         if self.has_key_focus && !self.selection.is_empty() && cx.has_primary() {
             let range = self.selection.range();
-            cx.set_primary(String::from(&self.text.as_str()[range]));
+            cx.set_primary(String::from(&self.as_str()[range]));
         }
     }
 
@@ -1143,13 +1229,13 @@ impl<H: Highlighter> EditorComponent<H> {
     fn set_view_offset_from_cursor(&mut self, cx: &mut EventCx) {
         let cursor = self.selection.edit_index();
         if let Some(marker) = self
-            .text
+            .display
             .text_glyph_pos(cursor)
             .ok()
             .and_then(|mut m| m.next_back())
         {
             let y0 = (marker.pos.1 - marker.ascent).cast_floor();
-            let pos = self.text.rect().pos + Offset(marker.pos.0.cast_nearest(), y0);
+            let pos = self.display.rect().pos + Offset(marker.pos.0.cast_nearest(), y0);
             let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
             cx.set_scroll(Scroll::Rect(Rect { pos, size }));
         }
@@ -1180,7 +1266,7 @@ pub trait Editor {
     /// Get the text contents as a `String`
     #[inline]
     fn clone_string(&self) -> String {
-        self.text.as_str().to_string()
+        self.as_str().to_string()
     }
 
     /// Get the (horizontal) text direction
@@ -1190,7 +1276,7 @@ pub trait Editor {
     /// TODO: support defaulting to RTL.
     #[inline]
     fn text_is_rtl(&self) -> bool {
-        self.text.text_is_rtl()
+        self.display.text_is_rtl(self.as_str())
     }
 
     /// Commit outstanding changes to the undo history
@@ -1224,7 +1310,7 @@ pub trait Editor {
     /// Returns `true` if the text may have changed.
     #[inline]
     fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
-        if self.text.as_str() != text {
+        if self.as_str() != text {
             self.set_string(cx, text.to_string());
             true
         } else {
@@ -1241,19 +1327,22 @@ pub trait Editor {
     /// actions; consider also calling [`EditField::call_guard_edit`].
     ///
     /// Returns `true` if the text is ready and may have changed.
-    fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
+    fn set_string(&mut self, cx: &mut EventState, text: String) -> bool {
         self.cancel_selection_and_ime(cx);
 
-        if !self.text.set_str(&string) {
-            return false;
+        if self.as_str() == text {
+            return false; // no change
         }
 
+        self.text.set_str(&text);
+        self.display.set_max_status(Status::New);
+
         cx.redraw(self.id());
-        let len = self.text.str_len();
+        let len = self.as_str().len();
         self.selection.set_max_len(len);
         self.edit_x_coord = None;
         self.clear_error();
-        self.text.prepare()
+        self.prepare()
     }
 
     /// Replace selected text
@@ -1273,15 +1362,15 @@ pub trait Editor {
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
         if have_sel {
-            self.text.replace_range(selection.clone(), text);
+            self.replace_range(selection.clone(), text);
             self.selection.set_cursor(selection.start + text.len());
         } else {
-            self.text.insert_str(index, text);
+            self.insert_str(index, text);
             self.selection.set_cursor(index + text.len());
         }
         self.edit_x_coord = None;
         self.clear_error();
-        self.text.prepare()
+        self.prepare()
     }
 
     /// Access the cursor index / selection range
@@ -1315,13 +1404,13 @@ pub trait Editor {
     /// True if the editor uses multi-line mode
     #[inline]
     fn multi_line(&self) -> bool {
-        self.text.wrap()
+        self.display.wrap()
     }
 
     /// Get the text class used
     #[inline]
     fn class(&self) -> TextClass {
-        self.text.class()
+        self.display.class()
     }
 
     /// Get whether the widget has input focus

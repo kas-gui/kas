@@ -97,7 +97,6 @@ mod EditField {
                 // Use the height of the first line as a reference
                 let height = self
                     .editor
-                    .text_mut()
                     .measure_height(width.cast(), std::num::NonZero::new(1));
                 min = (self.lines.0 * height).cast_ceil();
                 ideal = (self.lines.1 * height).cast_ceil();
@@ -395,7 +394,7 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
-        self.editor.text_mut().set_wrap(multi_line);
+        self.editor.set_wrap(multi_line);
         self.lines = match multi_line {
             false => (1.0, 1.0),
             true => (4.0, 7.0),
@@ -407,7 +406,7 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     #[inline]
     #[must_use]
     pub fn with_class(mut self, class: TextClass) -> Self {
-        self.editor.text_mut().set_class(class);
+        self.editor.set_class(class);
         self
     }
 
