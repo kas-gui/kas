@@ -15,7 +15,7 @@ use kas::event::{
 use kas::geom::{Rect, Vec2};
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
-use kas::text::format::{Color, EditableText, FormattableText};
+use kas::text::format::{Color, EditableText};
 use kas::text::{ConfiguredDisplay, CursorRange, NotReady, SelectionHelper, Status, format};
 use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
@@ -38,7 +38,8 @@ pub struct EditorComponent<H: Highlighter> {
     id: Id,
     editable: bool,
     display: ConfiguredDisplay,
-    text: highlight::Text<H>,
+    highlighter: highlight::Text<H>,
+    text: String,
     colors: SchemeColors,
     selection: SelectionHelper,
     edit_x_coord: Option<f32>,
@@ -115,6 +116,7 @@ impl<H: Default + Highlighter> Default for Component<H> {
             id: Id::default(),
             editable: true,
             display: ConfiguredDisplay::new(TextClass::Editor, false),
+            highlighter: Default::default(),
             text: Default::default(),
             colors: SchemeColors::default(),
             selection: Default::default(),
@@ -136,7 +138,8 @@ impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
         let text = text.to_string();
         let len = text.len();
         Component(EditorComponent {
-            text: highlight::Text::new(H::default(), text),
+            highlighter: highlight::Text::new(H::default()),
+            text,
             selection: SelectionHelper::from(len),
             ..Self::default().0
         })
@@ -149,13 +152,14 @@ impl<H: Highlighter> Component<H> {
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
         let class = self.0.class();
         let wrap = self.0.multi_line();
-        let text = self.0.text.take_text();
+        let text = self.0.text;
 
         Component(EditorComponent {
             id: self.0.id,
             editable: self.0.editable,
             display: ConfiguredDisplay::new(class, wrap),
-            text: highlight::Text::new(highlighter, text),
+            highlighter: highlight::Text::new(highlighter),
+            text,
             colors: self.0.colors,
             selection: self.0.selection,
             edit_x_coord: self.0.edit_x_coord,
@@ -171,7 +175,7 @@ impl<H: Highlighter> Component<H> {
 
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
-        self.0.text.set_highlighter(highlighter);
+        self.0.highlighter = highlight::Text::new(highlighter);
     }
 
     /// Get the background color
@@ -196,7 +200,7 @@ impl<H: Highlighter> Component<H> {
         );
         let text = text.to_string();
         let len = text.len();
-        self.0.text.set_text(text);
+        self.0.text = text;
         self.0.selection.set_cursor(len);
         self
     }
@@ -205,8 +209,8 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.0.id = id;
-        self.0.text.configure(cx);
-        self.0.colors = self.0.text.scheme_colors();
+        self.0.highlighter.configure(cx, &self.0.text);
+        self.0.colors = self.0.highlighter.scheme_colors();
         if self.0.colors.selection_foreground == Color::default() {
             self.0.colors.selection_foreground = Color::SELECTION;
         }
@@ -248,7 +252,7 @@ impl<H: Highlighter> Component<H> {
         let pos = self.rect().pos - offset;
         let range: Range<u32> = self.0.selection.range().cast();
 
-        let color_tokens = self.0.text.color_tokens();
+        let color_tokens = self.0.highlighter.color_tokens();
         let default_colors = format::Colors {
             foreground: self.0.colors.foreground,
             background: None,
@@ -331,6 +335,11 @@ impl<H: Highlighter> Component<H> {
             &vec
         };
         draw.text(pos, rect, display, tokens);
+
+        let decorations = self.0.highlighter.decorations();
+        if !decorations.is_empty() {
+            draw.decorate_text(pos, rect, display, decorations);
+        }
 
         if let CurrentAction::ImePreedit { edit_range } = self.0.current.clone() {
             let tokens = [
@@ -652,6 +661,7 @@ impl<H: Highlighter> EditorComponent<H> {
     #[inline]
     fn insert_str(&mut self, index: usize, text: &str) {
         self.text.insert_str(index, text);
+        self.highlighter.highlight(&self.text);
         self.display.set_max_status(Status::New);
     }
 
@@ -667,6 +677,7 @@ impl<H: Highlighter> EditorComponent<H> {
     #[inline]
     fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
         self.text.replace_range(range, replace_with);
+        self.highlighter.highlight(&self.text);
         self.display.set_max_status(Status::New);
     }
 
@@ -675,7 +686,7 @@ impl<H: Highlighter> EditorComponent<H> {
         if self.display.status() < Status::LevelRuns {
             let (dpem, font) = (self.display.font_size(), self.display.font());
             self.display
-                .prepare_runs(self.text.as_str(), self.text.font_tokens(dpem, font));
+                .prepare_runs(self.text.as_str(), self.highlighter.font_tokens(dpem, font));
         }
     }
 
@@ -1183,6 +1194,7 @@ impl<H: Highlighter> EditorComponent<H> {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
                     if self.text.as_str() != text {
                         self.text.set_str(text);
+                        self.highlighter.highlight(&self.text);
                         self.display.set_max_status(Status::New);
                         self.edit_x_coord = None;
                     }
@@ -1335,6 +1347,7 @@ pub trait Editor {
         }
 
         self.text.set_str(&text);
+        self.highlighter.highlight(&self.text);
         self.display.set_max_status(Status::New);
 
         cx.redraw(self.id());
