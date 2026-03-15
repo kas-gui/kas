@@ -127,7 +127,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     /// Text is drawn from `pos` and clipped to `bounding_box`.
     ///
     /// The `text` display must be prepared prior to calling this method.
-    /// Typically this is done using a [`crate::theme::Text`] object.
+    /// Typically this is done using a [`crate::text::Text`] object.
     pub fn text_with_color(
         &mut self,
         pos: Vec2,
@@ -263,7 +263,7 @@ pub trait Draw {
     /// Text is drawn from `pos` and clipped to `bounding_box`.
     ///
     /// The `text` display must be prepared prior to calling this method.
-    /// Typically this is done using a [`crate::theme::Text`] object.
+    /// Typically this is done using a [`crate::text::Text`] object.
     fn text(
         &mut self,
         pos: Vec2,
@@ -280,7 +280,7 @@ pub trait Draw {
     /// Draw text decorations (e.g. underlines)
     ///
     /// The `text` display must be prepared prior to calling this method.
-    /// Typically this is done using a [`crate::theme::Text`] object.
+    /// Typically this is done using a [`crate::text::Text`] object.
     fn decorate_text(
         &mut self,
         pos: Vec2,

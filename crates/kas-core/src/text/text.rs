@@ -16,24 +16,17 @@ use crate::theme::{DrawCx, SizeCx, TextClass};
 use crate::{Layout, autoimpl};
 use std::num::NonZeroUsize;
 
-/// Text type-setting object (theme aware)
+/// Text type-setting object
 ///
 /// This struct contains:
 /// -   A [`FormattableText`]
-/// -   A [`TextDisplay`]
-/// -   A [`FontSelector`]
-/// -   Type-setting configuration. Values have reasonable defaults:
-///     -   The font is derived from the [`TextClass`] by [`Self::configure`],
-///         otherwise using [`FontSelector::default()`].
-///     -   The font size is derived from the [`TextClass`] by
-///         [`Self::configure`], otherwise using a default size of 16px.
-///     -   Default text direction and alignment is inferred from the text.
+/// -   A [`ConfiguredDisplay`] (accessible using `*self`)
 ///
-/// This struct tracks the [`TextDisplay`]'s
+/// This struct tracks the
 /// [state of preparation][TextDisplay#status-of-preparation] and will perform
 /// steps as required. Typical usage of this struct is as follows:
 /// -   Construct with some text and [`TextClass`]
-/// -   Configure by calling [`Self::configure`]
+/// -   Configure by calling [`ConfiguredDisplay::configure`]
 /// -   Size and draw using [`Layout`] methods
 #[derive(Clone, Debug)]
 #[autoimpl(Deref, DerefMut using self.inner)]
@@ -101,7 +94,8 @@ impl<T: FormattableText> Text<T> {
 
     /// Access the formattable text object mutably
     ///
-    /// If the text is changed, one **must** call [`Self::require_reprepare`]
+    /// If the text is changed, one **must** call
+    /// <code>self.[require_reprepare][ConfiguredDisplay::require_reprepare]()</code>
     /// after this method then [`Text::prepare`].
     #[inline]
     pub fn text_mut(&mut self) -> &mut T {

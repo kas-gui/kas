@@ -181,7 +181,7 @@ impl SelectionHelper {
     /// the cursor moves.
     ///
     /// The selection is expanded by words or lines (if `lines`). Line expansion
-    /// requires that text has been prepared ([`Text::prepare`]).
+    /// requires that text has been prepared (see [`Text::prepare`][super::Text::prepare]).
     pub fn expand(&mut self, text: &str, display: &ConfiguredDisplay, lines: bool) {
         let mut range = self.edit..self.anchor;
         if range.start > range.end {

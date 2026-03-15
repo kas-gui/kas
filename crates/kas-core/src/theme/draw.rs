@@ -14,6 +14,7 @@ use crate::draw::{Draw, DrawIface, DrawRounded, DrawShared, DrawSharedImpl, Imag
 use crate::event::EventState;
 #[allow(unused)] use crate::event::{Command, ConfigCx};
 use crate::geom::{Coord, Offset, Rect};
+#[allow(unused)] use crate::text::format::FormattableText;
 use crate::text::{TextDisplay, format};
 use crate::theme::ColorsLinear;
 use crate::{Id, Tile, autoimpl};
@@ -308,10 +309,8 @@ impl<'a> DrawCx<'a> {
     /// Draw text decorations (e.g. underlines)
     ///
     /// This does not draw the text itself, but requires most of the same inputs
-    /// as [`Self::text`].
-    ///
-    /// The list of `decorations` may come from [`Text::decorations`] or be any
-    /// other compatible sequence. See also [`FormattableText::decorations`].
+    /// as [`Self::text`]. This method may be called any number of times for a
+    /// single `text`. See also [`FormattableText::decorations`].
     pub fn decorate_text(
         &mut self,
         pos: Coord,
@@ -495,15 +494,15 @@ pub trait ThemeDraw {
 
     /// Draw text with a list of color effects
     ///
+    /// Color `tokens` specify both foreground (text) and background colors.
+    /// Use `&[]` for no effects (uses the theme-default colors), or use a
+    /// sequence such that `effects[i].0` values are strictly increasing.
+    /// A glyph for index `j` in the source text will use effect `tokens[i].1`
+    /// where `i` is the largest value such that `tokens[i].0 <= j`, or the
+    /// default value of [`format::Colors`] if no such `i` exists.
+    ///
     /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
     /// the text is not scrolled.
-    ///
-    /// *Font* effects (e.g. bold, italics, text size) must be baked into the
-    /// [`TextDisplay`] during preparation. In contrast, display effects
-    /// (e.g. color, underline) are applied only when drawing from the provided
-    /// list of `tokens`. This list may be the result of [`Text::color_tokens`]
-    /// or any compatible sequence (including `&[]`). See also
-    /// [`FormattableText::color_tokens`].
     fn text(
         &mut self,
         id: &Id,
@@ -516,10 +515,8 @@ pub trait ThemeDraw {
     /// Draw text decorations (e.g. underlines)
     ///
     /// This does not draw the text itself, but requires most of the same inputs
-    /// as [`Self::text`].
-    ///
-    /// The list of `decorations` may come from [`Text::decorations`] or be any
-    /// other compatible sequence. See also [`FormattableText::decorations`].
+    /// as [`Self::text`]. This method may be called any number of times for a
+    /// single `text`. See also [`FormattableText::decorations`].
     fn decorate_text(
         &mut self,
         id: &Id,

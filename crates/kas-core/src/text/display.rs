@@ -16,6 +16,20 @@ use crate::theme::{DrawCx, SizeCx, TextClass};
 use std::num::NonZeroUsize;
 
 /// A [`TextDisplay`] plus configuration and state tracking
+///
+/// This struct contains:
+/// -   A [`TextDisplay`]
+/// -   A [`FontSelector`]
+/// -   Type-setting configuration. Values have reasonable defaults:
+///     -   The font is derived from the [`TextClass`] by [`Self::configure`],
+///         otherwise using [`FontSelector::default()`].
+///     -   The font size is derived from the [`TextClass`] by
+///         [`Self::configure`], otherwise using a default size of 16px.
+///     -   Default text direction and alignment is inferred from the text.
+///
+/// This struct tracks the
+/// [state of preparation][TextDisplay#status-of-preparation], but is unable to
+/// perform the first step of preparation (run-breaking) by itself.
 #[derive(Clone, Debug)]
 pub struct ConfiguredDisplay {
     font: FontSelector,
@@ -151,7 +165,7 @@ impl ConfiguredDisplay {
 
     /// Force full repreparation of text
     ///
-    /// This may be required after calling [`Self::text_mut`].
+    /// This may be required after calling [`Text::text_mut`](super::Text::text_mut).
     #[inline]
     pub fn require_reprepare(&mut self) {
         self.set_max_status(Status::New);
@@ -200,7 +214,9 @@ impl ConfiguredDisplay {
     ///
     /// Note that effect tokens may further affect the font selector.
     ///
-    /// It is necessary to [`prepare`][Self::prepare] the text after calling this.
+    /// It is necessary to [`prepare`] the text after calling this.
+    ///
+    /// [`prepare`]: super::Text::prepare
     #[inline]
     pub fn set_font(&mut self, font: FontSelector) {
         if font != self.font {
@@ -227,7 +243,9 @@ impl ConfiguredDisplay {
     /// where the dots-per-point is usually `dpp = scale_factor * 96.0 / 72.0`
     /// on PC platforms, or `dpp = 1` on MacOS (or 2 for retina displays).
     ///
-    /// It is necessary to [`prepare`][Self::prepare] the text after calling this.
+    /// It is necessary to [`prepare`] the text after calling this.
+    ///
+    /// [`prepare`]: super::Text::prepare
     #[inline]
     pub fn set_font_size(&mut self, dpem: f32) {
         if dpem != self.dpem {
@@ -238,7 +256,7 @@ impl ConfiguredDisplay {
 
     /// Set font size
     ///
-    /// This is an alternative to [`Text::set_font_size`]. It is assumed
+    /// This is an alternative to [`Self::set_font_size`]. It is assumed
     /// that 72 Points = 1 Inch and the base screen resolution is 96 DPI.
     /// (Note: MacOS uses a different definition where 1 Point = 1 Pixel.)
     #[inline]
@@ -254,7 +272,9 @@ impl ConfiguredDisplay {
 
     /// Set the base text direction
     ///
-    /// It is necessary to [`prepare`][Self::prepare] the text after calling this.
+    /// It is necessary to [`prepare`] the text after calling this.
+    ///
+    /// [`prepare`]: super::Text::prepare
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
         if direction != self.direction {
@@ -271,10 +291,12 @@ impl ConfiguredDisplay {
 
     /// Set text alignment
     ///
-    /// When vertical alignment is [`Align::Default`], [`Self::prepare`] will
+    /// When vertical alignment is [`Align::Default`], [`prepare`] will
     /// set the vertical size of this [`Layout`] to that of the text.
     ///
-    /// It is necessary to [`prepare`][Self::prepare] the text after calling this.
+    /// It is necessary to [`prepare`] the text after calling this.
+    ///
+    /// [`prepare`]: super::Text::prepare
     #[inline]
     pub fn set_align(&mut self, align: (Align, Align)) {
         if align != self.align {
@@ -441,9 +463,9 @@ impl ConfiguredDisplay {
 
     /// Offset prepared content to avoid left-overhangs
     ///
-    /// This might be called after [`Self::prepare`] to ensure content does not
-    /// overhang to the left (i.e. that the x-component of the first [`Vec2`]
-    /// returned by [`Self::bounding_box`] is not negative).
+    /// This might be called after [`prepare`][super::Text::prepare] to ensure
+    /// content does not overhang to the left (i.e. that the x-component of the
+    /// first [`Vec2`] returned by [`Self::bounding_box`] is not negative).
     ///
     /// This is a special utility intended for content which may be scrolled
     /// using the size reported by [`Self::bounding_box`]. Note that while

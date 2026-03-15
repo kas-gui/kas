@@ -160,7 +160,7 @@ pub trait FormattableText: std::cmp::PartialEq {
     ///
     /// These tokens are used to select the font and font size.
     /// Each text object has a configured
-    /// [font size][crate::theme::Text::set_font_size] and [`FontSelector`]; these
+    /// [font size][super::ConfiguredDisplay::set_font_size] and [`FontSelector`]; these
     /// values are passed as a reference (`dpem` and `font`).
     ///
     /// The iterator is expected to yield a stream of tokens such that
