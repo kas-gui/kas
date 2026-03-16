@@ -23,7 +23,7 @@ struct Fmt {
 /// of the embedded highlighter.
 #[derive(Clone, Debug)]
 #[kas::autoimpl(PartialEq ignore self.highlighter)]
-pub struct Text<H: Highlighter> {
+pub(crate) struct Text<H: Highlighter> {
     highlighter: H,
     fonts: Vec<Fmt>,
     colors: Vec<(u32, Colors)>,

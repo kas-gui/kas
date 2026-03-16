@@ -12,7 +12,7 @@ mod text;
 pub use syntect::{
     SyntaxReference as SyntectSyntax, SyntaxSet as SyntectSyntaxSet, SyntectHighlighter,
 };
-pub use text::Text;
+pub(crate) use text::Text;
 
 use kas::event::ConfigCx;
 use kas::text::fonts::{FontStyle, FontWeight};
