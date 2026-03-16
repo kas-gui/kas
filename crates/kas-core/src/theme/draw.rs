@@ -591,18 +591,3 @@ pub trait ThemeDraw {
     /// Draw an image
     fn image(&mut self, id: ImageId, rect: Rect);
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    fn _draw_ext(mut draw: DrawCx) {
-        // We can't call this method without constructing an actual ThemeDraw.
-        // But we don't need to: we just want to test that methods are callable.
-
-        let _scale = draw.size_cx().scale_factor();
-
-        let text = crate::theme::Text::new("sample", TextClass::Label, false);
-        draw.text(Rect::ZERO, &text)
-    }
-}
