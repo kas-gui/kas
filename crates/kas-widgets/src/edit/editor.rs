@@ -15,7 +15,7 @@ use kas::event::{
 use kas::geom::{Rect, Vec2};
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
-use kas::text::format::{Color, EditableText};
+use kas::text::format::Color;
 use kas::text::{ConfiguredDisplay, CursorRange, NotReady, SelectionHelper, Status, format};
 use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
@@ -1196,7 +1196,7 @@ impl<H: Highlighter> EditorComponent<H> {
             Action::UndoRedo(redo) => {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
                     if self.text.as_str() != text {
-                        self.text.set_str(text);
+                        self.text = text.clone();
                         self.display.set_max_status(Status::New);
                         self.edit_x_coord = None;
                     }
@@ -1342,13 +1342,13 @@ pub trait Editor {
     ///
     /// Returns `true` if the text is ready and may have changed.
     fn set_string(&mut self, cx: &mut EventState, text: String) -> bool {
-        self.cancel_selection_and_ime(cx);
-
         if self.as_str() == text {
             return false; // no change
         }
 
-        self.text.set_str(&text);
+        self.cancel_selection_and_ime(cx);
+
+        self.text = text;
         self.display.set_max_status(Status::New);
 
         cx.redraw(self.id());

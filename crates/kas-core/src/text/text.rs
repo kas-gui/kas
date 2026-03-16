@@ -5,7 +5,7 @@
 
 //! Theme-applied Text element
 
-use super::format::{Colors, Decoration, EditableText, FormattableText};
+use super::format::{Colors, Decoration, FormattableText};
 use super::*;
 use crate::cast::Cast;
 use crate::draw::color::Rgba;
@@ -263,7 +263,7 @@ impl<T: FormattableText> Text<T> {
 }
 
 /// Text editing operations
-impl<T: EditableText> Text<T> {
+impl Text<String> {
     /// Insert a `text` at the given position
     ///
     /// This may be used to edit the raw text instead of replacing it.
@@ -294,17 +294,11 @@ impl<T: EditableText> Text<T> {
 
     /// Replace the whole text
     ///
-    /// Returns `true` when new `text` contents do not match old contents. In
-    /// this case the new `text` is assigned, but the caller must also call
-    /// [`Text::prepare`] afterwards.
+    /// It is recommended to only call this when `text != self.as_str()` since
+    /// text preparation is relatively slow.
     #[inline]
-    pub fn set_str(&mut self, text: &str) -> bool {
-        if self.text.as_str() == text {
-            return false; // no change
-        }
-
-        self.text.set_str(text);
+    pub fn set_string(&mut self, text: String) {
+        self.text = text;
         self.set_max_status(Status::New);
-        true
     }
 }

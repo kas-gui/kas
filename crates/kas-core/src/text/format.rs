@@ -258,35 +258,6 @@ impl<F: FormattableText + ?Sized> FormattableText for &F {
     }
 }
 
-/// Editable text
-pub trait EditableText: FormattableText {
-    /// Insert a `text` at the given position
-    fn insert_str(&mut self, index: usize, text: &str);
-
-    /// Replace a section of text
-    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str);
-
-    /// Replace the whole text
-    fn set_str(&mut self, text: &str);
-}
-
-impl EditableText for String {
-    #[inline]
-    fn insert_str(&mut self, index: usize, text: &str) {
-        self.insert_str(index, text);
-    }
-
-    #[inline]
-    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
-        self.replace_range(range, replace_with);
-    }
-
-    #[inline]
-    fn set_str(&mut self, text: &str) {
-        *self = text.to_string();
-    }
-}
-
 #[cfg(test)]
 #[test]
 fn sizes() {
