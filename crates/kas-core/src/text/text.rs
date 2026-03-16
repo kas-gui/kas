@@ -217,14 +217,18 @@ impl<T: FormattableText> Text<T> {
     ///
     /// Returns `true` on success when some action is performed, `false`
     /// when the text is already prepared.
+    #[inline]
     pub fn prepare(&mut self) -> bool {
         if self.is_prepared() {
             return false;
         }
 
-        self.prepare_runs();
-        debug_assert!(self.status() >= Status::LevelRuns);
-        self.inner.prepare_wrap();
+        fn inner<T: FormattableText>(this: &mut Text<T>) {
+            this.prepare_runs();
+            debug_assert!(this.status() >= Status::LevelRuns);
+            this.inner.prepare_wrap();
+        }
+        inner(self);
         true
     }
 

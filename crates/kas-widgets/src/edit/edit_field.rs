@@ -177,13 +177,11 @@ mod EditField {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
-            let size = self.content_size();
             if !self.has_input_focus() {
                 self.guard.update(&mut self.editor.0, cx, data);
             }
-            if size != self.content_size() {
-                cx.resize();
-            }
+
+            self.editor.prepare(cx);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
@@ -192,15 +190,19 @@ mod EditField {
                 EventAction::Used | EventAction::Cursor => Used,
                 EventAction::FocusGained => {
                     self.guard.focus_gained(&mut self.editor.0, cx, data);
+                    self.editor.prepare(cx);
                     Used
                 }
                 EventAction::FocusLost => {
                     self.guard.focus_lost(&mut self.editor.0, cx, data);
+                    self.editor.prepare(cx);
                     Used
                 }
                 EventAction::Activate(code) => {
                     cx.depress_with_key(&self, code);
-                    self.guard.activate(&mut self.editor.0, cx, data)
+                    let result = self.guard.activate(&mut self.editor.0, cx, data);
+                    self.editor.prepare(cx);
+                    result
                 }
                 EventAction::Edit => {
                     self.call_guard_edit(cx, data);
@@ -281,6 +283,7 @@ mod EditField {
         #[inline]
         pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {
             self.guard.activate(&mut self.editor.0, cx, data);
+            self.editor.prepare(cx);
         }
 
         /// Call the [`EditGuard`]'s `edit` method
@@ -290,6 +293,7 @@ mod EditField {
         pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
             self.editor.clear_error();
             self.guard.edit(&mut self.editor.0, cx, data);
+            self.editor.prepare(cx);
         }
     }
 }

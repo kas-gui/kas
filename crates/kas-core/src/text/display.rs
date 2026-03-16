@@ -40,7 +40,7 @@ impl Layout for ConfiguredDisplay {
         self.rect
     }
 
-    /// The display should be prepared before calling this method, otherwise the
+    /// [`Self::prepare_runs`] should be called before this method otherwise the
     /// result will have zero size.
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
         let rules = if axis.is_horizontal() {

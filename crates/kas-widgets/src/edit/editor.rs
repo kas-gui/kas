@@ -91,6 +91,7 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        self.prepare_runs();
         self.0.display.size_rules(cx, axis)
     }
 
@@ -218,7 +219,76 @@ impl<H: Highlighter> Component<H> {
         }
         self.0.display.configure(&mut cx.size_cx());
 
-        self.0.prepare();
+        self.prepare(cx);
+    }
+
+    #[inline]
+    fn prepare_runs(&mut self) {
+        fn inner<H: Highlighter>(this: &mut Component<H>) {
+            this.0.highlighter.highlight(&this.0.text);
+            let (dpem, font) = (this.0.display.font_size(), this.0.display.font());
+            this.0.display.prepare_runs(
+                this.0.text.as_str(),
+                this.0.highlighter.font_tokens(dpem, font),
+            );
+        }
+
+        if self.0.display.status() < Status::LevelRuns {
+            inner(self)
+        }
+    }
+
+    /// Prepare text for display, as necessary
+    ///
+    /// Requests a resize when required.
+    ///
+    /// Returns `true` on success when some action is performed, `false`
+    /// when the text is already prepared.
+    #[inline]
+    pub fn prepare(&mut self, cx: &mut ConfigCx) -> bool {
+        if self.0.display.is_prepared() {
+            return false;
+        }
+
+        fn inner<H: Highlighter>(this: &mut Component<H>, cx: &mut ConfigCx) {
+            this.prepare_runs();
+            debug_assert!(this.0.display.status() >= Status::LevelRuns);
+
+            if this.rect().size.0 != 0 {
+                let bb = this.0.display.bounding_box();
+                this.0.display.prepare_wrap();
+                if bb != this.0.display.bounding_box() {
+                    cx.resize();
+                }
+            }
+        }
+        inner(self, cx);
+        true
+    }
+
+    /// Prepare text
+    ///
+    /// Updates the view offset (scroll position) if the content size changes or
+    /// `force_set_offset`. Requests redraw and resize as appropriate.
+    fn prepare_and_scroll(&mut self, cx: &mut EventCx, force_set_offset: bool) {
+        let mut set_offset = force_set_offset;
+        if !self.0.display.is_prepared() {
+            let bb = self.0.display.bounding_box();
+
+            self.prepare_runs();
+            self.0.display.prepare_wrap();
+            self.0.display.ensure_no_left_overhang();
+
+            cx.redraw();
+            if bb != self.0.display.bounding_box() {
+                cx.resize();
+                set_offset = true;
+            }
+        }
+
+        if set_offset {
+            self.0.set_view_offset_from_cursor(cx);
+        }
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -228,7 +298,7 @@ impl<H: Highlighter> Component<H> {
     /// May partially prepare the text for display, but does not otherwise
     /// modify `self`.
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
-        self.0.prepare_runs();
+        self.prepare_runs();
         self.0
             .display
             .unchecked_display()
@@ -421,13 +491,17 @@ impl<H: Highlighter> Component<H> {
                 EventAction::Used
             }
             Event::Command(cmd, code) => match self.0.cmd_action(cx, cmd, code) {
-                Ok(action) => action,
+                Ok(action) => {
+                    self.prepare_and_scroll(cx, true);
+                    action
+                }
                 Err(NotReady) => EventAction::Used,
             },
             Event::Key(event, false) if event.state == ElementState::Pressed => {
                 if let Some(text) = &event.text {
                     self.0.save_undo_state(Some(EditOp::KeyInput));
                     if self.0.received_text(cx, text) == Used {
+                        self.prepare_and_scroll(cx, false);
                         EventAction::Edit
                     } else {
                         EventAction::Unused
@@ -439,7 +513,10 @@ impl<H: Highlighter> Component<H> {
                         .try_match_event(cx.modifiers(), event);
                     if let Some(cmd) = opt_cmd {
                         match self.0.cmd_action(cx, cmd, Some(event.physical_key)) {
-                            Ok(action) => action,
+                            Ok(action) => {
+                                self.prepare_and_scroll(cx, true);
+                                action
+                            }
                             Err(NotReady) => EventAction::Used,
                         }
                     } else {
@@ -500,7 +577,7 @@ impl<H: Highlighter> Component<H> {
                         edit_range: edit_range.cast(),
                     };
                     self.0.edit_x_coord = None;
-                    self.0.prepare_and_scroll(cx, false);
+                    self.prepare_and_scroll(cx, false);
                     EventAction::Used
                 }
                 Ime::Commit { text } => {
@@ -518,7 +595,7 @@ impl<H: Highlighter> Component<H> {
                         edit_range: self.0.selection.range().cast(),
                     };
                     self.0.edit_x_coord = None;
-                    self.0.prepare_and_scroll(cx, false);
+                    self.prepare_and_scroll(cx, false);
                     EventAction::Edit
                 }
                 Ime::DeleteSurrounding {
@@ -580,7 +657,7 @@ impl<H: Highlighter> Component<H> {
                     self.0.replace_range(index..index, &content[range.clone()]);
                     self.0.selection.set_cursor(index + range.len());
                     self.0.edit_x_coord = None;
-                    self.0.prepare_and_scroll(cx, false);
+                    self.prepare_and_scroll(cx, false);
 
                     EventAction::Edit
                 } else {
@@ -684,36 +761,6 @@ impl<H: Highlighter> EditorComponent<H> {
     fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
         self.text.replace_range(range, replace_with);
         self.display.set_max_status(Status::New);
-    }
-
-    #[inline]
-    fn prepare_runs(&mut self) {
-        if self.display.status() < Status::LevelRuns {
-            self.highlighter.highlight(&self.text);
-            let (dpem, font) = (self.display.font_size(), self.display.font());
-            self.display
-                .prepare_runs(self.text.as_str(), self.highlighter.font_tokens(dpem, font));
-        }
-    }
-
-    /// Prepare text for display, as necessary
-    ///
-    /// [`Self::set_rect`] must be called before this method.
-    ///
-    /// Does all preparation steps necessary in order to display or query the
-    /// layout of this text. Text is aligned within the set [`Rect`].
-    ///
-    /// Returns `true` on success when some action is performed, `false`
-    /// when the text is already prepared.
-    fn prepare(&mut self) -> bool {
-        if self.display.is_prepared() {
-            return false;
-        }
-
-        self.prepare_runs();
-        debug_assert!(self.display.status() >= Status::LevelRuns);
-        self.display.prepare_wrap();
-        true
     }
 
     /// Cancel on-going selection and IME actions
@@ -852,27 +899,6 @@ impl<H: Highlighter> EditorComponent<H> {
             .try_push((self.clone_string(), self.cursor_range()));
     }
 
-    /// Prepare text
-    ///
-    /// Updates the view offset (scroll position) if the content size changes or
-    /// `force_set_offset`. Requests redraw and resize as appropriate.
-    fn prepare_and_scroll(&mut self, cx: &mut EventCx, force_set_offset: bool) {
-        let bb = self.display.bounding_box();
-        if self.prepare() {
-            self.display.ensure_no_left_overhang();
-            cx.redraw();
-        }
-
-        let mut set_offset = force_set_offset;
-        if bb != self.display.bounding_box() {
-            cx.resize();
-            set_offset = true;
-        }
-        if set_offset {
-            self.set_view_offset_from_cursor(cx);
-        }
-    }
-
     /// Insert `text` at the cursor position
     ///
     /// Committing undo state is the responsibility of the caller.
@@ -894,7 +920,6 @@ impl<H: Highlighter> EditorComponent<H> {
         }
         self.edit_x_coord = None;
 
-        self.prepare_and_scroll(cx, false);
         Used
     }
 
@@ -1211,7 +1236,6 @@ impl<H: Highlighter> EditorComponent<H> {
             }
         };
 
-        self.prepare_and_scroll(cx, true);
         Ok(action)
     }
 
@@ -1342,11 +1366,9 @@ pub trait Editor {
     ///
     /// This method clears the error state but does not call any [`EditGuard`]
     /// actions; consider also calling [`EditField::call_guard_edit`].
-    ///
-    /// Returns `true` if the text is ready and may have changed.
-    fn set_string(&mut self, cx: &mut EventState, text: String) -> bool {
+    fn set_string(&mut self, cx: &mut EventState, text: String) {
         if self.as_str() == text {
-            return false; // no change
+            return; // no change
         }
 
         self.cancel_selection_and_ime(cx);
@@ -1354,12 +1376,10 @@ pub trait Editor {
         self.text = text;
         self.display.set_max_status(Status::New);
 
-        cx.redraw(self.id());
         let len = self.as_str().len();
         self.selection.set_max_len(len);
         self.edit_x_coord = None;
         self.error_state = None;
-        self.prepare()
     }
 
     /// Replace selected text
@@ -1369,10 +1389,8 @@ pub trait Editor {
     ///
     /// This method clears the error state but does not call any [`EditGuard`]
     /// actions; consider also calling [`EditField::call_guard_edit`].
-    ///
-    /// Returns `true` if the text is ready and may have changed.
     #[inline]
-    fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) -> bool {
+    fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
         self.cancel_selection_and_ime(cx);
 
         let index = self.selection.edit_index();
@@ -1387,7 +1405,6 @@ pub trait Editor {
         }
         self.edit_x_coord = None;
         self.error_state = None;
-        self.prepare()
     }
 
     /// Access the cursor index / selection range
