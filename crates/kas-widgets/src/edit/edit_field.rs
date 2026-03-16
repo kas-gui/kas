@@ -288,7 +288,7 @@ mod EditField {
         /// This call also clears the error state (see [`Editor::set_error`]).
         #[inline]
         pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
-            self.clear_error();
+            self.editor.clear_error();
             self.guard.edit(&mut self.editor.0, cx, data);
         }
     }

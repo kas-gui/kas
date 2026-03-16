@@ -47,8 +47,7 @@ pub struct EditorComponent<H: Highlighter> {
     undo_stack: UndoStack<(String, CursorRange)>,
     has_key_focus: bool,
     current: CurrentAction,
-    error_state: bool,
-    error_message: Option<Cow<'static, str>>,
+    error_state: Option<Option<Cow<'static, str>>>,
     input_handler: TextInput,
 }
 
@@ -125,8 +124,7 @@ impl<H: Default + Highlighter> Default for Component<H> {
             undo_stack: UndoStack::new(),
             has_key_focus: false,
             current: CurrentAction::None,
-            error_state: false,
-            error_message: None,
+            error_state: None,
             input_handler: Default::default(),
         })
     }
@@ -168,7 +166,6 @@ impl<H: Highlighter> Component<H> {
             has_key_focus: self.0.has_key_focus,
             current: self.0.current,
             error_state: self.0.error_state,
-            error_message: self.0.error_message,
             input_handler: self.0.input_handler,
         })
     }
@@ -180,7 +177,7 @@ impl<H: Highlighter> Component<H> {
 
     /// Get the background color
     pub fn background_color(&self) -> Background {
-        if self.0.error_state {
+        if self.0.error_state.is_some() {
             Background::Error
         } else if let Some(c) = self.0.colors.background.as_rgba() {
             Background::Rgb(c.as_rgb())
@@ -651,6 +648,12 @@ impl<H: Highlighter> Component<H> {
                 }
             },
         }
+    }
+
+    /// Clear the error state
+    #[inline]
+    pub fn clear_error(&mut self) {
+        self.0.error_state = None;
     }
 }
 
@@ -1355,7 +1358,7 @@ pub trait Editor {
         let len = self.as_str().len();
         self.selection.set_max_len(len);
         self.edit_x_coord = None;
-        self.clear_error();
+        self.error_state = None;
         self.prepare()
     }
 
@@ -1383,7 +1386,7 @@ pub trait Editor {
             self.selection.set_cursor(index + text.len());
         }
         self.edit_x_coord = None;
-        self.clear_error();
+        self.error_state = None;
         self.prepare()
     }
 
@@ -1438,19 +1441,13 @@ pub trait Editor {
     /// Get whether the input state is erroneous
     #[inline]
     fn has_error(&self) -> bool {
-        self.error_state
+        self.error_state.is_some()
     }
 
     /// Get the error message, if any
     #[inline]
     fn error_message(&self) -> Option<&str> {
-        self.error_message.as_deref()
-    }
-
-    /// Clear the error state
-    fn clear_error(&mut self) {
-        self.error_state = false;
-        self.error_message = None;
+        self.error_state.as_ref().and_then(|state| state.as_deref())
     }
 
     /// Mark the input as erroneous with an optional message
@@ -1462,8 +1459,7 @@ pub trait Editor {
     /// When set, the input field's background is drawn red. If a message is
     /// supplied, then a tooltip will be available on mouse-hover.
     fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
-        self.error_state = true;
-        self.error_message = message;
+        self.error_state = Some(message);
         cx.redraw(&self.id);
     }
 }
