@@ -121,7 +121,10 @@ fn widgets() -> Page<AppData> {
                 if let Some(MsgEdit) = cx.try_pop() {
                     // TODO: do not always set text: if this is a true pop-up it
                     // should not normally lose data.
-                    self.popup.inner.set_text(cx, data.text.clone());
+                    self.popup.inner.edit(cx, |edit, cx| {
+                        edit.clear(cx);
+                        edit.set_string(cx, data.text.clone());
+                    });
                     // let ed = TextEdit::new(text, true);
                     // cx.add_window::<()>(ed.into_window("Edit text"));
                     // TODO: cx.add_modal(..)

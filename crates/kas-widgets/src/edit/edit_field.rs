@@ -12,7 +12,7 @@ use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, TextClass};
 use std::fmt::{Debug, Display};
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::str::FromStr;
 
 #[impl_self]
@@ -77,12 +77,6 @@ mod EditField {
         type Target = EditorComponent<H>;
         fn deref(&self) -> &Self::Target {
             &self.editor.0
-        }
-    }
-
-    impl DerefMut for Self {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            &mut self.editor.0
         }
     }
 
@@ -217,13 +211,15 @@ mod EditField {
             }
 
             if let Some(SetValueText(string)) = cx.try_pop() {
-                self.pre_commit();
-                self.set_string(cx, string);
-                self.call_guard_edit(cx, data);
+                self.edit(cx, data, |edit, cx| {
+                    edit.pre_commit();
+                    edit.set_string(cx, string);
+                });
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
-                self.pre_commit();
-                self.replace_selected_text(cx, &text);
-                self.call_guard_edit(cx, data);
+                self.edit(cx, data, |edit, cx| {
+                    edit.pre_commit();
+                    edit.replace_selected_text(cx, &text);
+                });
             }
         }
     }
@@ -290,7 +286,7 @@ mod EditField {
         ///
         /// This call also clears the error state (see [`Editor::set_error`]).
         #[inline]
-        pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
+        fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
             self.editor.clear_error();
             self.guard.edit(&mut self.editor.0, cx, data);
             self.editor.prepare(cx);
@@ -311,9 +307,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
     /// Construct a read-only `EditField` displaying some `String` value
     #[inline]
     pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditField<StringGuard<A>> {
-        let mut field = EditField::new(StringGuard::new(value_fn));
-        field.set_editable(false);
-        field
+        EditField::new(StringGuard::new(value_fn)).with_editable(false)
     }
 
     /// Construct an `EditField` for a parsable value (e.g. a number)
@@ -367,8 +361,7 @@ impl<A: 'static> EditField<StringGuard<A>> {
         M: Debug + 'static,
     {
         self.guard = self.guard.with_msg(msg_fn);
-        self.set_editable(true);
-        self
+        self.with_editable(true)
     }
 }
 
@@ -387,7 +380,7 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     #[inline]
     #[must_use]
     pub fn with_editable(mut self, editable: bool) -> Self {
-        self.set_editable(editable);
+        self.editor.0.set_editable(editable);
         self
     }
 
@@ -440,5 +433,20 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
         self.set_width_em(min_em, ideal_em);
         self
+    }
+
+    /// Edit text contents
+    ///
+    /// This method calls the `edit` closure, then [`EditGuard::edit`], then
+    /// returns the result of calling `edit`.
+    pub fn edit<T>(
+        &mut self,
+        cx: &mut EventCx,
+        data: &G::Data,
+        edit: impl FnOnce(&mut EditorComponent<H>, &mut EventCx) -> T,
+    ) -> T {
+        let result = edit(&mut self.editor.0, cx);
+        self.call_guard_edit(cx, data);
+        result
     }
 }

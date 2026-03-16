@@ -1330,9 +1330,6 @@ pub trait Editor {
     }
 
     /// Clear text contents and undo history
-    ///
-    /// This method does not call any [`EditGuard`] actions; consider also
-    /// calling [`EditField::call_guard_edit`].
     #[inline]
     fn clear(&mut self, cx: &mut EventState) {
         self.last_edit = Some(EditOp::Initial);
@@ -1344,9 +1341,6 @@ pub trait Editor {
     ///
     /// This does not interact with undo history; see also [`Self::clear`],
     /// [`Self::pre_commit`].
-    ///
-    /// This method does not call any [`EditGuard`] actions; consider also
-    /// calling [`EditField::call_guard_edit`].
     ///
     /// Returns `true` if the text may have changed.
     #[inline]
@@ -1363,9 +1357,6 @@ pub trait Editor {
     ///
     /// This does not interact with undo history or call action handlers on the
     /// guard.
-    ///
-    /// This method clears the error state but does not call any [`EditGuard`]
-    /// actions; consider also calling [`EditField::call_guard_edit`].
     fn set_string(&mut self, cx: &mut EventState, text: String) {
         if self.as_str() == text {
             return; // no change
@@ -1386,9 +1377,6 @@ pub trait Editor {
     ///
     /// This does not interact with undo history or call action handlers on the
     /// guard.
-    ///
-    /// This method clears the error state but does not call any [`EditGuard`]
-    /// actions; consider also calling [`EditField::call_guard_edit`].
     #[inline]
     fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
         self.cancel_selection_and_ime(cx);

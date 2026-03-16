@@ -14,7 +14,7 @@
 //! and their design is likely to change.
 
 use crate::adapt::AdaptWidgetAny;
-use crate::edit::Editor;
+use crate::edit::{Editor, EditorComponent, highlight::Plain};
 use crate::{AccessLabel, Button, EditBox, Filler, ScrollLabel, SelectableLabel};
 use kas::prelude::*;
 use kas::runner::AppData;
@@ -300,6 +300,7 @@ mod TextEdit {
     /// Emits a [`TextEditResult`] message when the "Ok" or "Cancel" button is
     /// pressed. When used as a pop-up, it is up to the caller to close on this
     /// message.
+    #[autoimpl(Deref<Target = EditorComponent<Plain>> using self.edit)]
     pub struct TextEdit {
         core: widget_core!(),
         #[widget]
@@ -315,10 +316,15 @@ mod TextEdit {
             }
         }
 
-        /// Set text, clearing undo history
-        pub fn set_text(&mut self, cx: &mut EventState, text: impl ToString) {
-            self.edit.clear(cx);
-            self.edit.set_string(cx, text.to_string());
+        /// Edit text contents
+        ///
+        /// See [`EditBox::edit`].
+        pub fn edit<T>(
+            &mut self,
+            cx: &mut EventCx,
+            edit: impl FnOnce(&mut EditorComponent<Plain>, &mut EventCx) -> T,
+        ) -> T {
+            self.edit.edit(cx, &(), edit)
         }
 
         /// Build a [`Window`]

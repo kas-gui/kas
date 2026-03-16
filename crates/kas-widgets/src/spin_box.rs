@@ -460,18 +460,19 @@ mod SpinBox {
             } else if let Some(DecrementStep) = cx.try_pop() {
                 Some(self.edit.guard.value.sub_step(self.edit.guard.step))
             } else if let Some(SetValueText(string)) = cx.try_pop() {
-                self.edit.set_string(cx, string);
-                self.edit.call_guard_edit(cx, data);
+                self.edit
+                    .edit(cx, data, |edit, cx| edit.set_string(cx, string));
                 self.edit.guard.parsed
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
-                self.edit.replace_selected_text(cx, &text);
-                self.edit.call_guard_edit(cx, data);
+                self.edit
+                    .edit(cx, data, |edit, cx| edit.replace_selected_text(cx, &text));
                 self.edit.guard.parsed
             } else {
                 None
             };
 
             if let Some(value) = new_value {
+                self.edit.guard.value = value;
                 if let Some(ref f) = self.on_change {
                     f(cx, data, value);
                 }

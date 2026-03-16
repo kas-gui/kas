@@ -84,8 +84,7 @@ pub trait EditGuard: Sized {
     ///
     /// This function is called after the text is updated (including by keyboard
     /// input, an undo action or by a message like
-    /// [`kas::messages::SetValueText`]). The exceptions are setter methods like
-    /// [`clear`](Editor::clear) and [`set_string`](Editor::set_string).
+    /// [`kas::messages::SetValueText`]).
     ///
     /// The guard may call [`Editor::set_error`] here.
     /// The error state is cleared immediately before calling this method.
