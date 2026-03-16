@@ -32,13 +32,12 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 /// longer be needed once `impl trait` is stabilised for associated types.
 /// (Alternatively, [`Editor`] could be re-implemented on the above widgets;
 /// this is preferable in theory but requires a lot of tedious code.)
-#[autoimpl(Debug where H: trait)]
-pub struct EditorComponent<H: Highlighter> {
+#[autoimpl(Debug)]
+pub struct EditorComponent {
     // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
     id: Id,
     editable: bool,
     display: ConfiguredDisplay,
-    highlighter: highlight::Text<H>,
     text: String,
     colors: SchemeColors,
     selection: SelectionHelper,
@@ -68,7 +67,7 @@ pub struct EditorComponent<H: Highlighter> {
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug where H: trait)]
-pub struct Component<H: Highlighter>(pub EditorComponent<H>);
+pub struct Component<H: Highlighter>(pub EditorComponent, highlight::Text<H>);
 
 impl<H: Highlighter> Deref for Component<H> {
     type Target = ConfiguredDisplay;
@@ -112,11 +111,10 @@ impl<H: Highlighter> Layout for Component<H> {
 impl<H: Default + Highlighter> Default for Component<H> {
     #[inline]
     fn default() -> Self {
-        Component(EditorComponent {
+        let editor = EditorComponent {
             id: Id::default(),
             editable: true,
             display: ConfiguredDisplay::new(TextClass::Editor, false),
-            highlighter: Default::default(),
             text: Default::default(),
             colors: SchemeColors::default(),
             selection: Default::default(),
@@ -127,7 +125,9 @@ impl<H: Default + Highlighter> Default for Component<H> {
             current: CurrentAction::None,
             error_state: None,
             input_handler: Default::default(),
-        })
+        };
+
+        Component(editor, Default::default())
     }
 }
 
@@ -136,12 +136,13 @@ impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
     fn from(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
-        Component(EditorComponent {
-            highlighter: highlight::Text::new(H::default()),
+        let editor = EditorComponent {
             text,
             selection: SelectionHelper::from(len),
             ..Self::default().0
-        })
+        };
+
+        Component(editor, highlight::Text::new(H::default()))
     }
 }
 
@@ -149,31 +150,12 @@ impl<H: Highlighter> Component<H> {
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
-        let class = self.0.class();
-        let wrap = self.0.multi_line();
-        let text = self.0.text;
-
-        Component(EditorComponent {
-            id: self.0.id,
-            editable: self.0.editable,
-            display: ConfiguredDisplay::new(class, wrap),
-            highlighter: highlight::Text::new(highlighter),
-            text,
-            colors: self.0.colors,
-            selection: self.0.selection,
-            edit_x_coord: self.0.edit_x_coord,
-            last_edit: self.0.last_edit,
-            undo_stack: self.0.undo_stack,
-            has_key_focus: self.0.has_key_focus,
-            current: self.0.current,
-            error_state: self.0.error_state,
-            input_handler: self.0.input_handler,
-        })
+        Component(self.0, highlight::Text::new(highlighter))
     }
 
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
-        self.0.highlighter = highlight::Text::new(highlighter);
+        self.1 = highlight::Text::new(highlighter);
     }
 
     /// Get the background color
@@ -207,10 +189,10 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.0.id = id;
-        if self.0.highlighter.configure(cx) {
+        if self.1.configure(cx) {
             self.0.display.set_max_status(Status::New);
         }
-        self.0.colors = self.0.highlighter.scheme_colors();
+        self.0.colors = self.1.scheme_colors();
         if self.0.colors.selection_foreground == Color::default() {
             self.0.colors.selection_foreground = Color::SELECTION;
         }
@@ -225,12 +207,11 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     fn prepare_runs(&mut self) {
         fn inner<H: Highlighter>(this: &mut Component<H>) {
-            this.0.highlighter.highlight(&this.0.text);
+            this.1.highlight(&this.0.text);
             let (dpem, font) = (this.0.display.font_size(), this.0.display.font());
-            this.0.display.prepare_runs(
-                this.0.text.as_str(),
-                this.0.highlighter.font_tokens(dpem, font),
-            );
+            this.0
+                .display
+                .prepare_runs(this.0.text.as_str(), this.1.font_tokens(dpem, font));
         }
 
         if self.0.display.status() < Status::LevelRuns {
@@ -323,7 +304,7 @@ impl<H: Highlighter> Component<H> {
         let pos = self.rect().pos - offset;
         let range: Range<u32> = self.0.selection.range().cast();
 
-        let color_tokens = self.0.highlighter.color_tokens();
+        let color_tokens = self.1.color_tokens();
         let default_colors = format::Colors {
             foreground: self.0.colors.foreground,
             background: None,
@@ -407,7 +388,7 @@ impl<H: Highlighter> Component<H> {
         };
         draw.text(pos, rect, display, tokens);
 
-        let decorations = self.0.highlighter.decorations();
+        let decorations = self.1.decorations();
         if !decorations.is_empty() {
             draw.decorate_text(pos, rect, display, decorations);
         }
@@ -734,7 +715,7 @@ impl<H: Highlighter> Component<H> {
     }
 }
 
-impl<H: Highlighter> EditorComponent<H> {
+impl EditorComponent {
     /// Insert a `text` at the given position
     ///
     /// This may be used to edit the raw text instead of replacing it.
@@ -1284,7 +1265,7 @@ impl<H: Highlighter> EditorComponent<H> {
 }
 
 /// Text editor interface
-#[kas::split_impl(for<H: Highlighter> EditorComponent<H>)]
+#[kas::split_impl(for<> EditorComponent)]
 pub trait Editor {
     /// Get a reference to the widget's identifier
     #[inline]
