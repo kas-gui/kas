@@ -68,6 +68,7 @@ pub trait Highlighter {
     /// theme / color scheme.
     ///
     /// The method should return `true` when the highlighter should be re-run.
+    #[must_use]
     fn configure(&mut self, cx: &mut ConfigCx) -> bool;
 
     /// Get scheme colors

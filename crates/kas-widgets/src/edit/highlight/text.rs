@@ -52,11 +52,12 @@ impl<H: Highlighter> Text<H> {
     ///
     /// This is called when the widget is configured. It may be used to set the
     /// theme / color scheme.
+    ///
+    /// Returns `true` when the highlighter must be re-run.
     #[inline]
-    pub fn configure(&mut self, cx: &mut ConfigCx, text: &str) {
-        if self.highlighter.configure(cx) {
-            self.highlight(text);
-        }
+    #[must_use]
+    pub fn configure(&mut self, cx: &mut ConfigCx) -> bool {
+        self.highlighter.configure(cx)
     }
 
     /// Get scheme colors

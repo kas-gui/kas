@@ -209,7 +209,9 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.0.id = id;
-        self.0.highlighter.configure(cx, &self.0.text);
+        if self.0.highlighter.configure(cx) {
+            self.0.display.set_max_status(Status::New);
+        }
         self.0.colors = self.0.highlighter.scheme_colors();
         if self.0.colors.selection_foreground == Color::default() {
             self.0.colors.selection_foreground = Color::SELECTION;
@@ -218,6 +220,8 @@ impl<H: Highlighter> Component<H> {
             self.0.colors.selection_background = Color::SELECTION;
         }
         self.0.display.configure(&mut cx.size_cx());
+
+        self.0.prepare();
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -661,7 +665,6 @@ impl<H: Highlighter> EditorComponent<H> {
     #[inline]
     fn insert_str(&mut self, index: usize, text: &str) {
         self.text.insert_str(index, text);
-        self.highlighter.highlight(&self.text);
         self.display.set_max_status(Status::New);
     }
 
@@ -677,13 +680,13 @@ impl<H: Highlighter> EditorComponent<H> {
     #[inline]
     fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
         self.text.replace_range(range, replace_with);
-        self.highlighter.highlight(&self.text);
         self.display.set_max_status(Status::New);
     }
 
     #[inline]
     fn prepare_runs(&mut self) {
         if self.display.status() < Status::LevelRuns {
+            self.highlighter.highlight(&self.text);
             let (dpem, font) = (self.display.font_size(), self.display.font());
             self.display
                 .prepare_runs(self.text.as_str(), self.highlighter.font_tokens(dpem, font));
@@ -1194,7 +1197,6 @@ impl<H: Highlighter> EditorComponent<H> {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
                     if self.text.as_str() != text {
                         self.text.set_str(text);
-                        self.highlighter.highlight(&self.text);
                         self.display.set_max_status(Status::New);
                         self.edit_x_coord = None;
                     }
@@ -1347,7 +1349,6 @@ pub trait Editor {
         }
 
         self.text.set_str(&text);
-        self.highlighter.highlight(&self.text);
         self.display.set_max_status(Status::New);
 
         cx.redraw(self.id());
