@@ -33,8 +33,8 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 /// (Alternatively, [`Editor`] could be re-implemented on the above widgets;
 /// this is preferable in theory but requires a lot of tedious code.)
 #[autoimpl(Debug)]
-pub struct EditorComponent {
-    // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
+pub struct Editor {
+    // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
     editable: bool,
     display: ConfiguredDisplay,
@@ -67,7 +67,7 @@ pub struct EditorComponent {
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug where H: trait)]
-pub struct Component<H: Highlighter>(pub EditorComponent, highlight::Text<H>);
+pub struct Component<H: Highlighter>(pub Editor, highlight::Text<H>);
 
 impl<H: Highlighter> Deref for Component<H> {
     type Target = ConfiguredDisplay;
@@ -111,7 +111,7 @@ impl<H: Highlighter> Layout for Component<H> {
 impl<H: Default + Highlighter> Default for Component<H> {
     #[inline]
     fn default() -> Self {
-        let editor = EditorComponent {
+        let editor = Editor {
             id: Id::default(),
             editable: true,
             display: ConfiguredDisplay::new(TextClass::Editor, false),
@@ -136,7 +136,7 @@ impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
     fn from(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
-        let editor = EditorComponent {
+        let editor = Editor {
             text,
             selection: SelectionHelper::from(len),
             ..Self::default().0
@@ -715,7 +715,7 @@ impl<H: Highlighter> Component<H> {
     }
 }
 
-impl EditorComponent {
+impl Editor {
     /// Insert a `text` at the given position
     ///
     /// This may be used to edit the raw text instead of replacing it.
@@ -1265,29 +1265,28 @@ impl EditorComponent {
 }
 
 /// Text editor interface
-#[kas::split_impl(for<> EditorComponent)]
-pub trait Editor {
+impl Editor {
     /// Get a reference to the widget's identifier
     #[inline]
-    fn id_ref(&self) -> &Id {
+    pub fn id_ref(&self) -> &Id {
         &self.id
     }
 
     /// Get the widget's identifier
     #[inline]
-    fn id(&self) -> Id {
+    pub fn id(&self) -> Id {
         self.id.clone()
     }
 
     /// Get text contents
     #[inline]
-    fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         self.text.as_str()
     }
 
     /// Get the text contents as a `String`
     #[inline]
-    fn clone_string(&self) -> String {
+    pub fn clone_string(&self) -> String {
         self.as_str().to_string()
     }
 
@@ -1297,7 +1296,7 @@ pub trait Editor {
     /// in other cases (including when the text is empty) it returns `false`.
     /// TODO: support defaulting to RTL.
     #[inline]
-    fn text_is_rtl(&self) -> bool {
+    pub fn text_is_rtl(&self) -> bool {
         self.display.text_is_rtl(self.as_str())
     }
 
@@ -1306,13 +1305,13 @@ pub trait Editor {
     /// Call this *before* changing the text with [`Self::set_str`] or
     /// [`Self::set_string`] to commit changes to the undo history.
     #[inline]
-    fn pre_commit(&mut self) {
+    pub fn pre_commit(&mut self) {
         self.save_undo_state(Some(EditOp::Synthetic));
     }
 
     /// Clear text contents and undo history
     #[inline]
-    fn clear(&mut self, cx: &mut EventState) {
+    pub fn clear(&mut self, cx: &mut EventState) {
         self.last_edit = Some(EditOp::Initial);
         self.undo_stack.clear();
         self.set_string(cx, String::new());
@@ -1325,7 +1324,7 @@ pub trait Editor {
     ///
     /// Returns `true` if the text may have changed.
     #[inline]
-    fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
+    pub fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
         if self.as_str() != text {
             self.set_string(cx, text.to_string());
             true
@@ -1338,7 +1337,7 @@ pub trait Editor {
     ///
     /// This does not interact with undo history or call action handlers on the
     /// guard.
-    fn set_string(&mut self, cx: &mut EventState, text: String) {
+    pub fn set_string(&mut self, cx: &mut EventState, text: String) {
         if self.as_str() == text {
             return; // no change
         }
@@ -1359,7 +1358,7 @@ pub trait Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     #[inline]
-    fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
+    pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
         self.cancel_selection_and_ime(cx);
 
         let index = self.selection.edit_index();
@@ -1378,7 +1377,7 @@ pub trait Editor {
 
     /// Access the cursor index / selection range
     #[inline]
-    fn cursor_range(&self) -> CursorRange {
+    pub fn cursor_range(&self) -> CursorRange {
         *self.selection
     }
 
@@ -1387,32 +1386,32 @@ pub trait Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     #[inline]
-    fn set_cursor_range(&mut self, range: CursorRange) {
+    pub fn set_cursor_range(&mut self, range: CursorRange) {
         self.edit_x_coord = None;
         self.selection = range.into();
     }
 
     /// Get whether this `EditField` is editable
     #[inline]
-    fn is_editable(&self) -> bool {
+    pub fn is_editable(&self) -> bool {
         self.editable
     }
 
     /// Set whether this `EditField` is editable
     #[inline]
-    fn set_editable(&mut self, editable: bool) {
+    pub fn set_editable(&mut self, editable: bool) {
         self.editable = editable;
     }
 
     /// True if the editor uses multi-line mode
     #[inline]
-    fn multi_line(&self) -> bool {
+    pub fn multi_line(&self) -> bool {
         self.display.wrap()
     }
 
     /// Get the text class used
     #[inline]
-    fn class(&self) -> TextClass {
+    pub fn class(&self) -> TextClass {
         self.display.class()
     }
 
@@ -1420,19 +1419,19 @@ pub trait Editor {
     ///
     /// This is true when the widget is has keyboard or IME focus.
     #[inline]
-    fn has_input_focus(&self) -> bool {
+    pub fn has_input_focus(&self) -> bool {
         self.has_key_focus || self.current.is_ime_enabled()
     }
 
     /// Get whether the input state is erroneous
     #[inline]
-    fn has_error(&self) -> bool {
+    pub fn has_error(&self) -> bool {
         self.error_state.is_some()
     }
 
     /// Get the error message, if any
     #[inline]
-    fn error_message(&self) -> Option<&str> {
+    pub fn error_message(&self) -> Option<&str> {
         self.error_state.as_ref().and_then(|state| state.as_deref())
     }
 
@@ -1444,7 +1443,7 @@ pub trait Editor {
     ///
     /// When set, the input field's background is drawn red. If a message is
     /// supplied, then a tooltip will be available on mouse-hover.
-    fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
+    pub fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
         self.error_state = Some(message);
         cx.redraw(&self.id);
     }

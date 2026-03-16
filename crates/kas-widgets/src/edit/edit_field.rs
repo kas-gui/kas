@@ -74,7 +74,7 @@ mod EditField {
     }
 
     impl Deref for Self {
-        type Target = EditorComponent;
+        type Target = Editor;
         fn deref(&self) -> &Self::Target {
             &self.editor.0
         }
@@ -443,7 +443,7 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
         &mut self,
         cx: &mut EventCx,
         data: &G::Data,
-        edit: impl FnOnce(&mut EditorComponent, &mut EventCx) -> T,
+        edit: impl FnOnce(&mut Editor, &mut EventCx) -> T,
     ) -> T {
         let result = edit(&mut self.editor.0, cx);
         self.call_guard_edit(cx, data);

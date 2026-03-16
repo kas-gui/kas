@@ -35,7 +35,7 @@ mod EditBox {
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[autoimpl(Debug where G: trait, H: trait)]
-    #[autoimpl(Deref<Target = EditorComponent> using self.inner)]
+    #[autoimpl(Deref<Target = Editor> using self.inner)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
         core: widget_core!(),
@@ -442,7 +442,7 @@ impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
         &mut self,
         cx: &mut EventCx,
         data: &G::Data,
-        edit: impl FnOnce(&mut EditorComponent, &mut EventCx) -> T,
+        edit: impl FnOnce(&mut Editor, &mut EventCx) -> T,
     ) -> T {
         self.inner.edit(cx, data, edit)
     }

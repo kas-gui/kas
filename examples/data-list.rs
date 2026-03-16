@@ -81,12 +81,12 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = Data;
 
-    fn activate(&mut self, _: &mut dyn Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
+    fn activate(&mut self, _: &mut Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
         cx.push(SelectEntry(self.0));
         Used
     }
 
-    fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &Data) {
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
         if data.active == self.0 {
             cx.push(Control::UpdateCurrent(edit.clone_string()));
         }

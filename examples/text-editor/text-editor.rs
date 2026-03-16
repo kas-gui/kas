@@ -48,7 +48,7 @@ struct Guard {
 impl edit::EditGuard for Guard {
     type Data = ();
 
-    fn edit(&mut self, _: &mut dyn edit::Editor, _: &mut EventCx<'_>, _: &Self::Data) {
+    fn edit(&mut self, _: &mut edit::Editor, _: &mut EventCx<'_>, _: &Self::Data) {
         self.edited = true;
     }
 }

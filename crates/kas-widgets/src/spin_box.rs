@@ -158,13 +158,13 @@ impl<A, T: SpinValue> SpinGuard<A, T> {
 impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
     type Data = A;
 
-    fn update(&mut self, edit: &mut dyn Editor, cx: &mut ConfigCx, data: &A) {
+    fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
         self.value = (self.state_fn)(cx, data);
         let text = self.value.to_string();
         edit.set_string(cx, text);
     }
 
-    fn focus_lost(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &A) {
+    fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
         if let Some(value) = self.parsed.take() {
             self.value = value;
             cx.push(ValueMsg(value));
@@ -173,7 +173,7 @@ impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
         }
     }
 
-    fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, _: &A) {
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
         let is_err;
         if let Ok(value) = edit.as_str().parse::<T>() {
             self.value = value.clamp(self.start, self.end);
