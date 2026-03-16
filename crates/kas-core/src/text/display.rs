@@ -379,10 +379,10 @@ impl ConfiguredDisplay {
     /// # Example
     ///
     /// ```rust
-    /// # use kas::text::{ConfiguredDisplay, format::FontToken};
-    /// # use kas::theme::TextClass;
-    /// let mut display = ConfiguredDisplay::new(TextClass::default(), true);
-    /// display.prepare_runs("Hello world", std::iter::once(|| FontToken {
+    /// # use kas_core::text::{ConfiguredDisplay, format::FontToken};
+    /// # use kas_core::theme::TextClass;
+    /// let mut display = ConfiguredDisplay::new(TextClass::Standard, true);
+    /// display.prepare_runs("Hello world", std::iter::once(FontToken {
     ///     start: 0,
     ///     dpem: 16.0,
     ///     font: Default::default(),

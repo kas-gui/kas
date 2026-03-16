@@ -109,7 +109,7 @@ mod TextTile {
 
             Ok(TextTile {
                 core: Default::default(),
-                text: kas::theme::Text::new(text, TextClass::Small, true),
+                text: kas::text::Text::new(text, TextClass::Small, true),
             })
         }
     }
