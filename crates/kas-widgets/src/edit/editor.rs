@@ -50,6 +50,40 @@ pub struct Editor {
     input_handler: TextInput,
 }
 
+impl Default for Editor {
+    #[inline]
+    fn default() -> Self {
+        Editor {
+            id: Id::default(),
+            editable: true,
+            display: ConfiguredDisplay::new(TextClass::Editor, false),
+            text: Default::default(),
+            colors: SchemeColors::default(),
+            selection: Default::default(),
+            edit_x_coord: None,
+            last_edit: Some(EditOp::Initial),
+            undo_stack: UndoStack::new(),
+            has_key_focus: false,
+            current: CurrentAction::None,
+            error_state: None,
+            input_handler: Default::default(),
+        }
+    }
+}
+
+impl<S: ToString> From<S> for Editor {
+    #[inline]
+    fn from(text: S) -> Self {
+        let text = text.to_string();
+        let len = text.len();
+        Editor {
+            text,
+            selection: SelectionHelper::from(len),
+            ..Self::default()
+        }
+    }
+}
+
 /// Editor component
 ///
 /// This is a component used to implement an editor widget. It is used, for
@@ -111,38 +145,14 @@ impl<H: Highlighter> Layout for Component<H> {
 impl<H: Default + Highlighter> Default for Component<H> {
     #[inline]
     fn default() -> Self {
-        let editor = Editor {
-            id: Id::default(),
-            editable: true,
-            display: ConfiguredDisplay::new(TextClass::Editor, false),
-            text: Default::default(),
-            colors: SchemeColors::default(),
-            selection: Default::default(),
-            edit_x_coord: None,
-            last_edit: Some(EditOp::Initial),
-            undo_stack: UndoStack::new(),
-            has_key_focus: false,
-            current: CurrentAction::None,
-            error_state: None,
-            input_handler: Default::default(),
-        };
-
-        Component(editor, Default::default())
+        Component(Editor::default(), Default::default())
     }
 }
 
 impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
     #[inline]
     fn from(text: S) -> Self {
-        let text = text.to_string();
-        let len = text.len();
-        let editor = Editor {
-            text,
-            selection: SelectionHelper::from(len),
-            ..Self::default().0
-        };
-
-        Component(editor, highlight::Text::new(H::default()))
+        Component(Editor::from(text), Default::default())
     }
 }
 
