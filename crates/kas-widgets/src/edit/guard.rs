@@ -47,18 +47,10 @@ pub trait EditGuard: Sized {
     /// the Enter/Return key for single-line edit boxes. Its result is returned
     /// from `handle_event`.
     ///
-    /// The default implementation:
-    ///
-    /// -   If the field is editable, calls [`Self::focus_lost`] and returns
-    ///     returns [`Used`].
-    /// -   If the field is not editable, returns [`Unused`].
+    /// The default implementation calls [`Self::focus_lost`] and returns [`Used`].
     fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) -> IsUsed {
-        if !edit.is_read_only() {
-            self.focus_lost(edit, cx, data);
-            Used
-        } else {
-            Unused
-        }
+        self.focus_lost(edit, cx, data);
+        Used
     }
 
     /// Focus-gained guard
@@ -250,10 +242,10 @@ mod InstantParseGuard {
     /// This guard displays a value formatted from input data, updates the error
     /// state according to parse success on each keystroke, and sends a message
     /// immediately (where successful parsing occurred).
-    #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
+    #[autoimpl(Debug ignore self.value_fn, self.on_edit)]
     pub struct InstantParseGuard<A, T: Debug + Display + FromStr> {
         value_fn: Box<dyn Fn(&A) -> T + Send>,
-        on_afl: Box<dyn Fn(&mut EventCx, T) + Send>,
+        on_edit: Box<dyn Fn(&mut EventCx, T) + Send>,
     }
 
     impl Self {
@@ -265,14 +257,14 @@ mod InstantParseGuard {
         ///
         /// On every edit, the guard attempts to parse the field's input as type
         /// `T` via [`FromStr`]. On success, the result is converted to a
-        /// message via `on_afl` then emitted via [`EventCx::push`].
+        /// message via `on_edit` then emitted via [`EventCx::push`].
         pub fn new<M: Debug + 'static>(
             value_fn: impl Fn(&A) -> T + Send + 'static,
-            on_afl: impl Fn(T) -> M + Send + 'static,
+            on_edit: impl Fn(T) -> M + Send + 'static,
         ) -> Self {
             InstantParseGuard {
                 value_fn: Box::new(value_fn),
-                on_afl: Box::new(move |cx, value| cx.push(on_afl(value))),
+                on_edit: Box::new(move |cx, value| cx.push(on_edit(value))),
             }
         }
     }
@@ -296,7 +288,7 @@ mod InstantParseGuard {
                 edit.set_error(cx, Some("parse failure".into()));
             }
             if let Ok(value) = result {
-                (self.on_afl)(cx, value);
+                (self.on_edit)(cx, value);
             }
         }
     }
