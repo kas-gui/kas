@@ -9,9 +9,9 @@ use super::{ScrollBar, ScrollBarMsg};
 use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
-use kas::text::SelectionHelper;
 use kas::text::format::{self, FormattableText};
-use kas::theme::{Text, TextClass};
+use kas::text::{SelectionHelper, Text};
+use kas::theme::TextClass;
 
 #[impl_self]
 mod SelectableText {
@@ -84,7 +84,7 @@ mod SelectableText {
                 let r0 = if range.start > 0 { 0 } else { 1 };
                 &tokens[r0..]
             };
-            draw.text_with_colors(pos, rect, display, tokens);
+            draw.text(pos, rect, display, tokens);
 
             draw.decorate_text(pos, rect, display, self.text.decorations());
         }
@@ -300,7 +300,8 @@ mod SelectableText {
                         self.set_cursor_from_coord(cx, coord);
                         self.selection.set_anchor(clear);
                         if repeats > 1 {
-                            self.selection.expand(&self.text, repeats >= 3);
+                            self.selection
+                                .expand(self.text.as_str(), &self.text, repeats >= 3);
                         }
 
                         if !self.has_sel_focus {
@@ -311,7 +312,8 @@ mod SelectableText {
                     TextInputAction::PressMove { coord, repeats } => {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
-                            self.selection.expand(&self.text, repeats >= 3);
+                            self.selection
+                                .expand(self.text.as_str(), &self.text, repeats >= 3);
                         }
                         Used
                     }

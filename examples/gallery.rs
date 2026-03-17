@@ -90,12 +90,12 @@ fn widgets() -> Page<AppData> {
     impl EditGuard for Guard {
         type Data = Data;
 
-        fn activate(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
+        fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
             cx.push(Item::Edit(edit.clone_string()));
             Used
         }
 
-        fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, _: &Data) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Data) {
             // 7a is the colour of *magic*!
             if edit.as_str().len() % (7 + 1) == 0 {
                 edit.set_error(cx, Some("Invalid length: is a multiple of (7 + 1)!".into()));
@@ -121,7 +121,10 @@ fn widgets() -> Page<AppData> {
                 if let Some(MsgEdit) = cx.try_pop() {
                     // TODO: do not always set text: if this is a true pop-up it
                     // should not normally lose data.
-                    self.popup.inner.set_text(cx, data.text.clone());
+                    self.popup.inner.edit(cx, |edit, cx| {
+                        edit.clear(cx);
+                        edit.set_string(cx, data.text.clone());
+                    });
                     // let ed = TextEdit::new(text, true);
                     // cx.add_window::<()>(ed.into_window("Edit text"));
                     // TODO: cx.add_modal(..)
@@ -288,11 +291,11 @@ fn editor() -> Page<AppData> {
     impl EditGuard for Guard {
         type Data = Data;
 
-        fn update(&mut self, edit: &mut dyn Editor, cx: &mut ConfigCx, data: &Data) {
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &Data) {
             cx.set_disabled(edit.id(), data.disabled);
         }
 
-        fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &Data) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
             match Markdown::new(edit.as_str()) {
                 Ok(text) => cx.send(data.label_id.clone(), text),
                 Err(err) => edit.set_error(cx, Some(format!("{err}").into())),
@@ -464,7 +467,7 @@ fn filter_list() -> Page<AppData> {
     impl EditGuard for MonthYearFilterGuard {
         type Data = ();
 
-        fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, _: &Self::Data) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Self::Data) {
             let mut filter = MonthYearFilter {
                 text: edit.as_str().to_uppercase(),
                 month_end: edit.as_str().len(),

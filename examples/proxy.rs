@@ -14,7 +14,8 @@ use std::time::{Duration, Instant};
 
 use kas::draw::color::Rgba;
 use kas::prelude::*;
-use kas::theme::{Text, TextClass};
+use kas::text::Text;
+use kas::theme::TextClass;
 
 #[derive(Debug)]
 struct SetColor(Rgba);
@@ -67,6 +68,7 @@ mod ColourSquare {
     }
     impl Layout for ColourSquare {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let _ = self.loading_text.size_rules(cx, axis);
             cx.logical(100.0, 100.0).build(axis)
         }
 
@@ -80,7 +82,7 @@ mod ColourSquare {
             if let Some(color) = self.color {
                 draw.draw().rect((self.rect()).cast(), color);
             } else {
-                draw.text(self.rect(), &self.loading_text);
+                self.loading_text.draw(draw);
             }
         }
     }

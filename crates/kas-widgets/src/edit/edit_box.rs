@@ -35,7 +35,7 @@ mod EditBox {
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[autoimpl(Debug where G: trait, H: trait)]
-    #[autoimpl(Deref<Target = EditorComponent<H>>, DerefMut using self.inner)]
+    #[autoimpl(Deref<Target = Editor> using self.inner)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
         core: widget_core!(),
@@ -180,9 +180,10 @@ mod EditBox {
             } else if self.is_editable()
                 && let Some(SetValueText(string)) = cx.try_pop()
             {
-                self.pre_commit();
-                self.set_string(cx, string);
-                self.inner.call_guard_edit(cx, data);
+                self.edit(cx, data, |edit, cx| {
+                    edit.pre_commit();
+                    edit.set_string(cx, string);
+                });
                 return;
             } else if let Some(&ReplaceSelectedText(_)) = cx.try_peek() {
                 self.inner.handle_messages(cx, data);
@@ -362,7 +363,7 @@ impl<A: 'static> EditBox<StringGuard<A>> {
         M: Debug + 'static,
     {
         self.inner.guard = self.inner.guard.with_msg(msg_fn);
-        self.inner.set_editable(true);
+        self.inner = self.inner.with_editable(true);
         self
     }
 }
@@ -431,5 +432,18 @@ impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
     pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
         self.set_width_em(min_em, ideal_em);
         self
+    }
+
+    /// Edit text contents
+    ///
+    /// This method calls the `edit` closure, then [`EditGuard::edit`], then
+    /// returns the result of calling `edit`.
+    pub fn edit<T>(
+        &mut self,
+        cx: &mut EventCx,
+        data: &G::Data,
+        edit: impl FnOnce(&mut Editor, &mut EventCx) -> T,
+    ) -> T {
+        self.inner.edit(cx, data, edit)
     }
 }

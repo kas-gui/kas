@@ -5,11 +5,8 @@
 
 //! Text functionality
 //!
-//! Most of this module is simply a re-export of the [KAS Text] API, hence the
-//! lower level of integration than other parts of the library.
-//!
-//! See also [`crate::theme::Text`] which provides better integration with KAS
-//! theming and widget sizing operations.
+//! This module is built over the [KAS Text] API; several items here are direct
+//! re-exports.
 //!
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
@@ -18,15 +15,17 @@ pub use kas_text::{
     TextDisplay, Vec2, fonts,
 };
 
+mod display;
 pub mod format;
-
 /// Glyph rastering
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub mod raster;
-
 mod selection;
-pub use selection::{CursorRange, SelectionHelper};
-
 mod string;
+mod text;
+
+pub use display::ConfiguredDisplay;
+pub use selection::{CursorRange, SelectionHelper};
 pub use string::AccessString;
+pub use text::Text;

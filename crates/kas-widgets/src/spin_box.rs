@@ -11,7 +11,8 @@ use crate::{
 };
 use kas::messages::{DecrementStep, IncrementStep, ReplaceSelectedText, SetValueF64, SetValueText};
 use kas::prelude::*;
-use kas::theme::{Background, FrameStyle, MarkStyle, Text, TextClass};
+use kas::text::Text;
+use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use std::ops::RangeInclusive;
 
 /// Requirements on type used by [`SpinBox`]
@@ -157,13 +158,13 @@ impl<A, T: SpinValue> SpinGuard<A, T> {
 impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
     type Data = A;
 
-    fn update(&mut self, edit: &mut dyn Editor, cx: &mut ConfigCx, data: &A) {
+    fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
         self.value = (self.state_fn)(cx, data);
         let text = self.value.to_string();
         edit.set_string(cx, text);
     }
 
-    fn focus_lost(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &A) {
+    fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
         if let Some(value) = self.parsed.take() {
             self.value = value;
             cx.push(ValueMsg(value));
@@ -172,7 +173,7 @@ impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
         }
     }
 
-    fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, _: &A) {
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
         let is_err;
         if let Ok(value) = edit.as_str().parse::<T>() {
             self.value = value.clamp(self.start, self.end);
@@ -459,18 +460,19 @@ mod SpinBox {
             } else if let Some(DecrementStep) = cx.try_pop() {
                 Some(self.edit.guard.value.sub_step(self.edit.guard.step))
             } else if let Some(SetValueText(string)) = cx.try_pop() {
-                self.edit.set_string(cx, string);
-                self.edit.call_guard_edit(cx, data);
+                self.edit
+                    .edit(cx, data, |edit, cx| edit.set_string(cx, string));
                 self.edit.guard.parsed
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
-                self.edit.replace_selected_text(cx, &text);
-                self.edit.call_guard_edit(cx, data);
+                self.edit
+                    .edit(cx, data, |edit, cx| edit.replace_selected_text(cx, &text));
                 self.edit.guard.parsed
             } else {
                 None
             };
 
             if let Some(value) = new_value {
+                self.edit.guard.value = value;
                 if let Some(ref f) = self.on_change {
                     f(cx, data, value);
                 }

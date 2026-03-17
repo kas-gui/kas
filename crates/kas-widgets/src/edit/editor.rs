@@ -7,15 +7,22 @@
 
 use super::highlight::{self, Highlighter, SchemeColors};
 use super::*;
+use kas::cast::Cast;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll};
-use kas::geom::Vec2;
+use kas::event::{
+    ConfigCx, ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll,
+};
+use kas::geom::{Rect, Vec2};
+use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
-use kas::text::format::{Color, FormattableText};
-use kas::text::{CursorRange, NotReady, SelectionHelper, format};
-use kas::theme::{Background, Text, TextClass};
+use kas::text::format::Color;
+use kas::text::{ConfiguredDisplay, CursorRange, NotReady, SelectionHelper, Status, format};
+use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
+use kas::{Layout, autoimpl};
 use std::borrow::Cow;
+use std::num::NonZeroUsize;
+use std::ops::{Deref, DerefMut};
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 /// Inner editor component
@@ -25,12 +32,13 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 /// longer be needed once `impl trait` is stabilised for associated types.
 /// (Alternatively, [`Editor`] could be re-implemented on the above widgets;
 /// this is preferable in theory but requires a lot of tedious code.)
-#[autoimpl(Debug where H: trait)]
-pub struct EditorComponent<H: Highlighter> {
-    // TODO(opt): id, pos are duplicated here since macros don't let us put the core here
+#[autoimpl(Debug)]
+pub struct Editor {
+    // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
     editable: bool,
-    text: Text<highlight::Text<H>>,
+    display: ConfiguredDisplay,
+    text: String,
     colors: SchemeColors,
     selection: SelectionHelper,
     edit_x_coord: Option<f32>,
@@ -38,8 +46,7 @@ pub struct EditorComponent<H: Highlighter> {
     undo_stack: UndoStack<(String, CursorRange)>,
     has_key_focus: bool,
     current: CurrentAction,
-    error_state: bool,
-    error_message: Option<Cow<'static, str>>,
+    error_state: Option<Option<Cow<'static, str>>>,
     input_handler: TextInput,
 }
 
@@ -60,25 +67,38 @@ pub struct EditorComponent<H: Highlighter> {
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug where H: trait)]
-#[autoimpl(Deref, DerefMut using self.0)]
-pub struct Component<H: Highlighter>(EditorComponent<H>);
+pub struct Component<H: Highlighter>(pub Editor, highlight::Text<H>);
+
+impl<H: Highlighter> Deref for Component<H> {
+    type Target = ConfiguredDisplay;
+    fn deref(&self) -> &Self::Target {
+        &self.0.display
+    }
+}
+
+impl<H: Highlighter> DerefMut for Component<H> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0.display
+    }
+}
 
 impl<H: Highlighter> Layout for Component<H> {
     #[inline]
     fn rect(&self) -> Rect {
-        self.text.rect()
+        self.0.display.rect()
     }
 
     #[inline]
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-        self.text.size_rules(cx, axis)
+        self.prepare_runs();
+        self.0.display.size_rules(cx, axis)
     }
 
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-        self.text.set_rect(cx, rect, hints);
-        self.text.ensure_no_left_overhang();
-        if self.current.is_ime_enabled() {
-            self.set_ime_cursor_area(cx);
+        self.0.display.set_rect(cx, rect, hints);
+        self.0.display.ensure_no_left_overhang();
+        if self.0.current.is_ime_enabled() {
+            self.0.set_ime_cursor_area(cx);
         }
     }
 
@@ -91,10 +111,11 @@ impl<H: Highlighter> Layout for Component<H> {
 impl<H: Default + Highlighter> Default for Component<H> {
     #[inline]
     fn default() -> Self {
-        Component(EditorComponent {
+        let editor = Editor {
             id: Id::default(),
             editable: true,
-            text: Text::new(Default::default(), TextClass::Editor, false),
+            display: ConfiguredDisplay::new(TextClass::Editor, false),
+            text: Default::default(),
             colors: SchemeColors::default(),
             selection: Default::default(),
             edit_x_coord: None,
@@ -102,10 +123,11 @@ impl<H: Default + Highlighter> Default for Component<H> {
             undo_stack: UndoStack::new(),
             has_key_focus: false,
             current: CurrentAction::None,
-            error_state: false,
-            error_message: None,
+            error_state: None,
             input_handler: Default::default(),
-        })
+        };
+
+        Component(editor, Default::default())
     }
 }
 
@@ -114,12 +136,13 @@ impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
     fn from(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
-        let text = highlight::Text::new(H::default(), text);
-        Component(EditorComponent {
-            text: Text::new(text, TextClass::Editor, false),
+        let editor = Editor {
+            text,
             selection: SelectionHelper::from(len),
             ..Self::default().0
-        })
+        };
+
+        Component(editor, highlight::Text::new(H::default()))
     }
 }
 
@@ -127,56 +150,23 @@ impl<H: Highlighter> Component<H> {
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
-        let class = self.class();
-        let wrap = self.multi_line();
-        let text = self.0.text.take_text().take_text();
-        let text = highlight::Text::new(highlighter, text);
-
-        Component(EditorComponent {
-            id: self.0.id,
-            editable: self.0.editable,
-            text: Text::new(text, class, wrap),
-            colors: self.0.colors,
-            selection: self.0.selection,
-            edit_x_coord: self.0.edit_x_coord,
-            last_edit: self.0.last_edit,
-            undo_stack: self.0.undo_stack,
-            has_key_focus: self.0.has_key_focus,
-            current: self.0.current,
-            error_state: self.0.error_state,
-            error_message: self.0.error_message,
-            input_handler: self.0.input_handler,
-        })
+        Component(self.0, highlight::Text::new(highlighter))
     }
 
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
-        self.text.text_mut().set_highlighter(highlighter);
+        self.1 = highlight::Text::new(highlighter);
     }
 
     /// Get the background color
     pub fn background_color(&self) -> Background {
-        if self.error_state {
+        if self.0.error_state.is_some() {
             Background::Error
-        } else if let Some(c) = self.colors.background.as_rgba() {
+        } else if let Some(c) = self.0.colors.background.as_rgba() {
             Background::Rgb(c.as_rgb())
         } else {
             Background::Default
         }
-    }
-
-    /// Access text
-    #[inline]
-    pub fn text(&self) -> &Text<impl FormattableText> {
-        &self.text
-    }
-
-    /// Access text (mut)
-    ///
-    /// It is left to the wrapping widget to ensure this is not mis-used.
-    #[inline]
-    pub fn text_mut(&mut self) -> &mut Text<impl FormattableText> {
-        &mut self.text
     }
 
     /// Set the initial text (inline)
@@ -185,32 +175,120 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
+        debug_assert!(
+            self.0.current == CurrentAction::None && !self.0.input_handler.is_selecting()
+        );
         let text = text.to_string();
         let len = text.len();
-        self.text.text_mut().set_text(text);
-        self.selection.set_cursor(len);
+        self.0.text = text;
+        self.0.selection.set_cursor(len);
         self
     }
 
     /// Configure component
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
-        self.id = id;
-        self.text.text_mut().configure(cx);
-        self.0.colors = self.text.text().scheme_colors();
+        self.0.id = id;
+        if self.1.configure(cx) {
+            self.0.display.set_max_status(Status::New);
+        }
+        self.0.colors = self.1.scheme_colors();
         if self.0.colors.selection_foreground == Color::default() {
             self.0.colors.selection_foreground = Color::SELECTION;
         }
         if self.0.colors.selection_background == Color::default() {
             self.0.colors.selection_background = Color::SELECTION;
         }
-        self.text.configure(&mut cx.size_cx());
+        self.0.display.configure(&mut cx.size_cx());
+
+        self.prepare(cx);
+    }
+
+    #[inline]
+    fn prepare_runs(&mut self) {
+        fn inner<H: Highlighter>(this: &mut Component<H>) {
+            this.1.highlight(&this.0.text);
+            let (dpem, font) = (this.0.display.font_size(), this.0.display.font());
+            this.0
+                .display
+                .prepare_runs(this.0.text.as_str(), this.1.font_tokens(dpem, font));
+        }
+
+        if self.0.display.status() < Status::LevelRuns {
+            inner(self)
+        }
+    }
+
+    /// Prepare text for display, as necessary
+    ///
+    /// Requests a resize when required.
+    ///
+    /// Returns `true` on success when some action is performed, `false`
+    /// when the text is already prepared.
+    #[inline]
+    pub fn prepare(&mut self, cx: &mut ConfigCx) -> bool {
+        if self.0.display.is_prepared() {
+            return false;
+        }
+
+        fn inner<H: Highlighter>(this: &mut Component<H>, cx: &mut ConfigCx) {
+            this.prepare_runs();
+            debug_assert!(this.0.display.status() >= Status::LevelRuns);
+
+            if this.rect().size.0 != 0 {
+                let bb = this.0.display.bounding_box();
+                this.0.display.prepare_wrap();
+                if bb != this.0.display.bounding_box() {
+                    cx.resize();
+                }
+            }
+        }
+        inner(self, cx);
+        true
+    }
+
+    /// Prepare text
+    ///
+    /// Updates the view offset (scroll position) if the content size changes or
+    /// `force_set_offset`. Requests redraw and resize as appropriate.
+    fn prepare_and_scroll(&mut self, cx: &mut EventCx, force_set_offset: bool) {
+        let mut set_offset = force_set_offset;
+        if !self.0.display.is_prepared() {
+            let bb = self.0.display.bounding_box();
+
+            self.prepare_runs();
+            self.0.display.prepare_wrap();
+            self.0.display.ensure_no_left_overhang();
+
+            cx.redraw();
+            if bb != self.0.display.bounding_box() {
+                cx.resize();
+                set_offset = true;
+            }
+        }
+
+        if set_offset {
+            self.0.set_view_offset_from_cursor(cx);
+        }
+    }
+
+    /// Measure required vertical height, wrapping as configured
+    ///
+    /// Stops after `max_lines`, if provided.
+    ///
+    /// May partially prepare the text for display, but does not otherwise
+    /// modify `self`.
+    pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
+        self.prepare_runs();
+        self.0
+            .display
+            .unchecked_display()
+            .measure_height(wrap_width, max_lines)
     }
 
     /// Implementation of [`Viewport::content_size`]
     pub fn content_size(&self) -> Size {
-        if let Ok((tl, br)) = self.text.bounding_box() {
+        if let Ok((tl, br)) = self.0.display.bounding_box() {
             (br - tl).cast_ceil()
         } else {
             Size::ZERO
@@ -219,16 +297,16 @@ impl<H: Highlighter> Component<H> {
 
     /// Implementation of [`Viewport::draw_with_offset`]
     pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-        let Ok(display) = self.text.display() else {
+        let Ok(display) = self.0.display.display() else {
             return;
         };
 
         let pos = self.rect().pos - offset;
-        let range: Range<u32> = self.selection.range().cast();
+        let range: Range<u32> = self.0.selection.range().cast();
 
-        let color_tokens = self.text.color_tokens();
+        let color_tokens = self.1.color_tokens();
         let default_colors = format::Colors {
-            foreground: self.colors.foreground,
+            foreground: self.0.colors.foreground,
             background: None,
         };
         let mut buf = [(0, default_colors); 3];
@@ -241,17 +319,17 @@ impl<H: Highlighter> Component<H> {
             }
         } else if color_tokens.is_empty() {
             buf[1].0 = range.start;
-            buf[1].1.foreground = self.colors.selection_foreground;
-            buf[1].1.background = Some(self.colors.selection_background);
+            buf[1].1.foreground = self.0.colors.selection_foreground;
+            buf[1].1.background = Some(self.0.colors.selection_background);
             buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
             &buf[r0..]
         } else {
             let set_selection_colors = |colors: &mut format::Colors| {
-                if colors.foreground == self.colors.foreground {
-                    colors.foreground = self.colors.selection_foreground;
+                if colors.foreground == self.0.colors.foreground {
+                    colors.foreground = self.0.colors.selection_foreground;
                 }
-                colors.background = Some(self.colors.selection_background);
+                colors.background = Some(self.0.colors.selection_background);
             };
 
             vec.reserve(color_tokens.len() + 2);
@@ -308,9 +386,14 @@ impl<H: Highlighter> Component<H> {
             }
             &vec
         };
-        draw.text_with_colors(pos, rect, display, tokens);
+        draw.text(pos, rect, display, tokens);
 
-        if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
+        let decorations = self.1.decorations();
+        if !decorations.is_empty() {
+            draw.decorate_text(pos, rect, display, decorations);
+        }
+
+        if let CurrentAction::ImePreedit { edit_range } = self.0.current.clone() {
             let tokens = [
                 Default::default(),
                 (edit_range.start, format::Decoration {
@@ -323,13 +406,13 @@ impl<H: Highlighter> Component<H> {
             draw.decorate_text(pos, rect, display, &tokens[r0..]);
         }
 
-        if self.editable && draw.ev_state().has_input_focus(self.id_ref()) == Some(true) {
+        if self.0.editable && draw.ev_state().has_input_focus(self.0.id_ref()) == Some(true) {
             draw.text_cursor(
                 pos,
                 rect,
-                &self.text,
-                self.selection.edit_index(),
-                Some(self.colors.cursor),
+                display,
+                self.0.selection.edit_index(),
+                Some(self.0.colors.cursor),
             );
         }
     }
@@ -338,8 +421,8 @@ impl<H: Highlighter> Component<H> {
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
         match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
-                if !self.input_handler.is_selecting() {
-                    self.request_key_focus(cx, source);
+                if !self.0.input_handler.is_selecting() {
+                    self.0.request_key_focus(cx, source);
                 }
                 EventAction::Used
             }
@@ -348,31 +431,31 @@ impl<H: Highlighter> Component<H> {
             Event::SelFocus(source) => {
                 // NOTE: sel focus implies key focus since we only request
                 // the latter. We must set before calling self.set_primary.
-                self.has_key_focus = true;
+                self.0.has_key_focus = true;
                 if source == FocusSource::Pointer {
-                    self.set_primary(cx);
+                    self.0.set_primary(cx);
                 }
 
                 EventAction::Used
             }
             Event::KeyFocus => {
-                self.has_key_focus = true;
-                self.set_view_offset_from_cursor(cx);
+                self.0.has_key_focus = true;
+                self.0.set_view_offset_from_cursor(cx);
 
-                if self.current.is_none() {
+                if self.0.current.is_none() {
                     let hint = Default::default();
                     let purpose = ImePurpose::Normal;
-                    let surrounding_text = self.ime_surrounding_text();
-                    cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
+                    let surrounding_text = self.0.ime_surrounding_text();
+                    cx.replace_ime_focus(self.0.id.clone(), hint, purpose, surrounding_text);
                     EventAction::FocusGained
                 } else {
                     EventAction::Used
                 }
             }
             Event::LostKeyFocus => {
-                self.has_key_focus = false;
+                self.0.has_key_focus = false;
                 cx.redraw();
-                if !self.current.is_ime_enabled() {
+                if !self.0.current.is_ime_enabled() {
                     EventAction::FocusLost
                 } else {
                     EventAction::Used
@@ -380,22 +463,26 @@ impl<H: Highlighter> Component<H> {
             }
             Event::LostSelFocus => {
                 // NOTE: we can assume that we will receive Ime::Disabled if IME is active
-                if !self.selection.is_empty() {
-                    self.save_undo_state(None);
-                    self.selection.set_empty();
+                if !self.0.selection.is_empty() {
+                    self.0.save_undo_state(None);
+                    self.0.selection.set_empty();
                 }
-                self.input_handler.stop_selecting();
+                self.0.input_handler.stop_selecting();
                 cx.redraw();
                 EventAction::Used
             }
-            Event::Command(cmd, code) => match self.cmd_action(cx, cmd, code) {
-                Ok(action) => action,
+            Event::Command(cmd, code) => match self.0.cmd_action(cx, cmd, code) {
+                Ok(action) => {
+                    self.prepare_and_scroll(cx, true);
+                    action
+                }
                 Err(NotReady) => EventAction::Used,
             },
             Event::Key(event, false) if event.state == ElementState::Pressed => {
                 if let Some(text) = &event.text {
-                    self.save_undo_state(Some(EditOp::KeyInput));
-                    if self.received_text(cx, text) == Used {
+                    self.0.save_undo_state(Some(EditOp::KeyInput));
+                    if self.0.received_text(cx, text) == Used {
+                        self.prepare_and_scroll(cx, false);
                         EventAction::Edit
                     } else {
                         EventAction::Unused
@@ -406,8 +493,11 @@ impl<H: Highlighter> Component<H> {
                         .shortcuts()
                         .try_match_event(cx.modifiers(), event);
                     if let Some(cmd) = opt_cmd {
-                        match self.cmd_action(cx, cmd, Some(event.physical_key)) {
-                            Ok(action) => action,
+                        match self.0.cmd_action(cx, cmd, Some(event.physical_key)) {
+                            Ok(action) => {
+                                self.prepare_and_scroll(cx, true);
+                                action
+                            }
                             Err(NotReady) => EventAction::Used,
                         }
                     } else {
@@ -417,73 +507,75 @@ impl<H: Highlighter> Component<H> {
             }
             Event::Ime(ime) => match ime {
                 Ime::Enabled => {
-                    match self.current {
+                    match self.0.current {
                         CurrentAction::None => {
-                            self.current = CurrentAction::ImeStart;
-                            self.set_ime_cursor_area(cx);
+                            self.0.current = CurrentAction::ImeStart;
+                            self.0.set_ime_cursor_area(cx);
                         }
                         CurrentAction::ImeStart | CurrentAction::ImePreedit { .. } => {
                             // already enabled
                         }
                         CurrentAction::Selection => {
                             // Do not interrupt selection
-                            cx.cancel_ime_focus(self.id_ref());
+                            cx.cancel_ime_focus(self.0.id_ref());
                         }
                     }
-                    if !self.has_key_focus {
+                    if !self.0.has_key_focus {
                         EventAction::FocusGained
                     } else {
                         EventAction::Used
                     }
                 }
                 Ime::Disabled => {
-                    self.clear_ime();
-                    if !self.has_key_focus {
+                    self.0.clear_ime();
+                    if !self.0.has_key_focus {
                         EventAction::FocusLost
                     } else {
                         EventAction::Used
                     }
                 }
                 Ime::Preedit { text, cursor } => {
-                    self.save_undo_state(None);
-                    let mut edit_range = match self.current.clone() {
-                        CurrentAction::ImeStart if cursor.is_some() => self.selection.range(),
+                    self.0.save_undo_state(None);
+                    let mut edit_range = match self.0.current.clone() {
+                        CurrentAction::ImeStart if cursor.is_some() => self.0.selection.range(),
                         CurrentAction::ImeStart => return EventAction::Used,
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                         _ => return EventAction::Used,
                     };
 
-                    self.text.replace_range(edit_range.clone(), text);
+                    self.0.replace_range(edit_range.clone(), text);
                     edit_range.end = edit_range.start + text.len();
                     if let Some((start, end)) = cursor {
-                        self.selection.set_sel_index_only(edit_range.start + start);
-                        self.selection.set_edit_index(edit_range.start + end);
+                        self.0
+                            .selection
+                            .set_sel_index_only(edit_range.start + start);
+                        self.0.selection.set_edit_index(edit_range.start + end);
                     } else {
-                        self.selection.set_cursor(edit_range.start + text.len());
+                        self.0.selection.set_cursor(edit_range.start + text.len());
                     }
 
-                    self.current = CurrentAction::ImePreedit {
+                    self.0.current = CurrentAction::ImePreedit {
                         edit_range: edit_range.cast(),
                     };
-                    self.edit_x_coord = None;
+                    self.0.edit_x_coord = None;
                     self.prepare_and_scroll(cx, false);
                     EventAction::Used
                 }
                 Ime::Commit { text } => {
-                    self.save_undo_state(Some(EditOp::Ime));
-                    let edit_range = match self.current.clone() {
-                        CurrentAction::ImeStart => self.selection.range(),
+                    self.0.save_undo_state(Some(EditOp::Ime));
+                    let edit_range = match self.0.current.clone() {
+                        CurrentAction::ImeStart => self.0.selection.range(),
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                         _ => return EventAction::Used,
                     };
 
-                    self.text.replace_range(edit_range.clone(), text);
-                    self.selection.set_cursor(edit_range.start + text.len());
+                    self.0.replace_range(edit_range.clone(), text);
+                    self.0.selection.set_cursor(edit_range.start + text.len());
 
-                    self.current = CurrentAction::ImePreedit {
-                        edit_range: self.selection.range().cast(),
+                    self.0.current = CurrentAction::ImePreedit {
+                        edit_range: self.0.selection.range().cast(),
                     };
-                    self.edit_x_coord = None;
+                    self.0.edit_x_coord = None;
                     self.prepare_and_scroll(cx, false);
                     EventAction::Edit
                 }
@@ -491,9 +583,9 @@ impl<H: Highlighter> Component<H> {
                     before_bytes,
                     after_bytes,
                 } => {
-                    self.save_undo_state(None);
-                    let edit_range = match self.current.clone() {
-                        CurrentAction::ImeStart => self.selection.range(),
+                    self.0.save_undo_state(None);
+                    let edit_range = match self.0.current.clone() {
+                        CurrentAction::ImeStart => self.0.selection.range(),
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                         _ => return EventAction::Used,
                     };
@@ -501,9 +593,9 @@ impl<H: Highlighter> Component<H> {
                     if before_bytes > 0 {
                         let end = edit_range.start;
                         let start = end - before_bytes;
-                        if self.as_str().is_char_boundary(start) {
-                            self.text.replace_range(start..end, "");
-                            self.selection.delete_range(start..end);
+                        if self.0.as_str().is_char_boundary(start) {
+                            self.0.replace_range(start..end, "");
+                            self.0.selection.delete_range(start..end);
                         } else {
                             log::warn!("buggy IME tried to delete range not at char boundary");
                         }
@@ -512,41 +604,40 @@ impl<H: Highlighter> Component<H> {
                     if after_bytes > 0 {
                         let start = edit_range.end;
                         let end = start + after_bytes;
-                        if self.as_str().is_char_boundary(end) {
-                            self.text.replace_range(start..end, "");
+                        if self.0.as_str().is_char_boundary(end) {
+                            self.0.replace_range(start..end, "");
                         } else {
                             log::warn!("buggy IME tried to delete range not at char boundary");
                         }
                     }
 
-                    if let Some(text) = self.ime_surrounding_text() {
-                        cx.update_ime_surrounding_text(self.id_ref(), text);
+                    if let Some(text) = self.0.ime_surrounding_text() {
+                        cx.update_ime_surrounding_text(self.0.id_ref(), text);
                     }
 
                     EventAction::Used
                 }
             },
             Event::PressStart(press) if press.is_tertiary() => {
-                match press.grab_click(self.id()).complete(cx) {
+                match press.grab_click(self.0.id()).complete(cx) {
                     Unused => EventAction::Unused,
                     Used => EventAction::Used,
                 }
             }
             Event::PressEnd { press, .. } if press.is_tertiary() => {
-                self.set_cursor_from_coord(cx, press.coord);
-                self.cancel_selection_and_ime(cx);
-                self.request_key_focus(cx, FocusSource::Pointer);
+                self.0.set_cursor_from_coord(cx, press.coord);
+                self.0.cancel_selection_and_ime(cx);
+                self.0.request_key_focus(cx, FocusSource::Pointer);
 
                 if let Some(content) = cx.get_primary() {
-                    self.save_undo_state(Some(EditOp::Clipboard));
+                    self.0.save_undo_state(Some(EditOp::Clipboard));
 
-                    let index = self.selection.edit_index();
-                    let range = self.trim_paste(&content);
+                    let index = self.0.selection.edit_index();
+                    let range = self.0.trim_paste(&content);
 
-                    self.text
-                        .replace_range(index..index, &content[range.clone()]);
-                    self.selection.set_cursor(index + range.len());
-                    self.edit_x_coord = None;
+                    self.0.replace_range(index..index, &content[range.clone()]);
+                    self.0.selection.set_cursor(index + range.len());
+                    self.0.edit_x_coord = None;
                     self.prepare_and_scroll(cx, false);
 
                     EventAction::Edit
@@ -562,55 +653,97 @@ impl<H: Highlighter> Component<H> {
                     clear,
                     repeats,
                 } => {
-                    if self.current.is_ime_enabled() {
-                        self.clear_ime();
-                        cx.cancel_ime_focus(self.id_ref());
+                    if self.0.current.is_ime_enabled() {
+                        self.0.clear_ime();
+                        cx.cancel_ime_focus(self.0.id_ref());
                     }
-                    self.save_undo_state(Some(EditOp::Cursor));
-                    self.current = CurrentAction::Selection;
+                    self.0.save_undo_state(Some(EditOp::Cursor));
+                    self.0.current = CurrentAction::Selection;
 
-                    self.set_cursor_from_coord(cx, coord);
-                    self.selection.set_anchor(clear);
+                    self.0.set_cursor_from_coord(cx, coord);
+                    self.0.selection.set_anchor(clear);
                     if repeats > 1 {
-                        self.0.selection.expand(&self.0.text, repeats >= 3);
+                        self.0.selection.expand(
+                            self.0.text.as_str(),
+                            &self.0.display,
+                            repeats >= 3,
+                        );
                     }
 
-                    self.request_key_focus(cx, FocusSource::Pointer);
+                    self.0.request_key_focus(cx, FocusSource::Pointer);
                     EventAction::Used
                 }
                 TextInputAction::PressMove { coord, repeats } => {
-                    if self.current == CurrentAction::Selection {
-                        self.set_cursor_from_coord(cx, coord);
+                    if self.0.current == CurrentAction::Selection {
+                        self.0.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
-                            self.0.selection.expand(&self.0.text, repeats >= 3);
+                            self.0.selection.expand(
+                                self.0.text.as_str(),
+                                &self.0.display,
+                                repeats >= 3,
+                            );
                         }
                     }
 
                     EventAction::Used
                 }
                 TextInputAction::PressEnd { coord } => {
-                    if self.current.is_ime_enabled() {
-                        self.clear_ime();
-                        cx.cancel_ime_focus(self.id_ref());
+                    if self.0.current.is_ime_enabled() {
+                        self.0.clear_ime();
+                        cx.cancel_ime_focus(self.0.id_ref());
                     }
-                    self.save_undo_state(Some(EditOp::Cursor));
-                    if self.current == CurrentAction::Selection {
-                        self.set_primary(cx);
+                    self.0.save_undo_state(Some(EditOp::Cursor));
+                    if self.0.current == CurrentAction::Selection {
+                        self.0.set_primary(cx);
                     } else {
-                        self.set_cursor_from_coord(cx, coord);
-                        self.selection.set_empty();
+                        self.0.set_cursor_from_coord(cx, coord);
+                        self.0.selection.set_empty();
                     }
-                    self.current = CurrentAction::None;
+                    self.0.current = CurrentAction::None;
 
-                    self.request_key_focus(cx, FocusSource::Pointer);
+                    self.0.request_key_focus(cx, FocusSource::Pointer);
                     EventAction::Used
                 }
             },
         }
     }
+
+    /// Clear the error state
+    #[inline]
+    pub fn clear_error(&mut self) {
+        self.0.error_state = None;
+    }
 }
 
-impl<H: Highlighter> EditorComponent<H> {
+impl Editor {
+    /// Insert a `text` at the given position
+    ///
+    /// This may be used to edit the raw text instead of replacing it.
+    /// One must call [`Text::prepare`] afterwards.
+    ///
+    /// Currently this is not significantly more efficient than
+    /// [`Text::set_text`]. This may change in the future (TODO).
+    #[inline]
+    fn insert_str(&mut self, index: usize, text: &str) {
+        self.text.insert_str(index, text);
+        self.display.set_max_status(Status::New);
+    }
+
+    /// Replace a section of text
+    ///
+    /// This may be used to edit the raw text instead of replacing it.
+    /// One must call [`Text::prepare`] afterwards.
+    ///
+    /// One may simulate an unbounded range by via `start..usize::MAX`.
+    ///
+    /// Currently this is not significantly more efficient than
+    /// [`Text::set_text`]. This may change in the future (TODO).
+    #[inline]
+    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
+        self.text.replace_range(range, replace_with);
+        self.display.set_max_status(Status::New);
+    }
+
     /// Cancel on-going selection and IME actions
     ///
     /// This should be called if e.g. key-input interrupts the current
@@ -634,7 +767,7 @@ impl<H: Highlighter> EditorComponent<H> {
             let action = std::mem::replace(&mut self.current, CurrentAction::None);
             if let CurrentAction::ImePreedit { edit_range } = action {
                 self.selection.set_cursor(edit_range.start.cast());
-                self.text.replace_range(edit_range.cast(), "");
+                self.replace_range(edit_range.cast(), "");
             }
         }
     }
@@ -651,22 +784,22 @@ impl<H: Highlighter> EditorComponent<H> {
         let initial_range = range.clone();
         let edit_len = edit_range.clone().map(|r| r.len()).unwrap_or(0);
 
-        if let Ok(Some((_, line_range))) = self.text.find_line(range.start) {
+        if let Ok(Some((_, line_range))) = self.display.find_line(range.start) {
             range.start = line_range.start;
         }
-        if let Ok(Some((_, line_range))) = self.text.find_line(range.end) {
+        if let Ok(Some((_, line_range))) = self.display.find_line(range.end) {
             range.end = line_range.end;
         }
 
         if range.len() - edit_len > MAX_TEXT_BYTES {
             range.end = range.end.min(initial_range.end + MAX_TEXT_BYTES / 2);
-            while !self.text.as_str().is_char_boundary(range.end) {
+            while !self.as_str().is_char_boundary(range.end) {
                 range.end -= 1;
             }
 
             if range.len() - edit_len > MAX_TEXT_BYTES {
                 range.start = range.start.max(initial_range.start - MAX_TEXT_BYTES / 2);
-                while !self.text.as_str().is_char_boundary(range.start) {
+                while !self.as_str().is_char_boundary(range.start) {
                     range.start += 1;
                 }
             }
@@ -675,10 +808,10 @@ impl<H: Highlighter> EditorComponent<H> {
         let start = range.start;
         let mut text = String::with_capacity(range.len() - edit_len);
         if let Some(er) = edit_range {
-            text.push_str(&self.text.as_str()[range.start..er.start]);
-            text.push_str(&self.text.as_str()[er.end..range.end]);
+            text.push_str(&self.as_str()[range.start..er.start]);
+            text.push_str(&self.as_str()[er.end..range.end]);
         } else {
-            text = self.text.as_str()[range].to_string();
+            text = self.as_str()[range].to_string();
         }
 
         let cursor = self.selection.edit_index().saturating_sub(start);
@@ -695,7 +828,7 @@ impl<H: Highlighter> EditorComponent<H> {
 
     /// Call to set IME position only while IME is active
     fn set_ime_cursor_area(&self, cx: &mut EventState) {
-        if let Ok(text) = self.text.display() {
+        if let Ok(text) = self.display.display() {
             let range = match self.current.clone() {
                 CurrentAction::ImeStart => self.selection.range(),
                 CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
@@ -728,7 +861,7 @@ impl<H: Highlighter> EditorComponent<H> {
                 return;
             };
 
-            cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.text.rect().pos));
+            cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.display.rect().pos));
         }
     }
 
@@ -747,27 +880,6 @@ impl<H: Highlighter> EditorComponent<H> {
             .try_push((self.clone_string(), self.cursor_range()));
     }
 
-    /// Prepare text
-    ///
-    /// Updates the view offset (scroll position) if the content size changes or
-    /// `force_set_offset`. Requests redraw and resize as appropriate.
-    fn prepare_and_scroll(&mut self, cx: &mut EventCx, force_set_offset: bool) {
-        let bb = self.text.bounding_box();
-        if self.text.prepare() {
-            self.text.ensure_no_left_overhang();
-            cx.redraw();
-        }
-
-        let mut set_offset = force_set_offset;
-        if bb != self.text.bounding_box() {
-            cx.resize();
-            set_offset = true;
-        }
-        if set_offset {
-            self.set_view_offset_from_cursor(cx);
-        }
-    }
-
     /// Insert `text` at the cursor position
     ///
     /// Committing undo state is the responsibility of the caller.
@@ -781,15 +893,14 @@ impl<H: Highlighter> EditorComponent<H> {
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
         if have_sel {
-            self.text.replace_range(selection.clone(), text);
+            self.replace_range(selection.clone(), text);
             self.selection.set_cursor(selection.start + text.len());
         } else {
-            self.text.insert_str(index, text);
+            self.insert_str(index, text);
             self.selection.set_cursor(index + text.len());
         }
         self.edit_x_coord = None;
 
-        self.prepare_and_scroll(cx, false);
         Used
     }
 
@@ -827,7 +938,7 @@ impl<H: Highlighter> EditorComponent<H> {
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let cursor = self.selection.edit_index();
-        let len = self.text.str_len();
+        let len = self.as_str().len();
         let multi_line = self.multi_line();
         let selection = self.selection.range();
         let have_sel = selection.end > selection.start;
@@ -867,7 +978,7 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Move(selection.start, None)
             }
             Command::Left if cursor > 0 => GraphemeCursor::new(cursor, len, true)
-                .prev_boundary(self.text.as_str(), 0)
+                .prev_boundary(self.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
                 .unwrap_or(Action::None),
@@ -875,14 +986,14 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Move(selection.end, None)
             }
             Command::Right if cursor < len => GraphemeCursor::new(cursor, len, true)
-                .next_boundary(self.text.as_str(), 0)
+                .next_boundary(self.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
                 .unwrap_or(Action::None),
             Command::WordLeft if cursor > 0 => {
-                let mut iter = self.text.as_str()[0..cursor].split_word_bound_indices();
+                let mut iter = self.as_str()[0..cursor].split_word_bound_indices();
                 let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
-                while self.text.as_str()[p..]
+                while self.as_str()[p..]
                     .chars()
                     .next()
                     .map(|c| c.is_whitespace())
@@ -897,11 +1008,9 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Move(p, None)
             }
             Command::WordRight if cursor < len => {
-                let mut iter = self.text.as_str()[cursor..]
-                    .split_word_bound_indices()
-                    .skip(1);
+                let mut iter = self.as_str()[cursor..].split_word_bound_indices().skip(1);
                 let mut p = iter.next().map(|(index, _)| cursor + index).unwrap_or(len);
-                while self.text.as_str()[p..]
+                while self.as_str()[p..]
                     .chars()
                     .next()
                     .map(|c| c.is_whitespace())
@@ -921,13 +1030,13 @@ impl<H: Highlighter> EditorComponent<H> {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => self
-                        .text
+                        .display
                         .text_glyph_pos(cursor)?
                         .next_back()
                         .map(|r| r.pos.0)
                         .unwrap_or(0.0),
                 };
-                let mut line = self.text.find_line(cursor)?.map(|r| r.0).unwrap_or(0);
+                let mut line = self.display.find_line(cursor)?.map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
                 line = match cmd {
                     Command::Up => line.wrapping_sub(1),
@@ -939,17 +1048,25 @@ impl<H: Highlighter> EditorComponent<H> {
                     0..=HALF => len,
                     _ => 0,
                 };
-                self.text
+                self.display
                     .line_index_nearest(line, x)?
                     .map(|index| Action::Move(index, Some(x)))
                     .unwrap_or(Action::Move(nearest_end, None))
             }
             Command::Home if cursor > 0 => {
-                let index = self.text.find_line(cursor)?.map(|r| r.1.start).unwrap_or(0);
+                let index = self
+                    .display
+                    .find_line(cursor)?
+                    .map(|r| r.1.start)
+                    .unwrap_or(0);
                 Action::Move(index, None)
             }
             Command::End if cursor < len => {
-                let index = self.text.find_line(cursor)?.map(|r| r.1.end).unwrap_or(len);
+                let index = self
+                    .display
+                    .find_line(cursor)?
+                    .map(|r| r.1.end)
+                    .unwrap_or(len);
                 Action::Move(index, None)
             }
             Command::DocHome if cursor > 0 => Action::Move(0, None),
@@ -958,7 +1075,7 @@ impl<H: Highlighter> EditorComponent<H> {
             Command::Home | Command::End | Command::DocHome | Command::DocEnd => Action::None,
             Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = self
-                    .text
+                    .display
                     .text_glyph_pos(cursor)?
                     .next_back()
                     .map(|r| r.pos.into())
@@ -967,28 +1084,28 @@ impl<H: Highlighter> EditorComponent<H> {
                     v.0 = x;
                 }
                 const FACTOR: f32 = 2.0 / 3.0;
-                let mut h_dist = f32::conv(self.text.rect().size.1) * FACTOR;
+                let mut h_dist = f32::conv(self.display.rect().size.1) * FACTOR;
                 if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
-                Action::Move(self.text.text_index_nearest(v)?, Some(v.0))
+                Action::Move(self.display.text_index_nearest(v)?, Some(v.0))
             }
             Command::Delete | Command::DelBack if editable && have_sel => {
                 Action::Delete(selection.clone(), EditOp::Delete)
             }
             Command::Delete if editable => GraphemeCursor::new(cursor, len, true)
-                .next_boundary(self.text.as_str(), 0)
+                .next_boundary(self.as_str(), 0)
                 .unwrap()
                 .map(|next| Action::Delete(cursor..next, EditOp::Delete))
                 .unwrap_or(Action::None),
             Command::DelBack if editable => GraphemeCursor::new(cursor, len, true)
-                .prev_boundary(self.text.as_str(), 0)
+                .prev_boundary(self.as_str(), 0)
                 .unwrap()
                 .map(|prev| Action::Delete(prev..cursor, EditOp::Delete))
                 .unwrap_or(Action::None),
             Command::DelWord if editable => {
-                let next = self.text.as_str()[cursor..]
+                let next = self.as_str()[cursor..]
                     .split_word_bound_indices()
                     .nth(1)
                     .map(|(index, _)| cursor + index)
@@ -996,7 +1113,7 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Delete(cursor..next, EditOp::Delete)
             }
             Command::DelWordBack if editable => {
-                let prev = self.text.as_str()[0..cursor]
+                let prev = self.as_str()[0..cursor]
                     .split_word_bound_indices()
                     .next_back()
                     .map(|(index, _)| index)
@@ -1009,11 +1126,11 @@ impl<H: Highlighter> EditorComponent<H> {
                 Action::Move(len, None)
             }
             Command::Cut if editable && have_sel => {
-                cx.set_clipboard((self.text.as_str()[selection.clone()]).into());
+                cx.set_clipboard((self.as_str()[selection.clone()]).into());
                 Action::Delete(selection.clone(), EditOp::Clipboard)
             }
             Command::Copy if have_sel => {
-                cx.set_clipboard((self.text.as_str()[selection.clone()]).into());
+                cx.set_clipboard((self.as_str()[selection.clone()]).into());
                 Action::None
             }
             Command::Paste if editable => {
@@ -1063,13 +1180,13 @@ impl<H: Highlighter> EditorComponent<H> {
                 } else {
                     index..index
                 };
-                self.text.replace_range(range, s);
+                self.replace_range(range, s);
                 self.selection.set_cursor(index + s.len());
                 self.edit_x_coord = None;
                 EventAction::Edit
             }
             Action::Delete(sel, _) => {
-                self.text.replace_range(sel.clone(), "");
+                self.replace_range(sel.clone(), "");
                 self.selection.set_cursor(sel.start);
                 self.edit_x_coord = None;
                 EventAction::Edit
@@ -1087,7 +1204,9 @@ impl<H: Highlighter> EditorComponent<H> {
             }
             Action::UndoRedo(redo) => {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
-                    if self.text.set_str(text) {
+                    if self.text.as_str() != text {
+                        self.text = text.clone();
+                        self.display.set_max_status(Status::New);
                         self.edit_x_coord = None;
                     }
                     self.selection = (*cursor).into();
@@ -1098,7 +1217,6 @@ impl<H: Highlighter> EditorComponent<H> {
             }
         };
 
-        self.prepare_and_scroll(cx, true);
         Ok(action)
     }
 
@@ -1106,8 +1224,8 @@ impl<H: Highlighter> EditorComponent<H> {
     ///
     /// Committing undo state is the responsibility of the caller.
     fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
-        let rel_pos = (coord - self.text.rect().pos).cast();
-        if let Ok(index) = self.text.text_index_nearest(rel_pos) {
+        let rel_pos = (coord - self.display.rect().pos).cast();
+        if let Ok(index) = self.display.text_index_nearest(rel_pos) {
             if index != self.selection.edit_index() {
                 self.selection.set_edit_index(index);
                 self.set_view_offset_from_cursor(cx);
@@ -1121,7 +1239,7 @@ impl<H: Highlighter> EditorComponent<H> {
     fn set_primary(&self, cx: &mut EventCx) {
         if self.has_key_focus && !self.selection.is_empty() && cx.has_primary() {
             let range = self.selection.range();
-            cx.set_primary(String::from(&self.text.as_str()[range]));
+            cx.set_primary(String::from(&self.as_str()[range]));
         }
     }
 
@@ -1133,13 +1251,13 @@ impl<H: Highlighter> EditorComponent<H> {
     fn set_view_offset_from_cursor(&mut self, cx: &mut EventCx) {
         let cursor = self.selection.edit_index();
         if let Some(marker) = self
-            .text
+            .display
             .text_glyph_pos(cursor)
             .ok()
             .and_then(|mut m| m.next_back())
         {
             let y0 = (marker.pos.1 - marker.ascent).cast_floor();
-            let pos = self.text.rect().pos + Offset(marker.pos.0.cast_nearest(), y0);
+            let pos = self.display.rect().pos + Offset(marker.pos.0.cast_nearest(), y0);
             let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
             cx.set_scroll(Scroll::Rect(Rect { pos, size }));
         }
@@ -1147,30 +1265,29 @@ impl<H: Highlighter> EditorComponent<H> {
 }
 
 /// Text editor interface
-#[kas::split_impl(for<H: Highlighter> EditorComponent<H>)]
-pub trait Editor {
+impl Editor {
     /// Get a reference to the widget's identifier
     #[inline]
-    fn id_ref(&self) -> &Id {
+    pub fn id_ref(&self) -> &Id {
         &self.id
     }
 
     /// Get the widget's identifier
     #[inline]
-    fn id(&self) -> Id {
+    pub fn id(&self) -> Id {
         self.id.clone()
     }
 
     /// Get text contents
     #[inline]
-    fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         self.text.as_str()
     }
 
     /// Get the text contents as a `String`
     #[inline]
-    fn clone_string(&self) -> String {
-        self.text.as_str().to_string()
+    pub fn clone_string(&self) -> String {
+        self.as_str().to_string()
     }
 
     /// Get the (horizontal) text direction
@@ -1179,8 +1296,8 @@ pub trait Editor {
     /// in other cases (including when the text is empty) it returns `false`.
     /// TODO: support defaulting to RTL.
     #[inline]
-    fn text_is_rtl(&self) -> bool {
-        self.text.text_is_rtl()
+    pub fn text_is_rtl(&self) -> bool {
+        self.display.text_is_rtl(self.as_str())
     }
 
     /// Commit outstanding changes to the undo history
@@ -1188,16 +1305,13 @@ pub trait Editor {
     /// Call this *before* changing the text with [`Self::set_str`] or
     /// [`Self::set_string`] to commit changes to the undo history.
     #[inline]
-    fn pre_commit(&mut self) {
+    pub fn pre_commit(&mut self) {
         self.save_undo_state(Some(EditOp::Synthetic));
     }
 
     /// Clear text contents and undo history
-    ///
-    /// This method does not call any [`EditGuard`] actions; consider also
-    /// calling [`EditField::call_guard_edit`].
     #[inline]
-    fn clear(&mut self, cx: &mut EventState) {
+    pub fn clear(&mut self, cx: &mut EventState) {
         self.last_edit = Some(EditOp::Initial);
         self.undo_stack.clear();
         self.set_string(cx, String::new());
@@ -1208,13 +1322,10 @@ pub trait Editor {
     /// This does not interact with undo history; see also [`Self::clear`],
     /// [`Self::pre_commit`].
     ///
-    /// This method does not call any [`EditGuard`] actions; consider also
-    /// calling [`EditField::call_guard_edit`].
-    ///
     /// Returns `true` if the text may have changed.
     #[inline]
-    fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
-        if self.text.as_str() != text {
+    pub fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
+        if self.as_str() != text {
             self.set_string(cx, text.to_string());
             true
         } else {
@@ -1226,57 +1337,47 @@ pub trait Editor {
     ///
     /// This does not interact with undo history or call action handlers on the
     /// guard.
-    ///
-    /// This method clears the error state but does not call any [`EditGuard`]
-    /// actions; consider also calling [`EditField::call_guard_edit`].
-    ///
-    /// Returns `true` if the text is ready and may have changed.
-    fn set_string(&mut self, cx: &mut EventState, string: String) -> bool {
-        self.cancel_selection_and_ime(cx);
-
-        if !self.text.set_str(&string) {
-            return false;
+    pub fn set_string(&mut self, cx: &mut EventState, text: String) {
+        if self.as_str() == text {
+            return; // no change
         }
 
-        cx.redraw(self.id());
-        let len = self.text.str_len();
+        self.cancel_selection_and_ime(cx);
+
+        self.text = text;
+        self.display.set_max_status(Status::New);
+
+        let len = self.as_str().len();
         self.selection.set_max_len(len);
         self.edit_x_coord = None;
-        self.clear_error();
-        self.text.prepare()
+        self.error_state = None;
     }
 
     /// Replace selected text
     ///
     /// This does not interact with undo history or call action handlers on the
     /// guard.
-    ///
-    /// This method clears the error state but does not call any [`EditGuard`]
-    /// actions; consider also calling [`EditField::call_guard_edit`].
-    ///
-    /// Returns `true` if the text is ready and may have changed.
     #[inline]
-    fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) -> bool {
+    pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
         self.cancel_selection_and_ime(cx);
 
         let index = self.selection.edit_index();
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
         if have_sel {
-            self.text.replace_range(selection.clone(), text);
+            self.replace_range(selection.clone(), text);
             self.selection.set_cursor(selection.start + text.len());
         } else {
-            self.text.insert_str(index, text);
+            self.insert_str(index, text);
             self.selection.set_cursor(index + text.len());
         }
         self.edit_x_coord = None;
-        self.clear_error();
-        self.text.prepare()
+        self.error_state = None;
     }
 
     /// Access the cursor index / selection range
     #[inline]
-    fn cursor_range(&self) -> CursorRange {
+    pub fn cursor_range(&self) -> CursorRange {
         *self.selection
     }
 
@@ -1285,59 +1386,53 @@ pub trait Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     #[inline]
-    fn set_cursor_range(&mut self, range: CursorRange) {
+    pub fn set_cursor_range(&mut self, range: CursorRange) {
         self.edit_x_coord = None;
         self.selection = range.into();
     }
 
     /// Get whether this `EditField` is editable
     #[inline]
-    fn is_editable(&self) -> bool {
+    pub fn is_editable(&self) -> bool {
         self.editable
     }
 
     /// Set whether this `EditField` is editable
     #[inline]
-    fn set_editable(&mut self, editable: bool) {
+    pub fn set_editable(&mut self, editable: bool) {
         self.editable = editable;
     }
 
     /// True if the editor uses multi-line mode
     #[inline]
-    fn multi_line(&self) -> bool {
-        self.text.wrap()
+    pub fn multi_line(&self) -> bool {
+        self.display.wrap()
     }
 
     /// Get the text class used
     #[inline]
-    fn class(&self) -> TextClass {
-        self.text.class()
+    pub fn class(&self) -> TextClass {
+        self.display.class()
     }
 
     /// Get whether the widget has input focus
     ///
     /// This is true when the widget is has keyboard or IME focus.
     #[inline]
-    fn has_input_focus(&self) -> bool {
+    pub fn has_input_focus(&self) -> bool {
         self.has_key_focus || self.current.is_ime_enabled()
     }
 
     /// Get whether the input state is erroneous
     #[inline]
-    fn has_error(&self) -> bool {
-        self.error_state
+    pub fn has_error(&self) -> bool {
+        self.error_state.is_some()
     }
 
     /// Get the error message, if any
     #[inline]
-    fn error_message(&self) -> Option<&str> {
-        self.error_message.as_deref()
-    }
-
-    /// Clear the error state
-    fn clear_error(&mut self) {
-        self.error_state = false;
-        self.error_message = None;
+    pub fn error_message(&self) -> Option<&str> {
+        self.error_state.as_ref().and_then(|state| state.as_deref())
     }
 
     /// Mark the input as erroneous with an optional message
@@ -1348,9 +1443,8 @@ pub trait Editor {
     ///
     /// When set, the input field's background is drawn red. If a message is
     /// supplied, then a tooltip will be available on mouse-hover.
-    fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
-        self.error_state = true;
-        self.error_message = message;
+    pub fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
+        self.error_state = Some(message);
         cx.redraw(&self.id);
     }
 }

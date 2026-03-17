@@ -27,7 +27,7 @@ pub trait EditGuard: Sized {
     /// Configure guard
     ///
     /// This function is called when the attached widget is configured.
-    fn configure(&mut self, edit: &mut dyn Editor, cx: &mut ConfigCx) {
+    fn configure(&mut self, edit: &mut Editor, cx: &mut ConfigCx) {
         let _ = (edit, cx);
     }
 
@@ -38,7 +38,7 @@ pub trait EditGuard: Sized {
     ///
     /// This method may also be called on loss of input focus (see
     /// [`Self::focus_lost`]).
-    fn update(&mut self, edit: &mut dyn Editor, cx: &mut ConfigCx, data: &Self::Data) {
+    fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &Self::Data) {
         let _ = (edit, cx, data);
     }
 
@@ -53,7 +53,7 @@ pub trait EditGuard: Sized {
     /// -   If the field is editable, calls [`Self::focus_lost`] and returns
     ///     returns [`Used`].
     /// -   If the field is not editable, returns [`Unused`].
-    fn activate(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &Self::Data) -> IsUsed {
+    fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) -> IsUsed {
         if edit.is_editable() {
             self.focus_lost(edit, cx, data);
             Used
@@ -65,7 +65,7 @@ pub trait EditGuard: Sized {
     /// Focus-gained guard
     ///
     /// This function is called when the widget gains keyboard or IME focus.
-    fn focus_gained(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &Self::Data) {
+    fn focus_gained(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) {
         let _ = (edit, cx, data);
     }
 
@@ -76,7 +76,7 @@ pub trait EditGuard: Sized {
     ///
     /// The default implementation calls [`Self::update`] since updates are
     /// inhibited while the editor has input focus.
-    fn focus_lost(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &Self::Data) {
+    fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) {
         self.update(edit, cx, data);
     }
 
@@ -84,12 +84,11 @@ pub trait EditGuard: Sized {
     ///
     /// This function is called after the text is updated (including by keyboard
     /// input, an undo action or by a message like
-    /// [`kas::messages::SetValueText`]). The exceptions are setter methods like
-    /// [`clear`](Editor::clear) and [`set_string`](Editor::set_string).
+    /// [`kas::messages::SetValueText`]).
     ///
     /// The guard may call [`Editor::set_error`] here.
     /// The error state is cleared immediately before calling this method.
-    fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &Self::Data) {
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) {
         let _ = (edit, cx, data);
     }
 }
@@ -155,12 +154,12 @@ mod StringGuard {
     impl EditGuard for Self {
         type Data = A;
 
-        fn update(&mut self, edit: &mut dyn Editor, cx: &mut ConfigCx, data: &A) {
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
             let string = (self.value_fn)(data);
             edit.set_string(cx, string);
         }
 
-        fn focus_lost(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &A) {
+        fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
             if self.edited {
                 self.edited = false;
                 if let Some(ref on_afl) = self.on_afl {
@@ -172,7 +171,7 @@ mod StringGuard {
             }
         }
 
-        fn edit(&mut self, _: &mut dyn Editor, _: &mut EventCx, _: &Self::Data) {
+        fn edit(&mut self, _: &mut Editor, _: &mut EventCx, _: &Self::Data) {
             self.edited = true;
         }
     }
@@ -221,13 +220,13 @@ mod ParseGuard {
     impl EditGuard for Self {
         type Data = A;
 
-        fn update(&mut self, edit: &mut dyn Editor, cx: &mut ConfigCx, data: &A) {
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
             let value = (self.value_fn)(data);
             edit.set_string(cx, format!("{value}"));
             self.parsed = None;
         }
 
-        fn focus_lost(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &A) {
+        fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
             if let Some(value) = self.parsed.take() {
                 (self.on_afl)(cx, value);
             } else {
@@ -236,7 +235,7 @@ mod ParseGuard {
             }
         }
 
-        fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, _: &A) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
             self.parsed = edit.as_str().parse().ok();
             if self.parsed.is_none() {
                 edit.set_error(cx, Some("parse failure".into()));
@@ -282,17 +281,17 @@ mod InstantParseGuard {
     impl EditGuard for Self {
         type Data = A;
 
-        fn update(&mut self, edit: &mut dyn Editor, cx: &mut ConfigCx, data: &A) {
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
             let value = (self.value_fn)(data);
             edit.set_string(cx, format!("{value}"));
         }
 
-        fn focus_lost(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, data: &A) {
+        fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
             // Always reset data on focus loss
             self.update(edit, cx, data);
         }
 
-        fn edit(&mut self, edit: &mut dyn Editor, cx: &mut EventCx, _: &A) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
             let result = edit.as_str().parse();
             if result.is_err() {
                 edit.set_error(cx, Some("parse failure".into()));

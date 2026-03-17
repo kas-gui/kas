@@ -12,7 +12,7 @@ mod text;
 pub use syntect::{
     SyntaxReference as SyntectSyntax, SyntaxSet as SyntectSyntaxSet, SyntectHighlighter,
 };
-pub use text::Text;
+pub(crate) use text::Text;
 
 use kas::event::ConfigCx;
 use kas::text::fonts::{FontStyle, FontWeight};
@@ -68,6 +68,7 @@ pub trait Highlighter {
     /// theme / color scheme.
     ///
     /// The method should return `true` when the highlighter should be re-run.
+    #[must_use]
     fn configure(&mut self, cx: &mut ConfigCx) -> bool;
 
     /// Get scheme colors

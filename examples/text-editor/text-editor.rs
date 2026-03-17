@@ -6,8 +6,8 @@
 //! A simple text editor
 
 use kas::prelude::*;
+use kas::widgets::edit;
 use kas::widgets::edit::highlight::{SyntectHighlighter, SyntectSyntax};
-use kas::widgets::edit::{self, Editor as _};
 use kas::widgets::{Button, EditBox, Filler, column, dialog, row};
 use rfd::FileHandle;
 
@@ -48,7 +48,7 @@ struct Guard {
 impl edit::EditGuard for Guard {
     type Data = ();
 
-    fn edit(&mut self, _: &mut dyn edit::Editor, _: &mut EventCx<'_>, _: &Self::Data) {
+    fn edit(&mut self, _: &mut edit::Editor, _: &mut EventCx<'_>, _: &Self::Data) {
         self.edited = true;
     }
 }
@@ -131,9 +131,11 @@ mod Editor {
                     }
                 };
 
-                self.editor.clear(cx);
+                self.editor.edit(cx, &(), |edit, cx| {
+                    edit.clear(cx);
+                    edit.set_string(cx, text);
+                });
                 self.editor.set_highlighter(SyntectHighlighter::new(syntax));
-                self.editor.set_string(cx, text);
                 self.editor.guard_mut().edited = false;
             } else if let Some(Saved(result)) = cx.try_pop() {
                 match result {
@@ -172,8 +174,10 @@ mod Editor {
         fn do_action(&mut self, cx: &mut EventCx<'_>, action: EditorAction) {
             match action {
                 EditorAction::New => {
-                    self.editor.clear(cx);
-                    self.editor.set_string(cx, String::new());
+                    self.editor.edit(cx, &(), |edit, cx| {
+                        edit.clear(cx);
+                        edit.set_string(cx, String::new());
+                    });
                     self.editor.guard_mut().edited = false;
                     self.file = None;
                 }

@@ -12,7 +12,7 @@ use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, TextClass};
 use std::fmt::{Debug, Display};
-use std::ops::DerefMut;
+use std::ops::Deref;
 use std::str::FromStr;
 
 #[impl_self]
@@ -62,7 +62,6 @@ mod EditField {
     ///
     /// This is a [`Viewport`] widget.
     #[autoimpl(Debug where G: trait, H: trait)]
-    #[autoimpl(Deref<Target = EditorComponent<H>>, DerefMut using self.editor)]
     #[widget]
     #[layout(self.editor)]
     pub struct EditField<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
@@ -72,6 +71,13 @@ mod EditField {
         editor: Component<H>,
         /// The associated [`EditGuard`] implementation
         pub guard: G,
+    }
+
+    impl Deref for Self {
+        type Target = Editor;
+        fn deref(&self) -> &Self::Target {
+            &self.editor.0
+        }
     }
 
     impl Layout for Self {
@@ -85,7 +91,6 @@ mod EditField {
                 // Use the height of the first line as a reference
                 let height = self
                     .editor
-                    .text_mut()
                     .measure_height(width.cast(), std::num::NonZero::new(1));
                 min = (self.lines.0 * height).cast_ceil();
                 ideal = (self.lines.1 * height).cast_ceil();
@@ -134,7 +139,7 @@ mod EditField {
 
         #[inline]
         fn tooltip(&self) -> Option<&str> {
-            self.editor.error_message()
+            self.editor.0.error_message()
         }
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
@@ -162,17 +167,15 @@ mod EditField {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.editor.configure(cx, self.id());
-            self.guard.configure(self.editor.deref_mut(), cx);
+            self.guard.configure(&mut self.editor.0, cx);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
-            let size = self.content_size();
             if !self.has_input_focus() {
-                self.guard.update(self.editor.deref_mut(), cx, data);
+                self.guard.update(&mut self.editor.0, cx, data);
             }
-            if size != self.content_size() {
-                cx.resize();
-            }
+
+            self.editor.prepare(cx);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
@@ -180,16 +183,20 @@ mod EditField {
                 EventAction::Unused => Unused,
                 EventAction::Used | EventAction::Cursor => Used,
                 EventAction::FocusGained => {
-                    self.guard.focus_gained(self.editor.deref_mut(), cx, data);
+                    self.guard.focus_gained(&mut self.editor.0, cx, data);
+                    self.editor.prepare(cx);
                     Used
                 }
                 EventAction::FocusLost => {
-                    self.guard.focus_lost(self.editor.deref_mut(), cx, data);
+                    self.guard.focus_lost(&mut self.editor.0, cx, data);
+                    self.editor.prepare(cx);
                     Used
                 }
                 EventAction::Activate(code) => {
                     cx.depress_with_key(&self, code);
-                    self.guard.activate(self.editor.deref_mut(), cx, data)
+                    let result = self.guard.activate(&mut self.editor.0, cx, data);
+                    self.editor.prepare(cx);
+                    result
                 }
                 EventAction::Edit => {
                     self.call_guard_edit(cx, data);
@@ -204,13 +211,15 @@ mod EditField {
             }
 
             if let Some(SetValueText(string)) = cx.try_pop() {
-                self.pre_commit();
-                self.set_string(cx, string);
-                self.call_guard_edit(cx, data);
+                self.edit(cx, data, |edit, cx| {
+                    edit.pre_commit();
+                    edit.set_string(cx, string);
+                });
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
-                self.pre_commit();
-                self.replace_selected_text(cx, &text);
-                self.call_guard_edit(cx, data);
+                self.edit(cx, data, |edit, cx| {
+                    edit.pre_commit();
+                    edit.replace_selected_text(cx, &text);
+                });
             }
         }
     }
@@ -269,16 +278,18 @@ mod EditField {
         /// Call the [`EditGuard`]'s `activate` method
         #[inline]
         pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {
-            self.guard.activate(self.editor.deref_mut(), cx, data);
+            self.guard.activate(&mut self.editor.0, cx, data);
+            self.editor.prepare(cx);
         }
 
         /// Call the [`EditGuard`]'s `edit` method
         ///
         /// This call also clears the error state (see [`Editor::set_error`]).
         #[inline]
-        pub fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
-            self.clear_error();
-            self.guard.edit(self.editor.deref_mut(), cx, data);
+        fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
+            self.editor.clear_error();
+            self.guard.edit(&mut self.editor.0, cx, data);
+            self.editor.prepare(cx);
         }
     }
 }
@@ -296,9 +307,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
     /// Construct a read-only `EditField` displaying some `String` value
     #[inline]
     pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditField<StringGuard<A>> {
-        let mut field = EditField::new(StringGuard::new(value_fn));
-        field.set_editable(false);
-        field
+        EditField::new(StringGuard::new(value_fn)).with_editable(false)
     }
 
     /// Construct an `EditField` for a parsable value (e.g. a number)
@@ -352,8 +361,7 @@ impl<A: 'static> EditField<StringGuard<A>> {
         M: Debug + 'static,
     {
         self.guard = self.guard.with_msg(msg_fn);
-        self.set_editable(true);
-        self
+        self.with_editable(true)
     }
 }
 
@@ -372,7 +380,7 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     #[inline]
     #[must_use]
     pub fn with_editable(mut self, editable: bool) -> Self {
-        self.set_editable(editable);
+        self.editor.0.set_editable(editable);
         self
     }
 
@@ -383,7 +391,7 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
-        self.editor.text_mut().set_wrap(multi_line);
+        self.editor.set_wrap(multi_line);
         self.lines = match multi_line {
             false => (1.0, 1.0),
             true => (4.0, 7.0),
@@ -395,7 +403,7 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     #[inline]
     #[must_use]
     pub fn with_class(mut self, class: TextClass) -> Self {
-        self.editor.text_mut().set_class(class);
+        self.editor.set_class(class);
         self
     }
 
@@ -425,5 +433,20 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
     pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
         self.set_width_em(min_em, ideal_em);
         self
+    }
+
+    /// Edit text contents
+    ///
+    /// This method calls the `edit` closure, then [`EditGuard::edit`], then
+    /// returns the result of calling `edit`.
+    pub fn edit<T>(
+        &mut self,
+        cx: &mut EventCx,
+        data: &G::Data,
+        edit: impl FnOnce(&mut Editor, &mut EventCx) -> T,
+    ) -> T {
+        let result = edit(&mut self.editor.0, cx);
+        self.call_guard_edit(cx, data);
+        result
     }
 }

@@ -13,7 +13,7 @@ pub mod highlight;
 
 pub use edit_box::EditBox;
 pub use edit_field::EditField;
-pub use editor::{Component, Editor, EditorComponent};
+pub use editor::{Component, Editor};
 pub use guard::*;
 
 use kas::event::PhysicalKey;

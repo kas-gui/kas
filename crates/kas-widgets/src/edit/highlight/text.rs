@@ -8,7 +8,7 @@
 use super::*;
 use kas::cast::Cast;
 use kas::text::fonts::{FontSelector, FontStyle, FontWeight};
-use kas::text::format::{Colors, Decoration, EditableText, FontToken, FormattableText};
+use kas::text::format::{Colors, Decoration, FontToken};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 struct Fmt {
@@ -23,9 +23,8 @@ struct Fmt {
 /// of the embedded highlighter.
 #[derive(Clone, Debug)]
 #[kas::autoimpl(PartialEq ignore self.highlighter)]
-pub struct Text<H: Highlighter> {
+pub(crate) struct Text<H: Highlighter> {
     highlighter: H,
-    text: String,
     fonts: Vec<Fmt>,
     colors: Vec<(u32, Colors)>,
     decorations: Vec<(u32, Decoration)>,
@@ -33,34 +32,32 @@ pub struct Text<H: Highlighter> {
 
 impl<H: Highlighter + Default> Default for Text<H> {
     fn default() -> Self {
-        Self::new(H::default(), "")
+        Self::new(H::default())
     }
 }
 
 impl<H: Highlighter> Text<H> {
     /// Construct a new instance
     #[inline]
-    pub fn new(highlighter: H, text: impl ToString) -> Self {
-        let mut text = Text {
+    pub fn new(highlighter: H) -> Self {
+        Text {
             highlighter,
-            text: text.to_string(),
-            fonts: vec![],
+            fonts: vec![Fmt::default()],
             colors: vec![],
             decorations: vec![],
-        };
-        text.highlight();
-        text
+        }
     }
 
     /// Configure the highlighter
     ///
     /// This is called when the widget is configured. It may be used to set the
     /// theme / color scheme.
+    ///
+    /// Returns `true` when the highlighter must be re-run.
     #[inline]
-    pub fn configure(&mut self, cx: &mut ConfigCx) {
-        if self.highlighter.configure(cx) {
-            self.highlight();
-        }
+    #[must_use]
+    pub fn configure(&mut self, cx: &mut ConfigCx) -> bool {
+        self.highlighter.configure(cx)
     }
 
     /// Get scheme colors
@@ -71,26 +68,8 @@ impl<H: Highlighter> Text<H> {
         self.highlighter.scheme_colors()
     }
 
-    /// Set a new highlighter
-    pub fn set_highlighter(&mut self, highlighter: H) {
-        let text = std::mem::take(&mut self.text);
-        *self = Self::new(highlighter, text);
-    }
-
-    /// Assign new contents
-    #[inline]
-    pub fn set_text(&mut self, text: String) {
-        self.text = text;
-        self.highlight();
-    }
-
-    /// Deconstruct, taking the embedded text
-    #[inline]
-    pub fn take_text(self) -> String {
-        self.text
-    }
-
-    fn highlight(&mut self) {
+    /// Highlight the text (from scratch)
+    pub fn highlight(&mut self, text: &str) {
         self.fonts.clear();
         self.fonts.push(Fmt::default());
         self.colors.clear();
@@ -131,20 +110,13 @@ impl<H: Highlighter> Text<H> {
             state = token;
         };
 
-        if let Err(err) = self.highlighter.highlight_text(&self.text, &mut push_token) {
+        if let Err(err) = self.highlighter.highlight_text(text, &mut push_token) {
             log::error!("Highlighting failed: {err}");
             debug_assert!(false, "Highlighter: {err}");
         }
     }
-}
 
-impl<H: Highlighter> FormattableText for Text<H> {
-    #[inline]
-    fn as_str(&self) -> &str {
-        &self.text
-    }
-
-    fn font_tokens(&self, dpem: f32, font: FontSelector) -> impl Iterator<Item = FontToken> {
+    pub fn font_tokens(&self, dpem: f32, font: FontSelector) -> impl Iterator<Item = FontToken> {
         self.fonts.iter().cloned().map(move |fmt| FontToken {
             start: fmt.start,
             dpem,
@@ -159,33 +131,12 @@ impl<H: Highlighter> FormattableText for Text<H> {
 
     /// The default implementation returns `&[]`.
     #[inline]
-    fn color_tokens(&self) -> &[(u32, Colors)] {
+    pub fn color_tokens(&self) -> &[(u32, Colors)] {
         &self.colors
     }
 
     #[inline]
-    fn decorations(&self) -> &[(u32, Decoration)] {
+    pub fn decorations(&self) -> &[(u32, Decoration)] {
         &self.decorations
-    }
-}
-
-impl<H: Highlighter> EditableText for Text<H> {
-    #[inline]
-    fn insert_str(&mut self, index: usize, text: &str) {
-        self.text.insert_str(index, text);
-        self.highlight();
-    }
-
-    #[inline]
-    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
-        self.text.replace_range(range, replace_with);
-        self.highlight();
-    }
-
-    #[inline]
-    fn set_str(&mut self, text: &str) {
-        self.text.clear();
-        self.text.push_str(text);
-        self.highlight();
     }
 }

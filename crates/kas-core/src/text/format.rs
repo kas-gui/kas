@@ -160,7 +160,7 @@ pub trait FormattableText: std::cmp::PartialEq {
     ///
     /// These tokens are used to select the font and font size.
     /// Each text object has a configured
-    /// [font size][crate::theme::Text::set_font_size] and [`FontSelector`]; these
+    /// [font size][super::ConfiguredDisplay::set_font_size] and [`FontSelector`]; these
     /// values are passed as a reference (`dpem` and `font`).
     ///
     /// The iterator is expected to yield a stream of tokens such that
@@ -255,35 +255,6 @@ impl<F: FormattableText + ?Sized> FormattableText for &F {
 
     fn decorations(&self) -> &[(u32, Decoration)] {
         F::decorations(self)
-    }
-}
-
-/// Editable text
-pub trait EditableText: FormattableText {
-    /// Insert a `text` at the given position
-    fn insert_str(&mut self, index: usize, text: &str);
-
-    /// Replace a section of text
-    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str);
-
-    /// Replace the whole text
-    fn set_str(&mut self, text: &str);
-}
-
-impl EditableText for String {
-    #[inline]
-    fn insert_str(&mut self, index: usize, text: &str) {
-        self.insert_str(index, text);
-    }
-
-    #[inline]
-    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
-        self.replace_range(range, replace_with);
-    }
-
-    #[inline]
-    fn set_str(&mut self, text: &str) {
-        *self = text.to_string();
     }
 }
 

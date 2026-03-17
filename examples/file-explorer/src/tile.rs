@@ -78,7 +78,7 @@ mod TextTile {
     #[layout(self.text)]
     pub struct TextTile {
         core: widget_core!(),
-        text: kas::theme::Text<String>,
+        text: kas::text::Text<String>,
     }
 
     impl Layout for Self {
@@ -109,7 +109,7 @@ mod TextTile {
 
             Ok(TextTile {
                 core: Default::default(),
-                text: kas::theme::Text::new(text, TextClass::Small, true),
+                text: kas::text::Text::new(text, TextClass::Small, true),
             })
         }
     }

@@ -193,7 +193,7 @@ pub trait DrawSharedImpl: Any {
     /// Text is drawn from `pos` and clipped to `bounding_box`.
     ///
     /// The `text` display must be prepared prior to calling this method.
-    /// Typically this is done using a [`crate::theme::Text`] object.
+    /// Typically this is done using a [`crate::text::Text`] object.
     fn draw_text(
         &mut self,
         draw: &mut Self::Draw,
@@ -208,7 +208,7 @@ pub trait DrawSharedImpl: Any {
     /// Draw text decorations (e.g. underlines)
     ///
     /// The `text` display must be prepared prior to calling this method.
-    /// Typically this is done using a [`crate::theme::Text`] object.
+    /// Typically this is done using a [`crate::text::Text`] object.
     fn decorate_text(
         &mut self,
         draw: &mut Self::Draw,
