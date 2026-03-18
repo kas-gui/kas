@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! The [`EditField`] and [`EditBox`] widgets, plus supporting items
+//! The [`EditField`] widget
 
 use super::*;
 use crate::edit::highlight::{Highlighter, Plain};
@@ -11,16 +11,14 @@ use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, TextClass};
-use std::fmt::{Debug, Display};
 use std::ops::Deref;
-use std::str::FromStr;
 
 #[impl_self]
 mod EditField {
     /// A text-edit field (single- or multi-line)
     ///
-    /// The [`EditBox`] widget should be preferred in most cases; this widget
-    /// is a component of `EditBox` and has some special behaviour.
+    /// The [`EditBox`] widget should be preferred in almost all cases; this
+    /// widget is a component of [`EditBox`] and has some special behaviour.
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] can be used to change this.
@@ -302,66 +300,6 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
             editor: Component::from(text),
             ..Default::default()
         }
-    }
-
-    /// Construct a read-only `EditField` displaying some `String` value
-    #[inline]
-    pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditField<StringGuard<A>> {
-        EditField::new(StringGuard::new(value_fn)).with_editable(false)
-    }
-
-    /// Construct an `EditField` for a parsable value (e.g. a number)
-    ///
-    /// On update, `value_fn` is used to extract a value from input data
-    /// which is then formatted as a string via [`Display`].
-    /// If, however, the input field has focus, the update is ignored.
-    ///
-    /// On every edit, the guard attempts to parse the field's input as type
-    /// `T` via [`FromStr`], caching the result and setting the error state.
-    ///
-    /// On field activation and focus loss when a `T` value is cached (see
-    /// previous paragraph), `on_afl` is used to construct a message to be
-    /// emitted via [`EventCx::push`]. The cached value is then cleared to
-    /// avoid sending duplicate messages.
-    #[inline]
-    pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + Send + 'static,
-        msg_fn: impl Fn(T) -> M + Send + 'static,
-    ) -> EditField<ParseGuard<A, T>> {
-        EditField::new(ParseGuard::new(value_fn, msg_fn))
-    }
-
-    /// Construct an `EditField` for a parsable value (e.g. a number)
-    ///
-    /// On update, `value_fn` is used to extract a value from input data
-    /// which is then formatted as a string via [`Display`].
-    /// If, however, the input field has focus, the update is ignored.
-    ///
-    /// On every edit, the guard attempts to parse the field's input as type
-    /// `T` via [`FromStr`]. On success, the result is converted to a
-    /// message via `on_afl` then emitted via [`EventCx::push`].
-    pub fn instant_parser<T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + Send + 'static,
-        msg_fn: impl Fn(T) -> M + Send + 'static,
-    ) -> EditField<InstantParseGuard<A, T>> {
-        EditField::new(InstantParseGuard::new(value_fn, msg_fn))
-    }
-}
-
-impl<A: 'static> EditField<StringGuard<A>> {
-    /// Assign a message function for a `String` value
-    ///
-    /// The `msg_fn` is called when the field is activated (<kbd>Enter</kbd>)
-    /// and when it loses focus after content is changed.
-    ///
-    /// This method sets self as editable (see [`Self::with_editable`]).
-    #[must_use]
-    pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + Send + 'static) -> Self
-    where
-        M: Debug + 'static,
-    {
-        self.guard = self.guard.with_msg(msg_fn);
-        self.with_editable(true)
     }
 }
 
