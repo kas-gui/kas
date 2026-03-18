@@ -110,7 +110,7 @@ pub use progress::ProgressBar;
 pub use radio_box::{RadioBox, RadioButton};
 pub use scroll::{ClipRegion, ScrollRegion};
 pub use scroll_bar::{ScrollBar, ScrollBarMode, ScrollBarMsg};
-pub use scroll_label::{ScrollLabel, ScrollText, SelectableLabel, SelectableText};
+pub use scroll_label::{ScrollLabel, ScrollText, ScrollTextCore};
 pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
 pub use spin_box::{SpinBox, SpinValue};
