@@ -15,7 +15,7 @@
 
 use crate::adapt::AdaptWidgetAny;
 use crate::edit::Editor;
-use crate::{AccessLabel, Button, EditBox, Filler, ScrollLabel, SelectableLabel};
+use crate::{AccessLabel, Button, EditBox, Filler, ScrollLabel};
 use kas::prelude::*;
 use kas::runner::AppData;
 use kas::text::format::FormattableText;
@@ -33,7 +33,7 @@ mod MessageBox {
     pub struct MessageBox<T: FormattableText + 'static> {
         core: widget_core!(),
         #[widget]
-        label: SelectableLabel<T>,
+        label: ScrollLabel<T>,
         #[widget]
         button: Button<AccessLabel>,
     }
@@ -43,7 +43,7 @@ mod MessageBox {
         pub fn new(message: T) -> Self {
             MessageBox {
                 core: Default::default(),
-                label: SelectableLabel::new(message),
+                label: ScrollLabel::new(message),
                 button: Button::label_msg("&Ok", MessageBoxOk),
             }
         }
@@ -101,7 +101,7 @@ mod AlertError {
         parent: Id,
         title: String,
         #[widget]
-        label: SelectableLabel<T>,
+        label: ScrollLabel<T>,
         #[widget]
         details: ScrollLabel<String>,
         #[widget]
@@ -122,7 +122,7 @@ mod AlertError {
                 core: Default::default(),
                 parent: Id::default(),
                 title: "Error".to_string(),
-                label: SelectableLabel::new(message),
+                label: ScrollLabel::new(message),
                 details: ScrollLabel::new(details),
                 ok: Button::label_msg("&Ok", ErrorResult),
             }
@@ -194,7 +194,7 @@ mod AlertUnsaved {
         parent: Id,
         title: String,
         #[widget]
-        label: SelectableLabel<T>,
+        label: ScrollLabel<T>,
         #[widget]
         save: Button<AccessLabel>,
         #[widget]
@@ -210,7 +210,7 @@ mod AlertUnsaved {
                 core: Default::default(),
                 parent: Id::default(),
                 title: "Unsaved changes".to_string(),
-                label: SelectableLabel::new(message),
+                label: ScrollLabel::new(message),
                 save: Button::label_msg("&Save", UnsavedResult::Save),
                 discard: Button::label_msg("&Discard", UnsavedResult::Discard),
                 cancel: Button::label_msg("&Cancel", UnsavedResult::Cancel),
