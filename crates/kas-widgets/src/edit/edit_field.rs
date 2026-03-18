@@ -53,8 +53,8 @@ mod EditField {
     ///
     /// [`SetValueText`] may be used to replace the entire text and
     /// [`ReplaceSelectedText`] may be used to replace selected text when this
-    /// widget is [editable](Editor::is_editable)]. This triggers the action
-    /// handlers [`EditGuard::edit`] followed by [`EditGuard::activate`].
+    /// widget is not [read-only](Editor::is_read_only). Both add an item to
+    /// the undo history and invoke the action handler [`EditGuard::edit`].
     ///
     /// ### Special behaviour
     ///
@@ -204,7 +204,7 @@ mod EditField {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &G::Data) {
-            if !self.is_editable() {
+            if self.is_read_only() {
                 return;
             }
 
@@ -314,11 +314,11 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
         self
     }
 
-    /// Set whether this `EditField` is editable (inline)
+    /// Set whether this `EditField` is read-only (inline)
     #[inline]
     #[must_use]
-    pub fn with_editable(mut self, editable: bool) -> Self {
-        self.editor.0.set_editable(editable);
+    pub fn with_read_only(mut self, read_only: bool) -> Self {
+        self.editor.0.set_read_only(read_only);
         self
     }
 

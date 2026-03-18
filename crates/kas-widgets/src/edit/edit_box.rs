@@ -10,7 +10,6 @@ use crate::edit::highlight::{Highlighter, Plain};
 use crate::{ScrollBar, ScrollBarMsg};
 use kas::event::Scroll;
 use kas::event::components::ScrollComponent;
-use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, TextClass};
 use std::fmt::{Debug, Display};
@@ -28,10 +27,11 @@ mod EditBox {
     ///
     /// ### Messages
     ///
-    /// [`SetValueText`] may be used to replace the entire text and
-    /// [`ReplaceSelectedText`] may be used to replace selected text when this
-    /// widget is [editable](Editor::is_editable). This triggers the action
-    /// handlers [`EditGuard::edit`] followed by [`EditGuard::activate`].
+    /// [`kas::messages::SetValueText`] may be used to replace the entire text
+    /// and [`kas::messages::ReplaceSelectedText`] may be used to replace
+    /// selected text when this widget is not [read-only](Editor::is_read_only).
+    /// Both add an item to the undo history and invoke the action handler
+    /// [`EditGuard::edit`].
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[autoimpl(Debug where G: trait, H: trait)]
@@ -171,29 +171,18 @@ mod EditBox {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, data: &G::Data) {
-            let action = if cx.last_child() == Some(widget_index![self.vert_bar])
+            let offset = if cx.last_child() == Some(widget_index![self.vert_bar])
                 && let Some(ScrollBarMsg(y)) = cx.try_pop()
             {
-                let offset = Offset(self.scroll.offset().0, y);
-                self.scroll.set_offset(offset)
+                Offset(self.scroll.offset().0, y)
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                self.scroll.set_offset(offset)
-            } else if self.is_editable()
-                && let Some(SetValueText(string)) = cx.try_pop()
-            {
-                self.edit(cx, data, |edit, cx| {
-                    edit.pre_commit();
-                    edit.set_string(cx, string);
-                });
-                return;
-            } else if let Some(&ReplaceSelectedText(_)) = cx.try_peek() {
-                self.inner.handle_messages(cx, data);
-                return;
+                offset
             } else {
+                self.inner.handle_messages(cx, data);
                 return;
             };
 
-            if let Some(moved) = action {
+            if let Some(moved) = self.scroll.set_offset(offset) {
                 cx.action_moved(moved);
                 self.update_scroll_offset(cx);
             }
@@ -321,7 +310,7 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
     /// Construct a read-only `EditBox` displaying some `String` value
     #[inline]
     pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditBox<StringGuard<A>> {
-        EditBox::new(StringGuard::new(value_fn)).with_editable(false)
+        EditBox::new(StringGuard::new(value_fn)).with_read_only(true)
     }
 
     /// Construct an `EditBox` for a parsable value (e.g. a number)
@@ -368,14 +357,14 @@ impl<A: 'static> EditBox<StringGuard<A>> {
     /// The `msg_fn` is called when the field is activated (<kbd>Enter</kbd>)
     /// and when it loses focus after content is changed.
     ///
-    /// This method sets self as editable (see [`Self::with_editable`]).
+    /// This method sets self as editable (see [`Self::with_read_only`]).
     #[must_use]
     pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + Send + 'static) -> Self
     where
         M: Debug + 'static,
     {
         self.inner.guard = self.inner.guard.with_msg(msg_fn);
-        self.inner = self.inner.with_editable(true);
+        self.inner = self.inner.with_read_only(false);
         self
     }
 }
@@ -391,11 +380,11 @@ impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
         self
     }
 
-    /// Set whether this widget is editable (inline)
+    /// Set whether this `EditField` is read-only (inline)
     #[inline]
     #[must_use]
-    pub fn with_editable(mut self, editable: bool) -> Self {
-        self.inner = self.inner.with_editable(editable);
+    pub fn with_read_only(mut self, read_only: bool) -> Self {
+        self.inner = self.inner.with_read_only(read_only);
         self
     }
 

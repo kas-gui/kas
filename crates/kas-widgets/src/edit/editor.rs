@@ -36,7 +36,7 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 pub struct Editor {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
-    editable: bool,
+    read_only: bool,
     display: ConfiguredDisplay,
     text: String,
     colors: SchemeColors,
@@ -55,7 +55,7 @@ impl Default for Editor {
     fn default() -> Self {
         Editor {
             id: Id::default(),
-            editable: true,
+            read_only: false,
             display: ConfiguredDisplay::new(TextClass::Editor, false),
             text: Default::default(),
             colors: SchemeColors::default(),
@@ -416,7 +416,7 @@ impl<H: Highlighter> Component<H> {
             draw.decorate_text(pos, rect, display, &tokens[r0..]);
         }
 
-        if self.0.editable && draw.ev_state().has_input_focus(self.0.id_ref()) == Some(true) {
+        if !self.0.read_only && draw.ev_state().has_input_focus(self.0.id_ref()) == Some(true) {
             draw.text_cursor(
                 pos,
                 rect,
@@ -894,7 +894,7 @@ impl Editor {
     ///
     /// Committing undo state is the responsibility of the caller.
     fn received_text(&mut self, cx: &mut EventCx, text: &str) -> IsUsed {
-        if !self.editable {
+        if self.read_only {
             return Unused;
         }
         self.cancel_selection_and_ime(cx);
@@ -944,7 +944,7 @@ impl Editor {
         mut cmd: Command,
         code: Option<PhysicalKey>,
     ) -> Result<EventAction, NotReady> {
-        let editable = self.editable;
+        let editable = !self.read_only;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let cursor = self.selection.edit_index();
@@ -1401,16 +1401,16 @@ impl Editor {
         self.selection = range.into();
     }
 
-    /// Get whether this `EditField` is editable
+    /// Get whether this `EditField` is read-only
     #[inline]
-    pub fn is_editable(&self) -> bool {
-        self.editable
+    pub fn is_read_only(&self) -> bool {
+        self.read_only
     }
 
     /// Set whether this `EditField` is editable
     #[inline]
-    pub fn set_editable(&mut self, editable: bool) {
-        self.editable = editable;
+    pub fn set_read_only(&mut self, read_only: bool) {
+        self.read_only = read_only;
     }
 
     /// True if the editor uses multi-line mode

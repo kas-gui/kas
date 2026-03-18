@@ -54,7 +54,7 @@ pub trait EditGuard: Sized {
     ///     returns [`Used`].
     /// -   If the field is not editable, returns [`Unused`].
     fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) -> IsUsed {
-        if edit.is_editable() {
+        if !edit.is_read_only() {
             self.focus_lost(edit, cx, data);
             Used
         } else {
