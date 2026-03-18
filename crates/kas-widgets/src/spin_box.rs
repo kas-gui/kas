@@ -7,7 +7,7 @@
 
 use crate::{
     MarkButton,
-    edit::{EditField, EditGuard, Editor},
+    edit::{EditBoxCore, EditGuard, Editor},
 };
 use kas::messages::{DecrementStep, IncrementStep, ReplaceSelectedText, SetValueF64, SetValueText};
 use kas::prelude::*;
@@ -219,7 +219,7 @@ mod SpinBox {
     pub struct SpinBox<A, T: SpinValue> {
         core: widget_core!(),
         #[widget]
-        edit: EditField<SpinGuard<A, T>>,
+        edit: EditBoxCore<SpinGuard<A, T>>,
         unit: Text<String>,
         #[widget(&())]
         b_up: MarkButton<SpinBtn>,
@@ -240,7 +240,7 @@ mod SpinBox {
         ) -> Self {
             SpinBox {
                 core: Default::default(),
-                edit: EditField::new(SpinGuard::new(range, Box::new(state_fn)))
+                edit: EditBoxCore::new(SpinGuard::new(range, Box::new(state_fn)))
                     .with_width_em(3.0, 8.0),
                 unit: Text::new("".to_string(), TextClass::Label, false),
                 b_up: MarkButton::new_msg(

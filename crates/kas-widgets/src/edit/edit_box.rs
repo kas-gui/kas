@@ -3,14 +3,13 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! The [`EditField`] and [`EditBox`] widgets, plus supporting items
+//! The [`EditBox`] widget
 
 use super::*;
 use crate::edit::highlight::{Highlighter, Plain};
 use crate::{ScrollBar, ScrollBarMsg};
 use kas::event::Scroll;
 use kas::event::components::ScrollComponent;
-use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, TextClass};
 use std::fmt::{Debug, Display};
@@ -21,17 +20,43 @@ mod EditBox {
     /// A text-edit box
     ///
     /// A single- or multi-line editor for unformatted text.
-    /// See also notes on [`EditField`].
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] can be used to change this.
     ///
+    /// ### Event handling
+    ///
+    /// This widget attempts to handle all standard text-editor input and scroll
+    /// events.
+    ///
+    /// Key events for moving the edit cursor (e.g. arrow keys) are consumed
+    /// only if the edit cursor is moved while key events for adjusting or using
+    /// the selection (e.g. `Command::Copy` and `Command::Deselect`)
+    /// are consumed only when a selection exists. In contrast, key events for
+    /// inserting or deleting text are always consumed.
+    ///
+    /// [`Command::Enter`] inserts a line break in multi-line mode, but in
+    /// single-line mode or if the <kbd>Shift</kbd> key is held it is treated
+    /// the same as [`Command::Activate`].
+    ///
+    /// ### Performance and limitations
+    ///
+    /// Text representation is via a single [`String`]. Edit operations are
+    /// `O(n)` where `n` is the length of text (with text layout algorithms
+    /// having greater cost than copying bytes in the backing [`String`]).
+    /// This isn't necessarily *slow*; when run with optimizations the type can
+    /// handle type-setting around 20kB of UTF-8 in under 10ms (with significant
+    /// scope for optimization, given that currently layout is re-run from
+    /// scratch on each key stroke). Regardless, this approach is not designed
+    /// to scale to handle large documents via a single `EditBox` widget.
+    ///
     /// ### Messages
     ///
-    /// [`SetValueText`] may be used to replace the entire text and
-    /// [`ReplaceSelectedText`] may be used to replace selected text when this
-    /// widget is [editable](Editor::is_editable). This triggers the action
-    /// handlers [`EditGuard::edit`] followed by [`EditGuard::activate`].
+    /// [`kas::messages::SetValueText`] may be used to replace the entire text
+    /// and [`kas::messages::ReplaceSelectedText`] may be used to replace
+    /// selected text when this widget is not [read-only](Editor::is_read_only).
+    /// Both add an item to the undo history and invoke the action handler
+    /// [`EditGuard::edit`].
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[autoimpl(Debug where G: trait, H: trait)]
@@ -42,9 +67,10 @@ mod EditBox {
         scroll: ScrollComponent,
         // NOTE: inner is a Viewport which doesn't use update methods, therefore we don't call them.
         #[widget]
-        inner: EditField<G, H>,
+        inner: EditBoxCore<G, H>,
         #[widget(&())]
         vert_bar: ScrollBar<kas::dir::Down>,
+        frame_style: FrameStyle,
         frame_offset: Offset,
         frame_size: Size,
         frame_offset_ex_margin: Offset,
@@ -64,7 +90,7 @@ mod EditBox {
                 rules.append(bar_rules);
             }
 
-            let frame_rules = cx.frame(FrameStyle::EditBox, axis);
+            let frame_rules = cx.frame(self.frame_style, axis);
             self.frame_offset_ex_margin
                 .set_component(axis, frame_rules.size());
             let (rules, offset, size) = frame_rules.surround(rules);
@@ -111,7 +137,7 @@ mod EditBox {
             let mut draw_inner = draw.re();
             draw_inner.set_id(self.inner.id());
             let bg = self.inner.background_color();
-            draw_inner.frame(self.rect(), FrameStyle::EditBox, bg);
+            draw_inner.frame(self.rect(), self.frame_style, bg);
 
             self.inner
                 .draw_with_offset(draw.re(), self.clip_rect, self.scroll.offset());
@@ -170,29 +196,18 @@ mod EditBox {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, data: &G::Data) {
-            let action = if cx.last_child() == Some(widget_index![self.vert_bar])
+            let offset = if cx.last_child() == Some(widget_index![self.vert_bar])
                 && let Some(ScrollBarMsg(y)) = cx.try_pop()
             {
-                let offset = Offset(self.scroll.offset().0, y);
-                self.scroll.set_offset(offset)
+                Offset(self.scroll.offset().0, y)
             } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
-                self.scroll.set_offset(offset)
-            } else if self.is_editable()
-                && let Some(SetValueText(string)) = cx.try_pop()
-            {
-                self.edit(cx, data, |edit, cx| {
-                    edit.pre_commit();
-                    edit.set_string(cx, string);
-                });
-                return;
-            } else if let Some(&ReplaceSelectedText(_)) = cx.try_peek() {
-                self.inner.handle_messages(cx, data);
-                return;
+                offset
             } else {
+                self.inner.handle_messages(cx, data);
                 return;
             };
 
-            if let Some(moved) = action {
+            if let Some(moved) = self.scroll.set_offset(offset) {
                 cx.action_moved(moved);
                 self.update_scroll_offset(cx);
             }
@@ -232,8 +247,9 @@ mod EditBox {
             EditBox {
                 core: Default::default(),
                 scroll: Default::default(),
-                inner: EditField::new(guard),
+                inner: EditBoxCore::new(guard),
                 vert_bar: Default::default(),
+                frame_style: FrameStyle::EditBox,
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
                 frame_offset_ex_margin: Default::default(),
@@ -254,6 +270,7 @@ mod EditBox {
                 scroll: self.scroll,
                 inner: self.inner.with_highlighter(highlighter),
                 vert_bar: self.vert_bar,
+                frame_style: self.frame_style,
                 frame_offset: self.frame_offset,
                 frame_size: self.frame_size,
                 frame_offset_ex_margin: self.frame_offset_ex_margin,
@@ -265,6 +282,15 @@ mod EditBox {
         /// Set a new highlighter of the same type
         pub fn set_highlighter(&mut self, highlighter: H) {
             self.inner.set_highlighter(highlighter);
+        }
+
+        /// Replace the frame style
+        ///
+        /// The default is [`FrameStyle::EditBox`].
+        #[inline]
+        pub fn with_frame_style(mut self, style: FrameStyle) -> Self {
+            self.frame_style = style;
+            self
         }
 
         fn update_content_size(&mut self, cx: &mut EventState) {
@@ -301,7 +327,7 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
         EditBox {
-            inner: EditField::text(text),
+            inner: EditBoxCore::text(text),
             ..Default::default()
         }
     }
@@ -309,7 +335,7 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
     /// Construct a read-only `EditBox` displaying some `String` value
     #[inline]
     pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditBox<StringGuard<A>> {
-        EditBox::new(StringGuard::new(value_fn)).with_editable(false)
+        EditBox::new(StringGuard::new(value_fn)).with_read_only(true)
     }
 
     /// Construct an `EditBox` for a parsable value (e.g. a number)
@@ -356,14 +382,14 @@ impl<A: 'static> EditBox<StringGuard<A>> {
     /// The `msg_fn` is called when the field is activated (<kbd>Enter</kbd>)
     /// and when it loses focus after content is changed.
     ///
-    /// This method sets self as editable (see [`Self::with_editable`]).
+    /// This method sets self as editable (see [`Self::with_read_only`]).
     #[must_use]
     pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + Send + 'static) -> Self
     where
         M: Debug + 'static,
     {
         self.inner.guard = self.inner.guard.with_msg(msg_fn);
-        self.inner = self.inner.with_editable(true);
+        self.inner = self.inner.with_read_only(false);
         self
     }
 }
@@ -379,11 +405,11 @@ impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
         self
     }
 
-    /// Set whether this widget is editable (inline)
+    /// Set whether this `EditBox` is read-only (inline)
     #[inline]
     #[must_use]
-    pub fn with_editable(mut self, editable: bool) -> Self {
-        self.inner = self.inner.with_editable(editable);
+    pub fn with_read_only(mut self, read_only: bool) -> Self {
+        self.inner = self.inner.with_read_only(read_only);
         self
     }
 

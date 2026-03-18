@@ -16,7 +16,7 @@
 //! -   [`adapt`] provides [`Adapt`], [`AdaptWidget`], [`AdaptWidgetAny`] and supporting items
 //!     (the items mentioned are re-export here).
 //! -   [`dialog`] provides [`MessageBox`](dialog::MessageBox), ...
-//! -   [`edit`] provides text-editing functionality; the [`EditBox`] and [`EditField`] widgets are re-export here
+//! -   [`edit`] provides text-editing functionality; the [`EditBox`] and [`EditBoxCore`] widgets are re-export here
 //! -   [`menu`] provides a [`MenuBar`](menu::MenuBar), [`SubMenu`](menu::SubMenu), ...
 //!
 //! ## Container widgets
@@ -97,7 +97,7 @@ pub use access_label::AccessLabel;
 pub use button::Button;
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
-pub use edit::{EditBox, EditField};
+pub use edit::{EditBox, EditBoxCore};
 pub use event_config::EventConfig;
 pub use filler::Filler;
 pub use float::Float;
@@ -110,7 +110,7 @@ pub use progress::ProgressBar;
 pub use radio_box::{RadioBox, RadioButton};
 pub use scroll::{ClipRegion, ScrollRegion};
 pub use scroll_bar::{ScrollBar, ScrollBarMode, ScrollBarMsg};
-pub use scroll_label::{ScrollLabel, ScrollText, SelectableLabel, SelectableText};
+pub use scroll_label::{ScrollLabel, ScrollText, ScrollTextCore};
 pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
 pub use spin_box::{SpinBox, SpinValue};

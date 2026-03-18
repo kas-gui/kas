@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! The [`EditField`] and [`EditBox`] widgets, plus supporting items
+//! The [`EditBoxCore`] widget
 
 use super::*;
 use crate::edit::highlight::{Highlighter, Plain};
@@ -11,16 +11,14 @@ use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, TextClass};
-use std::fmt::{Debug, Display};
 use std::ops::Deref;
-use std::str::FromStr;
 
 #[impl_self]
-mod EditField {
+mod EditBoxCore {
     /// A text-edit field (single- or multi-line)
     ///
-    /// The [`EditBox`] widget should be preferred in most cases; this widget
-    /// is a component of `EditBox` and has some special behaviour.
+    /// The [`EditBox`] widget should be preferred in almost all cases; this
+    /// widget is a component of [`EditBox`] and has some special behaviour.
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] can be used to change this.
@@ -49,14 +47,14 @@ mod EditField {
     /// handle type-setting around 20kB of UTF-8 in under 10ms (with significant
     /// scope for optimization, given that currently layout is re-run from
     /// scratch on each key stroke). Regardless, this approach is not designed
-    /// to scale to handle large documents via a single `EditField` widget.
+    /// to scale to handle large documents via a single `EditBoxCore` widget.
     ///
     /// ### Messages
     ///
     /// [`SetValueText`] may be used to replace the entire text and
     /// [`ReplaceSelectedText`] may be used to replace selected text when this
-    /// widget is [editable](Editor::is_editable)]. This triggers the action
-    /// handlers [`EditGuard::edit`] followed by [`EditGuard::activate`].
+    /// widget is not [read-only](Editor::is_read_only). Both add an item to
+    /// the undo history and invoke the action handler [`EditGuard::edit`].
     ///
     /// ### Special behaviour
     ///
@@ -64,7 +62,7 @@ mod EditField {
     #[autoimpl(Debug where G: trait, H: trait)]
     #[widget]
     #[layout(self.editor)]
-    pub struct EditField<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
+    pub struct EditBoxCore<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
         core: widget_core!(),
         width: (f32, f32),
         lines: (f32, f32),
@@ -206,7 +204,7 @@ mod EditField {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &G::Data) {
-            if !self.is_editable() {
+            if self.is_read_only() {
                 return;
             }
 
@@ -224,21 +222,21 @@ mod EditField {
         }
     }
 
-    impl<G: EditGuard> Default for EditField<G, Plain>
+    impl<G: EditGuard> Default for EditBoxCore<G, Plain>
     where
         G: Default,
     {
         #[inline]
         fn default() -> Self {
-            EditField::new(G::default())
+            EditBoxCore::new(G::default())
         }
     }
 
-    impl<G: EditGuard> EditField<G, Plain> {
+    impl<G: EditGuard> EditBoxCore<G, Plain> {
         /// Construct an `EditBox` with an [`EditGuard`]
         #[inline]
-        pub fn new(guard: G) -> EditField<G> {
-            EditField {
+        pub fn new(guard: G) -> EditBoxCore<G> {
+            EditBoxCore {
                 core: Default::default(),
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
@@ -253,8 +251,8 @@ mod EditField {
         ///
         /// This function reconstructs the text with a new highlighter.
         #[inline]
-        pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> EditField<G, H2> {
-            EditField {
+        pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> EditBoxCore<G, H2> {
+            EditBoxCore {
                 core: self.core,
                 width: self.width,
                 lines: self.lines,
@@ -294,81 +292,21 @@ mod EditField {
     }
 }
 
-impl<A: 'static> EditField<DefaultGuard<A>> {
-    /// Construct an `EditField` with the given inital `text` (no event handling)
+impl<A: 'static> EditBoxCore<DefaultGuard<A>> {
+    /// Construct an `EditBoxCore` with the given inital `text` (no event handling)
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
-        EditField {
+        EditBoxCore {
             editor: Component::from(text),
             ..Default::default()
         }
     }
-
-    /// Construct a read-only `EditField` displaying some `String` value
-    #[inline]
-    pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditField<StringGuard<A>> {
-        EditField::new(StringGuard::new(value_fn)).with_editable(false)
-    }
-
-    /// Construct an `EditField` for a parsable value (e.g. a number)
-    ///
-    /// On update, `value_fn` is used to extract a value from input data
-    /// which is then formatted as a string via [`Display`].
-    /// If, however, the input field has focus, the update is ignored.
-    ///
-    /// On every edit, the guard attempts to parse the field's input as type
-    /// `T` via [`FromStr`], caching the result and setting the error state.
-    ///
-    /// On field activation and focus loss when a `T` value is cached (see
-    /// previous paragraph), `on_afl` is used to construct a message to be
-    /// emitted via [`EventCx::push`]. The cached value is then cleared to
-    /// avoid sending duplicate messages.
-    #[inline]
-    pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + Send + 'static,
-        msg_fn: impl Fn(T) -> M + Send + 'static,
-    ) -> EditField<ParseGuard<A, T>> {
-        EditField::new(ParseGuard::new(value_fn, msg_fn))
-    }
-
-    /// Construct an `EditField` for a parsable value (e.g. a number)
-    ///
-    /// On update, `value_fn` is used to extract a value from input data
-    /// which is then formatted as a string via [`Display`].
-    /// If, however, the input field has focus, the update is ignored.
-    ///
-    /// On every edit, the guard attempts to parse the field's input as type
-    /// `T` via [`FromStr`]. On success, the result is converted to a
-    /// message via `on_afl` then emitted via [`EventCx::push`].
-    pub fn instant_parser<T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + Send + 'static,
-        msg_fn: impl Fn(T) -> M + Send + 'static,
-    ) -> EditField<InstantParseGuard<A, T>> {
-        EditField::new(InstantParseGuard::new(value_fn, msg_fn))
-    }
 }
 
-impl<A: 'static> EditField<StringGuard<A>> {
-    /// Assign a message function for a `String` value
-    ///
-    /// The `msg_fn` is called when the field is activated (<kbd>Enter</kbd>)
-    /// and when it loses focus after content is changed.
-    ///
-    /// This method sets self as editable (see [`Self::with_editable`]).
-    #[must_use]
-    pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + Send + 'static) -> Self
-    where
-        M: Debug + 'static,
-    {
-        self.guard = self.guard.with_msg(msg_fn);
-        self.with_editable(true)
-    }
-}
-
-impl<G: EditGuard, H: Highlighter> EditField<G, H> {
+impl<G: EditGuard, H: Highlighter> EditBoxCore<G, H> {
     /// Set the initial text (inline)
     ///
-    /// This method should only be used on a new `EditField`.
+    /// This method should only be used on a new `EditBoxCore`.
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
@@ -376,15 +314,15 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
         self
     }
 
-    /// Set whether this `EditField` is editable (inline)
+    /// Set whether this `EditBoxCore` is read-only (inline)
     #[inline]
     #[must_use]
-    pub fn with_editable(mut self, editable: bool) -> Self {
-        self.editor.0.set_editable(editable);
+    pub fn with_read_only(mut self, read_only: bool) -> Self {
+        self.editor.0.set_read_only(read_only);
         self
     }
 
-    /// Set whether this `EditField` uses multi-line mode
+    /// Set whether this `EditBoxCore` uses multi-line mode
     ///
     /// This affects the (vertical) size allocation, alignment, text wrapping
     /// and whether the <kbd>Enter</kbd> key may instert a line break.

@@ -28,7 +28,7 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 /// Inner editor component
 ///
 /// This type is made public for use as the associated `Target` type of the
-/// [`Deref`](std::ops::Deref) impl on `EditField` and `EditBox`. It will no
+/// [`Deref`](std::ops::Deref) impl on `EditBoxCore` and `EditBox`. It will no
 /// longer be needed once `impl trait` is stabilised for associated types.
 /// (Alternatively, [`Editor`] could be re-implemented on the above widgets;
 /// this is preferable in theory but requires a lot of tedious code.)
@@ -36,7 +36,7 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 pub struct Editor {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
-    editable: bool,
+    read_only: bool,
     display: ConfiguredDisplay,
     text: String,
     colors: SchemeColors,
@@ -50,10 +50,44 @@ pub struct Editor {
     input_handler: TextInput,
 }
 
+impl Default for Editor {
+    #[inline]
+    fn default() -> Self {
+        Editor {
+            id: Id::default(),
+            read_only: false,
+            display: ConfiguredDisplay::new(TextClass::Editor, false),
+            text: Default::default(),
+            colors: SchemeColors::default(),
+            selection: Default::default(),
+            edit_x_coord: None,
+            last_edit: Some(EditOp::Initial),
+            undo_stack: UndoStack::new(),
+            has_key_focus: false,
+            current: CurrentAction::None,
+            error_state: None,
+            input_handler: Default::default(),
+        }
+    }
+}
+
+impl<S: ToString> From<S> for Editor {
+    #[inline]
+    fn from(text: S) -> Self {
+        let text = text.to_string();
+        let len = text.len();
+        Editor {
+            text,
+            selection: SelectionHelper::from(len),
+            ..Self::default()
+        }
+    }
+}
+
 /// Editor component
 ///
 /// This is a component used to implement an editor widget. It is used, for
-/// example, in [`EditField`].
+/// example, in [`EditBoxCore`].
 ///
 /// ### Special behaviour
 ///
@@ -111,38 +145,14 @@ impl<H: Highlighter> Layout for Component<H> {
 impl<H: Default + Highlighter> Default for Component<H> {
     #[inline]
     fn default() -> Self {
-        let editor = Editor {
-            id: Id::default(),
-            editable: true,
-            display: ConfiguredDisplay::new(TextClass::Editor, false),
-            text: Default::default(),
-            colors: SchemeColors::default(),
-            selection: Default::default(),
-            edit_x_coord: None,
-            last_edit: Some(EditOp::Initial),
-            undo_stack: UndoStack::new(),
-            has_key_focus: false,
-            current: CurrentAction::None,
-            error_state: None,
-            input_handler: Default::default(),
-        };
-
-        Component(editor, Default::default())
+        Component(Editor::default(), Default::default())
     }
 }
 
 impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
     #[inline]
     fn from(text: S) -> Self {
-        let text = text.to_string();
-        let len = text.len();
-        let editor = Editor {
-            text,
-            selection: SelectionHelper::from(len),
-            ..Self::default().0
-        };
-
-        Component(editor, highlight::Text::new(H::default()))
+        Component(Editor::from(text), Default::default())
     }
 }
 
@@ -406,7 +416,7 @@ impl<H: Highlighter> Component<H> {
             draw.decorate_text(pos, rect, display, &tokens[r0..]);
         }
 
-        if self.0.editable && draw.ev_state().has_input_focus(self.0.id_ref()) == Some(true) {
+        if !self.0.read_only && draw.ev_state().has_input_focus(self.0.id_ref()) == Some(true) {
             draw.text_cursor(
                 pos,
                 rect,
@@ -884,7 +894,7 @@ impl Editor {
     ///
     /// Committing undo state is the responsibility of the caller.
     fn received_text(&mut self, cx: &mut EventCx, text: &str) -> IsUsed {
-        if !self.editable {
+        if self.read_only {
             return Unused;
         }
         self.cancel_selection_and_ime(cx);
@@ -934,7 +944,7 @@ impl Editor {
         mut cmd: Command,
         code: Option<PhysicalKey>,
     ) -> Result<EventAction, NotReady> {
-        let editable = self.editable;
+        let editable = !self.read_only;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let cursor = self.selection.edit_index();
@@ -1391,16 +1401,16 @@ impl Editor {
         self.selection = range.into();
     }
 
-    /// Get whether this `EditField` is editable
+    /// Get whether this text-edit widget is read-only
     #[inline]
-    pub fn is_editable(&self) -> bool {
-        self.editable
+    pub fn is_read_only(&self) -> bool {
+        self.read_only
     }
 
-    /// Set whether this `EditField` is editable
+    /// Set whether this text-edit widget is editable
     #[inline]
-    pub fn set_editable(&mut self, editable: bool) {
-        self.editable = editable;
+    pub fn set_read_only(&mut self, read_only: bool) {
+        self.read_only = read_only;
     }
 
     /// True if the editor uses multi-line mode

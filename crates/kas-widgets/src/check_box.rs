@@ -25,7 +25,7 @@ mod CheckBox {
     pub struct CheckBox<A> {
         core: widget_core!(),
         state: bool,
-        editable: bool,
+        read_only: bool,
         last_change: Option<Instant>,
         state_fn: Box<dyn Fn(&ConfigCx, &A) -> bool + Send>,
         on_toggle: Option<Box<dyn Fn(&mut EventCx, &A, bool) + Send>>,
@@ -91,7 +91,7 @@ mod CheckBox {
             CheckBox {
                 core: Default::default(),
                 state: false,
-                editable: true,
+                read_only: false,
                 last_change: None,
                 state_fn: Box::new(state_fn),
                 on_toggle: None,
@@ -129,28 +129,32 @@ mod CheckBox {
             CheckBox::new(state_fn).with_msg(msg_fn)
         }
 
-        /// Set whether this widget is editable (inline)
+        /// Set whether this widget is read-only (inline)
         #[inline]
         #[must_use]
-        pub fn with_editable(mut self, editable: bool) -> Self {
-            self.editable = editable;
+        pub fn with_read_only(mut self, read_only: bool) -> Self {
+            self.read_only = read_only;
             self
         }
 
-        /// Get whether this widget is editable
+        /// Get whether this widget is read-only
         #[inline]
-        pub fn is_editable(&self) -> bool {
-            self.editable
+        pub fn is_read_only(&self) -> bool {
+            self.read_only
         }
 
-        /// Set whether this widget is editable
+        /// Set whether this widget is read-only
         #[inline]
-        pub fn set_editable(&mut self, editable: bool) {
-            self.editable = editable;
+        pub fn set_read_only(&mut self, read_only: bool) {
+            self.read_only = read_only;
         }
 
-        /// Toggle the check box
+        /// Toggle the check box, if not read-only
         pub fn toggle(&mut self, cx: &mut EventCx, data: &A) {
+            if self.read_only {
+                return;
+            }
+
             // Note: do not update self.state; that is the responsibility of update.
             self.state = !self.state;
             if let Some(f) = self.on_toggle.as_ref() {
@@ -298,24 +302,24 @@ mod CheckButton {
             CheckButton::new(label, state_fn).with_msg(msg_fn)
         }
 
-        /// Set whether this widget is editable (inline)
+        /// Set whether this widget is read-only (inline)
         #[inline]
         #[must_use]
-        pub fn editable(mut self, editable: bool) -> Self {
-            self.inner = self.inner.with_editable(editable);
+        pub fn read_only(mut self, read_only: bool) -> Self {
+            self.inner = self.inner.with_read_only(read_only);
             self
         }
 
-        /// Get whether this widget is editable
+        /// Get whether this widget is read-only
         #[inline]
-        pub fn is_editable(&self) -> bool {
-            self.inner.is_editable()
+        pub fn is_read_only(&self) -> bool {
+            self.inner.is_read_only()
         }
 
-        /// Set whether this widget is editable
+        /// Set whether this widget is read-only
         #[inline]
-        pub fn set_editable(&mut self, editable: bool) {
-            self.inner.set_editable(editable);
+        pub fn set_read_only(&mut self, read_only: bool) {
+            self.inner.set_read_only(read_only);
         }
 
         fn direction(&self) -> Direction {

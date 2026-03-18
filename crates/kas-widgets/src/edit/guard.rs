@@ -13,13 +13,12 @@ use std::str::FromStr;
 
 /// Event-handling *guard* for an [`Editor`]
 ///
-/// This is the most generic interface; see also constructors of [`EditField`],
-/// [`EditBox`] for common use-cases.
+/// This is the most generic interface; see also [`EditBox`] constructors for
+/// common use-cases.
 ///
 /// All methods have a default implementation which does nothing.
 ///
 /// [`EditBox`]: super::EditBox
-/// [`EditField`]: super::EditField
 pub trait EditGuard: Sized {
     /// Data type
     type Data;
@@ -54,7 +53,7 @@ pub trait EditGuard: Sized {
     ///     returns [`Used`].
     /// -   If the field is not editable, returns [`Unused`].
     fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) -> IsUsed {
-        if edit.is_editable() {
+        if !edit.is_read_only() {
             self.focus_lost(edit, cx, data);
             Used
         } else {

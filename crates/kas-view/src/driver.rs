@@ -147,7 +147,7 @@ impl<Key> Driver<Key, bool> for View {
     type Widget = CheckBox<bool>;
 
     fn make(&mut self, _: &Key) -> Self::Widget {
-        CheckBox::new(|_, data: &bool| *data).with_editable(false)
+        CheckBox::new(|_, data: &bool| *data).with_read_only(true)
     }
     fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
         // CheckBox has no metadata that needs to be reset

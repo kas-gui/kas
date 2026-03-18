@@ -14,7 +14,7 @@ use kas::text::{SelectionHelper, Text};
 use kas::theme::TextClass;
 
 #[impl_self]
-mod SelectableText {
+mod ScrollTextCore {
     /// A text label supporting selection
     ///
     /// The [`ScrollText`] widget should be preferred in most cases; this widget
@@ -31,7 +31,7 @@ mod SelectableText {
     /// This is a [`Viewport`] widget.
     #[widget]
     #[layout(self.text)]
-    pub struct SelectableText<A, T: FormattableText + 'static> {
+    pub struct ScrollTextCore<A, T: FormattableText + 'static> {
         core: widget_core!(),
         text: Text<T>,
         text_fn: Option<Box<dyn Fn(&ConfigCx, &A) -> T + Send>>,
@@ -100,13 +100,13 @@ mod SelectableText {
         }
     }
 
-    impl<T: FormattableText + 'static> SelectableText<(), T> {
-        /// Construct a `SelectableText` with the given inital `text`
+    impl<T: FormattableText + 'static> ScrollTextCore<(), T> {
+        /// Construct a `ScrollTextCore` with the given inital `text`
         ///
         /// The text is set from input data on update.
         #[inline]
         pub fn new(text: T) -> Self {
-            SelectableText {
+            ScrollTextCore {
                 core: Default::default(),
                 text: Text::new(text, TextClass::Standard, true),
                 text_fn: None,
@@ -123,8 +123,8 @@ mod SelectableText {
         pub fn with_fn<A>(
             self,
             text_fn: impl Fn(&ConfigCx, &A) -> T + Send + 'static,
-        ) -> SelectableText<A, T> {
-            SelectableText {
+        ) -> ScrollTextCore<A, T> {
+            ScrollTextCore {
                 core: self.core,
                 text: self.text,
                 text_fn: Some(Box::new(text_fn)),
@@ -136,7 +136,7 @@ mod SelectableText {
     }
 
     impl Self {
-        /// Construct an `SelectableText` with the given text derivation function
+        /// Construct an `ScrollTextCore` with the given text derivation function
         ///
         /// The text is set from input data on update.
         #[inline]
@@ -144,7 +144,7 @@ mod SelectableText {
         where
             T: Default,
         {
-            SelectableText::<(), T>::new(T::default()).with_fn(text_fn)
+            ScrollTextCore::<(), T>::new(T::default()).with_fn(text_fn)
         }
 
         /// Get text contents
@@ -218,7 +218,7 @@ mod SelectableText {
 
         /// Update view_offset from `cursor`
         ///
-        /// This method is mostly identical to its counterpart in `EditField`.
+        /// This method is mostly identical to its counterpart in `Editor`.
         fn set_view_offset_from_cursor(&mut self, cx: &mut EventCx, cursor: usize) {
             if let Some(marker) = self
                 .text
@@ -329,22 +329,19 @@ mod SelectableText {
     }
 }
 
-/// A text label supporting selection
-///
-/// Line-wrapping is enabled; default alignment is derived from the script
-/// (usually top-left).
-pub type SelectableLabel<T> = SelectableText<(), T>;
-
 #[impl_self]
 mod ScrollText {
     /// A text label supporting scrolling and selection
     ///
-    /// This widget is a wrapper around [`SelectableText`] enabling scrolling
-    /// and adding a vertical scroll bar.
+    /// This is a read-only text object supporting scrolling and text selection.
+    /// Scrolling support and a vertical scroll-bar is enabled automatically as
+    /// required.
+    ///
+    /// Text contents may be fixed (see [`Self::new`]), dynamic from input data
+    /// ([`Self::new_fn`]) or assigned ([`Self::set_text`]).
     ///
     /// By default, this uses [`TextClass::Standard`]; see [`Self::set_class`]
     /// and [`Self::with_class`].
-    ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
     ///
@@ -357,7 +354,7 @@ mod ScrollText {
         scroll: ScrollComponent,
         // NOTE: text is a Viewport which doesn't use update methods, therefore we don't call them.
         #[widget]
-        text: SelectableText<A, T>,
+        text: ScrollTextCore<A, T>,
         #[widget = &()]
         vert_bar: ScrollBar<kas::dir::Down>,
     }
@@ -428,7 +425,7 @@ mod ScrollText {
             ScrollText {
                 core: Default::default(),
                 scroll: Default::default(),
-                text: SelectableText::new(text),
+                text: ScrollTextCore::new(text),
                 vert_bar: ScrollBar::new().with_invisible(true),
             }
         }
@@ -571,9 +568,5 @@ mod ScrollText {
 
 /// A text label supporting scrolling and selection
 ///
-/// This widget is a wrapper around [`SelectableText`] enabling scrolling
-/// and adding a vertical scroll bar.
-///
-/// Line-wrapping is enabled; default alignment is derived from the script
-/// (usually top-left).
+/// This is a variant of [`ScrollText`] for usage with fixed text contents only.
 pub type ScrollLabel<T> = ScrollText<(), T>;
