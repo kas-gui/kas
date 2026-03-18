@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 
 use kas::prelude::*;
-use kas::widgets::{Adapt, Button, EditField, Splitter, column, row};
+use kas::widgets::{Adapt, Button, EditBox, Splitter, column, row};
 
 #[cfg(feature = "wgpu")]
 type Theme = kas_wgpu::ShadedTheme;
@@ -29,7 +29,9 @@ fn main() -> kas::runner::Result<()> {
         ]
         .map_any(),
         Splitter::right(vec![]).on_update(|cx, panes, len| panes.resize_with(len, cx, *len, |n| {
-            EditField::text(format!("Pane {}", n + 1)).with_multi_line(true)
+            EditBox::text(format!("Pane {}", n + 1))
+                .with_frame_style(kas::theme::FrameStyle::None)
+                .with_multi_line(true)
         })),
     ];
 

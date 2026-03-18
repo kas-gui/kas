@@ -45,6 +45,7 @@ mod EditBox {
         inner: EditField<G, H>,
         #[widget(&())]
         vert_bar: ScrollBar<kas::dir::Down>,
+        frame_style: FrameStyle,
         frame_offset: Offset,
         frame_size: Size,
         frame_offset_ex_margin: Offset,
@@ -64,7 +65,7 @@ mod EditBox {
                 rules.append(bar_rules);
             }
 
-            let frame_rules = cx.frame(FrameStyle::EditBox, axis);
+            let frame_rules = cx.frame(self.frame_style, axis);
             self.frame_offset_ex_margin
                 .set_component(axis, frame_rules.size());
             let (rules, offset, size) = frame_rules.surround(rules);
@@ -111,7 +112,7 @@ mod EditBox {
             let mut draw_inner = draw.re();
             draw_inner.set_id(self.inner.id());
             let bg = self.inner.background_color();
-            draw_inner.frame(self.rect(), FrameStyle::EditBox, bg);
+            draw_inner.frame(self.rect(), self.frame_style, bg);
 
             self.inner
                 .draw_with_offset(draw.re(), self.clip_rect, self.scroll.offset());
@@ -234,6 +235,7 @@ mod EditBox {
                 scroll: Default::default(),
                 inner: EditField::new(guard),
                 vert_bar: Default::default(),
+                frame_style: FrameStyle::EditBox,
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
                 frame_offset_ex_margin: Default::default(),
@@ -254,6 +256,7 @@ mod EditBox {
                 scroll: self.scroll,
                 inner: self.inner.with_highlighter(highlighter),
                 vert_bar: self.vert_bar,
+                frame_style: self.frame_style,
                 frame_offset: self.frame_offset,
                 frame_size: self.frame_size,
                 frame_offset_ex_margin: self.frame_offset_ex_margin,
@@ -265,6 +268,15 @@ mod EditBox {
         /// Set a new highlighter of the same type
         pub fn set_highlighter(&mut self, highlighter: H) {
             self.inner.set_highlighter(highlighter);
+        }
+
+        /// Replace the frame style
+        ///
+        /// The default is [`FrameStyle::EditBox`].
+        #[inline]
+        pub fn with_frame_style(mut self, style: FrameStyle) -> Self {
+            self.frame_style = style;
+            self
         }
 
         fn update_content_size(&mut self, cx: &mut EventState) {
