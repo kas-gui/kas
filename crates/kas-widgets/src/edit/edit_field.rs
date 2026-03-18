@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! The [`EditField`] widget
+//! The [`EditBoxCore`] widget
 
 use super::*;
 use crate::edit::highlight::{Highlighter, Plain};
@@ -14,7 +14,7 @@ use kas::theme::{Background, TextClass};
 use std::ops::Deref;
 
 #[impl_self]
-mod EditField {
+mod EditBoxCore {
     /// A text-edit field (single- or multi-line)
     ///
     /// The [`EditBox`] widget should be preferred in almost all cases; this
@@ -47,7 +47,7 @@ mod EditField {
     /// handle type-setting around 20kB of UTF-8 in under 10ms (with significant
     /// scope for optimization, given that currently layout is re-run from
     /// scratch on each key stroke). Regardless, this approach is not designed
-    /// to scale to handle large documents via a single `EditField` widget.
+    /// to scale to handle large documents via a single `EditBoxCore` widget.
     ///
     /// ### Messages
     ///
@@ -62,7 +62,7 @@ mod EditField {
     #[autoimpl(Debug where G: trait, H: trait)]
     #[widget]
     #[layout(self.editor)]
-    pub struct EditField<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
+    pub struct EditBoxCore<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
         core: widget_core!(),
         width: (f32, f32),
         lines: (f32, f32),
@@ -222,21 +222,21 @@ mod EditField {
         }
     }
 
-    impl<G: EditGuard> Default for EditField<G, Plain>
+    impl<G: EditGuard> Default for EditBoxCore<G, Plain>
     where
         G: Default,
     {
         #[inline]
         fn default() -> Self {
-            EditField::new(G::default())
+            EditBoxCore::new(G::default())
         }
     }
 
-    impl<G: EditGuard> EditField<G, Plain> {
+    impl<G: EditGuard> EditBoxCore<G, Plain> {
         /// Construct an `EditBox` with an [`EditGuard`]
         #[inline]
-        pub fn new(guard: G) -> EditField<G> {
-            EditField {
+        pub fn new(guard: G) -> EditBoxCore<G> {
+            EditBoxCore {
                 core: Default::default(),
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
@@ -251,8 +251,8 @@ mod EditField {
         ///
         /// This function reconstructs the text with a new highlighter.
         #[inline]
-        pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> EditField<G, H2> {
-            EditField {
+        pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> EditBoxCore<G, H2> {
+            EditBoxCore {
                 core: self.core,
                 width: self.width,
                 lines: self.lines,
@@ -292,21 +292,21 @@ mod EditField {
     }
 }
 
-impl<A: 'static> EditField<DefaultGuard<A>> {
-    /// Construct an `EditField` with the given inital `text` (no event handling)
+impl<A: 'static> EditBoxCore<DefaultGuard<A>> {
+    /// Construct an `EditBoxCore` with the given inital `text` (no event handling)
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
-        EditField {
+        EditBoxCore {
             editor: Component::from(text),
             ..Default::default()
         }
     }
 }
 
-impl<G: EditGuard, H: Highlighter> EditField<G, H> {
+impl<G: EditGuard, H: Highlighter> EditBoxCore<G, H> {
     /// Set the initial text (inline)
     ///
-    /// This method should only be used on a new `EditField`.
+    /// This method should only be used on a new `EditBoxCore`.
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
@@ -314,7 +314,7 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
         self
     }
 
-    /// Set whether this `EditField` is read-only (inline)
+    /// Set whether this `EditBoxCore` is read-only (inline)
     #[inline]
     #[must_use]
     pub fn with_read_only(mut self, read_only: bool) -> Self {
@@ -322,7 +322,7 @@ impl<G: EditGuard, H: Highlighter> EditField<G, H> {
         self
     }
 
-    /// Set whether this `EditField` uses multi-line mode
+    /// Set whether this `EditBoxCore` uses multi-line mode
     ///
     /// This affects the (vertical) size allocation, alignment, text wrapping
     /// and whether the <kbd>Enter</kbd> key may instert a line break.

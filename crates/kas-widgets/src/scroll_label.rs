@@ -218,7 +218,7 @@ mod ScrollTextCore {
 
         /// Update view_offset from `cursor`
         ///
-        /// This method is mostly identical to its counterpart in `EditField`.
+        /// This method is mostly identical to its counterpart in `Editor`.
         fn set_view_offset_from_cursor(&mut self, cx: &mut EventCx, cursor: usize) {
             if let Some(marker) = self
                 .text

@@ -13,13 +13,12 @@ use std::str::FromStr;
 
 /// Event-handling *guard* for an [`Editor`]
 ///
-/// This is the most generic interface; see also constructors of [`EditField`],
-/// [`EditBox`] for common use-cases.
+/// This is the most generic interface; see also [`EditBox`] constructors for
+/// common use-cases.
 ///
 /// All methods have a default implementation which does nothing.
 ///
 /// [`EditBox`]: super::EditBox
-/// [`EditField`]: super::EditField
 pub trait EditGuard: Sized {
     /// Data type
     type Data;

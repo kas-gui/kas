@@ -28,7 +28,7 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 /// Inner editor component
 ///
 /// This type is made public for use as the associated `Target` type of the
-/// [`Deref`](std::ops::Deref) impl on `EditField` and `EditBox`. It will no
+/// [`Deref`](std::ops::Deref) impl on `EditBoxCore` and `EditBox`. It will no
 /// longer be needed once `impl trait` is stabilised for associated types.
 /// (Alternatively, [`Editor`] could be re-implemented on the above widgets;
 /// this is preferable in theory but requires a lot of tedious code.)
@@ -87,7 +87,7 @@ impl<S: ToString> From<S> for Editor {
 /// Editor component
 ///
 /// This is a component used to implement an editor widget. It is used, for
-/// example, in [`EditField`].
+/// example, in [`EditBoxCore`].
 ///
 /// ### Special behaviour
 ///
@@ -1401,13 +1401,13 @@ impl Editor {
         self.selection = range.into();
     }
 
-    /// Get whether this `EditField` is read-only
+    /// Get whether this text-edit widget is read-only
     #[inline]
     pub fn is_read_only(&self) -> bool {
         self.read_only
     }
 
-    /// Set whether this `EditField` is editable
+    /// Set whether this text-edit widget is editable
     #[inline]
     pub fn set_read_only(&mut self, read_only: bool) {
         self.read_only = read_only;

@@ -20,10 +20,35 @@ mod EditBox {
     /// A text-edit box
     ///
     /// A single- or multi-line editor for unformatted text.
-    /// See also notes on [`EditField`].
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] can be used to change this.
+    ///
+    /// ### Event handling
+    ///
+    /// This widget attempts to handle all standard text-editor input and scroll
+    /// events.
+    ///
+    /// Key events for moving the edit cursor (e.g. arrow keys) are consumed
+    /// only if the edit cursor is moved while key events for adjusting or using
+    /// the selection (e.g. `Command::Copy` and `Command::Deselect`)
+    /// are consumed only when a selection exists. In contrast, key events for
+    /// inserting or deleting text are always consumed.
+    ///
+    /// [`Command::Enter`] inserts a line break in multi-line mode, but in
+    /// single-line mode or if the <kbd>Shift</kbd> key is held it is treated
+    /// the same as [`Command::Activate`].
+    ///
+    /// ### Performance and limitations
+    ///
+    /// Text representation is via a single [`String`]. Edit operations are
+    /// `O(n)` where `n` is the length of text (with text layout algorithms
+    /// having greater cost than copying bytes in the backing [`String`]).
+    /// This isn't necessarily *slow*; when run with optimizations the type can
+    /// handle type-setting around 20kB of UTF-8 in under 10ms (with significant
+    /// scope for optimization, given that currently layout is re-run from
+    /// scratch on each key stroke). Regardless, this approach is not designed
+    /// to scale to handle large documents via a single `EditBox` widget.
     ///
     /// ### Messages
     ///
@@ -42,7 +67,7 @@ mod EditBox {
         scroll: ScrollComponent,
         // NOTE: inner is a Viewport which doesn't use update methods, therefore we don't call them.
         #[widget]
-        inner: EditField<G, H>,
+        inner: EditBoxCore<G, H>,
         #[widget(&())]
         vert_bar: ScrollBar<kas::dir::Down>,
         frame_style: FrameStyle,
@@ -222,7 +247,7 @@ mod EditBox {
             EditBox {
                 core: Default::default(),
                 scroll: Default::default(),
-                inner: EditField::new(guard),
+                inner: EditBoxCore::new(guard),
                 vert_bar: Default::default(),
                 frame_style: FrameStyle::EditBox,
                 frame_offset: Default::default(),
@@ -302,7 +327,7 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
         EditBox {
-            inner: EditField::text(text),
+            inner: EditBoxCore::text(text),
             ..Default::default()
         }
     }
@@ -380,7 +405,7 @@ impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
         self
     }
 
-    /// Set whether this `EditField` is read-only (inline)
+    /// Set whether this `EditBox` is read-only (inline)
     #[inline]
     #[must_use]
     pub fn with_read_only(mut self, read_only: bool) -> Self {
