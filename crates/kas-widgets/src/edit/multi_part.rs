@@ -5,14 +5,15 @@
 
 //! The [`MultiPartEditor`] widget
 
-use super::*;
+use super::editor::{Component, EventAction};
 use crate::edit::highlight::{Highlighter, Plain};
 use crate::{ScrollBar, ScrollBarMsg};
-use kas::event::Scroll;
+use kas::cast::Ceil;
 use kas::event::components::ScrollComponent;
+use kas::event::{CursorIcon, Scroll};
 use kas::prelude::*;
 use kas::text::Direction;
-use kas::theme::FrameStyle;
+use kas::theme::{FrameStyle, TextClass};
 
 #[impl_self]
 mod MultiPartEditor {
@@ -24,7 +25,7 @@ mod MultiPartEditor {
         scroll: ScrollComponent,
         // NOTE: inner is a Viewport which doesn't use update methods, therefore we don't call them.
         #[widget]
-        inner: EditBoxCore<DefaultGuard<()>, H>,
+        inner: Inner<H>,
         #[widget(&())]
         vert_bar: ScrollBar<kas::dir::Down>,
         frame_offset: Offset,
@@ -70,7 +71,7 @@ mod MultiPartEditor {
             // Set bar position, dependent on text direction. TODO: move on text-dir-change.
             let bar_width = cx.scroll_bar_width();
             let (x0, x1);
-            if !self.inner.text_is_rtl() {
+            if !self.inner.editor.0.text_is_rtl() {
                 x1 = rect.pos.0 + rect.size.0;
                 x0 = x1 - bar_width;
             } else {
@@ -87,7 +88,7 @@ mod MultiPartEditor {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            let bg = self.inner.background_color();
+            let bg = self.inner.editor.background_color();
             draw.frame(self.rect(), FrameStyle::EditBox, bg);
 
             self.inner
@@ -185,7 +186,7 @@ mod MultiPartEditor {
             MultiPartEditor {
                 core: Default::default(),
                 scroll: Default::default(),
-                inner: EditBoxCore::new(DefaultGuard::default()).with_text(text),
+                inner: Inner::default().with_text(text),
                 vert_bar: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
@@ -217,7 +218,7 @@ mod MultiPartEditor {
 
         /// Set a new highlighter of the same type
         pub fn set_highlighter(&mut self, highlighter: H) {
-            self.inner.set_highlighter(highlighter);
+            self.inner.editor.set_highlighter(highlighter);
         }
 
         fn update_content_size(&mut self, cx: &mut EventState) {
@@ -242,7 +243,7 @@ mod MultiPartEditor {
         /// non-directional content.
         #[inline]
         pub fn with_direction(mut self, direction: Direction) -> Self {
-            self.inner.set_direction(direction);
+            self.inner.editor.set_direction(direction);
             self
         }
 
@@ -252,14 +253,14 @@ mod MultiPartEditor {
         #[inline]
         #[must_use]
         pub fn with_text(mut self, text: impl ToString) -> Self {
-            self.inner = self.inner.with_text(text);
+            self.inner.editor = self.inner.editor.with_text(text);
             self
         }
 
         /// Adjust the width allocation
         #[inline]
         pub fn set_width_em(&mut self, min_em: f32, ideal_em: f32) {
-            self.inner.set_width_em(min_em, ideal_em);
+            self.inner.width = (min_em, ideal_em);
         }
 
         /// Adjust the width allocation (inline)
@@ -268,6 +269,138 @@ mod MultiPartEditor {
         pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
             self.set_width_em(min_em, ideal_em);
             self
+        }
+    }
+}
+
+#[impl_self]
+mod Inner {
+    /// Inner ([`Viewport`]) widget of [`MultiPartEditor`]
+    #[autoimpl(Debug where H: trait)]
+    #[widget]
+    #[layout(self.editor)]
+    struct Inner<H: Highlighter = Plain> {
+        core: widget_core!(),
+        width: (f32, f32),
+        editor: Component<H>,
+    }
+
+    impl Default for Self
+    where
+        H: Default,
+    {
+        fn default() -> Self {
+            Inner {
+                core: Default::default(),
+                width: (8.0, 16.0),
+                editor: Component::new(true),
+            }
+        }
+    }
+
+    impl Self {
+        /// Set the initial text (inline)
+        ///
+        /// This method should only be used on a new `Inner`.
+        #[inline]
+        #[must_use]
+        fn with_text(mut self, text: impl ToString) -> Self {
+            self.editor = self.editor.with_text(text);
+            self
+        }
+
+        /// Replace the highlighter
+        ///
+        /// This function reconstructs the text with a new highlighter.
+        #[inline]
+        pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Inner<H2> {
+            Inner {
+                core: self.core,
+                width: self.width,
+                editor: self.editor.with_highlighter(highlighter),
+            }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+            let (min, mut ideal): (i32, i32);
+            if axis.is_horizontal() {
+                let dpem = cx.dpem(TextClass::Editor);
+                min = (self.width.0 * dpem).cast_to(Ceil);
+                ideal = (self.width.1 * dpem).cast_to(Ceil);
+            } else if let Some(width) = axis.other() {
+                let h = self.editor.measure_height(width.cast(), None).cast_to(Ceil);
+                min = h;
+                ideal = h;
+            } else {
+                unreachable!()
+            };
+
+            let rules = self.editor.size_rules(cx, axis);
+            ideal = ideal.max(rules.ideal_size());
+
+            SizeRules::new(min, ideal, Stretch::High).with_margins(cx.text_margins().extract(axis))
+        }
+
+        #[inline]
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, mut hints: AlignHints) {
+            hints.vert = Some(Align::Default);
+            self.editor.set_rect(cx, rect, hints);
+        }
+    }
+
+    impl Viewport for Self {
+        #[inline]
+        fn content_size(&self) -> Size {
+            self.editor.part().content_size()
+        }
+
+        #[inline]
+        fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+            self.editor.draw_with_offset(draw, rect, offset);
+        }
+    }
+
+    impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            // TODO: update role and make compliant with AccessKit
+            Role::Unknown
+        }
+    }
+
+    impl Events for Self {
+        const REDRAW_ON_MOUSE_OVER: bool = true;
+
+        type Data = ();
+
+        fn probe(&self, _: Coord) -> Id {
+            self.id()
+        }
+
+        #[inline]
+        fn mouse_over_icon(&self) -> Option<CursorIcon> {
+            Some(CursorIcon::Text)
+        }
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            self.editor.configure(cx, self.id());
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
+            match self.editor.handle_event(cx, event) {
+                EventAction::Used
+                | EventAction::Cursor
+                | EventAction::FocusGained
+                | EventAction::FocusLost
+                | EventAction::Preedit
+                | EventAction::Edit => Used,
+                EventAction::Unused | EventAction::Activate(_) => Unused,
+            }
         }
     }
 }

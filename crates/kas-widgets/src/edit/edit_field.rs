@@ -232,7 +232,7 @@ mod EditBoxCore {
     }
 
     impl<G: EditGuard> EditBoxCore<G, Plain> {
-        /// Construct an `EditBox` with an [`EditGuard`]
+        /// Construct an `EditBoxCore` with an [`EditGuard`]
         #[inline]
         pub fn new(guard: G) -> EditBoxCore<G> {
             EditBoxCore {
