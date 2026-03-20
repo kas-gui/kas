@@ -18,58 +18,27 @@ struct Fmt {
 }
 
 /// A highlighted text
-///
-/// Two `Text` objects compare equal if their formatted text is equal regardless
-/// of the embedded highlighter.
-#[derive(Clone, Debug)]
-#[kas::autoimpl(PartialEq ignore self.highlighter)]
-pub(crate) struct Text<H: Highlighter> {
-    highlighter: H,
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Cache {
     fonts: Vec<Fmt>,
     colors: Vec<(u32, Colors)>,
     decorations: Vec<(u32, Decoration)>,
 }
 
-impl<H: Highlighter + Default> Default for Text<H> {
-    fn default() -> Self {
-        Self::new(H::default())
-    }
-}
-
-impl<H: Highlighter> Text<H> {
-    /// Construct a new instance
+impl Default for Cache {
     #[inline]
-    pub fn new(highlighter: H) -> Self {
-        Text {
-            highlighter,
+    fn default() -> Self {
+        Cache {
             fonts: vec![Fmt::default()],
             colors: vec![],
             decorations: vec![],
         }
     }
+}
 
-    /// Configure the highlighter
-    ///
-    /// This is called when the widget is configured. It may be used to set the
-    /// theme / color scheme.
-    ///
-    /// Returns `true` when the highlighter must be re-run.
-    #[inline]
-    #[must_use]
-    pub fn configure(&mut self, cx: &mut ConfigCx) -> bool {
-        self.highlighter.configure(cx)
-    }
-
-    /// Get scheme colors
-    ///
-    /// This method allows usage of the highlighter's colors by the editor.
-    #[inline]
-    pub fn scheme_colors(&self) -> SchemeColors {
-        self.highlighter.scheme_colors()
-    }
-
+impl Cache {
     /// Highlight the text (from scratch)
-    pub fn highlight(&mut self, text: &str) {
+    pub fn highlight<H: Highlighter>(&mut self, text: &str, highlighter: &mut H) {
         self.fonts.clear();
         self.fonts.push(Fmt::default());
         self.colors.clear();
@@ -110,7 +79,7 @@ impl<H: Highlighter> Text<H> {
             state = token;
         };
 
-        if let Err(err) = self.highlighter.highlight_text(text, &mut push_token) {
+        if let Err(err) = highlighter.highlight_text(text, &mut push_token) {
             log::error!("Highlighting failed: {err}");
             debug_assert!(false, "Highlighter: {err}");
         }

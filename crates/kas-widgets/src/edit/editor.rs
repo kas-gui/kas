@@ -37,6 +37,7 @@ pub struct Editor {
     id: Id,
     read_only: bool,
     display: ConfiguredDisplay,
+    highlight: highlight::Cache,
     text: String,
     colors: SchemeColors,
     selection: SelectionHelper,
@@ -56,6 +57,7 @@ impl Default for Editor {
             id: Id::default(),
             read_only: false,
             display: ConfiguredDisplay::new(TextClass::Editor, false),
+            highlight: Default::default(),
             text: Default::default(),
             colors: SchemeColors::default(),
             selection: Default::default(),
@@ -99,8 +101,8 @@ impl<S: ToString> From<S> for Editor {
 /// support scrolling of text content. Since this component is not a widget it
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
-#[autoimpl(Debug where H: trait)]
-pub struct Component<H: Highlighter>(pub Editor, highlight::Text<H>);
+#[derive(Debug, Default)]
+pub struct Component<H: Highlighter>(pub Editor, H);
 
 impl<H: Highlighter> Deref for Component<H> {
     type Target = ConfiguredDisplay;
@@ -141,17 +143,10 @@ impl<H: Highlighter> Layout for Component<H> {
     }
 }
 
-impl<H: Default + Highlighter> Default for Component<H> {
-    #[inline]
-    fn default() -> Self {
-        Component(Editor::default(), Default::default())
-    }
-}
-
-impl<H: Default + Highlighter, S: ToString> From<S> for Component<H> {
+impl<H: Highlighter + Default, S: ToString> From<S> for Component<H> {
     #[inline]
     fn from(text: S) -> Self {
-        Component(Editor::from(text), Default::default())
+        Component(Editor::from(text), H::default())
     }
 }
 
@@ -159,12 +154,12 @@ impl<H: Highlighter> Component<H> {
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
-        Component(self.0, highlight::Text::new(highlighter))
+        Component(self.0, highlighter)
     }
 
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
-        self.1 = highlight::Text::new(highlighter);
+        self.1 = highlighter;
     }
 
     /// Get the background color
@@ -210,11 +205,12 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     fn prepare_runs(&mut self) {
         fn inner<H: Highlighter>(this: &mut Component<H>) {
-            this.1.highlight(&this.0.text);
+            this.0.highlight.highlight(&this.0.text, &mut this.1);
             let (dpem, font) = (this.0.display.font_size(), this.0.display.font());
-            this.0
-                .display
-                .prepare_runs(this.0.text.as_str(), this.1.font_tokens(dpem, font));
+            this.0.display.prepare_runs(
+                this.0.text.as_str(),
+                this.0.highlight.font_tokens(dpem, font),
+            );
         }
 
         if self.0.display.status() < Status::LevelRuns {
@@ -307,7 +303,7 @@ impl<H: Highlighter> Component<H> {
         let pos = self.rect().pos - offset;
         let range: Range<u32> = self.0.selection.range().cast();
 
-        let color_tokens = self.1.color_tokens();
+        let color_tokens = self.0.highlight.color_tokens();
         let default_colors = format::Colors {
             foreground: self.0.colors.foreground,
             background: None,
@@ -391,7 +387,7 @@ impl<H: Highlighter> Component<H> {
         };
         draw.text(pos, rect, display, tokens);
 
-        let decorations = self.1.decorations();
+        let decorations = self.0.highlight.decorations();
         if !decorations.is_empty() {
             draw.decorate_text(pos, rect, display, decorations);
         }

@@ -5,15 +5,15 @@
 
 //! Supporting elements for syntax highlighting
 
+mod cache;
 #[cfg(feature = "syntect")] mod syntect;
-mod text;
 
+pub(crate) use cache::Cache;
 use kas::impl_scope;
 #[cfg(feature = "syntect")]
 pub use syntect::{
     SyntaxReference as SyntectSyntax, SyntaxSet as SyntectSyntaxSet, SyntectHighlighter,
 };
-pub(crate) use text::Text;
 
 use kas::event::ConfigCx;
 use kas::text::fonts::{FontStyle, FontWeight};
