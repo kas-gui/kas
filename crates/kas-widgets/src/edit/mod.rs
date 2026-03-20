@@ -10,11 +10,13 @@ mod edit_field;
 pub mod editor;
 mod guard;
 pub mod highlight;
+mod multi_part;
 
 pub use edit_box::EditBox;
 pub use edit_field::EditBoxCore;
 pub use editor::{Common, Editor, Part};
 pub use guard::*;
+pub use multi_part::MultiPartEditor;
 
 use kas::cast::Cast;
 use kas::event::PhysicalKey;
