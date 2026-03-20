@@ -105,6 +105,25 @@ impl<S: ToString> From<S> for Editor {
     }
 }
 
+/// Editor state common to all parts
+#[derive(Debug, Default)]
+pub struct Common<H: Highlighter> {
+    highlighter: H,
+}
+
+impl<H: Highlighter> Common<H> {
+    /// Replace the highlighter
+    #[inline]
+    pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Common<H2> {
+        Common { highlighter }
+    }
+
+    /// Set a new highlighter of the same type
+    pub fn set_highlighter(&mut self, highlighter: H) {
+        self.highlighter = highlighter;
+    }
+}
+
 /// Editor component
 ///
 /// This is a component used to implement an editor widget. It is used, for
@@ -122,7 +141,7 @@ impl<S: ToString> From<S> for Editor {
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[derive(Debug, Default)]
-pub struct Component<H: Highlighter>(pub Editor, H);
+pub struct Component<H: Highlighter>(pub Editor, pub Common<H>);
 
 impl<H: Highlighter> Deref for Component<H> {
     type Target = ConfiguredDisplay;
@@ -166,7 +185,10 @@ impl<H: Highlighter> Layout for Component<H> {
 impl<H: Highlighter + Default, S: ToString> From<S> for Component<H> {
     #[inline]
     fn from(text: S) -> Self {
-        Component(Editor::from(text), H::default())
+        let common = Common {
+            highlighter: H::default(),
+        };
+        Component(Editor::from(text), common)
     }
 }
 
@@ -174,12 +196,13 @@ impl<H: Highlighter> Component<H> {
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
-        Component(self.0, highlighter)
+        let common = Common { highlighter };
+        Component(self.0, common)
     }
 
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
-        self.1 = highlighter;
+        self.1.highlighter = highlighter;
     }
 
     /// Get the background color
@@ -213,10 +236,10 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.0.id = id;
-        if self.1.configure(cx) {
+        if self.1.highlighter.configure(cx) {
             self.0.display.set_max_status(Status::New);
         }
-        self.0.colors = self.1.scheme_colors();
+        self.0.colors = self.1.highlighter.scheme_colors();
         self.0.display.configure(&mut cx.size_cx());
 
         self.prepare(cx);
@@ -225,7 +248,9 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     fn prepare_runs(&mut self) {
         fn inner<H: Highlighter>(this: &mut Component<H>) {
-            this.0.highlight.highlight(&this.0.text, &mut this.1);
+            this.0
+                .highlight
+                .highlight(&this.0.text, &mut this.1.highlighter);
             let (dpem, font) = (this.0.display.font_size(), this.0.display.font());
             this.0.display.prepare_runs(
                 this.0.text.as_str(),
