@@ -54,6 +54,13 @@ pub enum EventAction {
 }
 
 /// A text part for usage by an editor
+///
+/// ### Special behaviour
+///
+/// The wrapping widget may (optionally) wish to implement [`Viewport`] to
+/// support scrolling of text content. Since this component is not a widget it
+/// cannot implement [`Viewport`] directly, but it does provide the following
+/// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug)]
 pub struct Part {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
@@ -157,10 +164,7 @@ impl<H: Highlighter> Common<H> {
 /// widget may wish to reserve extra space, use a higher stretch policy and
 /// potentially also set an alignment hint.
 ///
-/// The wrapping widget may (optionally) wish to implement [`Viewport`] to
-/// support scrolling of text content. Since this component is not a widget it
-/// cannot implement [`Viewport`] directly, but it does provide the following
-/// methods: [`Self::content_size`], [`Self::draw_with_offset`].
+/// See also [`Part`] (accessible through [`Self::part`]).
 #[derive(Debug, Default)]
 pub struct Component<H: Highlighter>(pub Editor, pub Common<H>);
 
@@ -185,7 +189,7 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-        self.prepare_runs();
+        self.0.part.prepare_runs(&mut self.1);
         self.0.part.display.size_rules(cx, axis)
     }
 
@@ -200,7 +204,9 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn draw(&self, draw: DrawCx) {
-        self.draw_with_offset(draw, self.rect(), Offset::ZERO);
+        self.0
+            .part
+            .draw_with_offset(draw, self.rect(), Offset::ZERO);
     }
 }
 
@@ -253,23 +259,104 @@ impl<H: Highlighter> Component<H> {
         self
     }
 
+    /// Access the text part
+    #[inline]
+    pub fn part(&self) -> &Part {
+        &self.0.part
+    }
+
     /// Configure component
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
-        let part: &mut Part = &mut self.0.part;
-        part.id = id;
         if self.1.highlighter.configure(cx) {
-            part.display.set_max_status(Status::New);
+            self.0.part.display.set_max_status(Status::New);
         }
-        part.colors = self.1.highlighter.scheme_colors();
-        part.display.configure(&mut cx.size_cx());
 
+        self.0.part.colors = self.1.highlighter.scheme_colors();
+        self.0.part.configure(cx, id);
         self.prepare(cx);
     }
 
+    /// Prepare text for display, as necessary
+    ///
+    /// This represents a high-level step of preparation required before
+    /// displaying text. After the `Part` is [configured](Self::configure), this
+    /// method should be called before displaying the text. This will advance
+    /// the [status](ConfiguredDisplay::status) to [`Status::Ready`].
+    /// This method must be called again after edits or changes to alignment or
+    /// the wrap-width.
     #[inline]
-    fn prepare_runs(&mut self) {
-        fn inner<H: Highlighter>(common: &mut Common<H>, part: &mut Part) {
+    pub fn prepare(&mut self, cx: &mut ConfigCx) {
+        self.0.part.prepare(&mut self.1, cx);
+    }
+
+    /// Measure required vertical height, wrapping as configured
+    ///
+    /// Stops after `max_lines`, if provided.
+    ///
+    /// May partially prepare the text for display, but does not otherwise
+    /// modify `self`.
+    #[inline]
+    pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
+        self.0
+            .part
+            .measure_height(&mut self.1, wrap_width, max_lines)
+    }
+
+    /// Handle an event
+    #[inline]
+    pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
+        self.0.part.handle_event(&mut self.1, cx, event)
+    }
+
+    /// Clear the error state
+    #[inline]
+    pub fn clear_error(&mut self) {
+        self.0.part.clear_error();
+    }
+}
+
+impl Part {
+    /// Get text contents
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.text.as_str()
+    }
+
+    /// True if the editor uses multi-line mode
+    #[inline]
+    fn multi_line(&self) -> bool {
+        self.display.wrap()
+    }
+
+    /// Get the (horizontal) text direction
+    #[inline]
+    pub fn text_is_rtl(&self) -> bool {
+        self.display.text_is_rtl(self.as_str())
+    }
+
+    /// Access the cursor index / selection range
+    #[inline]
+    pub fn cursor_range(&self) -> CursorRange {
+        *self.selection
+    }
+
+    /// Configure component
+    fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
+        self.id = id;
+        self.display.configure(&mut cx.size_cx());
+    }
+
+    /// Perform run-breaking and shaping
+    ///
+    /// This represents a high-level step of preparation required before
+    /// displaying text. After the `Part` is [configured](Self::configure), this
+    /// method should be called before any sizing operations. This will advance
+    /// the [status](ConfiguredDisplay::status) to [`Status::LevelRuns`].
+    /// This method must be called again after any edits to the `Part`'s text.
+    #[inline]
+    pub fn prepare_runs<H: Highlighter>(&mut self, common: &mut Common<H>) {
+        fn inner<H: Highlighter>(part: &mut Part, common: &mut Common<H>) {
             part.highlight
                 .highlight(&part.text, &mut common.highlighter);
             let (dpem, font) = (part.display.font_size(), part.display.font());
@@ -277,8 +364,8 @@ impl<H: Highlighter> Component<H> {
                 .prepare_runs(part.text.as_str(), part.highlight.font_tokens(dpem, font));
         }
 
-        if self.0.part.display.status() < Status::LevelRuns {
-            inner(&mut self.1, &mut self.0.part)
+        if self.display.status() < Status::LevelRuns {
+            inner(self, common);
         }
     }
 
@@ -293,36 +380,34 @@ impl<H: Highlighter> Component<H> {
     ///
     /// Returns `true` when the size of the bounding-box changes.
     fn prepare_wrap(&mut self) -> bool {
-        if self.rect().size.0 == 0 {
+        if self.display.rect().size.0 == 0 {
             return false;
         };
-        let bb = self.0.part.display.bounding_box();
-        self.0.part.display.prepare_wrap();
-        self.0.part.display.ensure_no_left_overhang();
-        bb != self.0.part.display.bounding_box()
+
+        let bb = self.display.bounding_box();
+        self.display.prepare_wrap();
+        self.display.ensure_no_left_overhang();
+        bb != self.display.bounding_box()
     }
 
     /// Prepare text for display, as necessary
     ///
-    /// Requests a resize when required.
-    ///
-    /// Returns `true` on success when some action is performed, `false`
-    /// when the text is already prepared.
+    /// This represents a high-level step of preparation required before
+    /// displaying text. After the `Part` is [configured](Self::configure), this
+    /// method should be called before displaying the text. This will advance
+    /// the [status](ConfiguredDisplay::status) to [`Status::Ready`].
+    /// This method must be called again after edits or changes to alignment or
+    /// the wrap-width.
     #[inline]
-    pub fn prepare(&mut self, cx: &mut ConfigCx) -> bool {
-        if self.0.part.display.is_prepared() {
-            return false;
+    pub fn prepare<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut ConfigCx) {
+        if self.display.is_prepared() {
+            return;
         }
 
-        fn inner<H: Highlighter>(this: &mut Component<H>, cx: &mut ConfigCx) {
-            this.prepare_runs();
-
-            if this.prepare_wrap() {
-                cx.resize();
-            }
+        self.prepare_runs(common);
+        if self.prepare_wrap() {
+            cx.resize();
         }
-        inner(self, cx);
-        true
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -331,18 +416,21 @@ impl<H: Highlighter> Component<H> {
     ///
     /// May partially prepare the text for display, but does not otherwise
     /// modify `self`.
-    pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
-        self.prepare_runs();
-        self.0
-            .part
-            .display
+    pub fn measure_height<H: Highlighter>(
+        &mut self,
+        common: &mut Common<H>,
+        wrap_width: f32,
+        max_lines: Option<NonZeroUsize>,
+    ) -> f32 {
+        self.prepare_runs(common);
+        self.display
             .unchecked_display()
             .measure_height(wrap_width, max_lines)
     }
 
     /// Implementation of [`Viewport::content_size`]
     pub fn content_size(&self) -> Size {
-        if let Ok((tl, br)) = self.0.part.display.bounding_box() {
+        if let Ok((tl, br)) = self.display.bounding_box() {
             (br - tl).cast_ceil()
         } else {
             Size::ZERO
@@ -351,17 +439,16 @@ impl<H: Highlighter> Component<H> {
 
     /// Implementation of [`Viewport::draw_with_offset`]
     pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-        let part = &self.0.part;
-        let Ok(display) = part.display.display() else {
+        let Ok(display) = self.display.display() else {
             return;
         };
 
-        let pos = self.rect().pos - offset;
-        let range: Range<u32> = part.selection.range().cast();
+        let pos = self.display.rect().pos - offset;
+        let range: Range<u32> = self.selection.range().cast();
 
-        let color_tokens = part.highlight.color_tokens();
+        let color_tokens = self.highlight.color_tokens();
         let default_colors = format::Colors {
-            foreground: part.colors.foreground,
+            foreground: self.colors.foreground,
             background: None,
         };
         let mut buf = [(0, default_colors); 3];
@@ -374,17 +461,17 @@ impl<H: Highlighter> Component<H> {
             }
         } else if color_tokens.is_empty() {
             buf[1].0 = range.start;
-            buf[1].1.foreground = part.colors.selection_foreground;
-            buf[1].1.background = Some(part.colors.selection_background);
+            buf[1].1.foreground = self.colors.selection_foreground;
+            buf[1].1.background = Some(self.colors.selection_background);
             buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
             &buf[r0..]
         } else {
             let set_selection_colors = |colors: &mut format::Colors| {
-                if colors.foreground == part.colors.foreground {
-                    colors.foreground = part.colors.selection_foreground;
+                if colors.foreground == self.colors.foreground {
+                    colors.foreground = self.colors.selection_foreground;
                 }
-                colors.background = Some(part.colors.selection_background);
+                colors.background = Some(self.colors.selection_background);
             };
 
             vec.reserve(color_tokens.len() + 2);
@@ -443,12 +530,12 @@ impl<H: Highlighter> Component<H> {
         };
         draw.text(pos, rect, display, tokens);
 
-        let decorations = part.highlight.decorations();
+        let decorations = self.highlight.decorations();
         if !decorations.is_empty() {
             draw.decorate_text(pos, rect, display, decorations);
         }
 
-        if let CurrentAction::ImePreedit { edit_range } = part.current.clone() {
+        if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
             let tokens = [
                 Default::default(),
                 (edit_range.start, format::Decoration {
@@ -461,30 +548,36 @@ impl<H: Highlighter> Component<H> {
             draw.decorate_text(pos, rect, display, &tokens[r0..]);
         }
 
-        if !part.read_only && draw.ev_state().has_input_focus(self.0.id_ref()) == Some(true) {
+        if !self.read_only && draw.ev_state().has_input_focus(&self.id) == Some(true) {
             draw.text_cursor(
                 pos,
                 rect,
                 display,
-                part.selection.edit_index(),
-                Some(part.colors.cursor),
+                self.selection.edit_index(),
+                Some(self.colors.cursor),
             );
         }
     }
 
     /// Handle an event
-    pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
+    #[inline]
+    pub fn handle_event<H: Highlighter>(
+        &mut self,
+        common: &mut Common<H>,
+        cx: &mut EventCx,
+        event: Event,
+    ) -> EventAction {
         let result = self.handle_event_impl(cx, event);
         match &result {
-            &EventAction::Cursor => self.0.part.set_view_offset_from_cursor(cx),
+            &EventAction::Cursor => self.set_view_offset_from_cursor(cx),
             &EventAction::Preedit | &EventAction::Edit => {
-                if !self.0.part.display.is_prepared() {
-                    self.prepare_runs();
+                if !self.display.is_prepared() {
+                    self.prepare_runs(common);
 
                     cx.redraw();
                     if self.prepare_wrap() {
                         cx.resize();
-                        self.0.part.set_view_offset_from_cursor(cx);
+                        self.set_view_offset_from_cursor(cx);
                     }
                 }
             }
@@ -494,11 +587,10 @@ impl<H: Highlighter> Component<H> {
     }
 
     fn handle_event_impl(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
-        let part: &mut Part = &mut self.0.part;
         match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
-                if !part.input_handler.is_selecting() {
-                    part.request_key_focus(cx, source);
+                if !self.input_handler.is_selecting() {
+                    self.request_key_focus(cx, source);
                 }
                 EventAction::Used
             }
@@ -507,31 +599,31 @@ impl<H: Highlighter> Component<H> {
             Event::SelFocus(source) => {
                 // NOTE: sel focus implies key focus since we only request
                 // the latter. We must set before calling self.set_primary.
-                part.has_key_focus = true;
+                self.has_key_focus = true;
                 if source == FocusSource::Pointer {
-                    part.set_primary(cx);
+                    self.set_primary(cx);
                 }
 
                 EventAction::Used
             }
             Event::KeyFocus => {
-                part.has_key_focus = true;
-                part.set_view_offset_from_cursor(cx);
+                self.has_key_focus = true;
+                self.set_view_offset_from_cursor(cx);
 
-                if part.current.is_none() {
+                if self.current.is_none() {
                     let hint = Default::default();
                     let purpose = ImePurpose::Normal;
-                    let surrounding_text = part.ime_surrounding_text();
-                    cx.replace_ime_focus(part.id.clone(), hint, purpose, surrounding_text);
+                    let surrounding_text = self.ime_surrounding_text();
+                    cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
                     EventAction::FocusGained
                 } else {
                     EventAction::Used
                 }
             }
             Event::LostKeyFocus => {
-                part.has_key_focus = false;
+                self.has_key_focus = false;
                 cx.redraw();
-                if !part.current.is_ime_enabled() {
+                if !self.current.is_ime_enabled() {
                     EventAction::FocusLost
                 } else {
                     EventAction::Used
@@ -539,22 +631,22 @@ impl<H: Highlighter> Component<H> {
             }
             Event::LostSelFocus => {
                 // NOTE: we can assume that we will receive Ime::Disabled if IME is active
-                if !part.selection.is_empty() {
-                    part.save_undo_state(None);
-                    part.selection.set_empty();
+                if !self.selection.is_empty() {
+                    self.save_undo_state(None);
+                    self.selection.set_empty();
                 }
-                part.input_handler.stop_selecting();
+                self.input_handler.stop_selecting();
                 cx.redraw();
                 EventAction::Used
             }
-            Event::Command(cmd, code) => match part.cmd_action(cx, cmd, code) {
+            Event::Command(cmd, code) => match self.cmd_action(cx, cmd, code) {
                 Ok(action) => action,
                 Err(NotReady) => EventAction::Used,
             },
             Event::Key(event, false) if event.state == ElementState::Pressed => {
                 if let Some(text) = &event.text {
-                    part.save_undo_state(Some(EditOp::KeyInput));
-                    if part.received_text(cx, text) == Used {
+                    self.save_undo_state(Some(EditOp::KeyInput));
+                    if self.received_text(cx, text) == Used {
                         EventAction::Edit
                     } else {
                         EventAction::Unused
@@ -565,7 +657,7 @@ impl<H: Highlighter> Component<H> {
                         .shortcuts()
                         .try_match_event(cx.modifiers(), event);
                     if let Some(cmd) = opt_cmd {
-                        match part.cmd_action(cx, cmd, Some(event.physical_key)) {
+                        match self.cmd_action(cx, cmd, Some(event.physical_key)) {
                             Ok(action) => action,
                             Err(NotReady) => EventAction::Used,
                         }
@@ -576,81 +668,81 @@ impl<H: Highlighter> Component<H> {
             }
             Event::Ime(ime) => match ime {
                 Ime::Enabled => {
-                    match part.current {
+                    match self.current {
                         CurrentAction::None => {
-                            part.current = CurrentAction::ImeStart;
-                            part.set_ime_cursor_area(cx);
+                            self.current = CurrentAction::ImeStart;
+                            self.set_ime_cursor_area(cx);
                         }
                         CurrentAction::ImeStart | CurrentAction::ImePreedit { .. } => {
                             // already enabled
                         }
                         CurrentAction::Selection => {
                             // Do not interrupt selection
-                            cx.cancel_ime_focus(&part.id);
+                            cx.cancel_ime_focus(&self.id);
                         }
                     }
-                    if !part.has_key_focus {
+                    if !self.has_key_focus {
                         EventAction::FocusGained
                     } else {
                         EventAction::Used
                     }
                 }
                 Ime::Disabled => {
-                    part.clear_ime();
-                    if !part.has_key_focus {
+                    self.clear_ime();
+                    if !self.has_key_focus {
                         EventAction::FocusLost
                     } else {
                         EventAction::Used
                     }
                 }
                 Ime::Preedit { text, cursor } => {
-                    part.save_undo_state(None);
-                    let mut edit_range = match part.current.clone() {
-                        CurrentAction::ImeStart if cursor.is_some() => part.selection.range(),
+                    self.save_undo_state(None);
+                    let mut edit_range = match self.current.clone() {
+                        CurrentAction::ImeStart if cursor.is_some() => self.selection.range(),
                         CurrentAction::ImeStart => return EventAction::Used,
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                         _ => return EventAction::Used,
                     };
 
-                    part.replace_range(edit_range.clone(), text);
+                    self.replace_range(edit_range.clone(), text);
                     edit_range.end = edit_range.start + text.len();
                     if let Some((start, end)) = cursor {
-                        part.selection.set_sel_index_only(edit_range.start + start);
-                        part.selection.set_edit_index(edit_range.start + end);
+                        self.selection.set_sel_index_only(edit_range.start + start);
+                        self.selection.set_edit_index(edit_range.start + end);
                     } else {
-                        part.selection.set_cursor(edit_range.start + text.len());
+                        self.selection.set_cursor(edit_range.start + text.len());
                     }
 
-                    part.current = CurrentAction::ImePreedit {
+                    self.current = CurrentAction::ImePreedit {
                         edit_range: edit_range.cast(),
                     };
-                    part.edit_x_coord = None;
+                    self.edit_x_coord = None;
                     EventAction::Preedit
                 }
                 Ime::Commit { text } => {
-                    part.save_undo_state(Some(EditOp::Ime));
-                    let edit_range = match part.current.clone() {
-                        CurrentAction::ImeStart => part.selection.range(),
+                    self.save_undo_state(Some(EditOp::Ime));
+                    let edit_range = match self.current.clone() {
+                        CurrentAction::ImeStart => self.selection.range(),
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                         _ => return EventAction::Used,
                     };
 
-                    part.replace_range(edit_range.clone(), text);
-                    part.selection.set_cursor(edit_range.start + text.len());
+                    self.replace_range(edit_range.clone(), text);
+                    self.selection.set_cursor(edit_range.start + text.len());
 
-                    part.current = CurrentAction::ImePreedit {
-                        edit_range: part.selection.range().cast(),
+                    self.current = CurrentAction::ImePreedit {
+                        edit_range: self.selection.range().cast(),
                     };
-                    part.edit_x_coord = None;
+                    self.edit_x_coord = None;
                     EventAction::Edit
                 }
                 Ime::DeleteSurrounding {
                     before_bytes,
                     after_bytes,
                 } => {
-                    part.save_undo_state(None);
-                    let edit_range = match part.current.clone() {
-                        CurrentAction::ImeStart => part.selection.range(),
+                    self.save_undo_state(None);
+                    let edit_range = match self.current.clone() {
+                        CurrentAction::ImeStart => self.selection.range(),
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                         _ => return EventAction::Used,
                     };
@@ -658,9 +750,9 @@ impl<H: Highlighter> Component<H> {
                     if before_bytes > 0 {
                         let end = edit_range.start;
                         let start = end - before_bytes;
-                        if part.as_str().is_char_boundary(start) {
-                            part.replace_range(start..end, "");
-                            part.selection.delete_range(start..end);
+                        if self.as_str().is_char_boundary(start) {
+                            self.replace_range(start..end, "");
+                            self.selection.delete_range(start..end);
                         } else {
                             log::warn!("buggy IME tried to delete range not at char boundary");
                         }
@@ -669,46 +761,46 @@ impl<H: Highlighter> Component<H> {
                     if after_bytes > 0 {
                         let start = edit_range.end;
                         let end = start + after_bytes;
-                        if part.as_str().is_char_boundary(end) {
-                            part.replace_range(start..end, "");
+                        if self.as_str().is_char_boundary(end) {
+                            self.replace_range(start..end, "");
                         } else {
                             log::warn!("buggy IME tried to delete range not at char boundary");
                         }
                     }
 
-                    if let Some(text) = part.ime_surrounding_text() {
-                        cx.update_ime_surrounding_text(&part.id, text);
+                    if let Some(text) = self.ime_surrounding_text() {
+                        cx.update_ime_surrounding_text(&self.id, text);
                     }
 
                     EventAction::Used
                 }
             },
             Event::PressStart(press) if press.is_tertiary() => {
-                match press.grab_click(part.id.clone()).complete(cx) {
+                match press.grab_click(self.id.clone()).complete(cx) {
                     Unused => EventAction::Unused,
                     Used => EventAction::Used,
                 }
             }
             Event::PressEnd { press, .. } if press.is_tertiary() => {
-                part.set_cursor_from_coord(cx, press.coord);
-                part.cancel_selection_and_ime(cx);
-                part.request_key_focus(cx, FocusSource::Pointer);
+                self.set_cursor_from_coord(cx, press.coord);
+                self.cancel_selection_and_ime(cx);
+                self.request_key_focus(cx, FocusSource::Pointer);
 
                 if let Some(content) = cx.get_primary() {
-                    part.save_undo_state(Some(EditOp::Clipboard));
+                    self.save_undo_state(Some(EditOp::Clipboard));
 
-                    let index = part.selection.edit_index();
-                    let range = part.trim_paste(&content);
+                    let index = self.selection.edit_index();
+                    let range = self.trim_paste(&content);
 
-                    part.replace_range(index..index, &content[range.clone()]);
-                    part.selection.set_cursor(index + range.len());
-                    part.edit_x_coord = None;
+                    self.replace_range(index..index, &content[range.clone()]);
+                    self.selection.set_cursor(index + range.len());
+                    self.edit_x_coord = None;
                     EventAction::Edit
                 } else {
                     EventAction::Used
                 }
             }
-            event => match part.input_handler.handle(cx, part.id.clone(), event) {
+            event => match self.input_handler.handle(cx, self.id.clone(), event) {
                 TextInputAction::Used => EventAction::Used,
                 TextInputAction::Unused => EventAction::Unused,
                 TextInputAction::PressStart {
@@ -716,49 +808,49 @@ impl<H: Highlighter> Component<H> {
                     clear,
                     repeats,
                 } => {
-                    if part.current.is_ime_enabled() {
-                        part.clear_ime();
-                        cx.cancel_ime_focus(&part.id);
+                    if self.current.is_ime_enabled() {
+                        self.clear_ime();
+                        cx.cancel_ime_focus(&self.id);
                     }
-                    part.save_undo_state(Some(EditOp::Cursor));
-                    part.current = CurrentAction::Selection;
+                    self.save_undo_state(Some(EditOp::Cursor));
+                    self.current = CurrentAction::Selection;
 
-                    part.set_cursor_from_coord(cx, coord);
-                    part.selection.set_anchor(clear);
+                    self.set_cursor_from_coord(cx, coord);
+                    self.selection.set_anchor(clear);
                     if repeats > 1 {
-                        part.selection
-                            .expand(part.text.as_str(), &part.display, repeats >= 3);
+                        self.selection
+                            .expand(self.text.as_str(), &self.display, repeats >= 3);
                     }
 
-                    part.request_key_focus(cx, FocusSource::Pointer);
+                    self.request_key_focus(cx, FocusSource::Pointer);
                     EventAction::Used
                 }
                 TextInputAction::PressMove { coord, repeats } => {
-                    if part.current == CurrentAction::Selection {
-                        part.set_cursor_from_coord(cx, coord);
+                    if self.current == CurrentAction::Selection {
+                        self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
-                            part.selection
-                                .expand(part.text.as_str(), &part.display, repeats >= 3);
+                            self.selection
+                                .expand(self.text.as_str(), &self.display, repeats >= 3);
                         }
                     }
 
                     EventAction::Used
                 }
                 TextInputAction::PressEnd { coord } => {
-                    if part.current.is_ime_enabled() {
-                        part.clear_ime();
-                        cx.cancel_ime_focus(&part.id);
+                    if self.current.is_ime_enabled() {
+                        self.clear_ime();
+                        cx.cancel_ime_focus(&self.id);
                     }
-                    part.save_undo_state(Some(EditOp::Cursor));
-                    if part.current == CurrentAction::Selection {
-                        part.set_primary(cx);
+                    self.save_undo_state(Some(EditOp::Cursor));
+                    if self.current == CurrentAction::Selection {
+                        self.set_primary(cx);
                     } else {
-                        part.set_cursor_from_coord(cx, coord);
-                        part.selection.set_empty();
+                        self.set_cursor_from_coord(cx, coord);
+                        self.selection.set_empty();
                     }
-                    part.current = CurrentAction::None;
+                    self.current = CurrentAction::None;
 
-                    part.request_key_focus(cx, FocusSource::Pointer);
+                    self.request_key_focus(cx, FocusSource::Pointer);
                     EventAction::Used
                 }
             },
@@ -768,27 +860,7 @@ impl<H: Highlighter> Component<H> {
     /// Clear the error state
     #[inline]
     pub fn clear_error(&mut self) {
-        self.0.part.error_state = None;
-    }
-}
-
-impl Part {
-    /// Get text contents
-    #[inline]
-    fn as_str(&self) -> &str {
-        self.text.as_str()
-    }
-
-    /// True if the editor uses multi-line mode
-    #[inline]
-    fn multi_line(&self) -> bool {
-        self.display.wrap()
-    }
-
-    /// Get the (horizontal) text direction
-    #[inline]
-    fn text_is_rtl(&self) -> bool {
-        self.display.text_is_rtl(self.as_str())
+        self.error_state = None;
     }
 
     /// Insert a `text` at the given position

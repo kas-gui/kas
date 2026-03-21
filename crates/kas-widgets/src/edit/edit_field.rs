@@ -122,12 +122,12 @@ mod EditBoxCore {
     impl Viewport for Self {
         #[inline]
         fn content_size(&self) -> Size {
-            self.editor.content_size()
+            self.editor.part().content_size()
         }
 
         #[inline]
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            self.editor.draw_with_offset(draw, rect, offset);
+            self.editor.part().draw_with_offset(draw, rect, offset);
         }
     }
 
