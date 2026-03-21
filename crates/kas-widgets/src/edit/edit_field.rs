@@ -180,7 +180,7 @@ mod EditBoxCore {
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
             match self.editor.handle_event(cx, event) {
                 EventAction::Unused => Unused,
-                EventAction::Used | EventAction::Cursor => Used,
+                EventAction::Used | EventAction::Cursor | EventAction::Preedit => Used,
                 EventAction::FocusGained => {
                     self.guard.focus_gained(&mut self.editor.0, cx, data);
                     self.editor.prepare(cx);

@@ -43,6 +43,8 @@ pub enum EventAction {
     Cursor,
     /// Enter key in single-line editor
     Activate(Option<PhysicalKey>),
+    /// Transient (uncommitted) edit by IME
+    Preedit,
     /// Text was edited by key command
     Edit,
 }
@@ -263,6 +265,26 @@ impl<H: Highlighter> Component<H> {
         }
     }
 
+    /// Perform line wrapping and alignment
+    ///
+    /// This represents a high-level step of preparation required before
+    /// displaying text. After [run-breaking](Self::prepare_runs), this method
+    /// should be called before displaying the text. This will advance
+    /// the [status](ConfiguredDisplay::status) to [`Status::Ready`].
+    /// This method must be called again after [`Self::prepare_runs`] and after
+    /// changes to alignment or the wrap-width.
+    ///
+    /// Returns `true` when the size of the bounding-box changes.
+    fn prepare_wrap(&mut self) -> bool {
+        if self.rect().size.0 == 0 {
+            return false;
+        };
+        let bb = self.0.display.bounding_box();
+        self.0.display.prepare_wrap();
+        self.0.display.ensure_no_left_overhang();
+        bb != self.0.display.bounding_box()
+    }
+
     /// Prepare text for display, as necessary
     ///
     /// Requests a resize when required.
@@ -279,41 +301,12 @@ impl<H: Highlighter> Component<H> {
             this.prepare_runs();
             debug_assert!(this.0.display.status() >= Status::LevelRuns);
 
-            if this.rect().size.0 != 0 {
-                let bb = this.0.display.bounding_box();
-                this.0.display.prepare_wrap();
-                if bb != this.0.display.bounding_box() {
-                    cx.resize();
-                }
+            if this.prepare_wrap() {
+                cx.resize();
             }
         }
         inner(self, cx);
         true
-    }
-
-    /// Prepare text
-    ///
-    /// Updates the view offset (scroll position) if the content size changes or
-    /// `force_set_offset`. Requests redraw and resize as appropriate.
-    fn prepare_and_scroll(&mut self, cx: &mut EventCx, force_set_offset: bool) {
-        let mut set_offset = force_set_offset;
-        if !self.0.display.is_prepared() {
-            let bb = self.0.display.bounding_box();
-
-            self.prepare_runs();
-            self.0.display.prepare_wrap();
-            self.0.display.ensure_no_left_overhang();
-
-            cx.redraw();
-            if bb != self.0.display.bounding_box() {
-                cx.resize();
-                set_offset = true;
-            }
-        }
-
-        if set_offset {
-            self.0.set_view_offset_from_cursor(cx);
-        }
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -463,6 +456,26 @@ impl<H: Highlighter> Component<H> {
 
     /// Handle an event
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
+        let result = self.handle_event_impl(cx, event);
+        match &result {
+            &EventAction::Cursor => self.0.set_view_offset_from_cursor(cx),
+            &EventAction::Preedit | &EventAction::Edit => {
+                if !self.0.display.is_prepared() {
+                    self.prepare_runs();
+
+                    cx.redraw();
+                    if self.prepare_wrap() {
+                        cx.resize();
+                        self.0.set_view_offset_from_cursor(cx);
+                    }
+                }
+            }
+            _ => (),
+        }
+        result
+    }
+
+    fn handle_event_impl(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
         match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
                 if !self.0.input_handler.is_selecting() {
@@ -516,17 +529,13 @@ impl<H: Highlighter> Component<H> {
                 EventAction::Used
             }
             Event::Command(cmd, code) => match self.0.cmd_action(cx, cmd, code) {
-                Ok(action) => {
-                    self.prepare_and_scroll(cx, true);
-                    action
-                }
+                Ok(action) => action,
                 Err(NotReady) => EventAction::Used,
             },
             Event::Key(event, false) if event.state == ElementState::Pressed => {
                 if let Some(text) = &event.text {
                     self.0.save_undo_state(Some(EditOp::KeyInput));
                     if self.0.received_text(cx, text) == Used {
-                        self.prepare_and_scroll(cx, false);
                         EventAction::Edit
                     } else {
                         EventAction::Unused
@@ -538,10 +547,7 @@ impl<H: Highlighter> Component<H> {
                         .try_match_event(cx.modifiers(), event);
                     if let Some(cmd) = opt_cmd {
                         match self.0.cmd_action(cx, cmd, Some(event.physical_key)) {
-                            Ok(action) => {
-                                self.prepare_and_scroll(cx, true);
-                                action
-                            }
+                            Ok(action) => action,
                             Err(NotReady) => EventAction::Used,
                         }
                     } else {
@@ -602,8 +608,7 @@ impl<H: Highlighter> Component<H> {
                         edit_range: edit_range.cast(),
                     };
                     self.0.edit_x_coord = None;
-                    self.prepare_and_scroll(cx, false);
-                    EventAction::Used
+                    EventAction::Preedit
                 }
                 Ime::Commit { text } => {
                     self.0.save_undo_state(Some(EditOp::Ime));
@@ -620,7 +625,6 @@ impl<H: Highlighter> Component<H> {
                         edit_range: self.0.selection.range().cast(),
                     };
                     self.0.edit_x_coord = None;
-                    self.prepare_and_scroll(cx, false);
                     EventAction::Edit
                 }
                 Ime::DeleteSurrounding {
@@ -682,8 +686,6 @@ impl<H: Highlighter> Component<H> {
                     self.0.replace_range(index..index, &content[range.clone()]);
                     self.0.selection.set_cursor(index + range.len());
                     self.0.edit_x_coord = None;
-                    self.prepare_and_scroll(cx, false);
-
                     EventAction::Edit
                 } else {
                     EventAction::Used
