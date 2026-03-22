@@ -47,6 +47,9 @@ pub struct SchemeColors {
 #[non_exhaustive]
 pub struct Token {
     /// Text (foreground) and background color
+    ///
+    /// The background color should be `None` unless highlighting is desired.
+    /// Specify the default background color using [`SchemeColors::background`].
     pub colors: Colors,
     /// Text weight (bold/medium/light)
     pub weight: FontWeight,

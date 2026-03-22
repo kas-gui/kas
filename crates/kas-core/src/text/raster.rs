@@ -554,7 +554,7 @@ impl State {
                 .map(|e| e.1 == Default::default())
                 .unwrap_or(true)
         {
-            let col = Color::default().resolve_foreground(theme, None);
+            let col = Color::default().resolve_foreground(theme);
             self.text_with_color(allocator, queue, pass, pos, bb, text, col);
             return;
         }
@@ -575,7 +575,7 @@ impl State {
                     }
                 };
 
-                let col = token.foreground.resolve_foreground(theme, None);
+                let col = token.resolve_foreground(theme);
                 queue.push_sprite(pass, glyph.position.into(), bb, col, sprite);
             };
 
@@ -634,7 +634,7 @@ impl State {
                 };
 
                 // Known limitation: this cannot depend on the background color.
-                let col = token.color.resolve_foreground(theme, None);
+                let col = token.color.resolve_foreground(theme);
 
                 match token.style {
                     LineStyle::Solid => draw_quad(quad, col),
