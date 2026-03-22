@@ -189,7 +189,6 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-        self.0.part.prepare_runs(&mut self.1);
         self.0.part.display.size_rules(cx, axis)
     }
 
@@ -271,10 +270,10 @@ impl<H: Highlighter> Component<H> {
         if self.1.highlighter.configure(cx) {
             self.0.part.display.set_max_status(Status::New);
         }
+        self.0.part.prepare_runs(&mut self.1);
 
         self.0.part.colors = self.1.highlighter.scheme_colors();
         self.0.part.configure(cx, id);
-        self.prepare(cx);
     }
 
     /// Prepare text for display, as necessary
