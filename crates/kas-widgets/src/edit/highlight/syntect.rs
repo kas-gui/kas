@@ -139,13 +139,13 @@ impl super::Highlighter for SyntectHighlighter {
                 .settings
                 .selection_foreground
                 .and_then(|c| into_kas_text_color(c))
-                .unwrap_or_default(),
+                .unwrap_or(Color::SELECTION),
             selection_background: self
                 .theme
                 .settings
                 .selection
                 .and_then(|c| into_kas_text_color(c))
-                .unwrap_or_default(),
+                .unwrap_or(Color::SELECTION),
         }
     }
 

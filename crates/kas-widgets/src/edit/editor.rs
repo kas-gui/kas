@@ -15,7 +15,6 @@ use kas::event::{
 use kas::geom::{Rect, Vec2};
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
-use kas::text::format::Color;
 use kas::text::{ConfiguredDisplay, CursorRange, NotReady, SelectionHelper, Status, format};
 use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
@@ -203,12 +202,6 @@ impl<H: Highlighter> Component<H> {
             self.0.display.set_max_status(Status::New);
         }
         self.0.colors = self.1.scheme_colors();
-        if self.0.colors.selection_foreground == Color::default() {
-            self.0.colors.selection_foreground = Color::SELECTION;
-        }
-        if self.0.colors.selection_background == Color::default() {
-            self.0.colors.selection_background = Color::SELECTION;
-        }
         self.0.display.configure(&mut cx.size_cx());
 
         self.prepare(cx);
