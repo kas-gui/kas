@@ -310,9 +310,8 @@ impl<H: Highlighter> Component<H> {
     /// modify `self`.
     #[inline]
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
-        self.0
-            .part
-            .measure_height(&mut self.1, wrap_width, max_lines)
+        self.0.part.prepare_runs(&mut self.1);
+        self.0.part.measure_height(wrap_width, max_lines).unwrap()
     }
 
     /// Handle an event
@@ -430,18 +429,13 @@ impl Part {
     ///
     /// Stops after `max_lines`, if provided.
     ///
-    /// May partially prepare the text for display, but does not otherwise
-    /// modify `self`.
-    pub fn measure_height<H: Highlighter>(
+    /// [`Self::prepare_runs`] should be called before this.
+    pub fn measure_height(
         &mut self,
-        common: &mut Common<H>,
         wrap_width: f32,
         max_lines: Option<NonZeroUsize>,
-    ) -> f32 {
-        self.prepare_runs(common);
-        self.display
-            .unchecked_display()
-            .measure_height(wrap_width, max_lines)
+    ) -> Result<f32, NotReady> {
+        self.display.measure_height(wrap_width, max_lines)
     }
 
     /// Implementation of [`Viewport::content_size`]
