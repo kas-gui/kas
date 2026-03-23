@@ -5,35 +5,40 @@
 
 //! Supporting elements for syntax highlighting
 
+mod cache;
 #[cfg(feature = "syntect")] mod syntect;
-mod text;
 
+pub(crate) use cache::Cache;
+use kas::impl_scope;
 #[cfg(feature = "syntect")]
 pub use syntect::{
     SyntaxReference as SyntectSyntax, SyntaxSet as SyntectSyntaxSet, SyntectHighlighter,
 };
-pub(crate) use text::Text;
 
 use kas::event::ConfigCx;
 use kas::text::fonts::{FontStyle, FontWeight};
 use kas::text::format::{Color, Colors, Decoration};
 
-/// Colors provided by the highlighter's color scheme
-///
-/// Note that in each case [`Color::default()`] will resolve to the UI color
-/// scheme's color for this property.
-#[derive(Debug, Default)]
-pub struct SchemeColors {
-    /// The default text color
-    pub foreground: Color,
-    /// The default background color
-    pub background: Color,
-    /// The color of the text cursor (sometimes called caret)
-    pub cursor: Color,
-    /// The color of selected text
-    pub selection_foreground: Color,
-    /// The background color of selected text
-    pub selection_background: Color,
+impl_scope! {
+    /// Colors provided by the highlighter's color scheme
+    #[impl_default]
+    #[derive(Debug)]
+    pub struct SchemeColors {
+        /// The default text color
+        pub foreground: Color,
+        /// The default background color
+        pub background: Color,
+        /// The color of the text cursor (sometimes called caret)
+        pub cursor: Color,
+        /// The color of selected text
+        ///
+        /// Note that the default value is [`Color::SELECTION`].
+        pub selection_foreground: Color = Color::SELECTION,
+        /// The background color of selected text
+        ///
+        /// Note that the default value is [`Color::SELECTION`].
+        pub selection_background: Color = Color::SELECTION,
+    }
 }
 
 /// A highlighting token
@@ -47,6 +52,9 @@ pub struct SchemeColors {
 #[non_exhaustive]
 pub struct Token {
     /// Text (foreground) and background color
+    ///
+    /// The background color should be `None` unless highlighting is desired.
+    /// Specify the default background color using [`SchemeColors::background`].
     pub colors: Colors,
     /// Text weight (bold/medium/light)
     pub weight: FontWeight,

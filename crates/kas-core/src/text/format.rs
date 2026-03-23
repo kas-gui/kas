@@ -21,14 +21,13 @@ pub use kas_text::format::FontToken;
 pub struct Color(NonZeroU32);
 
 impl Default for Color {
-    /// Use a theme-defined color (automatic)
     fn default() -> Self {
         Self::DEFAULT
     }
 }
 
 impl Color {
-    /// Use the default theme-defined color
+    /// Use the theme-defined text color
     ///
     /// As a foreground color, this maps to [`ColorsLinear::text`] or
     /// [`ColorsLinear::text_invert`] depending on the background.
@@ -37,7 +36,7 @@ impl Color {
     pub const DEFAULT: Self =
         Color(NonZeroU32::new(u32::from_ne_bytes(Rgba8Srgb::rgba(1, 0, 0, 0).0)).unwrap());
 
-    /// Use the text-selection color
+    /// Use the theme-defined text selection color
     ///
     /// As a foreground color this is identical to [`Self::DEFAULT`].
     ///
@@ -82,11 +81,9 @@ impl Color {
 
     /// Resolve as (foreground) text color
     #[inline]
-    pub fn resolve_foreground(self, theme: &ColorsLinear, bg: Option<Rgba>) -> Rgba {
+    pub fn resolve_foreground(self, theme: &ColorsLinear) -> Rgba {
         if let Some(col) = self.as_rgba() {
             col
-        } else if let Some(bg) = bg {
-            theme.text_over(bg)
         } else {
             theme.text
         }
@@ -115,6 +112,20 @@ pub struct Colors {
     pub foreground: Color,
     /// The text background (highlight) color
     pub background: Option<Color>,
+}
+
+impl Colors {
+    /// Resolve as (foreground) text color
+    #[inline]
+    pub fn resolve_foreground(self, theme: &ColorsLinear) -> Rgba {
+        if let Some(col) = self.foreground.as_rgba() {
+            col
+        } else if let Some(bg) = self.background {
+            theme.text_over(bg.resolve_background(theme))
+        } else {
+            theme.text
+        }
+    }
 }
 
 /// Decoration types
