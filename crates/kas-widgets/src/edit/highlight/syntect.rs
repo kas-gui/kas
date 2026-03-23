@@ -117,13 +117,13 @@ impl super::Highlighter for SyntectHighlighter {
                 .theme
                 .settings
                 .foreground
-                .and_then(|c| into_kas_text_color(c))
+                .map(|c| into_kas_text_color(c))
                 .unwrap_or_default(),
             background: self
                 .theme
                 .settings
                 .background
-                .and_then(|mut c| {
+                .map(|mut c| {
                     c.a = 255;
                     into_kas_text_color(c)
                 })
@@ -132,19 +132,19 @@ impl super::Highlighter for SyntectHighlighter {
                 .theme
                 .settings
                 .caret
-                .and_then(|c| into_kas_text_color(c))
+                .map(|c| into_kas_text_color(c))
                 .unwrap_or_default(),
             selection_foreground: self
                 .theme
                 .settings
                 .selection_foreground
-                .and_then(|c| into_kas_text_color(c))
+                .map(|c| into_kas_text_color(c))
                 .unwrap_or(Color::SELECTION),
             selection_background: self
                 .theme
                 .settings
                 .selection
-                .and_then(|c| into_kas_text_color(c))
+                .map(|c| into_kas_text_color(c))
                 .unwrap_or(Color::SELECTION),
         }
     }
@@ -168,9 +168,12 @@ impl super::Highlighter for SyntectHighlighter {
 
             for (style, _, range) in line_highlighter {
                 let mut token = Token::default();
-                token.colors.foreground =
-                    into_kas_text_color(style.foreground).unwrap_or(Default::default());
-                token.colors.background = into_kas_text_color(style.background);
+                token.colors.foreground = into_kas_text_color(style.foreground);
+                token.colors.background = if style.background.a == 0 {
+                    None
+                } else {
+                    Some(into_kas_text_color(style.background))
+                };
                 if style.font_style.contains(FontStyle::BOLD) {
                     token.weight = FontWeight::BOLD;
                 }
@@ -188,10 +191,7 @@ impl super::Highlighter for SyntectHighlighter {
     }
 }
 
-fn into_kas_text_color(c: ::syntect::highlighting::Color) -> Option<Color> {
-    if c.a == 0 {
-        return None;
-    }
-
-    Some(Color::from_rgba_srgb(Rgba8Srgb::rgba(c.r, c.g, c.b, c.a)))
+/// Convert to `Color`, even if transparent
+fn into_kas_text_color(c: ::syntect::highlighting::Color) -> Color {
+    Color::from_rgba_srgb(Rgba8Srgb::rgba(c.r, c.g, c.b, c.a))
 }
