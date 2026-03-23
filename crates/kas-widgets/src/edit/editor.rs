@@ -33,6 +33,11 @@ use std::num::NonZeroUsize;
 use std::ops::{Deref, DerefMut};
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
+/// Action: text parts should have their status reset to [`Status::New`] and be re-prepared
+#[must_use]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ActionResetStatus;
+
 /// Result type of [`Component::handle_event`]
 pub enum EventAction {
     /// Key not used, no action
@@ -149,6 +154,17 @@ impl<H: Highlighter> Common<H> {
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
         self.highlighter = highlighter;
+    }
+
+    /// Configure `Common` data
+    #[inline]
+    #[must_use]
+    pub fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionResetStatus> {
+        if self.highlighter.configure(cx) {
+            Some(ActionResetStatus)
+        } else {
+            None
+        }
     }
 }
 
@@ -267,13 +283,10 @@ impl<H: Highlighter> Component<H> {
     /// Configure component
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
-        if self.1.highlighter.configure(cx) {
+        if let Some(ActionResetStatus) = self.1.configure(cx) {
             self.0.part.display.set_max_status(Status::New);
         }
-        self.0.part.prepare_runs(&mut self.1);
-
-        self.0.part.colors = self.1.highlighter.scheme_colors();
-        self.0.part.configure(cx, id);
+        self.0.part.configure(&mut self.1, cx, id);
     }
 
     /// Prepare text for display, as necessary
@@ -341,9 +354,13 @@ impl Part {
     }
 
     /// Configure component
-    fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
+    ///
+    /// [`Common::configure`] must be called before this method.
+    pub fn configure<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut ConfigCx, id: Id) {
         self.id = id;
+        self.colors = common.highlighter.scheme_colors();
         self.display.configure(&mut cx.size_cx());
+        self.prepare_runs(common);
     }
 
     /// Perform run-breaking and shaping
