@@ -58,6 +58,13 @@ pub enum EventAction {
     Edit,
 }
 
+impl EventAction {
+    /// If true, text has been edited and must be re-prepared.
+    pub fn requires_repreparation(&self) -> bool {
+        matches!(self, EventAction::Preedit | EventAction::Edit)
+    }
+}
+
 /// A text part for usage by an editor
 ///
 /// ### Special behaviour
@@ -333,7 +340,11 @@ impl<H: Highlighter> Component<H> {
     /// Handle an event
     #[inline]
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
-        self.0.part.handle_event(&mut self.1, cx, event)
+        let action = self.0.part.handle_event(cx, event);
+        if action.requires_repreparation() {
+            self.0.part.prepare_and_scroll(&mut self.1, cx);
+        }
+        action
     }
 
     /// Clear the error state
@@ -585,33 +596,11 @@ impl Part {
     }
 
     /// Handle an event
+    ///
+    /// If [`EventAction::requires_repreparation`] then the caller **must** call
+    /// re-prepare the text by calling [`Self::prepare_and_scroll`].
     #[inline]
-    pub fn handle_event<H: Highlighter>(
-        &mut self,
-        common: &mut Common<H>,
-        cx: &mut EventCx,
-        event: Event,
-    ) -> EventAction {
-        let result = self.handle_event_impl(cx, event);
-        match &result {
-            &EventAction::Cursor => self.set_view_offset_from_cursor(cx),
-            &EventAction::Preedit | &EventAction::Edit => {
-                if !self.display.is_prepared() {
-                    self.prepare_runs(common);
-
-                    cx.redraw();
-                    if self.prepare_wrap() {
-                        cx.resize();
-                        self.set_view_offset_from_cursor(cx);
-                    }
-                }
-            }
-            _ => (),
-        }
-        result
-    }
-
-    fn handle_event_impl(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
+    pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
         match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
                 if !self.input_handler.is_selecting() {
@@ -665,7 +654,12 @@ impl Part {
                 EventAction::Used
             }
             Event::Command(cmd, code) => match self.cmd_action(cx, cmd, code) {
-                Ok(action) => action,
+                Ok(action) => {
+                    if matches!(action, EventAction::Cursor) {
+                        self.set_view_offset_from_cursor(cx);
+                    }
+                    action
+                }
                 Err(NotReady) => EventAction::Used,
             },
             Event::Key(event, false) if event.state == ElementState::Pressed => {
@@ -683,7 +677,12 @@ impl Part {
                         .try_match_event(cx.modifiers(), event);
                     if let Some(cmd) = opt_cmd {
                         match self.cmd_action(cx, cmd, Some(event.physical_key)) {
-                            Ok(action) => action,
+                            Ok(action) => {
+                                if matches!(action, EventAction::Cursor) {
+                                    self.set_view_offset_from_cursor(cx);
+                                }
+                                action
+                            }
                             Err(NotReady) => EventAction::Used,
                         }
                     } else {
