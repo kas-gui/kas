@@ -174,34 +174,32 @@ mod EditBoxCore {
                 self.guard.update(&mut self.editor.0, cx, data);
             }
 
-            self.editor.prepare(cx);
+            self.editor.prepare();
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
+            let mut result = Used;
             match self.editor.handle_event(cx, event) {
-                EventAction::Unused => Unused,
-                EventAction::Used | EventAction::Cursor | EventAction::Preedit => Used,
+                EventAction::Unused => return Unused,
+                EventAction::Used | EventAction::Cursor | EventAction::Preedit => return Used,
                 EventAction::FocusGained => {
                     self.guard.focus_gained(&mut self.editor.0, cx, data);
-                    self.editor.prepare(cx);
-                    Used
                 }
                 EventAction::FocusLost => {
                     self.guard.focus_lost(&mut self.editor.0, cx, data);
-                    self.editor.prepare(cx);
-                    Used
                 }
                 EventAction::Activate(code) => {
                     cx.depress_with_key(&self, code);
-                    let result = self.guard.activate(&mut self.editor.0, cx, data);
-                    self.editor.prepare(cx);
-                    result
+                    result = self.guard.activate(&mut self.editor.0, cx, data);
                 }
                 EventAction::Edit => {
                     self.call_guard_edit(cx, data);
-                    Used
+                    return Used;
                 }
             }
+
+            self.editor.prepare_and_scroll(cx);
+            result
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &G::Data) {
@@ -278,7 +276,7 @@ mod EditBoxCore {
         #[inline]
         pub fn call_guard_activate(&mut self, cx: &mut EventCx, data: &G::Data) {
             self.guard.activate(&mut self.editor.0, cx, data);
-            self.editor.prepare(cx);
+            self.editor.prepare_and_scroll(cx);
         }
 
         /// Call the [`EditGuard`]'s `edit` method
@@ -288,7 +286,7 @@ mod EditBoxCore {
         fn call_guard_edit(&mut self, cx: &mut EventCx, data: &G::Data) {
             self.editor.clear_error();
             self.guard.edit(&mut self.editor.0, cx, data);
-            self.editor.prepare(cx);
+            self.editor.prepare_and_scroll(cx);
         }
     }
 }

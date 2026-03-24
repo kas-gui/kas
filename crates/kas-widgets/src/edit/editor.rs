@@ -289,17 +289,33 @@ impl<H: Highlighter> Component<H> {
         self.0.part.configure(&mut self.1, cx, id);
     }
 
-    /// Prepare text for display, as necessary
+    /// Fully prepare text for display
     ///
-    /// This represents a high-level step of preparation required before
-    /// displaying text. After the `Part` is [configured](Self::configure), this
-    /// method should be called before displaying the text. This will advance
-    /// the [status](ConfiguredDisplay::status) to [`Status::Ready`].
-    /// This method must be called again after edits or changes to alignment or
-    /// the wrap-width.
+    /// This method performs all required steps of preparation according to the
+    /// [status](ConfiguredDisplay::status) (which is advanced to
+    /// [`Status::Ready`]).
+    ///
+    /// It is usually preferable to call [`Self::prepare_and_scroll`] after
+    /// edits to the text to trigger any required resizing and scrolling.
     #[inline]
-    pub fn prepare(&mut self, cx: &mut ConfigCx) {
-        self.0.part.prepare(&mut self.1, cx);
+    pub fn prepare(&mut self) {
+        if self.0.part.display.is_prepared() {
+            return;
+        }
+
+        self.0.part.prepare_runs(&mut self.1);
+        self.0.part.prepare_wrap();
+    }
+
+    /// Fully prepare text for display, ensuring the cursor is within view
+    ///
+    /// This method performs all required steps of preparation according to the
+    /// [status](ConfiguredDisplay::status) (which is advanced to
+    /// [`Status::Ready`]). This method should be called after changes to the
+    /// text, alignment or wrap-width.
+    #[inline]
+    pub fn prepare_and_scroll(&mut self, cx: &mut EventCx) {
+        self.0.part.prepare_and_scroll(&mut self.1, cx);
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -405,16 +421,14 @@ impl Part {
         bb != self.display.bounding_box()
     }
 
-    /// Prepare text for display, as necessary
+    /// Fully prepare text for display, ensuring the cursor is within view
     ///
-    /// This represents a high-level step of preparation required before
-    /// displaying text. After the `Part` is [configured](Self::configure), this
-    /// method should be called before displaying the text. This will advance
-    /// the [status](ConfiguredDisplay::status) to [`Status::Ready`].
-    /// This method must be called again after edits or changes to alignment or
-    /// the wrap-width.
+    /// This method performs all required steps of preparation according to the
+    /// [status](ConfiguredDisplay::status) (which is advanced to
+    /// [`Status::Ready`]). This method should be called after changes to the
+    /// text, alignment or wrap-width.
     #[inline]
-    pub fn prepare<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut ConfigCx) {
+    pub fn prepare_and_scroll<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut EventCx) {
         if self.display.is_prepared() {
             return;
         }
@@ -422,6 +436,7 @@ impl Part {
         self.prepare_runs(common);
         if self.prepare_wrap() {
             cx.resize();
+            self.set_view_offset_from_cursor(cx);
         }
     }
 
