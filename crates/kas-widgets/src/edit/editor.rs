@@ -145,57 +145,14 @@ pub struct Part {
     input_handler: TextInput,
 }
 
-impl Default for Part {
-    #[inline]
-    fn default() -> Self {
-        Part {
-            id: Id::default(),
-            read_only: false,
-            display: ConfiguredDisplay::new(TextClass::Editor, false),
-            highlight: Default::default(),
-            text: Default::default(),
-            selection: Default::default(),
-            edit_x_coord: None,
-            last_edit: Some(EditOp::Initial),
-            undo_stack: UndoStack::new(),
-            has_key_focus: false,
-            current: CurrentAction::None,
-            input_handler: Default::default(),
-        }
-    }
-}
-
-impl<S: ToString> From<S> for Part {
-    #[inline]
-    fn from(text: S) -> Self {
-        let text = text.to_string();
-        let len = text.len();
-        Part {
-            text,
-            selection: SelectionHelper::from(len),
-            ..Self::default()
-        }
-    }
-}
-
 /// Inner editor interface
 ///
 /// This type provides an API usable by [`EditGuard`] and (read-only) via
 /// [`Deref`] from [`EditBoxCore`] and [`EditBox`].
-#[autoimpl(Debug, Default)]
+#[autoimpl(Debug)]
 pub struct Editor {
     part: Part,
     error_state: Option<Option<Cow<'static, str>>>,
-}
-
-impl<S: ToString> From<S> for Editor {
-    #[inline]
-    fn from(text: S) -> Self {
-        Editor {
-            part: Part::from(text),
-            error_state: None,
-        }
-    }
 }
 
 /// Editor component
@@ -211,7 +168,7 @@ impl<S: ToString> From<S> for Editor {
 /// potentially also set an alignment hint.
 ///
 /// See also [`Part`] (accessible through [`Self::part`]).
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Component<H: Highlighter>(pub Editor, pub Common<H>);
 
 impl<H: Highlighter> Deref for Component<H> {
@@ -255,18 +212,20 @@ impl<H: Highlighter> Layout for Component<H> {
     }
 }
 
-impl<H: Highlighter + Default, S: ToString> From<S> for Component<H> {
-    #[inline]
-    fn from(text: S) -> Self {
-        let common = Common {
-            colors: SchemeColors::default(),
-            highlighter: H::default(),
-        };
-        Component(Editor::from(text), common)
-    }
-}
-
 impl<H: Highlighter> Component<H> {
+    /// Construct a new instance
+    #[inline]
+    pub fn new(wrap: bool) -> Self
+    where
+        H: Default,
+    {
+        let editor = Editor {
+            part: Part::new(wrap),
+            error_state: None,
+        };
+        Component(editor, Common::default())
+    }
+
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
@@ -386,6 +345,25 @@ impl<H: Highlighter> Component<H> {
 }
 
 impl Part {
+    /// Construct a new instance
+    #[inline]
+    pub fn new(wrap: bool) -> Self {
+        Part {
+            id: Id::default(),
+            read_only: false,
+            display: ConfiguredDisplay::new(TextClass::Editor, wrap),
+            highlight: Default::default(),
+            text: Default::default(),
+            selection: Default::default(),
+            edit_x_coord: None,
+            last_edit: Some(EditOp::Initial),
+            undo_stack: UndoStack::new(),
+            has_key_focus: false,
+            current: CurrentAction::None,
+            input_handler: Default::default(),
+        }
+    }
+
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `Part`.
