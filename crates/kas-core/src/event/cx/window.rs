@@ -420,16 +420,14 @@ impl<'a> EventCx<'a> {
                 }
                 _ => (),
             },
-            PointerEntered { kind, .. } => {
-                if kind == PointerKind::Mouse {
-                    self.handle_pointer_entered()
-                }
-            }
-            PointerLeft { kind, .. } => {
-                if kind == PointerKind::Mouse {
-                    self.handle_pointer_left(win.as_node(data))
-                }
-            }
+            PointerEntered {
+                kind: PointerKind::Mouse,
+                ..
+            } => self.handle_pointer_entered(),
+            PointerLeft {
+                kind: PointerKind::Mouse,
+                ..
+            } => self.handle_pointer_left(win.as_node(data)),
             MouseWheel { delta, .. } => self.handle_mouse_wheel(win.as_node(data), delta),
             PointerButton {
                 state,
