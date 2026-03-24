@@ -68,6 +68,7 @@ impl EventAction {
 /// Editor state common to all parts
 #[derive(Debug, Default)]
 pub struct Common<H: Highlighter> {
+    colors: SchemeColors,
     highlighter: H,
 }
 
@@ -75,7 +76,10 @@ impl<H: Highlighter> Common<H> {
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Common<H2> {
-        Common { highlighter }
+        Common {
+            colors: SchemeColors::default(),
+            highlighter,
+        }
     }
 
     /// Set a new highlighter of the same type
@@ -91,9 +95,26 @@ impl<H: Highlighter> Common<H> {
     #[must_use]
     pub fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionResetStatus> {
         if self.highlighter.configure(cx) {
+            self.colors = self.highlighter.scheme_colors();
             Some(ActionResetStatus)
         } else {
             None
+        }
+    }
+
+    /// Read highlighter colors
+    #[inline]
+    pub fn colors(&self) -> &SchemeColors {
+        &self.colors
+    }
+
+    /// Get the theme-defined background color
+    #[inline]
+    pub fn background_color(&self) -> Background {
+        if let Some(c) = self.colors.background.as_rgba() {
+            Background::Rgb(c.as_rgb())
+        } else {
+            Background::Default
         }
     }
 }
@@ -115,7 +136,6 @@ pub struct Part {
     display: ConfiguredDisplay,
     highlight: highlight::Cache,
     text: String,
-    colors: SchemeColors,
     selection: SelectionHelper,
     edit_x_coord: Option<f32>,
     last_edit: Option<EditOp>,
@@ -134,7 +154,6 @@ impl Default for Part {
             display: ConfiguredDisplay::new(TextClass::Editor, false),
             highlight: Default::default(),
             text: Default::default(),
-            colors: SchemeColors::default(),
             selection: Default::default(),
             edit_x_coord: None,
             last_edit: Some(EditOp::Initial),
@@ -232,7 +251,7 @@ impl<H: Highlighter> Layout for Component<H> {
     fn draw(&self, draw: DrawCx) {
         self.0
             .part
-            .draw_with_offset(draw, self.rect(), Offset::ZERO);
+            .draw_with_offset(draw, &self.1.colors, self.rect(), Offset::ZERO);
     }
 }
 
@@ -240,6 +259,7 @@ impl<H: Highlighter + Default, S: ToString> From<S> for Component<H> {
     #[inline]
     fn from(text: S) -> Self {
         let common = Common {
+            colors: SchemeColors::default(),
             highlighter: H::default(),
         };
         Component(Editor::from(text), common)
@@ -250,7 +270,10 @@ impl<H: Highlighter> Component<H> {
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
-        let common = Common { highlighter };
+        let common = Common {
+            colors: self.1.colors,
+            highlighter,
+        };
         Component(self.0, common)
     }
 
@@ -261,13 +284,13 @@ impl<H: Highlighter> Component<H> {
     }
 
     /// Get the background color
+    ///
+    /// Uses the UI theme's error color if applicable.
     pub fn background_color(&self) -> Background {
         if self.0.error_state.is_some() {
             Background::Error
-        } else if let Some(c) = self.0.part.colors.background.as_rgba() {
-            Background::Rgb(c.as_rgb())
         } else {
-            Background::Default
+            self.1.background_color()
         }
     }
 
@@ -337,6 +360,14 @@ impl<H: Highlighter> Component<H> {
         self.0.part.measure_height(wrap_width, max_lines).unwrap()
     }
 
+    /// Implementation of [`Viewport::draw_with_offset`]
+    #[inline]
+    pub fn draw_with_offset(&self, draw: DrawCx, rect: Rect, offset: Offset) {
+        self.0
+            .part
+            .draw_with_offset(draw, &self.1.colors, rect, offset);
+    }
+
     /// Handle an event
     #[inline]
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
@@ -398,7 +429,6 @@ impl Part {
     /// [`Common::configure`] must be called before this method.
     pub fn configure<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut ConfigCx, id: Id) {
         self.id = id;
-        self.colors = common.highlighter.scheme_colors();
         self.display.configure(&mut cx.size_cx());
         self.prepare_runs(common);
     }
@@ -488,7 +518,13 @@ impl Part {
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
-    pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+    pub fn draw_with_offset(
+        &self,
+        mut draw: DrawCx,
+        colors: &SchemeColors,
+        rect: Rect,
+        offset: Offset,
+    ) {
         let Ok(display) = self.display.display() else {
             return;
         };
@@ -498,7 +534,7 @@ impl Part {
 
         let color_tokens = self.highlight.color_tokens();
         let default_colors = format::Colors {
-            foreground: self.colors.foreground,
+            foreground: colors.foreground,
             background: None,
         };
         let mut buf = [(0, default_colors); 3];
@@ -511,17 +547,17 @@ impl Part {
             }
         } else if color_tokens.is_empty() {
             buf[1].0 = range.start;
-            buf[1].1.foreground = self.colors.selection_foreground;
-            buf[1].1.background = Some(self.colors.selection_background);
+            buf[1].1.foreground = colors.selection_foreground;
+            buf[1].1.background = Some(colors.selection_background);
             buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
             &buf[r0..]
         } else {
-            let set_selection_colors = |colors: &mut format::Colors| {
-                if colors.foreground == self.colors.foreground {
-                    colors.foreground = self.colors.selection_foreground;
+            let set_selection_colors = |c: &mut format::Colors| {
+                if c.foreground == colors.foreground {
+                    c.foreground = colors.selection_foreground;
                 }
-                colors.background = Some(self.colors.selection_background);
+                c.background = Some(colors.selection_background);
             };
 
             vec.reserve(color_tokens.len() + 2);
@@ -604,7 +640,7 @@ impl Part {
                 rect,
                 display,
                 self.selection.edit_index(),
-                Some(self.colors.cursor),
+                Some(colors.cursor),
             );
         }
     }

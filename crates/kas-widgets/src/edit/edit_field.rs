@@ -127,7 +127,7 @@ mod EditBoxCore {
 
         #[inline]
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            self.editor.part().draw_with_offset(draw, rect, offset);
+            self.editor.draw_with_offset(draw, rect, offset);
         }
     }
 
