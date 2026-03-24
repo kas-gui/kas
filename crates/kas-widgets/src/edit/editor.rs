@@ -3,7 +3,12 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Text editor component
+//! Text editor components
+//!
+//! The struct [`Editor`] provides a public API for text-editing actions.
+//!
+//! [`Component`] is a lower-level type for integrating a text editor into a
+//! widget (this is used, for example, in [`EditBoxCore`].
 
 use super::highlight::{self, Highlighter, SchemeColors};
 use super::*;
@@ -24,13 +29,28 @@ use std::num::NonZeroUsize;
 use std::ops::{Deref, DerefMut};
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
-/// Inner editor component
+/// Result type of [`Component::handle_event`]
+pub enum EventAction {
+    /// Key not used, no action
+    Unused,
+    /// Key used, no action
+    Used,
+    /// Focus has been gained
+    FocusGained,
+    /// Focus has been lost
+    FocusLost,
+    /// Cursor and/or selection changed
+    Cursor,
+    /// Enter key in single-line editor
+    Activate(Option<PhysicalKey>),
+    /// Text was edited by key command
+    Edit,
+}
+
+/// Inner editor interface
 ///
-/// This type is made public for use as the associated `Target` type of the
-/// [`Deref`](std::ops::Deref) impl on `EditBoxCore` and `EditBox`. It will no
-/// longer be needed once `impl trait` is stabilised for associated types.
-/// (Alternatively, [`Editor`] could be re-implemented on the above widgets;
-/// this is preferable in theory but requires a lot of tedious code.)
+/// This type provides an API usable by [`EditGuard`] and (read-only) via
+/// [`Deref`] from [`EditBoxCore`] and [`EditBox`].
 #[autoimpl(Debug)]
 pub struct Editor {
     // TODO(opt): id is duplicated here since macros don't let us put the core here

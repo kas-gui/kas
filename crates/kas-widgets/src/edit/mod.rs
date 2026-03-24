@@ -7,13 +7,13 @@
 
 mod edit_box;
 mod edit_field;
-mod editor;
+pub mod editor;
 mod guard;
 pub mod highlight;
 
 pub use edit_box::EditBox;
 pub use edit_field::EditBoxCore;
-pub use editor::{Component, Editor};
+pub use editor::Editor;
 pub use guard::*;
 
 use kas::event::PhysicalKey;
@@ -51,24 +51,6 @@ impl EditOp {
             _ => false,
         }
     }
-}
-
-/// Result type of [`Component::handle_event`]
-pub enum EventAction {
-    /// Key not used, no action
-    Unused,
-    /// Key used, no action
-    Used,
-    /// Focus has been gained
-    FocusGained,
-    /// Focus has been lost
-    FocusLost,
-    /// Cursor and/or selection changed
-    Cursor,
-    /// Enter key in single-line editor
-    Activate(Option<PhysicalKey>),
-    /// Text was edited by key command
-    Edit,
 }
 
 /// Used to track ongoing incompatible actions

@@ -5,6 +5,7 @@
 
 //! The [`EditBoxCore`] widget
 
+use super::editor::{Component, EventAction};
 use super::*;
 use crate::edit::highlight::{Highlighter, Plain};
 use kas::event::CursorIcon;
