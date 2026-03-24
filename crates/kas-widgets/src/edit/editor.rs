@@ -122,7 +122,6 @@ pub struct Part {
     undo_stack: UndoStack<(String, CursorRange)>,
     has_key_focus: bool,
     current: CurrentAction,
-    error_state: Option<Option<Cow<'static, str>>>,
     input_handler: TextInput,
 }
 
@@ -142,7 +141,6 @@ impl Default for Part {
             undo_stack: UndoStack::new(),
             has_key_focus: false,
             current: CurrentAction::None,
-            error_state: None,
             input_handler: Default::default(),
         }
     }
@@ -168,6 +166,7 @@ impl<S: ToString> From<S> for Part {
 #[autoimpl(Debug, Default)]
 pub struct Editor {
     part: Part,
+    error_state: Option<Option<Cow<'static, str>>>,
 }
 
 impl<S: ToString> From<S> for Editor {
@@ -175,6 +174,7 @@ impl<S: ToString> From<S> for Editor {
     fn from(text: S) -> Self {
         Editor {
             part: Part::from(text),
+            error_state: None,
         }
     }
 }
@@ -262,7 +262,7 @@ impl<H: Highlighter> Component<H> {
 
     /// Get the background color
     pub fn background_color(&self) -> Background {
-        if self.0.part.error_state.is_some() {
+        if self.0.error_state.is_some() {
             Background::Error
         } else if let Some(c) = self.0.part.colors.background.as_rgba() {
             Background::Rgb(c.as_rgb())
@@ -350,7 +350,7 @@ impl<H: Highlighter> Component<H> {
     /// Clear the error state
     #[inline]
     pub fn clear_error(&mut self) {
-        self.0.part.clear_error();
+        self.0.error_state = None;
     }
 }
 
@@ -893,12 +893,6 @@ impl Part {
                 }
             },
         }
-    }
-
-    /// Clear the error state
-    #[inline]
-    pub fn clear_error(&mut self) {
-        self.error_state = None;
     }
 
     /// Insert a `text` at the given position
@@ -1535,7 +1529,7 @@ impl Editor {
         let len = self.as_str().len();
         self.part.selection.set_max_len(len);
         self.part.edit_x_coord = None;
-        self.part.error_state = None;
+        self.error_state = None;
     }
 
     /// Replace selected text
@@ -1557,7 +1551,7 @@ impl Editor {
             self.part.selection.set_cursor(index + text.len());
         }
         self.part.edit_x_coord = None;
-        self.part.error_state = None;
+        self.error_state = None;
     }
 
     /// Access the cursor index / selection range
@@ -1611,16 +1605,13 @@ impl Editor {
     /// Get whether the input state is erroneous
     #[inline]
     pub fn has_error(&self) -> bool {
-        self.part.error_state.is_some()
+        self.error_state.is_some()
     }
 
     /// Get the error message, if any
     #[inline]
     pub fn error_message(&self) -> Option<&str> {
-        self.part
-            .error_state
-            .as_ref()
-            .and_then(|state| state.as_deref())
+        self.error_state.as_ref().and_then(|state| state.as_deref())
     }
 
     /// Mark the input as erroneous with an optional message
@@ -1632,7 +1623,7 @@ impl Editor {
     /// When set, the input field's background is drawn red. If a message is
     /// supplied, then a tooltip will be available on mouse-hover.
     pub fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
-        self.part.error_state = Some(message);
+        self.error_state = Some(message);
         cx.redraw(self.id_ref());
     }
 }
