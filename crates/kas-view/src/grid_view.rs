@@ -462,8 +462,11 @@ mod GridView {
                 data_len = result.len();
                 if data_len != self.data_len {
                     self.data_len = data_len;
-                    cx.resize();
                     self.token_update = Update::Token;
+
+                    // TODO(opt): notify that content_size() has changed without
+                    // requiring re-evaluation of size_rules() or set_rect():
+                    cx.resize();
                 }
             } else {
                 data_len = self.data_len;

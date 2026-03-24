@@ -567,6 +567,9 @@ mod ListView {
                 data_len = result.len();
                 if data_len != usize::conv(self.data_len) {
                     self.data_len = data_len.cast();
+
+                    // TODO(opt): notify that content_size() has changed without
+                    // requiring re-evaluation of size_rules() or set_rect():
                     cx.resize();
                 }
             } else {
