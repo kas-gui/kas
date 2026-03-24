@@ -14,17 +14,21 @@ use kas::event::{CursorIcon, Scroll};
 use kas::prelude::*;
 use kas::text::Direction;
 use kas::theme::{FrameStyle, TextClass};
+use std::rc::Rc;
+
+#[derive(Debug)]
+struct CallOnEdit;
 
 #[impl_self]
 mod MultiPartEditor {
     /// A multi-part text-editor widget
-    #[autoimpl(Debug where H: trait)]
+    #[autoimpl(Debug ignore self.on_edit where H: trait)]
     #[widget]
     pub struct MultiPartEditor<H: Highlighter = Plain> {
         core: widget_core!(),
         scroll: ScrollComponent,
         // NOTE: inner is a Viewport which doesn't use update methods, therefore we don't call them.
-        #[widget]
+        #[widget(&())]
         inner: Inner<H>,
         #[widget(&())]
         vert_bar: ScrollBar<kas::dir::Down>,
@@ -33,6 +37,7 @@ mod MultiPartEditor {
         frame_offset_ex_margin: Offset,
         inner_margin: i32,
         clip_rect: Rect,
+        on_edit: Option<Box<dyn Fn(&mut EventCx, &Self) + Send>>,
     }
 
     impl Layout for Self {
@@ -143,6 +148,12 @@ mod MultiPartEditor {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, _: &()) {
+            if let Some(CallOnEdit) = cx.try_pop() {
+                if let Some(ref method) = self.on_edit {
+                    method(cx, self);
+                }
+            }
+
             let offset = if cx.last_child() == Some(widget_index![self.vert_bar])
                 && let Some(ScrollBarMsg(y)) = cx.try_pop()
             {
@@ -193,6 +204,7 @@ mod MultiPartEditor {
                 frame_offset_ex_margin: Default::default(),
                 inner_margin: Default::default(),
                 clip_rect: Default::default(),
+                on_edit: None,
             }
         }
     }
@@ -201,8 +213,11 @@ mod MultiPartEditor {
         /// Replace the highlighter
         ///
         /// This function reconstructs the text with a new highlighter.
+        ///
+        /// Note: this method discards the edit handler; see [`Self::on_edit`].
         #[inline]
         pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> MultiPartEditor<H2> {
+            debug_assert!(self.on_edit.is_none());
             MultiPartEditor {
                 core: self.core,
                 scroll: self.scroll,
@@ -213,12 +228,40 @@ mod MultiPartEditor {
                 frame_offset_ex_margin: self.frame_offset_ex_margin,
                 inner_margin: self.inner_margin,
                 clip_rect: self.clip_rect,
+                on_edit: None,
             }
         }
 
         /// Set a new highlighter of the same type
         pub fn set_highlighter(&mut self, highlighter: H) {
             self.inner.editor.set_highlighter(highlighter);
+        }
+
+        /// Call the handler `f` on edit
+        ///
+        /// Note: this method should not be called before [`Self::with_highlighter`].
+        #[inline]
+        #[must_use]
+        pub fn on_edit(mut self, f: impl Fn(&mut EventCx, &Self) + Send + 'static) -> Self {
+            debug_assert!(self.on_edit.is_none());
+            self.on_edit = Some(Box::new(f));
+            self
+        }
+
+        /// Read text contents from parts
+        ///
+        /// The whole contents equals the concatenation of parts.
+        pub fn text_parts(&self) -> impl Iterator<Item = &Rc<String>> {
+            std::iter::once(self.inner.editor.part().text())
+        }
+
+        /// Copy text contents to a `String`
+        pub fn text_to_string(&self) -> String {
+            let mut s = String::new();
+            for part in self.text_parts() {
+                s.push_str(part);
+            }
+            s
         }
 
         fn update_content_size(&mut self, cx: &mut EventState) {
@@ -397,8 +440,11 @@ mod Inner {
                 | EventAction::Cursor
                 | EventAction::FocusGained
                 | EventAction::FocusLost
-                | EventAction::Preedit
-                | EventAction::Edit => Used,
+                | EventAction::Preedit => Used,
+                EventAction::Edit => {
+                    cx.push(CallOnEdit);
+                    Used
+                }
                 EventAction::Unused | EventAction::Activate(_) => Unused,
             }
         }
