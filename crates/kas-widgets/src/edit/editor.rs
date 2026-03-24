@@ -40,6 +40,7 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 pub struct ActionResetStatus;
 
 /// Result type of [`Component::handle_event`]
+#[derive(Debug)]
 pub enum EventAction {
     /// Key not used, no action
     Unused,
@@ -184,6 +185,12 @@ impl Common {
         }
     }
 
+    /// Get whether wrapping is enabled
+    #[inline]
+    pub fn wrap(&self) -> bool {
+        self.wrap
+    }
+
     /// Read highlighter colors
     #[inline]
     pub fn colors(&self) -> &SchemeColors {
@@ -232,6 +239,13 @@ impl Common {
     pub fn set_cursor_range(&mut self, range: CursorRange<TextIndex>) {
         self.edit_x_coord = None;
         self.selection = range;
+    }
+
+    /// Checks whether any edits have landed
+    ///
+    /// This method may be used in sanity checks.
+    pub fn is_unedited(&self) -> bool {
+        self.last_edit == Some(EditOp::Initial)
     }
 }
 
@@ -428,7 +442,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        debug_assert!(self.0.common.last_edit == Some(EditOp::Initial));
+        debug_assert!(self.0.common.is_unedited());
 
         self.0.part.text = Rc::new(text.to_string());
         let byte = if self.0.common.wrap { 0 } else { self.0.part.text.len() };
