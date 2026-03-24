@@ -127,7 +127,7 @@ mod EditBoxCore {
 
         #[inline]
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            self.editor.part().draw_with_offset(draw, rect, offset);
+            self.editor.draw_with_offset(draw, rect, offset);
         }
     }
 
@@ -239,7 +239,7 @@ mod EditBoxCore {
                 core: Default::default(),
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
-                editor: Component::default(),
+                editor: Component::new(false),
                 guard,
             }
         }
@@ -296,7 +296,7 @@ impl<A: 'static> EditBoxCore<DefaultGuard<A>> {
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
         EditBoxCore {
-            editor: Component::from(text),
+            editor: Component::new(false).with_text(text),
             ..Default::default()
         }
     }

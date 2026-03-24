@@ -65,89 +65,10 @@ impl EventAction {
     }
 }
 
-/// A text part for usage by an editor
-///
-/// ### Special behaviour
-///
-/// The wrapping widget may (optionally) wish to implement [`Viewport`] to
-/// support scrolling of text content. Since this component is not a widget it
-/// cannot implement [`Viewport`] directly, but it does provide the following
-/// methods: [`Self::content_size`], [`Self::draw_with_offset`].
-#[autoimpl(Debug)]
-pub struct Part {
-    // TODO(opt): id is duplicated here since macros don't let us put the core here
-    id: Id,
-    read_only: bool,
-    display: ConfiguredDisplay,
-    highlight: highlight::Cache,
-    text: String,
-    colors: SchemeColors,
-    selection: SelectionHelper,
-    edit_x_coord: Option<f32>,
-    last_edit: Option<EditOp>,
-    undo_stack: UndoStack<(String, CursorRange)>,
-    has_key_focus: bool,
-    current: CurrentAction,
-    error_state: Option<Option<Cow<'static, str>>>,
-    input_handler: TextInput,
-}
-
-impl Default for Part {
-    #[inline]
-    fn default() -> Self {
-        Part {
-            id: Id::default(),
-            read_only: false,
-            display: ConfiguredDisplay::new(TextClass::Editor, false),
-            highlight: Default::default(),
-            text: Default::default(),
-            colors: SchemeColors::default(),
-            selection: Default::default(),
-            edit_x_coord: None,
-            last_edit: Some(EditOp::Initial),
-            undo_stack: UndoStack::new(),
-            has_key_focus: false,
-            current: CurrentAction::None,
-            error_state: None,
-            input_handler: Default::default(),
-        }
-    }
-}
-
-impl<S: ToString> From<S> for Part {
-    #[inline]
-    fn from(text: S) -> Self {
-        let text = text.to_string();
-        let len = text.len();
-        Part {
-            text,
-            selection: SelectionHelper::from(len),
-            ..Self::default()
-        }
-    }
-}
-
-/// Inner editor interface
-///
-/// This type provides an API usable by [`EditGuard`] and (read-only) via
-/// [`Deref`] from [`EditBoxCore`] and [`EditBox`].
-#[autoimpl(Debug, Default)]
-pub struct Editor {
-    part: Part,
-}
-
-impl<S: ToString> From<S> for Editor {
-    #[inline]
-    fn from(text: S) -> Self {
-        Editor {
-            part: Part::from(text),
-        }
-    }
-}
-
 /// Editor state common to all parts
 #[derive(Debug, Default)]
 pub struct Common<H: Highlighter> {
+    colors: SchemeColors,
     highlighter: H,
 }
 
@@ -155,10 +76,16 @@ impl<H: Highlighter> Common<H> {
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Common<H2> {
-        Common { highlighter }
+        Common {
+            colors: SchemeColors::default(),
+            highlighter,
+        }
     }
 
     /// Set a new highlighter of the same type
+    ///
+    /// Also call <code>part.[require_reprepare](ConfiguredDisplay::require_reprepare)()</code>
+    /// on each part to ensure the highlighting is updated.
     pub fn set_highlighter(&mut self, highlighter: H) {
         self.highlighter = highlighter;
     }
@@ -168,11 +95,64 @@ impl<H: Highlighter> Common<H> {
     #[must_use]
     pub fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionResetStatus> {
         if self.highlighter.configure(cx) {
+            self.colors = self.highlighter.scheme_colors();
             Some(ActionResetStatus)
         } else {
             None
         }
     }
+
+    /// Read highlighter colors
+    #[inline]
+    pub fn colors(&self) -> &SchemeColors {
+        &self.colors
+    }
+
+    /// Get the theme-defined background color
+    #[inline]
+    pub fn background_color(&self) -> Background {
+        if let Some(c) = self.colors.background.as_rgba() {
+            Background::Rgb(c.as_rgb())
+        } else {
+            Background::Default
+        }
+    }
+}
+
+/// A text part for usage by an editor
+///
+/// ### Special behaviour
+///
+/// The wrapping widget may (optionally) wish to implement [`Viewport`] to
+/// support scrolling of text content. Since this component is not a widget it
+/// cannot implement [`Viewport`] directly, but it does provide the following
+/// methods: [`Self::content_size`], [`Self::draw_with_offset`].
+#[autoimpl(Debug)]
+#[autoimpl(Deref, DerefMut using self.display)]
+pub struct Part {
+    // TODO(opt): id is duplicated here since macros don't let us put the core here
+    id: Id,
+    read_only: bool,
+    display: ConfiguredDisplay,
+    highlight: highlight::Cache,
+    text: String,
+    selection: SelectionHelper,
+    edit_x_coord: Option<f32>,
+    last_edit: Option<EditOp>,
+    undo_stack: UndoStack<(String, CursorRange)>,
+    has_key_focus: bool,
+    current: CurrentAction,
+    input_handler: TextInput,
+}
+
+/// Inner editor interface
+///
+/// This type provides an API usable by [`EditGuard`] and (read-only) via
+/// [`Deref`] from [`EditBoxCore`] and [`EditBox`].
+#[autoimpl(Debug)]
+pub struct Editor {
+    part: Part,
+    error_state: Option<Option<Cow<'static, str>>>,
 }
 
 /// Editor component
@@ -188,7 +168,7 @@ impl<H: Highlighter> Common<H> {
 /// potentially also set an alignment hint.
 ///
 /// See also [`Part`] (accessible through [`Self::part`]).
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Component<H: Highlighter>(pub Editor, pub Common<H>);
 
 impl<H: Highlighter> Deref for Component<H> {
@@ -228,56 +208,58 @@ impl<H: Highlighter> Layout for Component<H> {
     fn draw(&self, draw: DrawCx) {
         self.0
             .part
-            .draw_with_offset(draw, self.rect(), Offset::ZERO);
-    }
-}
-
-impl<H: Highlighter + Default, S: ToString> From<S> for Component<H> {
-    #[inline]
-    fn from(text: S) -> Self {
-        let common = Common {
-            highlighter: H::default(),
-        };
-        Component(Editor::from(text), common)
+            .draw_with_offset(draw, &self.1.colors, self.rect(), Offset::ZERO);
     }
 }
 
 impl<H: Highlighter> Component<H> {
+    /// Construct a new instance
+    #[inline]
+    pub fn new(wrap: bool) -> Self
+    where
+        H: Default,
+    {
+        let editor = Editor {
+            part: Part::new(wrap),
+            error_state: None,
+        };
+        Component(editor, Common::default())
+    }
+
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
-        let common = Common { highlighter };
+        let common = Common {
+            colors: self.1.colors,
+            highlighter,
+        };
         Component(self.0, common)
     }
 
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
         self.1.highlighter = highlighter;
+        self.0.part.require_reprepare();
     }
 
     /// Get the background color
+    ///
+    /// Uses the UI theme's error color if applicable.
     pub fn background_color(&self) -> Background {
-        if self.0.part.error_state.is_some() {
+        if self.0.error_state.is_some() {
             Background::Error
-        } else if let Some(c) = self.0.part.colors.background.as_rgba() {
-            Background::Rgb(c.as_rgb())
         } else {
-            Background::Default
+            self.1.background_color()
         }
     }
 
     /// Set the initial text (inline)
     ///
-    /// This method should only be used on a new `Editor`.
+    /// This method should only be used on a new `Component`.
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        let part: &mut Part = &mut self.0.part;
-        debug_assert!(part.current == CurrentAction::None && !part.input_handler.is_selecting());
-        let text = text.to_string();
-        let len = text.len();
-        part.text = text;
-        part.selection.set_cursor(len);
+        self.0.part = self.0.part.with_text(text);
         self
     }
 
@@ -291,7 +273,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         if let Some(ActionResetStatus) = self.1.configure(cx) {
-            self.0.part.display.set_max_status(Status::New);
+            self.0.part.display.require_reprepare();
         }
         self.0.part.configure(&mut self.1, cx, id);
     }
@@ -337,6 +319,14 @@ impl<H: Highlighter> Component<H> {
         self.0.part.measure_height(wrap_width, max_lines).unwrap()
     }
 
+    /// Implementation of [`Viewport::draw_with_offset`]
+    #[inline]
+    pub fn draw_with_offset(&self, draw: DrawCx, rect: Rect, offset: Offset) {
+        self.0
+            .part
+            .draw_with_offset(draw, &self.1.colors, rect, offset);
+    }
+
     /// Handle an event
     #[inline]
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
@@ -350,11 +340,44 @@ impl<H: Highlighter> Component<H> {
     /// Clear the error state
     #[inline]
     pub fn clear_error(&mut self) {
-        self.0.part.clear_error();
+        self.0.error_state = None;
     }
 }
 
 impl Part {
+    /// Construct a new instance
+    #[inline]
+    pub fn new(wrap: bool) -> Self {
+        Part {
+            id: Id::default(),
+            read_only: false,
+            display: ConfiguredDisplay::new(TextClass::Editor, wrap),
+            highlight: Default::default(),
+            text: Default::default(),
+            selection: Default::default(),
+            edit_x_coord: None,
+            last_edit: Some(EditOp::Initial),
+            undo_stack: UndoStack::new(),
+            has_key_focus: false,
+            current: CurrentAction::None,
+            input_handler: Default::default(),
+        }
+    }
+
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `Part`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
+        let text = text.to_string();
+        let len = text.len();
+        self.text = text;
+        self.selection.set_cursor(len);
+        self
+    }
+
     /// Get text contents
     #[inline]
     pub fn as_str(&self) -> &str {
@@ -384,7 +407,6 @@ impl Part {
     /// [`Common::configure`] must be called before this method.
     pub fn configure<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut ConfigCx, id: Id) {
         self.id = id;
-        self.colors = common.highlighter.scheme_colors();
         self.display.configure(&mut cx.size_cx());
         self.prepare_runs(common);
     }
@@ -474,7 +496,13 @@ impl Part {
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
-    pub fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
+    pub fn draw_with_offset(
+        &self,
+        mut draw: DrawCx,
+        colors: &SchemeColors,
+        rect: Rect,
+        offset: Offset,
+    ) {
         let Ok(display) = self.display.display() else {
             return;
         };
@@ -484,7 +512,7 @@ impl Part {
 
         let color_tokens = self.highlight.color_tokens();
         let default_colors = format::Colors {
-            foreground: self.colors.foreground,
+            foreground: colors.foreground,
             background: None,
         };
         let mut buf = [(0, default_colors); 3];
@@ -497,17 +525,17 @@ impl Part {
             }
         } else if color_tokens.is_empty() {
             buf[1].0 = range.start;
-            buf[1].1.foreground = self.colors.selection_foreground;
-            buf[1].1.background = Some(self.colors.selection_background);
+            buf[1].1.foreground = colors.selection_foreground;
+            buf[1].1.background = Some(colors.selection_background);
             buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
             &buf[r0..]
         } else {
-            let set_selection_colors = |colors: &mut format::Colors| {
-                if colors.foreground == self.colors.foreground {
-                    colors.foreground = self.colors.selection_foreground;
+            let set_selection_colors = |c: &mut format::Colors| {
+                if c.foreground == colors.foreground {
+                    c.foreground = colors.selection_foreground;
                 }
-                colors.background = Some(self.colors.selection_background);
+                c.background = Some(colors.selection_background);
             };
 
             vec.reserve(color_tokens.len() + 2);
@@ -590,7 +618,7 @@ impl Part {
                 rect,
                 display,
                 self.selection.edit_index(),
-                Some(self.colors.cursor),
+                Some(colors.cursor),
             );
         }
     }
@@ -881,12 +909,6 @@ impl Part {
         }
     }
 
-    /// Clear the error state
-    #[inline]
-    pub fn clear_error(&mut self) {
-        self.error_state = None;
-    }
-
     /// Insert a `text` at the given position
     ///
     /// This may be used to edit the raw text instead of replacing it.
@@ -897,7 +919,7 @@ impl Part {
     #[inline]
     fn insert_str(&mut self, index: usize, text: &str) {
         self.text.insert_str(index, text);
-        self.display.set_max_status(Status::New);
+        self.display.require_reprepare();
     }
 
     /// Replace a section of text
@@ -912,7 +934,7 @@ impl Part {
     #[inline]
     fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
         self.text.replace_range(range, replace_with);
-        self.display.set_max_status(Status::New);
+        self.display.require_reprepare();
     }
 
     /// Cancel on-going selection and IME actions
@@ -1377,7 +1399,7 @@ impl Part {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
                     if self.text.as_str() != text {
                         self.text = text.clone();
-                        self.display.set_max_status(Status::New);
+                        self.display.require_reprepare();
                         self.edit_x_coord = None;
                     }
                     self.selection = (*cursor).into();
@@ -1516,12 +1538,12 @@ impl Editor {
         self.part.cancel_selection_and_ime(cx);
 
         self.part.text = text;
-        self.part.display.set_max_status(Status::New);
+        self.part.display.require_reprepare();
 
         let len = self.as_str().len();
         self.part.selection.set_max_len(len);
         self.part.edit_x_coord = None;
-        self.part.error_state = None;
+        self.error_state = None;
     }
 
     /// Replace selected text
@@ -1543,7 +1565,7 @@ impl Editor {
             self.part.selection.set_cursor(index + text.len());
         }
         self.part.edit_x_coord = None;
-        self.part.error_state = None;
+        self.error_state = None;
     }
 
     /// Access the cursor index / selection range
@@ -1597,16 +1619,13 @@ impl Editor {
     /// Get whether the input state is erroneous
     #[inline]
     pub fn has_error(&self) -> bool {
-        self.part.error_state.is_some()
+        self.error_state.is_some()
     }
 
     /// Get the error message, if any
     #[inline]
     pub fn error_message(&self) -> Option<&str> {
-        self.part
-            .error_state
-            .as_ref()
-            .and_then(|state| state.as_deref())
+        self.error_state.as_ref().and_then(|state| state.as_deref())
     }
 
     /// Mark the input as erroneous with an optional message
@@ -1618,7 +1637,7 @@ impl Editor {
     /// When set, the input field's background is drawn red. If a message is
     /// supplied, then a tooltip will be available on mouse-hover.
     pub fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
-        self.part.error_state = Some(message);
+        self.error_state = Some(message);
         cx.redraw(self.id_ref());
     }
 }
