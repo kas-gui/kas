@@ -74,6 +74,7 @@ impl EventAction {
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug)]
+#[autoimpl(Deref, DerefMut using self.display)]
 pub struct Part {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
@@ -268,16 +269,11 @@ impl<H: Highlighter> Component<H> {
 
     /// Set the initial text (inline)
     ///
-    /// This method should only be used on a new `Editor`.
+    /// This method should only be used on a new `Component`.
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        let part: &mut Part = &mut self.0.part;
-        debug_assert!(part.current == CurrentAction::None && !part.input_handler.is_selecting());
-        let text = text.to_string();
-        let len = text.len();
-        part.text = text;
-        part.selection.set_cursor(len);
+        self.0.part = self.0.part.with_text(text);
         self
     }
 
@@ -355,6 +351,20 @@ impl<H: Highlighter> Component<H> {
 }
 
 impl Part {
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `Part`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
+        let text = text.to_string();
+        let len = text.len();
+        self.text = text;
+        self.selection.set_cursor(len);
+        self
+    }
+
     /// Get text contents
     #[inline]
     pub fn as_str(&self) -> &str {
