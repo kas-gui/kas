@@ -86,7 +86,7 @@ impl Cache {
     }
 
     pub fn font_tokens(&self, dpem: f32, font: FontSelector) -> impl Iterator<Item = FontToken> {
-        self.fonts.iter().cloned().map(move |fmt| FontToken {
+        self.fonts.iter().map(move |fmt| FontToken {
             start: fmt.start,
             dpem,
             font: FontSelector {
