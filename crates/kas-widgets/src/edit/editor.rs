@@ -65,6 +65,36 @@ impl EventAction {
     }
 }
 
+/// Editor state common to all parts
+#[derive(Debug, Default)]
+pub struct Common<H: Highlighter> {
+    highlighter: H,
+}
+
+impl<H: Highlighter> Common<H> {
+    /// Replace the highlighter
+    #[inline]
+    pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Common<H2> {
+        Common { highlighter }
+    }
+
+    /// Set a new highlighter of the same type
+    pub fn set_highlighter(&mut self, highlighter: H) {
+        self.highlighter = highlighter;
+    }
+
+    /// Configure `Common` data
+    #[inline]
+    #[must_use]
+    pub fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionResetStatus> {
+        if self.highlighter.configure(cx) {
+            Some(ActionResetStatus)
+        } else {
+            None
+        }
+    }
+}
+
 /// A text part for usage by an editor
 ///
 /// ### Special behaviour
@@ -142,36 +172,6 @@ impl<S: ToString> From<S> for Editor {
     fn from(text: S) -> Self {
         Editor {
             part: Part::from(text),
-        }
-    }
-}
-
-/// Editor state common to all parts
-#[derive(Debug, Default)]
-pub struct Common<H: Highlighter> {
-    highlighter: H,
-}
-
-impl<H: Highlighter> Common<H> {
-    /// Replace the highlighter
-    #[inline]
-    pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Common<H2> {
-        Common { highlighter }
-    }
-
-    /// Set a new highlighter of the same type
-    pub fn set_highlighter(&mut self, highlighter: H) {
-        self.highlighter = highlighter;
-    }
-
-    /// Configure `Common` data
-    #[inline]
-    #[must_use]
-    pub fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionResetStatus> {
-        if self.highlighter.configure(cx) {
-            Some(ActionResetStatus)
-        } else {
-            None
         }
     }
 }
