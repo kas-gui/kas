@@ -6,8 +6,8 @@
 //! Widget and Events traits
 
 use super::{Tile, Widget};
+use crate::ChildIndices;
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
-use crate::{ActionResize, ChildIndices};
 use crate::{Id, geom::Coord};
 #[allow(unused)] use crate::{Layout, event::EventState};
 #[allow(unused)] use kas_macros as macros;
@@ -308,26 +308,26 @@ pub trait Events: Widget + Sized {
     ///
     /// # Calling
     ///
-    /// This method may only be called after the widget is sized.
-    ///
-    /// This method is called during [event handling](crate::event) whenever a
-    /// resize action is required (see [`ConfigCx::resize`]).
+    /// This method may be called when processing an [update](Self#update) or
+    /// handling an event ([`Self::handle_event`]) or message
+    /// ([`Self::handle_messages`]) when a child widget requires resizing, but
+    /// only after the initial sizing of the widget.
     ///
     /// # Implementation
     ///
     /// Some widgets (for example, a scroll region) are able to handle resizes
-    /// locally and should implement this method to do so
-    /// (thus avoiding the need for a full-window resize).
+    /// locally and should implement this method to do so, avoiding the need for
+    /// a full-window resize.
     ///
-    /// Return `Some(ActionResize)` if further resizing is needed, or `None` if
-    /// resizing is complete.
+    /// Return `true` if resizing is complete, otherwise return `false` to
+    /// indicate that further resizing is required.
     ///
-    /// The default implementation simply returns `Some(ActionResize)`.
+    /// The default implementation simply returns `false`.
     #[inline]
     #[must_use]
-    fn handle_resize(&mut self, cx: &mut ConfigCx, data: &Self::Data) -> Option<ActionResize> {
-        let _ = (cx, data);
-        Some(ActionResize)
+    fn handle_resize(&mut self, cx: &mut ConfigCx) -> bool {
+        let _ = cx;
+        false
     }
 
     /// Handler for scrolling
