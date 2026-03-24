@@ -79,6 +79,9 @@ impl<H: Highlighter> Common<H> {
     }
 
     /// Set a new highlighter of the same type
+    ///
+    /// Also call <code>part.[require_reprepare](ConfiguredDisplay::require_reprepare)()</code>
+    /// on each part to ensure the highlighting is updated.
     pub fn set_highlighter(&mut self, highlighter: H) {
         self.highlighter = highlighter;
     }
@@ -254,6 +257,7 @@ impl<H: Highlighter> Component<H> {
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
         self.1.highlighter = highlighter;
+        self.0.part.require_reprepare();
     }
 
     /// Get the background color
@@ -287,7 +291,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         if let Some(ActionResetStatus) = self.1.configure(cx) {
-            self.0.part.display.set_max_status(Status::New);
+            self.0.part.display.require_reprepare();
         }
         self.0.part.configure(&mut self.1, cx, id);
     }
@@ -907,7 +911,7 @@ impl Part {
     #[inline]
     fn insert_str(&mut self, index: usize, text: &str) {
         self.text.insert_str(index, text);
-        self.display.set_max_status(Status::New);
+        self.display.require_reprepare();
     }
 
     /// Replace a section of text
@@ -922,7 +926,7 @@ impl Part {
     #[inline]
     fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
         self.text.replace_range(range, replace_with);
-        self.display.set_max_status(Status::New);
+        self.display.require_reprepare();
     }
 
     /// Cancel on-going selection and IME actions
@@ -1387,7 +1391,7 @@ impl Part {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
                     if self.text.as_str() != text {
                         self.text = text.clone();
-                        self.display.set_max_status(Status::New);
+                        self.display.require_reprepare();
                         self.edit_x_coord = None;
                     }
                     self.selection = (*cursor).into();
@@ -1526,7 +1530,7 @@ impl Editor {
         self.part.cancel_selection_and_ime(cx);
 
         self.part.text = text;
-        self.part.display.set_max_status(Status::New);
+        self.part.display.require_reprepare();
 
         let len = self.as_str().len();
         self.part.selection.set_max_len(len);
