@@ -870,8 +870,11 @@ impl Part {
                     self.set_cursor_from_coord(cx, coord);
                     self.selection.set_anchor(clear);
                     if repeats > 1 {
-                        self.selection
-                            .expand(self.text.as_str(), &self.display, repeats >= 3);
+                        self.selection.expand(
+                            self.text.as_str(),
+                            &|index| self.display.find_line(index).ok().flatten().map(|r| r.1),
+                            repeats >= 3,
+                        );
                     }
 
                     self.request_key_focus(cx, FocusSource::Pointer);
@@ -881,8 +884,11 @@ impl Part {
                     if self.current == CurrentAction::Selection {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
-                            self.selection
-                                .expand(self.text.as_str(), &self.display, repeats >= 3);
+                            self.selection.expand(
+                                self.text.as_str(),
+                                &|index| self.display.find_line(index).ok().flatten().map(|r| r.1),
+                                repeats >= 3,
+                            );
                         }
                     }
 

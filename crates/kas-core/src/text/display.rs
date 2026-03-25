@@ -514,6 +514,7 @@ impl ConfiguredDisplay {
 
     /// Find the line containing text `index`
     ///
+    /// Returns the line number and the text-range of the line.
     /// See [`TextDisplay::find_line`].
     #[inline]
     pub fn find_line(
