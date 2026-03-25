@@ -11,6 +11,7 @@ use crate::edit::highlight::{Highlighter, Plain};
 use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
+use kas::text::Direction;
 use kas::theme::{Background, TextClass};
 use std::ops::Deref;
 
@@ -303,6 +304,12 @@ impl<A: 'static> EditBoxCore<DefaultGuard<A>> {
 }
 
 impl<G: EditGuard, H: Highlighter> EditBoxCore<G, H> {
+    /// Set the base text direction
+    #[inline]
+    pub fn set_direction(&mut self, direction: Direction) {
+        self.editor.set_direction(direction);
+    }
+
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `EditBoxCore`.

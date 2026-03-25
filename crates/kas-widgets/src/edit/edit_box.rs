@@ -11,6 +11,7 @@ use crate::{ScrollBar, ScrollBarMsg};
 use kas::event::Scroll;
 use kas::event::components::ScrollComponent;
 use kas::prelude::*;
+use kas::text::Direction;
 use kas::theme::FrameStyle;
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
@@ -391,6 +392,13 @@ impl<A: 'static> EditBox<StringGuard<A>> {
 }
 
 impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
+    /// Set the base text direction (inline)
+    #[inline]
+    pub fn with_direction(mut self, direction: Direction) -> Self {
+        self.inner.set_direction(direction);
+        self
+    }
+
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `EditBox`.

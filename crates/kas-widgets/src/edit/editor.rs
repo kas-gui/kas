@@ -221,6 +221,12 @@ impl<H: Highlighter> Component<H> {
         self.0.part.status = Status::New;
     }
 
+    /// Set the base text direction
+    #[inline]
+    pub fn set_direction(&mut self, direction: Direction) {
+        self.0.part.set_direction(direction);
+    }
+
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
@@ -363,6 +369,13 @@ impl Part {
             current: CurrentAction::None,
             input_handler: Default::default(),
         }
+    }
+
+    /// Set the base text direction
+    #[inline]
+    pub fn set_direction(&mut self, direction: Direction) {
+        self.direction = direction;
+        self.status = Status::New;
     }
 
     /// Set the initial text (inline)
@@ -1635,7 +1648,6 @@ impl Editor {
     ///
     /// This returns `true` if the text is inferred to have right-to-left;
     /// in other cases (including when the text is empty) it returns `false`.
-    /// TODO: support defaulting to RTL.
     #[inline]
     pub fn text_is_rtl(&self) -> bool {
         self.part.text_is_rtl()
