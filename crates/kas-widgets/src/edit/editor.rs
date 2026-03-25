@@ -482,6 +482,12 @@ impl Part {
         }
     }
 
+    /// Get the assigned [`Rect`]
+    #[inline]
+    pub fn rect(&self) -> Rect {
+        self.rect
+    }
+
     /// Solve size rules
     pub fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
         let rules = if axis.is_horizontal() {
@@ -518,14 +524,13 @@ impl Part {
     ///
     /// This `rect` is stored and available through [`Self::rect`].
     ///
+    /// Changing the width requires re-wrapping lines; other changes to `rect`
+    /// should be very cheap.
+    ///
     /// Note that editors always use default alignment of content.
     pub fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect) {
-        if rect.size != self.rect.size {
-            if rect.size.0 != self.rect.size.0 {
-                self.status = self.status.min(Status::LevelRuns);
-            } else {
-                self.status = self.status.min(Status::Wrapped);
-            }
+        if rect.size.0 != self.rect.size.0 {
+            self.status = self.status.min(Status::LevelRuns);
         }
         self.rect = rect;
 
@@ -533,6 +538,14 @@ impl Part {
         if self.current.is_ime_enabled() {
             self.set_ime_cursor_area(cx);
         }
+    }
+
+    /// Directly set the position
+    ///
+    /// This may be called instead of [`Self::set_rect`] if only `pos` changes.
+    #[inline]
+    pub fn set_pos(&mut self, pos: Coord) {
+        self.rect.pos = pos;
     }
 
     /// Perform line wrapping and alignment
@@ -558,11 +571,6 @@ impl Part {
             self.display
                 .prepare_lines(wrap_width, align_width, Align::Default);
             self.display.ensure_non_negative_alignment();
-        }
-
-        if self.status <= Status::Wrapped {
-            let h = self.rect.size.1.cast();
-            self.display.vertically_align(h, Align::Default);
         }
 
         self.status = Status::Ready;
@@ -1414,8 +1422,12 @@ impl Part {
                 if let Some(x) = self.edit_x_coord {
                     v.0 = x;
                 }
-                const FACTOR: f32 = 2.0 / 3.0;
-                let mut h_dist = f32::conv(self.rect.size.1) * FACTOR;
+                // TODO: page height should be an input?
+                let mut line_height = self.dpem;
+                if let Some(line) = self.display.lines().next() {
+                    line_height = line.bottom() - line.top();
+                }
+                let mut h_dist = line_height * 10.0;
                 if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
