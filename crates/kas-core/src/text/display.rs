@@ -471,12 +471,9 @@ impl ConfiguredDisplay {
     /// using the size reported by [`Self::bounding_box`]. Note that while
     /// vertical alignment is untouched by this method, text is never aligned
     /// above the top (the first y-component is never negative).
+    #[inline]
     pub fn ensure_no_left_overhang(&mut self) {
-        if let Ok((tl, _)) = self.bounding_box()
-            && tl.0 < 0.0
-        {
-            self.display.apply_offset(kas_text::Vec2(-tl.0, 0.0));
-        }
+        self.display.ensure_non_negative_alignment();
     }
 
     /// Get the size of the required bounding box
