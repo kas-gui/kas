@@ -1608,12 +1608,6 @@ impl Editor {
         self.part.display.wrap()
     }
 
-    /// Get the text class used
-    #[inline]
-    pub fn class(&self) -> TextClass {
-        self.part.display.class()
-    }
-
     /// Get whether the widget has input focus
     ///
     /// This is true when the widget is has keyboard or IME focus.

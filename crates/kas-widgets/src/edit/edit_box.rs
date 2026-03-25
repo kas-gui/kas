@@ -11,7 +11,7 @@ use crate::{ScrollBar, ScrollBarMsg};
 use kas::event::Scroll;
 use kas::event::components::ScrollComponent;
 use kas::prelude::*;
-use kas::theme::{FrameStyle, TextClass};
+use kas::theme::FrameStyle;
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
 
@@ -417,14 +417,6 @@ impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
         self.inner = self.inner.with_multi_line(multi_line);
-        self
-    }
-
-    /// Set the text class used
-    #[inline]
-    #[must_use]
-    pub fn with_class(mut self, class: TextClass) -> Self {
-        self.inner = self.inner.with_class(class);
         self
     }
 
