@@ -1062,19 +1062,6 @@ impl Part {
         }
     }
 
-    /// Insert a `text` at the given position
-    ///
-    /// This may be used to edit the raw text instead of replacing it.
-    /// One must call [`Text::prepare`] afterwards.
-    ///
-    /// Currently this is not significantly more efficient than
-    /// [`Text::set_text`]. This may change in the future (TODO).
-    #[inline]
-    fn insert_str(&mut self, index: usize, text: &str) {
-        self.text.insert_str(index, text);
-        self.require_reprepare();
-    }
-
     /// Replace a section of text
     ///
     /// This may be used to edit the raw text instead of replacing it.
@@ -1239,16 +1226,9 @@ impl Part {
         }
         self.cancel_selection_and_ime(cx);
 
-        let index = self.selection.edit_index();
         let selection = self.selection.range();
-        let have_sel = selection.start < selection.end;
-        if have_sel {
-            self.replace_range(selection.clone(), text);
-            self.selection.set_cursor(selection.start + text.len());
-        } else {
-            self.insert_str(index, text);
-            self.selection.set_cursor(index + text.len());
-        }
+        self.replace_range(selection.clone(), text);
+        self.selection.set_cursor(selection.start + text.len());
         self.edit_x_coord = None;
 
         Used
@@ -1714,16 +1694,9 @@ impl Editor {
     pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
         self.part.cancel_selection_and_ime(cx);
 
-        let index = self.part.selection.edit_index();
         let selection = self.part.selection.range();
-        let have_sel = selection.start < selection.end;
-        if have_sel {
-            self.part.replace_range(selection.clone(), text);
-            self.part.selection.set_cursor(selection.start + text.len());
-        } else {
-            self.part.insert_str(index, text);
-            self.part.selection.set_cursor(index + text.len());
-        }
+        self.part.replace_range(selection.clone(), text);
+        self.part.selection.set_cursor(selection.start + text.len());
         self.part.edit_x_coord = None;
         self.error_state = None;
     }
