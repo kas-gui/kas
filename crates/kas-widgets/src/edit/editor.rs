@@ -84,7 +84,7 @@ impl<H: Highlighter> Common<H> {
 
     /// Set a new highlighter of the same type
     ///
-    /// Also call <code>part.[require_reprepare](ConfiguredDisplay::require_reprepare)()</code>
+    /// Also call [`Part::require_reprepare`]()
     /// on each part to ensure the highlighting is updated.
     pub fn set_highlighter(&mut self, highlighter: H) {
         self.highlighter = highlighter;
@@ -153,7 +153,7 @@ pub struct Part {
 /// Inner editor interface
 ///
 /// This type provides an API usable by [`EditGuard`] and (read-only) via
-/// [`Deref`] from [`EditBoxCore`] and [`EditBox`].
+/// [`Deref`](std::ops::Deref) from [`EditBoxCore`] and [`EditBox`].
 #[autoimpl(Debug)]
 pub struct Editor {
     part: Part,
@@ -282,8 +282,7 @@ impl<H: Highlighter> Component<H> {
     /// Fully prepare text for display
     ///
     /// This method performs all required steps of preparation according to the
-    /// [status](ConfiguredDisplay::status) (which is advanced to
-    /// [`Status::Ready`]).
+    /// [`Status`] (which is advanced to [`Status::Ready`]).
     ///
     /// It is usually preferable to call [`Self::prepare_and_scroll`] after
     /// edits to the text to trigger any required resizing and scrolling.
@@ -300,9 +299,8 @@ impl<H: Highlighter> Component<H> {
     /// Fully prepare text for display, ensuring the cursor is within view
     ///
     /// This method performs all required steps of preparation according to the
-    /// [status](ConfiguredDisplay::status) (which is advanced to
-    /// [`Status::Ready`]). This method should be called after changes to the
-    /// text, alignment or wrap-width.
+    /// [`Status`] (which is advanced to [`Status::Ready`]). This method should
+    /// be called after changes to the text, alignment or wrap-width.
     #[inline]
     pub fn prepare_and_scroll(&mut self, cx: &mut EventCx) {
         self.0.part.prepare_and_scroll(&mut self.1, cx);
@@ -437,8 +435,6 @@ impl Part {
     }
 
     /// Force full repreparation of text
-    ///
-    /// This may be required after calling [`Text::text_mut`](super::Text::text_mut).
     #[inline]
     pub fn require_reprepare(&mut self) {
         self.status = Status::New;
@@ -468,7 +464,7 @@ impl Part {
     /// This represents a high-level step of preparation required before
     /// displaying text. After the `Part` is [configured](Self::configure), this
     /// method should be called before any sizing operations. This will advance
-    /// the [status](ConfiguredDisplay::status) to [`Status::LevelRuns`].
+    /// the [`Status`] to [`Status::LevelRuns`].
     /// This method must be called again after any edits to the `Part`'s text.
     #[inline]
     pub fn prepare_runs<H: Highlighter>(&mut self, common: &mut Common<H>) {
@@ -593,9 +589,8 @@ impl Part {
     /// Fully prepare text for display, ensuring the cursor is within view
     ///
     /// This method performs all required steps of preparation according to the
-    /// [status](ConfiguredDisplay::status) (which is advanced to
-    /// [`Status::Ready`]). This method should be called after changes to the
-    /// text, alignment or wrap-width.
+    /// [`Status`] (which is advanced to [`Status::Ready`]). This method should
+    /// be called after changes to the text, alignment or wrap-width.
     #[inline]
     pub fn prepare_and_scroll<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut EventCx) {
         if self.is_prepared() {
