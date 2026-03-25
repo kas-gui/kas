@@ -438,7 +438,7 @@ mod Inner {
 
                 content_size.0 = content_size.0.max(part_size.0);
                 content_size.1 += part_size.1;
-                rect.pos.1 = content_size.1;
+                rect.pos.1 += part_size.1;
             }
             self.content_size = content_size;
         }
@@ -509,8 +509,35 @@ mod Inner {
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
             let action = self.common.handle_event(&mut self.parts, cx, event);
             if action.requires_repreparation() {
-                self.common
-                    .prepare_and_scroll(&mut self.parts, &mut self.highlighter, cx);
+                // TODO(opt): skip updating unchanged parts
+                let mut any_resized = false;
+                let mut content_size = Size::ZERO;
+                let mut rect = self.rect();
+
+                for part in &mut self.parts {
+                    if !part.is_ready() {
+                        if part.status() < Status::Shaped {
+                            part.prepare_runs(&self.common, &mut self.highlighter);
+                        }
+                        any_resized |= part.prepare_wrap(&self.common, rect.size.0);
+                    }
+
+                    let part_size = part.content_size();
+                    rect.size.1 = part_size.1;
+                    part.set_rect(&self.common, &mut cx.size_cx(), rect);
+
+                    content_size.0 = content_size.0.max(part_size.0);
+                    content_size.1 += part_size.1;
+                    rect.pos.1 += part_size.1;
+                }
+
+                self.content_size = content_size;
+
+                cx.redraw();
+                if any_resized {
+                    cx.resize();
+                    self.common.set_view_offset_from_cursor(&self.parts, cx);
+                }
             }
 
             match action {

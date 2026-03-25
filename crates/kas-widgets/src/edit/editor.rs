@@ -535,7 +535,7 @@ impl<H: Highlighter> Component<H> {
         }
 
         self.prepare_runs();
-        self.0.part.prepare_wrap(&self.0.common);
+        self.0.part.prepare_wrap(&self.0.common, self.rect().size.0);
     }
 
     /// Fully prepare text for display, ensuring the cursor is within view
@@ -545,9 +545,18 @@ impl<H: Highlighter> Component<H> {
     /// be called after changes to the text, alignment or wrap-width.
     #[inline]
     pub fn prepare_and_scroll(&mut self, cx: &mut EventCx) {
-        self.0
-            .common
-            .prepare_and_scroll(&mut self.0.part, &mut self.1, cx);
+        if !self.0.part.is_ready() {
+            if self.0.part.status < Status::Shaped {
+                self.0.part.prepare_runs(&self.0.common, &mut self.1);
+                self.0.common.update_direction(&self.0.part);
+            }
+
+            if self.0.part.prepare_wrap(&self.0.common, self.rect().size.0) {
+                cx.resize();
+                self.0.common.set_view_offset_from_cursor(&self.0.part, cx);
+            }
+            cx.redraw();
+        }
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -575,9 +584,7 @@ impl<H: Highlighter> Component<H> {
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
         let action = self.0.common.handle_event(&mut self.0.part, cx, event);
         if action.requires_repreparation() {
-            self.0
-                .common
-                .prepare_and_scroll(&mut self.0.part, &mut self.1, cx);
+            self.prepare_and_scroll(cx);
         }
         action
     }
@@ -736,7 +743,7 @@ impl Part {
         }
         self.rect = rect;
 
-        self.prepare_wrap(common);
+        self.prepare_wrap(common, rect.size.0);
         if let Some(p) = common.current.ime_part() {
             self.set_ime_cursor_area(common, cx, p);
         }
@@ -756,20 +763,22 @@ impl Part {
     /// displaying text: it advances [`Self::status`] from [`Status::Shaped`]
     /// to [`Status::Ready`].
     ///
-    /// If [`Self::status`] is less than [`Status::Shaped`], this method
-    /// returns early, otherwise it performs line-wrapping (if required) and
-    /// sets the status to [`Status::Ready`].
+    /// `width` is a required input (used for wrapping and alignment). If
+    /// `width == 0` or [`Self::status`] is less than [`Status::Shaped`] then
+    /// this method aborts (returns `false` without wrapping). Otherwise this
+    /// method performs line-wrapping (if required) and sets the status to
+    /// [`Status::Ready`].
     ///
     /// Returns `true` when the size of the bounding-box changes.
-    pub fn prepare_wrap(&mut self, common: &Common) -> bool {
-        if self.status < Status::Shaped || self.rect.size.0 == 0 {
+    pub fn prepare_wrap(&mut self, common: &Common, width: i32) -> bool {
+        if self.status < Status::Shaped || width == 0 {
             return false;
         };
 
         let bb = self.forme.bounding_box();
 
         if self.status == Status::Shaped {
-            let align_width = self.rect.size.0.cast();
+            let align_width = width.cast();
             let wrap_width = if !common.wrap { f32::INFINITY } else { align_width };
             self.forme
                 .prepare_lines(wrap_width, align_width, Align::Default);
@@ -798,6 +807,8 @@ impl Part {
     }
 
     /// Implementation of [`Viewport::content_size`]
+    ///
+    /// Returns [`Size::ZERO`] if not prepared.
     pub fn content_size(&self) -> Size {
         if !self.is_ready() {
             return Size::ZERO;
@@ -1258,39 +1269,6 @@ impl Common {
         TextIndex::new(p_repl_end, last_line_end)
     }
 
-    /// Fully prepare text for display, ensuring the cursor is within view
-    ///
-    /// This method performs all required steps of preparation according to the
-    /// [`Status`] (which is advanced to [`Status::Ready`]). This method should
-    /// be called after changes to the text, alignment or wrap-width.
-    #[inline]
-    pub fn prepare_and_scroll<H: Highlighter>(
-        &mut self,
-        parts: &mut impl PartList,
-        highlighter: &mut H,
-        cx: &mut EventCx,
-    ) {
-        let mut any_resized = false;
-
-        for (i, part) in parts.iter_mut().enumerate() {
-            if !part.is_ready() {
-                if part.status < Status::Shaped {
-                    part.prepare_runs(self, highlighter);
-                    if i == 0 {
-                        self.update_direction(part);
-                    }
-                }
-                any_resized |= part.prepare_wrap(self);
-            }
-        }
-
-        if any_resized {
-            cx.resize();
-            self.set_view_offset_from_cursor(parts, cx);
-        }
-        cx.redraw();
-    }
-
     fn copy_selection_to_string(&self, parts: &impl PartList) -> String {
         let range = self.selection.to_range();
         if range.start.part == range.end.part {
@@ -1365,8 +1343,9 @@ impl Common {
 
     /// Handle an event
     ///
-    /// If [`EventAction::requires_repreparation`] then the caller **must** call
-    /// re-prepare the text by calling [`Common::prepare_and_scroll`].
+    /// If [`EventAction::requires_repreparation`] then the caller **must**
+    /// re-prepare and position each part (see e.g.
+    /// [`Component::prepare_and_scroll`]).
     //
     // TODO(opt): should we use dyn PartList to reduce code size?
     pub fn handle_event(
@@ -2072,7 +2051,7 @@ impl Common {
     /// It is assumed that the text has not changed.
     ///
     /// A redraw is assumed since the cursor moved.
-    fn set_view_offset_from_cursor(&self, parts: &impl PartList, cx: &mut EventCx) {
+    pub fn set_view_offset_from_cursor(&self, parts: &impl PartList, cx: &mut EventCx) {
         let cursor = self.selection.cursor;
         let part = parts.get(cursor.part());
         if part.is_ready()
