@@ -24,13 +24,13 @@ use kas::event::{
 use kas::geom::{Rect, Vec2};
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
-use kas::text::{ConfiguredDisplay, CursorRange, NotReady, SelectionHelper, Status, format};
+use kas::text::fonts::FontSelector;
+use kas::text::{CursorRange, Direction, NotReady, SelectionHelper, Status, TextDisplay, format};
 use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
 use kas::{Layout, autoimpl};
 use std::borrow::Cow;
 use std::num::NonZeroUsize;
-use std::ops::{Deref, DerefMut};
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 /// Action: text parts should have their status reset to [`Status::New`] and be re-prepared
@@ -84,7 +84,7 @@ impl<H: Highlighter> Common<H> {
 
     /// Set a new highlighter of the same type
     ///
-    /// Also call <code>part.[require_reprepare](ConfiguredDisplay::require_reprepare)()</code>
+    /// Also call [`Part::require_reprepare`]()
     /// on each part to ensure the highlighting is updated.
     pub fn set_highlighter(&mut self, highlighter: H) {
         self.highlighter = highlighter;
@@ -128,12 +128,17 @@ impl<H: Highlighter> Common<H> {
 /// cannot implement [`Viewport`] directly, but it does provide the following
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug)]
-#[autoimpl(Deref, DerefMut using self.display)]
 pub struct Part {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
+    font: FontSelector,
+    dpem: f32,
+    direction: Direction,
+    wrap: bool,
     read_only: bool,
-    display: ConfiguredDisplay,
+    rect: Rect,
+    status: Status,
+    display: TextDisplay,
     highlight: highlight::Cache,
     text: String,
     selection: SelectionHelper,
@@ -148,7 +153,7 @@ pub struct Part {
 /// Inner editor interface
 ///
 /// This type provides an API usable by [`EditGuard`] and (read-only) via
-/// [`Deref`] from [`EditBoxCore`] and [`EditBox`].
+/// [`Deref`](std::ops::Deref) from [`EditBoxCore`] and [`EditBox`].
 #[autoimpl(Debug)]
 pub struct Editor {
     part: Part,
@@ -171,37 +176,20 @@ pub struct Editor {
 #[derive(Debug)]
 pub struct Component<H: Highlighter>(pub Editor, pub Common<H>);
 
-impl<H: Highlighter> Deref for Component<H> {
-    type Target = ConfiguredDisplay;
-    fn deref(&self) -> &Self::Target {
-        &self.0.part.display
-    }
-}
-
-impl<H: Highlighter> DerefMut for Component<H> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0.part.display
-    }
-}
-
 impl<H: Highlighter> Layout for Component<H> {
     #[inline]
     fn rect(&self) -> Rect {
-        self.0.part.display.rect()
+        self.0.part.rect
     }
 
     #[inline]
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-        self.0.part.display.size_rules(cx, axis)
+        self.0.part.size_rules(cx, axis)
     }
 
-    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-        let part: &mut Part = &mut self.0.part;
-        part.display.set_rect(cx, rect, hints);
-        part.display.ensure_no_left_overhang();
-        if part.current.is_ime_enabled() {
-            part.set_ime_cursor_area(cx);
-        }
+    #[inline]
+    fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
+        self.0.part.set_rect(cx, rect);
     }
 
     #[inline]
@@ -224,6 +212,19 @@ impl<H: Highlighter> Component<H> {
             error_state: None,
         };
         Component(editor, Common::default())
+    }
+
+    /// Set whether long lines are automatically wrapped
+    #[inline]
+    pub fn set_wrap(&mut self, wrap: bool) {
+        self.0.part.wrap = wrap;
+        self.0.part.status = Status::New;
+    }
+
+    /// Set the base text direction
+    #[inline]
+    pub fn set_direction(&mut self, direction: Direction) {
+        self.0.part.set_direction(direction);
     }
 
     /// Replace the highlighter
@@ -273,7 +274,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         if let Some(ActionResetStatus) = self.1.configure(cx) {
-            self.0.part.display.require_reprepare();
+            self.0.part.require_reprepare();
         }
         self.0.part.configure(&mut self.1, cx, id);
     }
@@ -281,14 +282,13 @@ impl<H: Highlighter> Component<H> {
     /// Fully prepare text for display
     ///
     /// This method performs all required steps of preparation according to the
-    /// [status](ConfiguredDisplay::status) (which is advanced to
-    /// [`Status::Ready`]).
+    /// [`Status`] (which is advanced to [`Status::Ready`]).
     ///
     /// It is usually preferable to call [`Self::prepare_and_scroll`] after
     /// edits to the text to trigger any required resizing and scrolling.
     #[inline]
     pub fn prepare(&mut self) {
-        if self.0.part.display.is_prepared() {
+        if self.0.part.is_prepared() {
             return;
         }
 
@@ -299,9 +299,8 @@ impl<H: Highlighter> Component<H> {
     /// Fully prepare text for display, ensuring the cursor is within view
     ///
     /// This method performs all required steps of preparation according to the
-    /// [status](ConfiguredDisplay::status) (which is advanced to
-    /// [`Status::Ready`]). This method should be called after changes to the
-    /// text, alignment or wrap-width.
+    /// [`Status`] (which is advanced to [`Status::Ready`]). This method should
+    /// be called after changes to the text, alignment or wrap-width.
     #[inline]
     pub fn prepare_and_scroll(&mut self, cx: &mut EventCx) {
         self.0.part.prepare_and_scroll(&mut self.1, cx);
@@ -316,7 +315,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
         self.0.part.prepare_runs(&mut self.1);
-        self.0.part.measure_height(wrap_width, max_lines).unwrap()
+        self.0.part.display.measure_height(wrap_width, max_lines)
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
@@ -350,8 +349,14 @@ impl Part {
     pub fn new(wrap: bool) -> Self {
         Part {
             id: Id::default(),
+            font: FontSelector::default(),
+            dpem: 16.0,
+            direction: Direction::Auto,
+            wrap,
             read_only: false,
-            display: ConfiguredDisplay::new(TextClass::Editor, wrap),
+            rect: Rect::ZERO,
+            status: Status::New,
+            display: TextDisplay::default(),
             highlight: Default::default(),
             text: Default::default(),
             selection: Default::default(),
@@ -362,6 +367,13 @@ impl Part {
             current: CurrentAction::None,
             input_handler: Default::default(),
         }
+    }
+
+    /// Set the base text direction
+    #[inline]
+    pub fn set_direction(&mut self, direction: Direction) {
+        self.direction = direction;
+        self.status = Status::New;
     }
 
     /// Set the initial text (inline)
@@ -384,16 +396,30 @@ impl Part {
         self.text.as_str()
     }
 
-    /// True if the editor uses multi-line mode
-    #[inline]
-    fn multi_line(&self) -> bool {
-        self.display.wrap()
-    }
-
-    /// Get the (horizontal) text direction
+    /// Get the base directionality of the text
+    ///
+    /// This does not require that the text is prepared.
     #[inline]
     pub fn text_is_rtl(&self) -> bool {
-        self.display.text_is_rtl(self.as_str())
+        let mut cached_is_rtl = None;
+        if self.status >= Status::Wrapped {
+            cached_is_rtl = match self.display.line_is_rtl(0) {
+                None => Some(self.direction == Direction::Rtl),
+                Some(is_rtl) => Some(is_rtl),
+            };
+        };
+
+        #[cfg(not(debug_assertions))]
+        if let Some(cached) = cached_is_rtl {
+            return cached;
+        }
+
+        let text = self.as_str();
+        let is_rtl = self.display.text_is_rtl(text, self.direction);
+        if let Some(cached) = cached_is_rtl {
+            debug_assert_eq!(cached, is_rtl);
+        }
+        is_rtl
     }
 
     /// Access the cursor index / selection range
@@ -402,12 +428,34 @@ impl Part {
         *self.selection
     }
 
+    /// Check whether the text is fully prepared and ready for usage
+    #[inline]
+    pub fn is_prepared(&self) -> bool {
+        self.status == Status::Ready
+    }
+
+    /// Force full repreparation of text
+    #[inline]
+    pub fn require_reprepare(&mut self) {
+        self.status = Status::New;
+    }
+
     /// Configure component
     ///
     /// [`Common::configure`] must be called before this method.
     pub fn configure<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut ConfigCx, id: Id) {
         self.id = id;
-        self.display.configure(&mut cx.size_cx());
+        let cx = cx.size_cx();
+        let font = cx.font(TextClass::Editor);
+        let dpem = cx.dpem(TextClass::Editor);
+        if font != self.font {
+            self.font = font;
+            self.dpem = dpem;
+            self.status = Status::New;
+        } else if dpem != self.dpem {
+            self.dpem = dpem;
+            self.status = self.status.min(Status::ResizeLevelRuns);
+        }
         self.prepare_runs(common);
     }
 
@@ -416,21 +464,97 @@ impl Part {
     /// This represents a high-level step of preparation required before
     /// displaying text. After the `Part` is [configured](Self::configure), this
     /// method should be called before any sizing operations. This will advance
-    /// the [status](ConfiguredDisplay::status) to [`Status::LevelRuns`].
+    /// the [`Status`] to [`Status::LevelRuns`].
     /// This method must be called again after any edits to the `Part`'s text.
     #[inline]
     pub fn prepare_runs<H: Highlighter>(&mut self, common: &mut Common<H>) {
         fn inner<H: Highlighter>(part: &mut Part, common: &mut Common<H>) {
             part.highlight
                 .highlight(&part.text, &mut common.highlighter);
-            let (dpem, font) = (part.display.font_size(), part.display.font());
-            part.display
-                .prepare_runs(part.text.as_str(), part.highlight.font_tokens(dpem, font));
+
+            let text = part.text.as_str();
+            let font_tokens = part.highlight.font_tokens(part.dpem, part.font);
+            match part.status {
+                Status::New => part
+                    .display
+                    .prepare_runs(text, part.direction, font_tokens)
+                    .expect("no suitable font found"),
+                Status::ResizeLevelRuns => part.display.resize_runs(text, font_tokens),
+                _ => return,
+            }
+
+            part.status = Status::LevelRuns;
         }
 
-        if self.display.status() < Status::LevelRuns {
+        if self.status < Status::LevelRuns {
             inner(self, common);
         }
+    }
+
+    /// Get the assigned [`Rect`]
+    #[inline]
+    pub fn rect(&self) -> Rect {
+        self.rect
+    }
+
+    /// Solve size rules
+    pub fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        let rules = if axis.is_horizontal() {
+            let mut bound = 0i32;
+            if self.wrap {
+                let (min, ideal) = cx.wrapped_line_len(TextClass::Editor, self.dpem);
+                if self.status >= Status::LevelRuns {
+                    bound = self.display.measure_width(ideal.cast()).cast_ceil();
+                }
+                SizeRules::new(bound.min(min), bound.min(ideal), Stretch::Filler)
+            } else {
+                if self.status >= Status::LevelRuns {
+                    bound = self.display.measure_width(f32::INFINITY).cast_ceil();
+                }
+                SizeRules::new(bound, bound, Stretch::Filler)
+            }
+        } else {
+            let wrap_width = self
+                .wrap
+                .then(|| axis.other().map(|w| w.cast()))
+                .flatten()
+                .unwrap_or(f32::INFINITY);
+            let mut bound = 0i32;
+            if self.status >= Status::LevelRuns {
+                bound = self.display.measure_height(wrap_width, None).cast_ceil();
+            }
+            SizeRules::new(bound, bound, Stretch::Filler)
+        };
+
+        rules.with_margins(cx.text_margins().extract(axis))
+    }
+
+    /// Set rect
+    ///
+    /// This `rect` is stored and available through [`Self::rect`].
+    ///
+    /// Changing the width requires re-wrapping lines; other changes to `rect`
+    /// should be very cheap.
+    ///
+    /// Note that editors always use default alignment of content.
+    pub fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect) {
+        if rect.size.0 != self.rect.size.0 {
+            self.status = self.status.min(Status::LevelRuns);
+        }
+        self.rect = rect;
+
+        self.prepare_wrap();
+        if self.current.is_ime_enabled() {
+            self.set_ime_cursor_area(cx);
+        }
+    }
+
+    /// Directly set the position
+    ///
+    /// This may be called instead of [`Self::set_rect`] if only `pos` changes.
+    #[inline]
+    pub fn set_pos(&mut self, pos: Coord) {
+        self.rect.pos = pos;
     }
 
     /// Perform line wrapping and alignment
@@ -444,25 +568,32 @@ impl Part {
     ///
     /// Returns `true` when the size of the bounding-box changes.
     fn prepare_wrap(&mut self) -> bool {
-        if self.display.rect().size.0 == 0 {
+        if self.status < Status::LevelRuns || self.rect.size.0 == 0 {
             return false;
         };
 
         let bb = self.display.bounding_box();
-        self.display.prepare_wrap();
-        self.display.ensure_no_left_overhang();
+
+        if self.status == Status::LevelRuns {
+            let align_width = self.rect.size.0.cast();
+            let wrap_width = if !self.wrap { f32::INFINITY } else { align_width };
+            self.display
+                .prepare_lines(wrap_width, align_width, Align::Default);
+            self.display.ensure_non_negative_alignment();
+        }
+
+        self.status = Status::Ready;
         bb != self.display.bounding_box()
     }
 
     /// Fully prepare text for display, ensuring the cursor is within view
     ///
     /// This method performs all required steps of preparation according to the
-    /// [status](ConfiguredDisplay::status) (which is advanced to
-    /// [`Status::Ready`]). This method should be called after changes to the
-    /// text, alignment or wrap-width.
+    /// [`Status`] (which is advanced to [`Status::Ready`]). This method should
+    /// be called after changes to the text, alignment or wrap-width.
     #[inline]
     pub fn prepare_and_scroll<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut EventCx) {
-        if self.display.is_prepared() {
+        if self.is_prepared() {
             return;
         }
 
@@ -471,6 +602,7 @@ impl Part {
             cx.resize();
             self.set_view_offset_from_cursor(cx);
         }
+        cx.redraw();
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -483,16 +615,21 @@ impl Part {
         wrap_width: f32,
         max_lines: Option<NonZeroUsize>,
     ) -> Result<f32, NotReady> {
-        self.display.measure_height(wrap_width, max_lines)
+        if self.status >= Status::LevelRuns {
+            Ok(self.display.measure_height(wrap_width, max_lines))
+        } else {
+            Err(NotReady)
+        }
     }
 
     /// Implementation of [`Viewport::content_size`]
     pub fn content_size(&self) -> Size {
-        if let Ok((tl, br)) = self.display.bounding_box() {
-            (br - tl).cast_ceil()
-        } else {
-            Size::ZERO
+        if self.status < Status::Wrapped {
+            return Size::ZERO;
         }
+
+        let (tl, br) = self.display.bounding_box();
+        (Vec2::from(br) - Vec2::from(tl)).cast_ceil()
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
@@ -503,11 +640,11 @@ impl Part {
         rect: Rect,
         offset: Offset,
     ) {
-        let Ok(display) = self.display.display() else {
+        if !self.is_prepared() {
             return;
-        };
+        }
 
-        let pos = self.display.rect().pos - offset;
+        let pos = self.rect.pos - offset;
         let range: Range<u32> = self.selection.range().cast();
 
         let color_tokens = self.highlight.color_tokens();
@@ -592,11 +729,11 @@ impl Part {
             }
             &vec
         };
-        draw.text(pos, rect, display, tokens);
+        draw.text(pos, rect, &self.display, tokens);
 
         let decorations = self.highlight.decorations();
         if !decorations.is_empty() {
-            draw.decorate_text(pos, rect, display, decorations);
+            draw.decorate_text(pos, rect, &self.display, decorations);
         }
 
         if let CurrentAction::ImePreedit { edit_range } = self.current.clone() {
@@ -609,14 +746,14 @@ impl Part {
                 (edit_range.end, Default::default()),
             ];
             let r0 = if edit_range.start > 0 { 0 } else { 1 };
-            draw.decorate_text(pos, rect, display, &tokens[r0..]);
+            draw.decorate_text(pos, rect, &self.display, &tokens[r0..]);
         }
 
         if !self.read_only && draw.ev_state().has_input_focus(&self.id) == Some(true) {
             draw.text_cursor(
                 pos,
                 rect,
-                display,
+                &self.display,
                 self.selection.edit_index(),
                 Some(colors.cursor),
             );
@@ -629,6 +766,11 @@ impl Part {
     /// re-prepare the text by calling [`Self::prepare_and_scroll`].
     #[inline]
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
+        if !self.is_prepared() {
+            debug_assert!(false);
+            return EventAction::Unused;
+        }
+
         match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
                 if !self.input_handler.is_selecting() {
@@ -870,8 +1012,11 @@ impl Part {
                     self.set_cursor_from_coord(cx, coord);
                     self.selection.set_anchor(clear);
                     if repeats > 1 {
-                        self.selection
-                            .expand(self.text.as_str(), &self.display, repeats >= 3);
+                        self.selection.expand(
+                            self.text.as_str(),
+                            &|index| self.display.find_line(index).map(|r| r.1),
+                            repeats >= 3,
+                        );
                     }
 
                     self.request_key_focus(cx, FocusSource::Pointer);
@@ -881,8 +1026,11 @@ impl Part {
                     if self.current == CurrentAction::Selection {
                         self.set_cursor_from_coord(cx, coord);
                         if repeats > 1 {
-                            self.selection
-                                .expand(self.text.as_str(), &self.display, repeats >= 3);
+                            self.selection.expand(
+                                self.text.as_str(),
+                                &|index| self.display.find_line(index).map(|r| r.1),
+                                repeats >= 3,
+                            );
                         }
                     }
 
@@ -909,19 +1057,6 @@ impl Part {
         }
     }
 
-    /// Insert a `text` at the given position
-    ///
-    /// This may be used to edit the raw text instead of replacing it.
-    /// One must call [`Text::prepare`] afterwards.
-    ///
-    /// Currently this is not significantly more efficient than
-    /// [`Text::set_text`]. This may change in the future (TODO).
-    #[inline]
-    fn insert_str(&mut self, index: usize, text: &str) {
-        self.text.insert_str(index, text);
-        self.display.require_reprepare();
-    }
-
     /// Replace a section of text
     ///
     /// This may be used to edit the raw text instead of replacing it.
@@ -934,7 +1069,7 @@ impl Part {
     #[inline]
     fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
         self.text.replace_range(range, replace_with);
-        self.display.require_reprepare();
+        self.require_reprepare();
     }
 
     /// Cancel on-going selection and IME actions
@@ -977,11 +1112,13 @@ impl Part {
         let initial_range = range.clone();
         let edit_len = edit_range.clone().map(|r| r.len()).unwrap_or(0);
 
-        if let Ok(Some((_, line_range))) = self.display.find_line(range.start) {
-            range.start = line_range.start;
-        }
-        if let Ok(Some((_, line_range))) = self.display.find_line(range.end) {
-            range.end = line_range.end;
+        if self.status >= Status::Wrapped {
+            if let Some((_, line_range)) = self.display.find_line(range.start) {
+                range.start = line_range.start;
+            }
+            if let Some((_, line_range)) = self.display.find_line(range.end) {
+                range.end = line_range.end;
+            }
         }
 
         if range.len() - edit_len > MAX_TEXT_BYTES {
@@ -1021,41 +1158,43 @@ impl Part {
 
     /// Call to set IME position only while IME is active
     fn set_ime_cursor_area(&self, cx: &mut EventState) {
-        if let Ok(text) = self.display.display() {
-            let range = match self.current.clone() {
-                CurrentAction::ImeStart => self.selection.range(),
-                CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                _ => return,
-            };
-
-            let (m1, m2);
-            if range.is_empty() {
-                let mut iter = text.text_glyph_pos(range.start);
-                m1 = iter.next();
-                m2 = iter.next();
-            } else {
-                m1 = text.text_glyph_pos(range.start).next_back();
-                m2 = text.text_glyph_pos(range.end).next();
-            }
-
-            let rect = if let Some((c1, c2)) = m1.zip(m2) {
-                let left = c1.pos.0.min(c2.pos.0);
-                let right = c1.pos.0.max(c2.pos.0);
-                let top = (c1.pos.1 - c1.ascent).min(c2.pos.1 - c2.ascent);
-                let bottom = (c1.pos.1 - c1.descent).max(c2.pos.1 - c2.ascent);
-                let p1 = Vec2(left, top).cast_floor();
-                let p2 = Vec2(right, bottom).cast_ceil();
-                Rect::from_coords(p1, p2)
-            } else if let Some(c) = m1.or(m2) {
-                let p1 = Vec2(c.pos.0, c.pos.1 - c.ascent).cast_floor();
-                let p2 = Vec2(c.pos.0, c.pos.1 - c.descent).cast_ceil();
-                Rect::from_coords(p1, p2)
-            } else {
-                return;
-            };
-
-            cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.display.rect().pos));
+        if !self.is_prepared() {
+            return;
         }
+
+        let range = match self.current.clone() {
+            CurrentAction::ImeStart => self.selection.range(),
+            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+            _ => return,
+        };
+
+        let (m1, m2);
+        if range.is_empty() {
+            let mut iter = self.display.text_glyph_pos(range.start);
+            m1 = iter.next();
+            m2 = iter.next();
+        } else {
+            m1 = self.display.text_glyph_pos(range.start).next_back();
+            m2 = self.display.text_glyph_pos(range.end).next();
+        }
+
+        let rect = if let Some((c1, c2)) = m1.zip(m2) {
+            let left = c1.pos.0.min(c2.pos.0);
+            let right = c1.pos.0.max(c2.pos.0);
+            let top = (c1.pos.1 - c1.ascent).min(c2.pos.1 - c2.ascent);
+            let bottom = (c1.pos.1 - c1.descent).max(c2.pos.1 - c2.ascent);
+            let p1 = Vec2(left, top).cast_floor();
+            let p2 = Vec2(right, bottom).cast_ceil();
+            Rect::from_coords(p1, p2)
+        } else if let Some(c) = m1.or(m2) {
+            let p1 = Vec2(c.pos.0, c.pos.1 - c.ascent).cast_floor();
+            let p2 = Vec2(c.pos.0, c.pos.1 - c.descent).cast_ceil();
+            Rect::from_coords(p1, p2)
+        } else {
+            return;
+        };
+
+        cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.rect.pos));
     }
 
     /// Call before an edit to (potentially) commit current state based on last_edit
@@ -1082,16 +1221,9 @@ impl Part {
         }
         self.cancel_selection_and_ime(cx);
 
-        let index = self.selection.edit_index();
         let selection = self.selection.range();
-        let have_sel = selection.start < selection.end;
-        if have_sel {
-            self.replace_range(selection.clone(), text);
-            self.selection.set_cursor(selection.start + text.len());
-        } else {
-            self.insert_str(index, text);
-            self.selection.set_cursor(index + text.len());
-        }
+        self.replace_range(selection.clone(), text);
+        self.selection.set_cursor(selection.start + text.len());
         self.edit_x_coord = None;
 
         Used
@@ -1106,7 +1238,7 @@ impl Part {
 
     fn trim_paste(&self, text: &str) -> Range<usize> {
         let mut end = text.len();
-        if !self.multi_line() {
+        if !self.wrap {
             // We cut the content short on control characters and
             // ignore them (preventing line-breaks and ignoring any
             // actions such as recursive-paste).
@@ -1127,12 +1259,14 @@ impl Part {
         mut cmd: Command,
         code: Option<PhysicalKey>,
     ) -> Result<EventAction, NotReady> {
+        debug_assert!(self.is_prepared());
+
         let editable = !self.read_only;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let cursor = self.selection.edit_index();
         let len = self.as_str().len();
-        let multi_line = self.multi_line();
+        let multi_line = self.wrap;
         let selection = self.selection.range();
         let have_sel = selection.end > selection.start;
         let string;
@@ -1224,12 +1358,12 @@ impl Part {
                     Some(x) => x,
                     None => self
                         .display
-                        .text_glyph_pos(cursor)?
+                        .text_glyph_pos(cursor)
                         .next_back()
                         .map(|r| r.pos.0)
                         .unwrap_or(0.0),
                 };
-                let mut line = self.display.find_line(cursor)?.map(|r| r.0).unwrap_or(0);
+                let mut line = self.display.find_line(cursor).map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
                 line = match cmd {
                     Command::Up => line.wrapping_sub(1),
@@ -1242,14 +1376,14 @@ impl Part {
                     _ => 0,
                 };
                 self.display
-                    .line_index_nearest(line, x)?
+                    .line_index_nearest(line, x)
                     .map(|index| Action::Move(index, Some(x)))
                     .unwrap_or(Action::Move(nearest_end, None))
             }
             Command::Home if cursor > 0 => {
                 let index = self
                     .display
-                    .find_line(cursor)?
+                    .find_line(cursor)
                     .map(|r| r.1.start)
                     .unwrap_or(0);
                 Action::Move(index, None)
@@ -1257,7 +1391,7 @@ impl Part {
             Command::End if cursor < len => {
                 let index = self
                     .display
-                    .find_line(cursor)?
+                    .find_line(cursor)
                     .map(|r| r.1.end)
                     .unwrap_or(len);
                 Action::Move(index, None)
@@ -1269,20 +1403,24 @@ impl Part {
             Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = self
                     .display
-                    .text_glyph_pos(cursor)?
+                    .text_glyph_pos(cursor)
                     .next_back()
                     .map(|r| r.pos.into())
                     .unwrap_or(Vec2::ZERO);
                 if let Some(x) = self.edit_x_coord {
                     v.0 = x;
                 }
-                const FACTOR: f32 = 2.0 / 3.0;
-                let mut h_dist = f32::conv(self.display.rect().size.1) * FACTOR;
+                // TODO: page height should be an input?
+                let mut line_height = self.dpem;
+                if let Some(line) = self.display.lines().next() {
+                    line_height = line.bottom() - line.top();
+                }
+                let mut h_dist = line_height * 10.0;
                 if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
-                Action::Move(self.display.text_index_nearest(v)?, Some(v.0))
+                Action::Move(self.display.text_index_nearest(v.into()), Some(v.0))
             }
             Command::Delete | Command::DelBack if editable && have_sel => {
                 Action::Delete(selection.clone(), EditOp::Delete)
@@ -1399,7 +1537,7 @@ impl Part {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
                     if self.text.as_str() != text {
                         self.text = text.clone();
-                        self.display.require_reprepare();
+                        self.status = Status::New;
                         self.edit_x_coord = None;
                     }
                     self.selection = (*cursor).into();
@@ -1417,8 +1555,9 @@ impl Part {
     ///
     /// Committing undo state is the responsibility of the caller.
     fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
-        let rel_pos = (coord - self.display.rect().pos).cast();
-        if let Ok(index) = self.display.text_index_nearest(rel_pos) {
+        let rel_pos: Vec2 = (coord - self.rect.pos).cast();
+        if self.is_prepared() {
+            let index = self.display.text_index_nearest(rel_pos.into());
             if index != self.selection.edit_index() {
                 self.selection.set_edit_index(index);
                 self.set_view_offset_from_cursor(cx);
@@ -1443,14 +1582,11 @@ impl Part {
     /// A redraw is assumed since the cursor moved.
     fn set_view_offset_from_cursor(&mut self, cx: &mut EventCx) {
         let cursor = self.selection.edit_index();
-        if let Some(marker) = self
-            .display
-            .text_glyph_pos(cursor)
-            .ok()
-            .and_then(|mut m| m.next_back())
+        if self.is_prepared()
+            && let Some(marker) = self.display.text_glyph_pos(cursor).next_back()
         {
             let y0 = (marker.pos.1 - marker.ascent).cast_floor();
-            let pos = self.display.rect().pos + Offset(marker.pos.0.cast_nearest(), y0);
+            let pos = self.rect.pos + Offset(marker.pos.0.cast_nearest(), y0);
             let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
             cx.set_scroll(Scroll::Rect(Rect { pos, size }));
         }
@@ -1487,10 +1623,9 @@ impl Editor {
     ///
     /// This returns `true` if the text is inferred to have right-to-left;
     /// in other cases (including when the text is empty) it returns `false`.
-    /// TODO: support defaulting to RTL.
     #[inline]
     pub fn text_is_rtl(&self) -> bool {
-        self.part.display.text_is_rtl(self.as_str())
+        self.part.text_is_rtl()
     }
 
     /// Commit outstanding changes to the undo history
@@ -1538,7 +1673,7 @@ impl Editor {
         self.part.cancel_selection_and_ime(cx);
 
         self.part.text = text;
-        self.part.display.require_reprepare();
+        self.part.require_reprepare();
 
         let len = self.as_str().len();
         self.part.selection.set_max_len(len);
@@ -1554,16 +1689,9 @@ impl Editor {
     pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
         self.part.cancel_selection_and_ime(cx);
 
-        let index = self.part.selection.edit_index();
         let selection = self.part.selection.range();
-        let have_sel = selection.start < selection.end;
-        if have_sel {
-            self.part.replace_range(selection.clone(), text);
-            self.part.selection.set_cursor(selection.start + text.len());
-        } else {
-            self.part.insert_str(index, text);
-            self.part.selection.set_cursor(index + text.len());
-        }
+        self.part.replace_range(selection.clone(), text);
+        self.part.selection.set_cursor(selection.start + text.len());
         self.part.edit_x_coord = None;
         self.error_state = None;
     }
@@ -1599,13 +1727,7 @@ impl Editor {
     /// True if the editor uses multi-line mode
     #[inline]
     pub fn multi_line(&self) -> bool {
-        self.part.display.wrap()
-    }
-
-    /// Get the text class used
-    #[inline]
-    pub fn class(&self) -> TextClass {
-        self.part.display.class()
+        self.part.wrap
     }
 
     /// Get whether the widget has input focus

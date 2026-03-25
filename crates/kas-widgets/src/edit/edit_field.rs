@@ -11,6 +11,7 @@ use crate::edit::highlight::{Highlighter, Plain};
 use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
+use kas::text::Direction;
 use kas::theme::{Background, TextClass};
 use std::ops::Deref;
 
@@ -83,7 +84,7 @@ mod EditBoxCore {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
-                let dpem = cx.dpem(self.class());
+                let dpem = cx.dpem(TextClass::Editor);
                 min = (self.width.0 * dpem).cast_ceil();
                 ideal = (self.width.1 * dpem).cast_ceil();
             } else if let Some(width) = axis.other() {
@@ -303,6 +304,12 @@ impl<A: 'static> EditBoxCore<DefaultGuard<A>> {
 }
 
 impl<G: EditGuard, H: Highlighter> EditBoxCore<G, H> {
+    /// Set the base text direction
+    #[inline]
+    pub fn set_direction(&mut self, direction: Direction) {
+        self.editor.set_direction(direction);
+    }
+
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `EditBoxCore`.
@@ -333,14 +340,6 @@ impl<G: EditGuard, H: Highlighter> EditBoxCore<G, H> {
             false => (1.0, 1.0),
             true => (4.0, 7.0),
         };
-        self
-    }
-
-    /// Set the text class used
-    #[inline]
-    #[must_use]
-    pub fn with_class(mut self, class: TextClass) -> Self {
-        self.editor.set_class(class);
         self
     }
 

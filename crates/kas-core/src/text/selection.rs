@@ -5,7 +5,6 @@
 
 //! Tools for text selection
 
-use super::ConfiguredDisplay;
 use kas_macros::autoimpl;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
@@ -182,7 +181,15 @@ impl SelectionHelper {
     ///
     /// The selection is expanded by words or lines (if `lines`). Line expansion
     /// requires that text has been prepared (see [`Text::prepare`][super::Text::prepare]).
-    pub fn expand(&mut self, text: &str, display: &ConfiguredDisplay, lines: bool) {
+    ///
+    /// Input `line_range` should map a text index to the range of the enclosing
+    /// line (if available).
+    pub fn expand(
+        &mut self,
+        text: &str,
+        line_range: &dyn Fn(usize) -> Option<std::ops::Range<usize>>,
+        lines: bool,
+    ) {
         let mut range = self.edit..self.anchor;
         if range.start > range.end {
             std::mem::swap(&mut range.start, &mut range.end);
@@ -207,14 +214,8 @@ impl SelectionHelper {
                 })
                 .unwrap_or(text.len());
         } else {
-            start = match display.find_line(range.start) {
-                Ok(Some(r)) => r.1.start,
-                _ => 0,
-            };
-            end = match display.find_line(range.end) {
-                Ok(Some(r)) => r.1.end,
-                _ => text.len(),
-            };
+            start = line_range(range.start).map(|r| r.start).unwrap_or(0);
+            end = line_range(range.end).map(|r| r.end).unwrap_or(text.len());
         }
 
         if self.edit < self.sel {

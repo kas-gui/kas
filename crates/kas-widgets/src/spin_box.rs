@@ -298,22 +298,6 @@ mod SpinBox {
             self
         }
 
-        /// Set the text class used
-        ///
-        /// The default is: `TextClass::Edit(false)`.
-        #[inline]
-        #[must_use]
-        pub fn with_class(mut self, class: TextClass) -> Self {
-            self.edit = self.edit.with_class(class);
-            self
-        }
-
-        /// Get the text class used
-        #[inline]
-        pub fn class(&self) -> TextClass {
-            self.edit.class()
-        }
-
         /// Adjust the width allocation
         #[inline]
         pub fn set_width_em(&mut self, min_em: f32, ideal_em: f32) {
