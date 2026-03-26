@@ -222,6 +222,10 @@ impl<H: Highlighter> Component<H> {
     }
 
     /// Set the base text direction
+    ///
+    /// If [`Direction::Auto`] or [`Direction::AutoRtl`] is used, the direction
+    /// will be updated on edit to persist the last used text direction to
+    /// non-directional content.
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
         self.0.part.set_direction(direction);
@@ -370,6 +374,10 @@ impl Part {
     }
 
     /// Set the base text direction
+    ///
+    /// If [`Direction::Auto`] or [`Direction::AutoRtl`] is used, the direction
+    /// will be updated on edit to persist the last used text direction to
+    /// non-directional content.
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
         self.direction = direction;
@@ -467,6 +475,14 @@ impl Part {
             }
 
             part.status = Status::LevelRuns;
+
+            if part.direction.is_auto() {
+                part.direction = if dbg!(part.display.text_is_rtl()) {
+                    Direction::AutoRtl
+                } else {
+                    Direction::Auto
+                };
+            }
         }
 
         if self.status < Status::LevelRuns {

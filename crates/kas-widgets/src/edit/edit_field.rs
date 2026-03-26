@@ -305,6 +305,10 @@ impl<A: 'static> EditBoxCore<DefaultGuard<A>> {
 
 impl<G: EditGuard, H: Highlighter> EditBoxCore<G, H> {
     /// Set the base text direction
+    ///
+    /// If [`Direction::Auto`] or [`Direction::AutoRtl`] is used, the direction
+    /// will be updated on edit to persist the last used text direction to
+    /// non-directional content.
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
         self.editor.set_direction(direction);
