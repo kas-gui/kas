@@ -175,7 +175,7 @@ resolver = "2"
 
 [patch.crates-io.kas-text]
 git = "https://github.com/kas-gui/kas-text.git"
-rev = "367ba7e0db5f1b890e3563773cf96c0dd49aac2c"
+rev = "9797e78ad4664ae5055e8dab6067e40b215f6b3e"
 
 [patch.crates-io.impl-tools-lib]
 git = "https://github.com/kas-gui/impl-tools.git"

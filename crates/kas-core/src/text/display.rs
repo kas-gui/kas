@@ -311,24 +311,15 @@ impl ConfiguredDisplay {
 
     /// Get the base directionality of the text
     ///
-    /// This does not require that the text is prepared.
+    /// This returns the direction inferred during run-breaking if available,
+    /// falling back to [`Direction::text_is_rtl`].
+    #[inline]
     pub fn text_is_rtl(&self, text: &str) -> bool {
-        let cached_is_rtl = match self.line_is_rtl(0) {
-            Ok(None) => Some(self.direction == Direction::Rtl),
-            Ok(Some(is_rtl)) => Some(is_rtl),
-            Err(NotReady) => None,
-        };
-
-        #[cfg(not(debug_assertions))]
-        if let Some(cached) = cached_is_rtl {
-            return cached;
+        if self.status >= Status::ResizeLevelRuns {
+            self.display.text_is_rtl()
+        } else {
+            self.direction.text_is_rtl(text)
         }
-
-        let is_rtl = self.unchecked_display().text_is_rtl(text, self.direction());
-        if let Some(cached) = cached_is_rtl {
-            debug_assert_eq!(cached, is_rtl);
-        }
-        is_rtl
     }
 
     /// Get the status of preparation

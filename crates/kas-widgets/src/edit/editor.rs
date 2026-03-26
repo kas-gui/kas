@@ -398,28 +398,11 @@ impl Part {
 
     /// Get the base directionality of the text
     ///
-    /// This does not require that the text is prepared.
+    /// [`Self::configure`] should be called before this method.
     #[inline]
     pub fn text_is_rtl(&self) -> bool {
-        let mut cached_is_rtl = None;
-        if self.status >= Status::Wrapped {
-            cached_is_rtl = match self.display.line_is_rtl(0) {
-                None => Some(self.direction == Direction::Rtl),
-                Some(is_rtl) => Some(is_rtl),
-            };
-        };
-
-        #[cfg(not(debug_assertions))]
-        if let Some(cached) = cached_is_rtl {
-            return cached;
-        }
-
-        let text = self.as_str();
-        let is_rtl = self.display.text_is_rtl(text, self.direction);
-        if let Some(cached) = cached_is_rtl {
-            debug_assert_eq!(cached, is_rtl);
-        }
-        is_rtl
+        debug_assert!(self.status >= Status::ResizeLevelRuns);
+        self.display.text_is_rtl()
     }
 
     /// Access the cursor index / selection range
