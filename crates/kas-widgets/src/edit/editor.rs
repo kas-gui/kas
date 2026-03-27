@@ -222,6 +222,10 @@ impl<H: Highlighter> Component<H> {
     }
 
     /// Set the base text direction
+    ///
+    /// If [`Direction::Auto`] or [`Direction::AutoRtl`] is used, the direction
+    /// will be updated on edit to persist the last used text direction to
+    /// non-directional content.
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
         self.0.part.set_direction(direction);
@@ -370,6 +374,10 @@ impl Part {
     }
 
     /// Set the base text direction
+    ///
+    /// If [`Direction::Auto`] or [`Direction::AutoRtl`] is used, the direction
+    /// will be updated on edit to persist the last used text direction to
+    /// non-directional content.
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
         self.direction = direction;
@@ -398,28 +406,11 @@ impl Part {
 
     /// Get the base directionality of the text
     ///
-    /// This does not require that the text is prepared.
+    /// [`Self::configure`] should be called before this method.
     #[inline]
     pub fn text_is_rtl(&self) -> bool {
-        let mut cached_is_rtl = None;
-        if self.status >= Status::Wrapped {
-            cached_is_rtl = match self.display.line_is_rtl(0) {
-                None => Some(self.direction == Direction::Rtl),
-                Some(is_rtl) => Some(is_rtl),
-            };
-        };
-
-        #[cfg(not(debug_assertions))]
-        if let Some(cached) = cached_is_rtl {
-            return cached;
-        }
-
-        let text = self.as_str();
-        let is_rtl = self.display.text_is_rtl(text, self.direction);
-        if let Some(cached) = cached_is_rtl {
-            debug_assert_eq!(cached, is_rtl);
-        }
-        is_rtl
+        debug_assert!(self.status >= Status::ResizeLevelRuns);
+        self.display.text_is_rtl()
     }
 
     /// Access the cursor index / selection range
@@ -484,6 +475,14 @@ impl Part {
             }
 
             part.status = Status::LevelRuns;
+
+            if part.direction.is_auto() {
+                part.direction = if dbg!(part.display.text_is_rtl()) {
+                    Direction::AutoRtl
+                } else {
+                    Direction::Auto
+                };
+            }
         }
 
         if self.status < Status::LevelRuns {

@@ -393,6 +393,10 @@ impl<A: 'static> EditBox<StringGuard<A>> {
 
 impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
     /// Set the base text direction (inline)
+    ///
+    /// If [`Direction::Auto`] or [`Direction::AutoRtl`] is used, the direction
+    /// will be updated on edit to persist the last used text direction to
+    /// non-directional content.
     #[inline]
     pub fn with_direction(mut self, direction: Direction) -> Self {
         self.inner.set_direction(direction);
