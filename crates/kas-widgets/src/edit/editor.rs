@@ -394,7 +394,8 @@ impl Part {
         let text = text.to_string();
         let len = text.len();
         self.text = text;
-        self.selection.set_cursor(len);
+        let index = if self.wrap { 0 } else { len };
+        self.selection.set_cursor(index);
         self
     }
 
