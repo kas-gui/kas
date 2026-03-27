@@ -477,7 +477,7 @@ impl Part {
             part.status = Status::LevelRuns;
 
             if part.direction.is_auto() {
-                part.direction = if dbg!(part.display.text_is_rtl()) {
+                part.direction = if part.display.text_is_rtl() {
                     Direction::AutoRtl
                 } else {
                     Direction::Auto
