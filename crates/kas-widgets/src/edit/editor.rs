@@ -832,14 +832,17 @@ impl Part {
                 }
                 Err(NotReady) => EventAction::Used,
             },
-            Event::Key(event, false) if event.state == ElementState::Pressed => {
+            Event::Key(event, false) if event.state == ElementState::Pressed && !self.read_only => {
                 if let Some(text) = &event.text {
                     self.save_undo_state(Some(EditOp::KeyInput));
-                    if self.received_text(cx, text) == Used {
-                        EventAction::Edit
-                    } else {
-                        EventAction::Unused
-                    }
+                    self.cancel_selection_and_ime(cx);
+
+                    let selection = self.selection.range();
+                    self.replace_range(selection.clone(), text);
+                    self.selection.set_cursor(selection.start + text.len());
+                    self.edit_x_coord = None;
+
+                    EventAction::Edit
                 } else {
                     let opt_cmd = cx
                         .config()
@@ -1210,23 +1213,6 @@ impl Part {
         self.last_edit = edit;
         self.undo_stack
             .try_push((self.as_str().to_string(), *self.selection));
-    }
-
-    /// Insert `text` at the cursor position
-    ///
-    /// Committing undo state is the responsibility of the caller.
-    fn received_text(&mut self, cx: &mut EventCx, text: &str) -> IsUsed {
-        if self.read_only {
-            return Unused;
-        }
-        self.cancel_selection_and_ime(cx);
-
-        let selection = self.selection.range();
-        self.replace_range(selection.clone(), text);
-        self.selection.set_cursor(selection.start + text.len());
-        self.edit_x_coord = None;
-
-        Used
     }
 
     /// Request key focus, if we don't have it or IME
