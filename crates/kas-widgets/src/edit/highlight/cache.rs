@@ -37,8 +37,12 @@ impl Default for Cache {
 }
 
 impl Cache {
-    /// Highlight the text (from scratch)
-    pub fn highlight<H: Highlighter>(&mut self, text: &str, highlighter: &mut H) {
+    /// Highlight a whole `text`, returning errors
+    pub fn try_highlight<H: Highlighter>(
+        &mut self,
+        text: &str,
+        highlighter: &mut H,
+    ) -> Result<(), H::Error> {
         self.fonts.clear();
         self.fonts.push(Fmt::default());
         self.colors.clear();
@@ -79,7 +83,12 @@ impl Cache {
             state = token;
         };
 
-        if let Err(err) = highlighter.highlight_text(text, &mut push_token) {
+        highlighter.highlight_text(text, &mut push_token)
+    }
+
+    /// Highlight a whole `text`, logging errors
+    pub fn highlight<H: Highlighter>(&mut self, text: &str, highlighter: &mut H) {
+        if let Err(err) = self.try_highlight(text, highlighter) {
             log::error!("Highlighting failed: {err}");
             debug_assert!(false, "Highlighter: {err}");
         }
