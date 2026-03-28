@@ -150,9 +150,9 @@ impl super::Highlighter for SyntectHighlighter {
     }
 
     fn highlight_text(
-        &mut self,
+        &self,
         text: &str,
-        push_token: &mut dyn FnMut(usize, Token),
+        mut push_token: impl FnMut(usize, Token),
     ) -> Result<(), Self::Error> {
         let syntaxes = Self::syntaxes();
 

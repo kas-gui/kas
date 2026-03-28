@@ -96,9 +96,9 @@ pub trait Highlighter {
     /// tokens' `index` value will result in a panic, while in release builds
     /// these will merely result in a log error and interrupt highlighting.
     fn highlight_text(
-        &mut self,
+        &self,
         text: &str,
-        push_token: &mut dyn FnMut(usize, Token),
+        push_token: impl FnMut(usize, Token),
     ) -> Result<(), Self::Error>;
 }
 
@@ -119,11 +119,7 @@ impl Highlighter for Plain {
     }
 
     #[inline]
-    fn highlight_text(
-        &mut self,
-        _: &str,
-        _: &mut dyn FnMut(usize, Token),
-    ) -> Result<(), Self::Error> {
+    fn highlight_text(&self, _: &str, _: impl FnMut(usize, Token)) -> Result<(), Self::Error> {
         Ok::<(), std::convert::Infallible>(())
     }
 }
