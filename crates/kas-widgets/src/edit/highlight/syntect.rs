@@ -8,7 +8,6 @@
 use super::{SchemeColors, Token};
 use kas::draw::color::Rgba8Srgb;
 use kas::event::ConfigCx;
-use kas::text::LineIterator;
 use kas::text::fonts::FontWeight;
 use kas::text::format::{Color, DecorationType};
 use std::sync::OnceLock;
@@ -189,24 +188,6 @@ impl super::Highlighter for SyntectHighlighter {
                 token.style = kas::text::fonts::FontStyle::Italic;
             }
             push_token(range.start, token);
-        }
-
-        Ok(())
-    }
-
-    fn highlight_text(
-        &self,
-        text: &str,
-        mut push_token: impl FnMut(usize, Token),
-    ) -> Result<(), Self::Error> {
-        let mut state = self.new_state();
-
-        for line_range in LineIterator::new(text) {
-            let line_start = line_range.start;
-            let line = &text[line_range];
-            self.highlight_line(&mut state, line, &mut |index, token| {
-                push_token(line_start + index, token)
-            })?;
         }
 
         Ok(())

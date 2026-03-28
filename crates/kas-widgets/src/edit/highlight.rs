@@ -115,23 +115,6 @@ pub trait Highlighter {
         line: &str,
         push_token: impl FnMut(usize, Token),
     ) -> Result<(), Self::Error>;
-
-    /// Highlight a `text` as a single item
-    ///
-    /// The method should yield a sequence of tokens each with a text index
-    /// using `push_token`. These must be yielded in order (i.e. `index` must be
-    /// strictly increasing).
-    ///
-    /// # Error handling
-    ///
-    /// In debug builds errors returned by this method or errors in the order of
-    /// tokens' `index` value will result in a panic, while in release builds
-    /// these will merely result in a log error and interrupt highlighting.
-    fn highlight_text(
-        &self,
-        text: &str,
-        push_token: impl FnMut(usize, Token),
-    ) -> Result<(), Self::Error>;
 }
 
 /// An implementation of [`Highlighter`] which doesn't highlight anything
@@ -163,11 +146,6 @@ impl Highlighter for Plain {
         _: &str,
         _: impl FnMut(usize, Token),
     ) -> Result<(), Self::Error> {
-        Ok::<(), std::convert::Infallible>(())
-    }
-
-    #[inline]
-    fn highlight_text(&self, _: &str, _: impl FnMut(usize, Token)) -> Result<(), Self::Error> {
         Ok::<(), std::convert::Infallible>(())
     }
 }
