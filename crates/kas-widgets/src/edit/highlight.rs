@@ -19,6 +19,11 @@ use kas::event::ConfigCx;
 use kas::text::fonts::{FontStyle, FontWeight};
 use kas::text::format::{Color, Colors, Decoration};
 
+/// Action: highlighting must be restarted
+#[must_use]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ActionRestart;
+
 impl_scope! {
     /// Colors provided by the highlighter's color scheme
     #[impl_default]
@@ -70,35 +75,48 @@ pub trait Highlighter {
     /// TODO(associated_type_defaults): default to [`std::convert::Infallible`]
     type Error: std::error::Error;
 
+    /// State used to save/resume highlighting
+    type State: Clone + Eq;
+
     /// Configure the highlighter
     ///
     /// This is called when the widget is configured. It may be used to set the
     /// theme / color scheme.
-    ///
-    /// The method should return `true` when the highlighter should be re-run.
     #[must_use]
-    fn configure(&mut self, cx: &mut ConfigCx) -> bool;
+    fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionRestart>;
 
     /// Get scheme colors
     ///
     /// This method allows usage of the highlighter's colors by the editor.
     fn scheme_colors(&self) -> SchemeColors;
 
-    /// Highlight a `text` as a single item
+    /// Construct a new highlighting state
+    fn new_state(&self) -> Self::State;
+
+    /// Highlight a `line` of text using a `state`
+    ///
+    /// The `state` used tracks the parse state and highlighting scope across
+    /// lines. At the start of a document a [new state](Self::new_state) must be
+    /// used; in other cases the input `state` must be the output `state` from
+    /// highlighting the previous line.
+    ///
+    /// The `line` passed must represent a single whole line of text (including
+    /// terminating line-break characters) for correct parsing.
     ///
     /// The method should yield a sequence of tokens each with a text index
-    /// using `push_token`. These must be yielded in order (i.e. `index` must be
-    /// strictly increasing).
+    /// (within `line`) using `push_token`. These must be yielded in order (i.e.
+    /// `index` must be strictly increasing).
     ///
     /// # Error handling
     ///
     /// In debug builds errors returned by this method or errors in the order of
     /// tokens' `index` value will result in a panic, while in release builds
     /// these will merely result in a log error and interrupt highlighting.
-    fn highlight_text(
-        &mut self,
-        text: &str,
-        push_token: &mut dyn FnMut(usize, Token),
+    fn highlight_line(
+        &self,
+        state: &mut Self::State,
+        line: &str,
+        push_token: impl FnMut(usize, Token),
     ) -> Result<(), Self::Error>;
 }
 
@@ -107,10 +125,11 @@ pub trait Highlighter {
 pub struct Plain;
 impl Highlighter for Plain {
     type Error = std::convert::Infallible;
+    type State = ();
 
     #[inline]
-    fn configure(&mut self, _: &mut ConfigCx) -> bool {
-        false
+    fn configure(&mut self, _: &mut ConfigCx) -> Option<ActionRestart> {
+        None
     }
 
     #[inline]
@@ -119,10 +138,16 @@ impl Highlighter for Plain {
     }
 
     #[inline]
-    fn highlight_text(
-        &mut self,
+    fn new_state(&self) -> Self::State {
+        ()
+    }
+
+    #[inline]
+    fn highlight_line(
+        &self,
+        _: &mut Self::State,
         _: &str,
-        _: &mut dyn FnMut(usize, Token),
+        _: impl FnMut(usize, Token),
     ) -> Result<(), Self::Error> {
         Ok::<(), std::convert::Infallible>(())
     }

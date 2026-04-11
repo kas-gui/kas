@@ -5,10 +5,9 @@
 
 //! Syntax highlighting using [`syntect`](https://crates.io/crates/syntect)
 
-use super::{SchemeColors, Token};
+use super::{ActionRestart, SchemeColors, Token};
 use kas::draw::color::Rgba8Srgb;
 use kas::event::ConfigCx;
-use kas::text::LineIterator;
 use kas::text::fonts::FontWeight;
 use kas::text::format::{Color, DecorationType};
 use std::sync::OnceLock;
@@ -95,20 +94,24 @@ impl SyntectHighlighter {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct State(HighlightState, ParseState);
+
 impl super::Highlighter for SyntectHighlighter {
     type Error = ParsingError;
+    type State = State;
 
-    fn configure(&mut self, cx: &mut ConfigCx) -> bool {
+    fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionRestart> {
         let dark = cx.config().theme().get_active_scheme().is_dark;
         if dark == self.dark {
-            return false;
+            return None;
         }
 
         self.dark = dark;
         let name = if dark { "base16-ocean.dark" } else { "InspiredGitHub" };
         self.theme = themes().themes.get(name).unwrap();
         self.highlighter = Highlighter::new(self.theme);
-        true
+        Some(ActionRestart)
     }
 
     fn scheme_colors(&self) -> SchemeColors {
@@ -149,42 +152,42 @@ impl super::Highlighter for SyntectHighlighter {
         }
     }
 
-    fn highlight_text(
-        &mut self,
-        text: &str,
-        push_token: &mut dyn FnMut(usize, Token),
+    #[inline]
+    fn new_state(&self) -> Self::State {
+        let state = HighlightState::new(&self.highlighter, Default::default());
+        let parse_state = ParseState::new(&self.syntax);
+        State(state, parse_state)
+    }
+
+    #[inline]
+    fn highlight_line(
+        &self,
+        state: &mut Self::State,
+        line: &str,
+        mut push_token: impl FnMut(usize, Token),
     ) -> Result<(), Self::Error> {
-        let syntaxes = Self::syntaxes();
+        let changes = state.1.parse_line(line, Self::syntaxes())?;
+        let line_highlighter =
+            RangedHighlightIterator::new(&mut state.0, &changes, line, &self.highlighter);
 
-        let mut state = HighlightState::new(&self.highlighter, Default::default());
-        let mut parse_state = ParseState::new(&self.syntax);
-
-        for line_range in LineIterator::new(text) {
-            let line_start = line_range.start;
-            let line = &text[line_range];
-            let changes = parse_state.parse_line(line, &syntaxes)?;
-            let line_highlighter =
-                RangedHighlightIterator::new(&mut state, &changes, line, &self.highlighter);
-
-            for (style, _, range) in line_highlighter {
-                let mut token = Token::default();
-                token.colors.foreground = into_kas_text_color(style.foreground);
-                token.colors.background = if style.background.a == 0 {
-                    None
-                } else {
-                    Some(into_kas_text_color(style.background))
-                };
-                if style.font_style.contains(FontStyle::BOLD) {
-                    token.weight = FontWeight::BOLD;
-                }
-                if style.font_style.contains(FontStyle::UNDERLINE) {
-                    token.decoration.dec = DecorationType::Underline;
-                }
-                if style.font_style.contains(FontStyle::ITALIC) {
-                    token.style = kas::text::fonts::FontStyle::Italic;
-                }
-                push_token(line_start + range.start, token);
+        for (style, _, range) in line_highlighter {
+            let mut token = Token::default();
+            token.colors.foreground = into_kas_text_color(style.foreground);
+            token.colors.background = if style.background.a == 0 {
+                None
+            } else {
+                Some(into_kas_text_color(style.background))
+            };
+            if style.font_style.contains(FontStyle::BOLD) {
+                token.weight = FontWeight::BOLD;
             }
+            if style.font_style.contains(FontStyle::UNDERLINE) {
+                token.decoration.dec = DecorationType::Underline;
+            }
+            if style.font_style.contains(FontStyle::ITALIC) {
+                token.style = kas::text::fonts::FontStyle::Italic;
+            }
+            push_token(range.start, token);
         }
 
         Ok(())
