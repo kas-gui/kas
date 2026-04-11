@@ -143,19 +143,20 @@ impl<'a> fmt::Display for WidgetHierarchy<'a> {
 /// This requires the "spec" feature and nightly rustc to be useful.
 pub struct TryFormat<'a, T: ?Sized>(pub &'a T);
 
-#[cfg(not(feature = "spec"))]
-impl<'a, T: ?Sized> fmt::Debug for TryFormat<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{{{}}}", std::any::type_name::<T>())
-    }
+macro_rules! impl_debug_for_try_format {
+    ( $($default:ident)? ) => {
+        impl<'a, T: ?Sized> fmt::Debug for TryFormat<'a, T> {
+            $($default)? fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "{{{}}}", std::any::type_name::<T>())
+            }
+        }
+    };
 }
 
+#[cfg(not(feature = "spec"))]
+impl_debug_for_try_format!();
 #[cfg(feature = "spec")]
-impl<'a, T: ?Sized> fmt::Debug for TryFormat<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{{{}}}", std::any::type_name::<T>())
-    }
-}
+impl_debug_for_try_format!(default);
 
 #[cfg(feature = "spec")]
 impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for TryFormat<'a, T> {
