@@ -94,7 +94,7 @@ impl<H: Highlighter> Common<H> {
     #[inline]
     #[must_use]
     pub fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionResetStatus> {
-        if self.highlighter.configure(cx) {
+        if let Some(_) = self.highlighter.configure(cx) {
             self.colors = self.highlighter.scheme_colors();
             Some(ActionResetStatus)
         } else {

@@ -5,7 +5,7 @@
 
 //! Syntax highlighting using [`syntect`](https://crates.io/crates/syntect)
 
-use super::{SchemeColors, Token};
+use super::{ActionRestart, SchemeColors, Token};
 use kas::draw::color::Rgba8Srgb;
 use kas::event::ConfigCx;
 use kas::text::fonts::FontWeight;
@@ -101,17 +101,17 @@ impl super::Highlighter for SyntectHighlighter {
     type Error = ParsingError;
     type State = State;
 
-    fn configure(&mut self, cx: &mut ConfigCx) -> bool {
+    fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionRestart> {
         let dark = cx.config().theme().get_active_scheme().is_dark;
         if dark == self.dark {
-            return false;
+            return None;
         }
 
         self.dark = dark;
         let name = if dark { "base16-ocean.dark" } else { "InspiredGitHub" };
         self.theme = themes().themes.get(name).unwrap();
         self.highlighter = Highlighter::new(self.theme);
-        true
+        Some(ActionRestart)
     }
 
     fn scheme_colors(&self) -> SchemeColors {

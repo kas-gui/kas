@@ -19,6 +19,11 @@ use kas::event::ConfigCx;
 use kas::text::fonts::{FontStyle, FontWeight};
 use kas::text::format::{Color, Colors, Decoration};
 
+/// Action: highlighting must be restarted
+#[must_use]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ActionRestart;
+
 impl_scope! {
     /// Colors provided by the highlighter's color scheme
     #[impl_default]
@@ -77,10 +82,8 @@ pub trait Highlighter {
     ///
     /// This is called when the widget is configured. It may be used to set the
     /// theme / color scheme.
-    ///
-    /// The method should return `true` when the highlighter should be re-run.
     #[must_use]
-    fn configure(&mut self, cx: &mut ConfigCx) -> bool;
+    fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionRestart>;
 
     /// Get scheme colors
     ///
@@ -125,8 +128,8 @@ impl Highlighter for Plain {
     type State = ();
 
     #[inline]
-    fn configure(&mut self, _: &mut ConfigCx) -> bool {
-        false
+    fn configure(&mut self, _: &mut ConfigCx) -> Option<ActionRestart> {
+        None
     }
 
     #[inline]
