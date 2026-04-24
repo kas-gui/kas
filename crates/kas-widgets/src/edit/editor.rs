@@ -66,12 +66,20 @@ impl EventAction {
 }
 
 /// Editor state common to all parts
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Common {
     colors: SchemeColors,
 }
 
 impl Common {
+    /// Construct a new instance
+    #[inline]
+    pub fn new() -> Self {
+        Common {
+            colors: SchemeColors::default(),
+        }
+    }
+
     /// Configure `Common` data
     #[inline]
     #[must_use]
@@ -186,7 +194,7 @@ impl<H: Highlighter> Component<H> {
         H: Default,
     {
         let editor = Editor {
-            common: Common::default(),
+            common: Common::new(),
             part: Part::new(wrap),
             error_state: None,
         };
