@@ -133,6 +133,7 @@ pub struct Part {
 /// [`Deref`](std::ops::Deref) from [`EditBoxCore`] and [`EditBox`].
 #[autoimpl(Debug)]
 pub struct Editor {
+    common: Common,
     part: Part,
     error_state: Option<Option<Cow<'static, str>>>,
 }
@@ -151,7 +152,7 @@ pub struct Editor {
 ///
 /// See also [`Part`] (accessible through [`Self::part`]).
 #[derive(Debug)]
-pub struct Component<H: Highlighter>(pub Editor, pub Common, pub H);
+pub struct Component<H: Highlighter>(pub Editor, pub H);
 
 impl<H: Highlighter> Layout for Component<H> {
     #[inline]
@@ -173,7 +174,7 @@ impl<H: Highlighter> Layout for Component<H> {
     fn draw(&self, draw: DrawCx) {
         self.0
             .part
-            .draw_with_offset(draw, &self.1.colors, self.rect(), Offset::ZERO);
+            .draw_with_offset(draw, &self.0.common.colors, self.rect(), Offset::ZERO);
     }
 }
 
@@ -185,10 +186,11 @@ impl<H: Highlighter> Component<H> {
         H: Default,
     {
         let editor = Editor {
+            common: Common::default(),
             part: Part::new(wrap),
             error_state: None,
         };
-        Component(editor, Common::default(), H::default())
+        Component(editor, H::default())
     }
 
     /// Set whether long lines are automatically wrapped
@@ -211,12 +213,12 @@ impl<H: Highlighter> Component<H> {
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
-        Component(self.0, self.1, highlighter)
+        Component(self.0, highlighter)
     }
 
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
-        self.2 = highlighter;
+        self.1 = highlighter;
         self.0.part.require_reprepare();
     }
 
@@ -227,7 +229,7 @@ impl<H: Highlighter> Component<H> {
         if self.0.error_state.is_some() {
             Background::Error
         } else {
-            self.1.background_color()
+            self.0.common.background_color()
         }
     }
 
@@ -250,17 +252,17 @@ impl<H: Highlighter> Component<H> {
     /// Configure component
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
-        if let Some(ActionResetStatus) = self.1.configure() {
+        if let Some(ActionResetStatus) = self.0.common.configure() {
             self.0.part.require_reprepare();
         }
 
-        if let Some(_) = self.2.configure(cx) {
-            self.1.colors = self.2.scheme_colors();
+        if let Some(_) = self.1.configure(cx) {
+            self.0.common.colors = self.1.scheme_colors();
             self.0.part.require_reprepare();
         }
 
         self.0.part.configure(cx, id);
-        self.0.part.prepare_runs(&mut self.2);
+        self.0.part.prepare_runs(&mut self.1);
     }
 
     /// Fully prepare text for display
@@ -276,7 +278,7 @@ impl<H: Highlighter> Component<H> {
             return;
         }
 
-        self.0.part.prepare_runs(&mut self.2);
+        self.0.part.prepare_runs(&mut self.1);
         self.0.part.prepare_wrap();
     }
 
@@ -287,7 +289,7 @@ impl<H: Highlighter> Component<H> {
     /// be called after changes to the text, alignment or wrap-width.
     #[inline]
     pub fn prepare_and_scroll(&mut self, cx: &mut EventCx) {
-        self.0.part.prepare_and_scroll(&mut self.2, cx);
+        self.0.part.prepare_and_scroll(&mut self.1, cx);
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -298,7 +300,7 @@ impl<H: Highlighter> Component<H> {
     /// modify `self`.
     #[inline]
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
-        self.0.part.prepare_runs(&mut self.2);
+        self.0.part.prepare_runs(&mut self.1);
         self.0.part.display.measure_height(wrap_width, max_lines)
     }
 
@@ -307,7 +309,7 @@ impl<H: Highlighter> Component<H> {
     pub fn draw_with_offset(&self, draw: DrawCx, rect: Rect, offset: Offset) {
         self.0
             .part
-            .draw_with_offset(draw, &self.1.colors, rect, offset);
+            .draw_with_offset(draw, &self.0.common.colors, rect, offset);
     }
 
     /// Handle an event
@@ -315,7 +317,7 @@ impl<H: Highlighter> Component<H> {
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
         let action = self.0.part.handle_event(cx, event);
         if action.requires_repreparation() {
-            self.0.part.prepare_and_scroll(&mut self.2, cx);
+            self.0.part.prepare_and_scroll(&mut self.1, cx);
         }
         action
     }
