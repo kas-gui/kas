@@ -71,6 +71,7 @@ pub struct Common {
     colors: SchemeColors,
     font: FontSelector,
     dpem: f32,
+    direction: Direction,
 }
 
 impl Common {
@@ -81,6 +82,7 @@ impl Common {
             colors: SchemeColors::default(),
             font: FontSelector::default(),
             dpem: 16.0,
+            direction: Direction::Auto,
         }
     }
 
@@ -128,7 +130,6 @@ impl Common {
 pub struct Part {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
-    direction: Direction,
     wrap: bool,
     read_only: bool,
     rect: Rect,
@@ -225,7 +226,8 @@ impl<H: Highlighter> Component<H> {
     /// non-directional content.
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
-        self.0.part.set_direction(direction);
+        self.0.common.direction = direction;
+        self.0.part.status = Status::New;
     }
 
     /// Replace the highlighter
@@ -279,7 +281,7 @@ impl<H: Highlighter> Component<H> {
         }
 
         self.0.part.configure(id);
-        self.0.part.prepare_runs(&self.0.common, &mut self.1);
+        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
     }
 
     /// Fully prepare text for display
@@ -295,7 +297,7 @@ impl<H: Highlighter> Component<H> {
             return;
         }
 
-        self.0.part.prepare_runs(&self.0.common, &mut self.1);
+        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
         self.0.part.prepare_wrap();
     }
 
@@ -308,7 +310,7 @@ impl<H: Highlighter> Component<H> {
     pub fn prepare_and_scroll(&mut self, cx: &mut EventCx) {
         self.0
             .part
-            .prepare_and_scroll(&self.0.common, &mut self.1, cx);
+            .prepare_and_scroll(&mut self.0.common, &mut self.1, cx);
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -319,7 +321,7 @@ impl<H: Highlighter> Component<H> {
     /// modify `self`.
     #[inline]
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
-        self.0.part.prepare_runs(&self.0.common, &mut self.1);
+        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
         self.0.part.display.measure_height(wrap_width, max_lines)
     }
 
@@ -338,7 +340,7 @@ impl<H: Highlighter> Component<H> {
         if action.requires_repreparation() {
             self.0
                 .part
-                .prepare_and_scroll(&self.0.common, &mut self.1, cx);
+                .prepare_and_scroll(&mut self.0.common, &mut self.1, cx);
         }
         action
     }
@@ -356,7 +358,6 @@ impl Part {
     pub fn new(wrap: bool) -> Self {
         Part {
             id: Id::default(),
-            direction: Direction::Auto,
             wrap,
             read_only: false,
             rect: Rect::ZERO,
@@ -372,17 +373,6 @@ impl Part {
             current: CurrentAction::None,
             input_handler: Default::default(),
         }
-    }
-
-    /// Set the base text direction
-    ///
-    /// If [`Direction::Auto`] or [`Direction::AutoRtl`] is used, the direction
-    /// will be updated on edit to persist the last used text direction to
-    /// non-directional content.
-    #[inline]
-    pub fn set_direction(&mut self, direction: Direction) {
-        self.direction = direction;
-        self.status = Status::New;
     }
 
     /// Set the initial text (inline)
@@ -448,8 +438,8 @@ impl Part {
     /// the [`Status`] to [`Status::LevelRuns`].
     /// This method must be called again after any edits to the `Part`'s text.
     #[inline]
-    pub fn prepare_runs<H: Highlighter>(&mut self, common: &Common, highlighter: &mut H) {
-        fn inner<H: Highlighter>(part: &mut Part, common: &Common, highlighter: &mut H) {
+    pub fn prepare_runs<H: Highlighter>(&mut self, common: &mut Common, highlighter: &mut H) {
+        fn inner<H: Highlighter>(part: &mut Part, common: &mut Common, highlighter: &mut H) {
             part.highlight.highlight(&part.text, highlighter);
 
             let text = part.text.as_str();
@@ -457,7 +447,7 @@ impl Part {
             match part.status {
                 Status::New => part
                     .display
-                    .prepare_runs(text, part.direction, font_tokens)
+                    .prepare_runs(text, common.direction, font_tokens)
                     .expect("no suitable font found"),
                 Status::ResizeLevelRuns => part.display.resize_runs(text, font_tokens),
                 _ => return,
@@ -465,8 +455,8 @@ impl Part {
 
             part.status = Status::LevelRuns;
 
-            if part.direction.is_auto() {
-                part.direction = if part.display.text_is_rtl() {
+            if common.direction.is_auto() {
+                common.direction = if part.display.text_is_rtl() {
                     Direction::AutoRtl
                 } else {
                     Direction::Auto
@@ -582,7 +572,7 @@ impl Part {
     #[inline]
     pub fn prepare_and_scroll<H: Highlighter>(
         &mut self,
-        common: &Common,
+        common: &mut Common,
         highlighter: &mut H,
         cx: &mut EventCx,
     ) {
