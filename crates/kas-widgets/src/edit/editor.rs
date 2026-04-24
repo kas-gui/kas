@@ -72,18 +72,20 @@ pub struct Common {
     font: FontSelector,
     dpem: f32,
     direction: Direction,
+    wrap: bool,
     read_only: bool,
 }
 
 impl Common {
     /// Construct a new instance
     #[inline]
-    pub fn new() -> Self {
+    pub fn new(wrap: bool) -> Self {
         Common {
             colors: SchemeColors::default(),
             font: FontSelector::default(),
             dpem: 16.0,
             direction: Direction::Auto,
+            wrap,
             read_only: false,
         }
     }
@@ -132,7 +134,6 @@ impl Common {
 pub struct Part {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
-    wrap: bool,
     rect: Rect,
     status: Status,
     display: TextDisplay,
@@ -187,7 +188,7 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
-        self.0.part.set_rect(cx, rect);
+        self.0.part.set_rect(&mut self.0.common, cx, rect);
     }
 
     #[inline]
@@ -206,8 +207,8 @@ impl<H: Highlighter> Component<H> {
         H: Default,
     {
         let editor = Editor {
-            common: Common::new(),
-            part: Part::new(wrap),
+            common: Common::new(wrap),
+            part: Part::new(),
             error_state: None,
         };
         Component(editor, H::default())
@@ -216,8 +217,8 @@ impl<H: Highlighter> Component<H> {
     /// Set whether long lines are automatically wrapped
     #[inline]
     pub fn set_wrap(&mut self, wrap: bool) {
-        self.0.part.wrap = wrap;
-        self.0.part.status = Status::New;
+        self.0.common.wrap = wrap;
+        self.0.part.status = self.0.part.status.min(Status::LevelRuns);
     }
 
     /// Set the base text direction
@@ -261,6 +262,8 @@ impl<H: Highlighter> Component<H> {
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
         self.0.part = self.0.part.with_text(text);
+        let index = if self.0.common.wrap { 0 } else { self.0.part.text.len() };
+        self.0.part.selection.set_position(index);
         self
     }
 
@@ -299,7 +302,7 @@ impl<H: Highlighter> Component<H> {
         }
 
         self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
-        self.0.part.prepare_wrap();
+        self.0.part.prepare_wrap(&mut self.0.common);
     }
 
     /// Fully prepare text for display, ensuring the cursor is within view
@@ -356,10 +359,9 @@ impl<H: Highlighter> Component<H> {
 impl Part {
     /// Construct a new instance
     #[inline]
-    pub fn new(wrap: bool) -> Self {
+    pub fn new() -> Self {
         Part {
             id: Id::default(),
-            wrap,
             rect: Rect::ZERO,
             status: Status::New,
             display: TextDisplay::default(),
@@ -383,10 +385,7 @@ impl Part {
     pub fn with_text(mut self, text: impl ToString) -> Self {
         debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
         let text = text.to_string();
-        let len = text.len();
         self.text = text;
-        let index = if self.wrap { 0 } else { len };
-        self.selection.set_position(index);
         self
     }
 
@@ -479,7 +478,7 @@ impl Part {
     pub fn size_rules(&mut self, common: &Common, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
         let rules = if axis.is_horizontal() {
             let mut bound = 0i32;
-            if self.wrap {
+            if common.wrap {
                 let (min, ideal) = cx.wrapped_line_len(TextClass::Editor, common.dpem);
                 if self.status >= Status::LevelRuns {
                     bound = self.display.measure_width(ideal.cast()).cast_ceil();
@@ -492,7 +491,7 @@ impl Part {
                 SizeRules::new(bound, bound, Stretch::Filler)
             }
         } else {
-            let wrap_width = self
+            let wrap_width = common
                 .wrap
                 .then(|| axis.other().map(|w| w.cast()))
                 .flatten()
@@ -515,13 +514,13 @@ impl Part {
     /// should be very cheap.
     ///
     /// Note that editors always use default alignment of content.
-    pub fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect) {
+    pub fn set_rect(&mut self, common: &mut Common, cx: &mut SizeCx, rect: Rect) {
         if rect.size.0 != self.rect.size.0 {
             self.status = self.status.min(Status::LevelRuns);
         }
         self.rect = rect;
 
-        self.prepare_wrap();
+        self.prepare_wrap(common);
         if self.current.is_ime_enabled() {
             self.set_ime_cursor_area(cx);
         }
@@ -545,7 +544,7 @@ impl Part {
     /// changes to alignment or the wrap-width.
     ///
     /// Returns `true` when the size of the bounding-box changes.
-    fn prepare_wrap(&mut self) -> bool {
+    fn prepare_wrap(&mut self, common: &mut Common) -> bool {
         if self.status < Status::LevelRuns || self.rect.size.0 == 0 {
             return false;
         };
@@ -554,7 +553,7 @@ impl Part {
 
         if self.status == Status::LevelRuns {
             let align_width = self.rect.size.0.cast();
-            let wrap_width = if !self.wrap { f32::INFINITY } else { align_width };
+            let wrap_width = if !common.wrap { f32::INFINITY } else { align_width };
             self.display
                 .prepare_lines(wrap_width, align_width, Align::Default);
             self.display.ensure_non_negative_alignment();
@@ -581,7 +580,7 @@ impl Part {
         }
 
         self.prepare_runs(common, highlighter);
-        if self.prepare_wrap() {
+        if self.prepare_wrap(common) {
             cx.resize();
             self.set_view_offset_from_cursor(cx);
         }
@@ -972,7 +971,7 @@ impl Part {
                 if let Some(content) = cx.get_primary() {
                     self.save_undo_state(Some(EditOp::Clipboard));
 
-                    let range = self.trim_paste(&content);
+                    let range = self.trim_paste(common.wrap, &content);
                     self.replace_range(index..index, &content[range.clone()]);
                     index += range.len();
                     event_action = EventAction::Edit;
@@ -1219,9 +1218,9 @@ impl Part {
         }
     }
 
-    fn trim_paste(&self, text: &str) -> Range<usize> {
+    fn trim_paste(&self, wrap: bool, text: &str) -> Range<usize> {
         let mut end = text.len();
-        if !self.wrap {
+        if !wrap {
             // We cut the content short on control characters and
             // ignore them (preventing line-breaks and ignoring any
             // actions such as recursive-paste).
@@ -1250,7 +1249,7 @@ impl Part {
         let mut buf = [0u8; 4];
         let cursor = self.selection.cursor;
         let len = self.as_str().len();
-        let multi_line = self.wrap;
+        let multi_line = common.wrap;
         let selection = self.selection.to_range();
         let have_sel = selection.end > selection.start;
         let string;
@@ -1450,7 +1449,7 @@ impl Part {
             }
             Command::Paste if editable => {
                 if let Some(content) = cx.get_clipboard() {
-                    let range = self.trim_paste(&content);
+                    let range = self.trim_paste(common.wrap, &content);
                     string = content;
                     Action::Insert(&string[range], EditOp::Clipboard)
                 } else {
@@ -1697,7 +1696,7 @@ impl Editor {
     /// True if the editor uses multi-line mode
     #[inline]
     pub fn multi_line(&self) -> bool {
-        self.part.wrap
+        self.common.wrap
     }
 
     /// Get whether the widget has input focus
