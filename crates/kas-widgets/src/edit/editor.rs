@@ -193,7 +193,7 @@ impl<H: Highlighter> Layout for Component<H> {
     fn draw(&self, draw: DrawCx) {
         self.0
             .part
-            .draw_with_offset(draw, &self.0.common.colors, self.rect(), Offset::ZERO);
+            .draw_with_offset(draw, &self.0.common, self.rect(), Offset::ZERO);
     }
 }
 
@@ -330,13 +330,13 @@ impl<H: Highlighter> Component<H> {
     pub fn draw_with_offset(&self, draw: DrawCx, rect: Rect, offset: Offset) {
         self.0
             .part
-            .draw_with_offset(draw, &self.0.common.colors, rect, offset);
+            .draw_with_offset(draw, &self.0.common, rect, offset);
     }
 
     /// Handle an event
     #[inline]
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
-        let action = self.0.part.handle_event(&self.0.common, cx, event);
+        let action = self.0.part.handle_event(&mut self.0.common, cx, event);
         if action.requires_repreparation() {
             self.0
                 .part
@@ -616,13 +616,7 @@ impl Part {
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
-    pub fn draw_with_offset(
-        &self,
-        mut draw: DrawCx,
-        colors: &SchemeColors,
-        rect: Rect,
-        offset: Offset,
-    ) {
+    pub fn draw_with_offset(&self, mut draw: DrawCx, common: &Common, rect: Rect, offset: Offset) {
         if !self.is_prepared() {
             return;
         }
@@ -632,7 +626,7 @@ impl Part {
 
         let color_tokens = self.highlight.color_tokens();
         let default_colors = format::Colors {
-            foreground: colors.foreground,
+            foreground: common.colors.foreground,
             background: None,
         };
         let mut buf = [(0, default_colors); 3];
@@ -645,17 +639,17 @@ impl Part {
             }
         } else if color_tokens.is_empty() {
             buf[1].0 = range.start;
-            buf[1].1.foreground = colors.selection_foreground;
-            buf[1].1.background = Some(colors.selection_background);
+            buf[1].1.foreground = common.colors.selection_foreground;
+            buf[1].1.background = Some(common.colors.selection_background);
             buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
             &buf[r0..]
         } else {
             let set_selection_colors = |c: &mut format::Colors| {
-                if c.foreground == colors.foreground {
-                    c.foreground = colors.selection_foreground;
+                if c.foreground == common.colors.foreground {
+                    c.foreground = common.colors.selection_foreground;
                 }
-                c.background = Some(colors.selection_background);
+                c.background = Some(common.colors.selection_background);
             };
 
             vec.reserve(color_tokens.len() + 2);
@@ -738,7 +732,7 @@ impl Part {
                 rect,
                 &self.display,
                 self.selection.cursor,
-                Some(colors.cursor),
+                Some(common.colors.cursor),
             );
         }
     }
@@ -748,7 +742,12 @@ impl Part {
     /// If [`EventAction::requires_repreparation`] then the caller **must** call
     /// re-prepare the text by calling [`Self::prepare_and_scroll`].
     #[inline]
-    pub fn handle_event(&mut self, common: &Common, cx: &mut EventCx, event: Event) -> EventAction {
+    pub fn handle_event(
+        &mut self,
+        common: &mut Common,
+        cx: &mut EventCx,
+        event: Event,
+    ) -> EventAction {
         if !self.is_prepared() {
             debug_assert!(false);
             return EventAction::Unused;
@@ -1237,7 +1236,7 @@ impl Part {
     /// Drive action of a [`Command`]
     fn cmd_action(
         &mut self,
-        common: &Common,
+        common: &mut Common,
         cx: &mut EventCx,
         mut cmd: Command,
         code: Option<PhysicalKey>,
