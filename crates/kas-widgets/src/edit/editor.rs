@@ -70,6 +70,7 @@ impl EventAction {
 pub struct Common {
     colors: SchemeColors,
     font: FontSelector,
+    dpem: f32,
 }
 
 impl Common {
@@ -79,6 +80,7 @@ impl Common {
         Common {
             colors: SchemeColors::default(),
             font: FontSelector::default(),
+            dpem: 16.0,
         }
     }
 
@@ -87,8 +89,10 @@ impl Common {
     #[must_use]
     pub fn configure(&mut self, cx: &SizeCx) -> Option<ActionResetStatus> {
         let font = cx.font(TextClass::Editor);
-        if font != self.font {
+        let dpem = cx.dpem(TextClass::Editor);
+        if font != self.font || dpem != self.dpem {
             self.font = font;
+            self.dpem = dpem;
             Some(ActionResetStatus)
         } else {
             None
@@ -124,7 +128,6 @@ impl Common {
 pub struct Part {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
-    dpem: f32,
     direction: Direction,
     wrap: bool,
     read_only: bool,
@@ -177,7 +180,7 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-        self.0.part.size_rules(cx, axis)
+        self.0.part.size_rules(&self.0.common, cx, axis)
     }
 
     #[inline]
@@ -270,13 +273,12 @@ impl<H: Highlighter> Component<H> {
         if let Some(ActionResetStatus) = self.0.common.configure(&cx.size_cx()) {
             self.0.part.require_reprepare();
         }
-
         if let Some(_) = self.1.configure(cx) {
             self.0.common.colors = self.1.scheme_colors();
             self.0.part.require_reprepare();
         }
 
-        self.0.part.configure(cx, id);
+        self.0.part.configure(id);
         self.0.part.prepare_runs(&self.0.common, &mut self.1);
     }
 
@@ -332,7 +334,7 @@ impl<H: Highlighter> Component<H> {
     /// Handle an event
     #[inline]
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
-        let action = self.0.part.handle_event(cx, event);
+        let action = self.0.part.handle_event(&self.0.common, cx, event);
         if action.requires_repreparation() {
             self.0
                 .part
@@ -354,7 +356,6 @@ impl Part {
     pub fn new(wrap: bool) -> Self {
         Part {
             id: Id::default(),
-            dpem: 16.0,
             direction: Direction::Auto,
             wrap,
             read_only: false,
@@ -435,14 +436,8 @@ impl Part {
     /// Configure component
     ///
     /// [`Common::configure`] must be called before this method.
-    pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
+    pub fn configure(&mut self, id: Id) {
         self.id = id;
-        let cx = cx.size_cx();
-        let dpem = cx.dpem(TextClass::Editor);
-        if dpem != self.dpem {
-            self.dpem = dpem;
-            self.status = self.status.min(Status::ResizeLevelRuns);
-        }
     }
 
     /// Perform run-breaking and shaping
@@ -458,7 +453,7 @@ impl Part {
             part.highlight.highlight(&part.text, highlighter);
 
             let text = part.text.as_str();
-            let font_tokens = part.highlight.font_tokens(part.dpem, common.font);
+            let font_tokens = part.highlight.font_tokens(common.dpem, common.font);
             match part.status {
                 Status::New => part
                     .display
@@ -491,11 +486,11 @@ impl Part {
     }
 
     /// Solve size rules
-    pub fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    pub fn size_rules(&mut self, common: &Common, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
         let rules = if axis.is_horizontal() {
             let mut bound = 0i32;
             if self.wrap {
-                let (min, ideal) = cx.wrapped_line_len(TextClass::Editor, self.dpem);
+                let (min, ideal) = cx.wrapped_line_len(TextClass::Editor, common.dpem);
                 if self.status >= Status::LevelRuns {
                     bound = self.display.measure_width(ideal.cast()).cast_ceil();
                 }
@@ -763,7 +758,7 @@ impl Part {
     /// If [`EventAction::requires_repreparation`] then the caller **must** call
     /// re-prepare the text by calling [`Self::prepare_and_scroll`].
     #[inline]
-    pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
+    pub fn handle_event(&mut self, common: &Common, cx: &mut EventCx, event: Event) -> EventAction {
         if !self.is_prepared() {
             debug_assert!(false);
             return EventAction::Unused;
@@ -822,7 +817,7 @@ impl Part {
                 cx.redraw();
                 return EventAction::Used;
             }
-            Event::Command(cmd, code) => match self.cmd_action(cx, cmd, code) {
+            Event::Command(cmd, code) => match self.cmd_action(common, cx, cmd, code) {
                 Ok(action) => {
                     if matches!(action, EventAction::Cursor) {
                         self.set_view_offset_from_cursor(cx);
@@ -848,7 +843,7 @@ impl Part {
                         .shortcuts()
                         .try_match_event(cx.modifiers(), event);
                     if let Some(cmd) = opt_cmd {
-                        match self.cmd_action(cx, cmd, Some(event.physical_key)) {
+                        match self.cmd_action(common, cx, cmd, Some(event.physical_key)) {
                             Ok(action) => {
                                 if matches!(action, EventAction::Cursor) {
                                     self.set_view_offset_from_cursor(cx);
@@ -1252,6 +1247,7 @@ impl Part {
     /// Drive action of a [`Command`]
     fn cmd_action(
         &mut self,
+        common: &Common,
         cx: &mut EventCx,
         mut cmd: Command,
         code: Option<PhysicalKey>,
@@ -1408,7 +1404,7 @@ impl Part {
                     v.0 = x;
                 }
                 // TODO: page height should be an input?
-                let mut line_height = self.dpem;
+                let mut line_height = common.dpem;
                 if let Some(line) = self.display.lines().next() {
                     line_height = line.bottom() - line.top();
                 }
