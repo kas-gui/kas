@@ -69,6 +69,7 @@ impl EventAction {
 #[derive(Debug)]
 pub struct Common {
     colors: SchemeColors,
+    font: FontSelector,
 }
 
 impl Common {
@@ -77,14 +78,21 @@ impl Common {
     pub fn new() -> Self {
         Common {
             colors: SchemeColors::default(),
+            font: FontSelector::default(),
         }
     }
 
     /// Configure `Common` data
     #[inline]
     #[must_use]
-    pub fn configure(&mut self) -> Option<ActionResetStatus> {
-        None
+    pub fn configure(&mut self, cx: &SizeCx) -> Option<ActionResetStatus> {
+        let font = cx.font(TextClass::Editor);
+        if font != self.font {
+            self.font = font;
+            Some(ActionResetStatus)
+        } else {
+            None
+        }
     }
 
     /// Read highlighter colors
@@ -116,7 +124,6 @@ impl Common {
 pub struct Part {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
-    font: FontSelector,
     dpem: f32,
     direction: Direction,
     wrap: bool,
@@ -260,7 +267,7 @@ impl<H: Highlighter> Component<H> {
     /// Configure component
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
-        if let Some(ActionResetStatus) = self.0.common.configure() {
+        if let Some(ActionResetStatus) = self.0.common.configure(&cx.size_cx()) {
             self.0.part.require_reprepare();
         }
 
@@ -270,7 +277,7 @@ impl<H: Highlighter> Component<H> {
         }
 
         self.0.part.configure(cx, id);
-        self.0.part.prepare_runs(&mut self.1);
+        self.0.part.prepare_runs(&self.0.common, &mut self.1);
     }
 
     /// Fully prepare text for display
@@ -286,7 +293,7 @@ impl<H: Highlighter> Component<H> {
             return;
         }
 
-        self.0.part.prepare_runs(&mut self.1);
+        self.0.part.prepare_runs(&self.0.common, &mut self.1);
         self.0.part.prepare_wrap();
     }
 
@@ -297,7 +304,9 @@ impl<H: Highlighter> Component<H> {
     /// be called after changes to the text, alignment or wrap-width.
     #[inline]
     pub fn prepare_and_scroll(&mut self, cx: &mut EventCx) {
-        self.0.part.prepare_and_scroll(&mut self.1, cx);
+        self.0
+            .part
+            .prepare_and_scroll(&self.0.common, &mut self.1, cx);
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -308,7 +317,7 @@ impl<H: Highlighter> Component<H> {
     /// modify `self`.
     #[inline]
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
-        self.0.part.prepare_runs(&mut self.1);
+        self.0.part.prepare_runs(&self.0.common, &mut self.1);
         self.0.part.display.measure_height(wrap_width, max_lines)
     }
 
@@ -325,7 +334,9 @@ impl<H: Highlighter> Component<H> {
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
         let action = self.0.part.handle_event(cx, event);
         if action.requires_repreparation() {
-            self.0.part.prepare_and_scroll(&mut self.1, cx);
+            self.0
+                .part
+                .prepare_and_scroll(&self.0.common, &mut self.1, cx);
         }
         action
     }
@@ -343,7 +354,6 @@ impl Part {
     pub fn new(wrap: bool) -> Self {
         Part {
             id: Id::default(),
-            font: FontSelector::default(),
             dpem: 16.0,
             direction: Direction::Auto,
             wrap,
@@ -428,13 +438,8 @@ impl Part {
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.id = id;
         let cx = cx.size_cx();
-        let font = cx.font(TextClass::Editor);
         let dpem = cx.dpem(TextClass::Editor);
-        if font != self.font {
-            self.font = font;
-            self.dpem = dpem;
-            self.status = Status::New;
-        } else if dpem != self.dpem {
+        if dpem != self.dpem {
             self.dpem = dpem;
             self.status = self.status.min(Status::ResizeLevelRuns);
         }
@@ -448,12 +453,12 @@ impl Part {
     /// the [`Status`] to [`Status::LevelRuns`].
     /// This method must be called again after any edits to the `Part`'s text.
     #[inline]
-    pub fn prepare_runs<H: Highlighter>(&mut self, highlighter: &mut H) {
-        fn inner<H: Highlighter>(part: &mut Part, highlighter: &mut H) {
+    pub fn prepare_runs<H: Highlighter>(&mut self, common: &Common, highlighter: &mut H) {
+        fn inner<H: Highlighter>(part: &mut Part, common: &Common, highlighter: &mut H) {
             part.highlight.highlight(&part.text, highlighter);
 
             let text = part.text.as_str();
-            let font_tokens = part.highlight.font_tokens(part.dpem, part.font);
+            let font_tokens = part.highlight.font_tokens(part.dpem, common.font);
             match part.status {
                 Status::New => part
                     .display
@@ -475,7 +480,7 @@ impl Part {
         }
 
         if self.status < Status::LevelRuns {
-            inner(self, highlighter);
+            inner(self, common, highlighter);
         }
     }
 
@@ -580,12 +585,17 @@ impl Part {
     /// [`Status`] (which is advanced to [`Status::Ready`]). This method should
     /// be called after changes to the text, alignment or wrap-width.
     #[inline]
-    pub fn prepare_and_scroll<H: Highlighter>(&mut self, highlighter: &mut H, cx: &mut EventCx) {
+    pub fn prepare_and_scroll<H: Highlighter>(
+        &mut self,
+        common: &Common,
+        highlighter: &mut H,
+        cx: &mut EventCx,
+    ) {
         if self.is_prepared() {
             return;
         }
 
-        self.prepare_runs(highlighter);
+        self.prepare_runs(common, highlighter);
         if self.prepare_wrap() {
             cx.resize();
             self.set_view_offset_from_cursor(cx);
