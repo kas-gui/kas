@@ -72,6 +72,7 @@ pub struct Common {
     font: FontSelector,
     dpem: f32,
     direction: Direction,
+    read_only: bool,
 }
 
 impl Common {
@@ -83,6 +84,7 @@ impl Common {
             font: FontSelector::default(),
             dpem: 16.0,
             direction: Direction::Auto,
+            read_only: false,
         }
     }
 
@@ -131,7 +133,6 @@ pub struct Part {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
     wrap: bool,
-    read_only: bool,
     rect: Rect,
     status: Status,
     display: TextDisplay,
@@ -359,7 +360,6 @@ impl Part {
         Part {
             id: Id::default(),
             wrap,
-            read_only: false,
             rect: Rect::ZERO,
             status: Status::New,
             display: TextDisplay::default(),
@@ -726,7 +726,7 @@ impl Part {
             draw.decorate_text(pos, rect, &self.display, &tokens[r0..]);
         }
 
-        if !self.read_only && draw.ev_state().has_input_focus(&self.id) == Some(true) {
+        if !common.read_only && draw.ev_state().has_input_focus(&self.id) == Some(true) {
             draw.text_cursor(
                 pos,
                 rect,
@@ -815,7 +815,9 @@ impl Part {
                 }
                 Err(NotReady) => return EventAction::Used,
             },
-            Event::Key(event, false) if event.state == ElementState::Pressed && !self.read_only => {
+            Event::Key(event, false)
+                if event.state == ElementState::Pressed && !common.read_only =>
+            {
                 return if let Some(text) = &event.text {
                     self.save_undo_state(Some(EditOp::KeyInput));
                     self.cancel_selection_and_ime(cx);
@@ -1243,7 +1245,7 @@ impl Part {
     ) -> Result<EventAction, NotReady> {
         debug_assert!(self.is_prepared());
 
-        let editable = !self.read_only;
+        let editable = !common.read_only;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let cursor = self.selection.cursor;
@@ -1683,13 +1685,13 @@ impl Editor {
     /// Get whether this text-edit widget is read-only
     #[inline]
     pub fn is_read_only(&self) -> bool {
-        self.part.read_only
+        self.common.read_only
     }
 
     /// Set whether this text-edit widget is editable
     #[inline]
     pub fn set_read_only(&mut self, read_only: bool) {
-        self.part.read_only = read_only;
+        self.common.read_only = read_only;
     }
 
     /// True if the editor uses multi-line mode
