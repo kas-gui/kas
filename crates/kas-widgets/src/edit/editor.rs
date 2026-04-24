@@ -74,6 +74,7 @@ pub struct Common {
     direction: Direction,
     wrap: bool,
     read_only: bool,
+    edit_x_coord: Option<f32>,
 }
 
 impl Common {
@@ -87,6 +88,7 @@ impl Common {
             direction: Direction::Auto,
             wrap,
             read_only: false,
+            edit_x_coord: None,
         }
     }
 
@@ -140,7 +142,6 @@ pub struct Part {
     highlight: highlight::Cache,
     text: String,
     selection: CursorRange,
-    edit_x_coord: Option<f32>,
     last_edit: Option<EditOp>,
     undo_stack: UndoStack<(String, CursorRange)>,
     has_key_focus: bool,
@@ -367,7 +368,6 @@ impl Default for Part {
             highlight: Default::default(),
             text: Default::default(),
             selection: Default::default(),
-            edit_x_coord: None,
             last_edit: Some(EditOp::Initial),
             undo_stack: UndoStack::new(),
             has_key_focus: false,
@@ -825,7 +825,7 @@ impl Part {
                     let selection = self.selection.to_range();
                     self.replace_range(selection.clone(), text);
                     self.selection.set_position(selection.start + text.len());
-                    self.edit_x_coord = None;
+                    common.edit_x_coord = None;
 
                     EventAction::Edit
                 } else {
@@ -898,7 +898,7 @@ impl Part {
                     self.current = CurrentAction::ImePreedit {
                         edit_range: edit_range.cast(),
                     };
-                    self.edit_x_coord = None;
+                    common.edit_x_coord = None;
                     return EventAction::Preedit;
                 }
                 Ime::Commit { text } => {
@@ -915,7 +915,7 @@ impl Part {
                     self.current = CurrentAction::ImePreedit {
                         edit_range: self.selection.to_range().cast(),
                     };
-                    self.edit_x_coord = None;
+                    common.edit_x_coord = None;
                     return EventAction::Edit;
                 }
                 Ime::DeleteSurrounding {
@@ -1052,7 +1052,7 @@ impl Part {
         if range != self.selection {
             self.selection = range;
             self.set_view_offset_from_cursor(cx);
-            self.edit_x_coord = None;
+            common.edit_x_coord = None;
             cx.redraw();
         }
         event_action
@@ -1338,7 +1338,7 @@ impl Part {
             // Avoid use of unused navigation keys (e.g. by ScrollComponent):
             Command::Left | Command::Right | Command::WordLeft | Command::WordRight => Action::None,
             Command::Up | Command::Down if multi_line => {
-                let x = match self.edit_x_coord {
+                let x = match common.edit_x_coord {
                     Some(x) => x,
                     None => self
                         .display
@@ -1391,7 +1391,7 @@ impl Part {
                     .next_back()
                     .map(|r| r.pos.into())
                     .unwrap_or(Vec2::ZERO);
-                if let Some(x) = self.edit_x_coord {
+                if let Some(x) = common.edit_x_coord {
                     v.0 = x;
                 }
                 // TODO: page height should be an input?
@@ -1497,13 +1497,13 @@ impl Part {
                 };
                 self.replace_range(range, s);
                 self.selection.set_position(index + s.len());
-                self.edit_x_coord = None;
+                common.edit_x_coord = None;
                 EventAction::Edit
             }
             Action::Delete(sel, _) => {
                 self.replace_range(sel.clone(), "");
                 self.selection.set_position(sel.start);
-                self.edit_x_coord = None;
+                common.edit_x_coord = None;
                 EventAction::Edit
             }
             Action::Move(index, x_coord) => {
@@ -1513,7 +1513,7 @@ impl Part {
                 } else {
                     self.set_primary(cx);
                 }
-                self.edit_x_coord = x_coord;
+                common.edit_x_coord = x_coord;
                 cx.redraw();
                 EventAction::Cursor
             }
@@ -1522,7 +1522,7 @@ impl Part {
                     if self.text.as_str() != text {
                         self.text = text.clone();
                         self.status = Status::New;
-                        self.edit_x_coord = None;
+                        common.edit_x_coord = None;
                     }
                     self.selection = *cursor;
                     EventAction::Edit
@@ -1645,7 +1645,7 @@ impl Editor {
 
         let len = self.as_str().len();
         self.part.selection.set_max_len(len);
-        self.part.edit_x_coord = None;
+        self.common.edit_x_coord = None;
         self.error_state = None;
     }
 
@@ -1662,7 +1662,6 @@ impl Editor {
         self.part
             .selection
             .set_position(selection.start + text.len());
-        self.part.edit_x_coord = None;
         self.error_state = None;
     }
 
@@ -1678,7 +1677,7 @@ impl Editor {
     /// guard.
     #[inline]
     pub fn set_cursor_range(&mut self, range: CursorRange) {
-        self.part.edit_x_coord = None;
+        self.common.edit_x_coord = None;
         self.part.selection = range;
     }
 
