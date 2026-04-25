@@ -76,6 +76,8 @@ pub struct Common {
     read_only: bool,
     edit_x_coord: Option<f32>,
     selection: CursorRange,
+    last_edit: Option<EditOp>,
+    undo_stack: UndoStack<(String, CursorRange)>,
 }
 
 impl Common {
@@ -91,6 +93,8 @@ impl Common {
             read_only: false,
             edit_x_coord: None,
             selection: CursorRange::default(),
+            last_edit: Some(EditOp::Initial),
+            undo_stack: UndoStack::new(),
         }
     }
 
@@ -143,8 +147,6 @@ pub struct Part {
     display: TextDisplay,
     highlight: highlight::Cache,
     text: String,
-    last_edit: Option<EditOp>,
-    undo_stack: UndoStack<(String, CursorRange)>,
     has_key_focus: bool,
     current: CurrentAction,
     input_handler: TextInput,
@@ -368,8 +370,6 @@ impl Default for Part {
             display: TextDisplay::default(),
             highlight: Default::default(),
             text: Default::default(),
-            last_edit: Some(EditOp::Initial),
-            undo_stack: UndoStack::new(),
             has_key_focus: false,
             current: CurrentAction::None,
             input_handler: Default::default(),
@@ -1196,13 +1196,14 @@ impl Part {
     /// Call with [`None`] to force commit of any uncommitted changes.
     fn save_undo_state(&mut self, common: &mut Common, edit: Option<EditOp>) {
         if let Some(op) = edit
-            && op.try_merge(&mut self.last_edit)
+            && op.try_merge(&mut common.last_edit)
         {
             return;
         }
 
-        self.last_edit = edit;
-        self.undo_stack
+        common.last_edit = edit;
+        common
+            .undo_stack
             .try_push((self.as_str().to_string(), common.selection));
     }
 
@@ -1512,7 +1513,7 @@ impl Part {
                 EventAction::Cursor
             }
             Action::UndoRedo(redo) => {
-                if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
+                if let Some((text, cursor)) = common.undo_stack.undo_or_redo(redo) {
                     if self.text.as_str() != text {
                         self.text = text.clone();
                         self.status = Status::New;
@@ -1603,8 +1604,8 @@ impl Editor {
     /// Clear text contents and undo history
     #[inline]
     pub fn clear(&mut self, cx: &mut EventState) {
-        self.part.last_edit = Some(EditOp::Initial);
-        self.part.undo_stack.clear();
+        self.common.last_edit = Some(EditOp::Initial);
+        self.common.undo_stack.clear();
         self.set_string(cx, String::new());
     }
 
