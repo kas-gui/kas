@@ -75,6 +75,7 @@ pub struct Common {
     wrap: bool,
     read_only: bool,
     edit_x_coord: Option<f32>,
+    selection: CursorRange,
 }
 
 impl Common {
@@ -89,6 +90,7 @@ impl Common {
             wrap,
             read_only: false,
             edit_x_coord: None,
+            selection: CursorRange::default(),
         }
     }
 
@@ -141,7 +143,6 @@ pub struct Part {
     display: TextDisplay,
     highlight: highlight::Cache,
     text: String,
-    selection: CursorRange,
     last_edit: Option<EditOp>,
     undo_stack: UndoStack<(String, CursorRange)>,
     has_key_focus: bool,
@@ -264,7 +265,7 @@ impl<H: Highlighter> Component<H> {
     pub fn with_text(mut self, text: impl ToString) -> Self {
         self.0.part = self.0.part.with_text(text);
         let index = if self.0.common.wrap { 0 } else { self.0.part.text.len() };
-        self.0.part.selection.set_position(index);
+        self.0.common.selection.set_position(index);
         self
     }
 
@@ -367,7 +368,6 @@ impl Default for Part {
             display: TextDisplay::default(),
             highlight: Default::default(),
             text: Default::default(),
-            selection: Default::default(),
             last_edit: Some(EditOp::Initial),
             undo_stack: UndoStack::new(),
             has_key_focus: false,
@@ -403,12 +403,6 @@ impl Part {
     pub fn text_is_rtl(&self) -> bool {
         debug_assert!(self.status >= Status::ResizeLevelRuns);
         self.display.text_is_rtl()
-    }
-
-    /// Access the cursor index / selection range
-    #[inline]
-    pub fn cursor_range(&self) -> CursorRange {
-        self.selection
     }
 
     /// Check whether the text is fully prepared and ready for usage
@@ -523,7 +517,7 @@ impl Part {
 
         self.prepare_wrap(common);
         if self.current.is_ime_enabled() {
-            self.set_ime_cursor_area(cx);
+            self.set_ime_cursor_area(common, cx);
         }
     }
 
@@ -583,7 +577,7 @@ impl Part {
         self.prepare_runs(common, highlighter);
         if self.prepare_wrap(common) {
             cx.resize();
-            self.set_view_offset_from_cursor(cx);
+            self.set_view_offset_from_cursor(common, cx);
         }
         cx.redraw();
     }
@@ -622,7 +616,7 @@ impl Part {
         }
 
         let pos = self.rect.pos - offset;
-        let range: Range<u32> = self.selection.to_range().cast();
+        let range: Range<u32> = common.selection.to_range().cast();
 
         let color_tokens = self.highlight.color_tokens();
         let default_colors = format::Colors {
@@ -731,7 +725,7 @@ impl Part {
                 pos,
                 rect,
                 &self.display,
-                self.selection.cursor,
+                common.selection.cursor,
                 Some(common.colors.cursor),
             );
         }
@@ -768,19 +762,19 @@ impl Part {
                 // the latter. We must set before calling self.set_primary.
                 self.has_key_focus = true;
                 if source == FocusSource::Pointer {
-                    self.set_primary(cx);
+                    self.set_primary(common, cx);
                 }
 
                 return EventAction::Used;
             }
             Event::KeyFocus => {
                 self.has_key_focus = true;
-                self.set_view_offset_from_cursor(cx);
+                self.set_view_offset_from_cursor(common, cx);
 
                 return if self.current.is_none() {
                     let hint = Default::default();
                     let purpose = ImePurpose::Normal;
-                    let surrounding_text = self.ime_surrounding_text();
+                    let surrounding_text = self.ime_surrounding_text(common);
                     cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
                     EventAction::FocusGained
                 } else {
@@ -798,9 +792,9 @@ impl Part {
             }
             Event::LostSelFocus => {
                 // NOTE: we can assume that we will receive Ime::Disabled if IME is active
-                if !self.selection.is_empty() {
-                    self.save_undo_state(None);
-                    self.selection.clear_selection();
+                if !common.selection.is_empty() {
+                    self.save_undo_state(common, None);
+                    common.selection.clear_selection();
                 }
                 self.input_handler.stop_selecting();
                 cx.redraw();
@@ -809,7 +803,7 @@ impl Part {
             Event::Command(cmd, code) => match self.cmd_action(common, cx, cmd, code) {
                 Ok(action) => {
                     if matches!(action, EventAction::Cursor) {
-                        self.set_view_offset_from_cursor(cx);
+                        self.set_view_offset_from_cursor(common, cx);
                     }
                     return action;
                 }
@@ -819,12 +813,12 @@ impl Part {
                 if event.state == ElementState::Pressed && !common.read_only =>
             {
                 return if let Some(text) = &event.text {
-                    self.save_undo_state(Some(EditOp::KeyInput));
-                    self.cancel_selection_and_ime(cx);
+                    self.save_undo_state(common, Some(EditOp::KeyInput));
+                    self.cancel_selection_and_ime(common, cx);
 
-                    let selection = self.selection.to_range();
+                    let selection = common.selection.to_range();
                     self.replace_range(selection.clone(), text);
-                    self.selection.set_position(selection.start + text.len());
+                    common.selection.set_position(selection.start + text.len());
                     common.edit_x_coord = None;
 
                     EventAction::Edit
@@ -837,7 +831,7 @@ impl Part {
                         match self.cmd_action(common, cx, cmd, Some(event.physical_key)) {
                             Ok(action) => {
                                 if matches!(action, EventAction::Cursor) {
-                                    self.set_view_offset_from_cursor(cx);
+                                    self.set_view_offset_from_cursor(common, cx);
                                 }
                                 action
                             }
@@ -853,7 +847,7 @@ impl Part {
                     match self.current {
                         CurrentAction::None => {
                             self.current = CurrentAction::ImeStart;
-                            self.set_ime_cursor_area(cx);
+                            self.set_ime_cursor_area(common, cx);
                         }
                         CurrentAction::ImeStart | CurrentAction::ImePreedit { .. } => {
                             // already enabled
@@ -870,7 +864,7 @@ impl Part {
                     };
                 }
                 Ime::Disabled => {
-                    self.clear_ime();
+                    self.clear_ime(common);
                     return if !self.has_key_focus {
                         EventAction::FocusLost
                     } else {
@@ -878,9 +872,9 @@ impl Part {
                     };
                 }
                 Ime::Preedit { text, cursor } => {
-                    self.save_undo_state(None);
+                    self.save_undo_state(common, None);
                     let mut edit_range = match self.current.clone() {
-                        CurrentAction::ImeStart if cursor.is_some() => self.selection.to_range(),
+                        CurrentAction::ImeStart if cursor.is_some() => common.selection.to_range(),
                         CurrentAction::ImeStart => return EventAction::Used,
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                         _ => return EventAction::Used,
@@ -889,10 +883,10 @@ impl Part {
                     self.replace_range(edit_range.clone(), text);
                     edit_range.end = edit_range.start + text.len();
                     if let Some((start, end)) = cursor {
-                        self.selection.anchor = edit_range.start + start;
-                        self.selection.cursor = edit_range.start + end;
+                        common.selection.anchor = edit_range.start + start;
+                        common.selection.cursor = edit_range.start + end;
                     } else {
-                        self.selection.set_position(edit_range.start + text.len());
+                        common.selection.set_position(edit_range.start + text.len());
                     }
 
                     self.current = CurrentAction::ImePreedit {
@@ -902,18 +896,18 @@ impl Part {
                     return EventAction::Preedit;
                 }
                 Ime::Commit { text } => {
-                    self.save_undo_state(Some(EditOp::Ime));
+                    self.save_undo_state(common, Some(EditOp::Ime));
                     let edit_range = match self.current.clone() {
-                        CurrentAction::ImeStart => self.selection.to_range(),
+                        CurrentAction::ImeStart => common.selection.to_range(),
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                         _ => return EventAction::Used,
                     };
 
                     self.replace_range(edit_range.clone(), text);
-                    self.selection.set_position(edit_range.start + text.len());
+                    common.selection.set_position(edit_range.start + text.len());
 
                     self.current = CurrentAction::ImePreedit {
-                        edit_range: self.selection.to_range().cast(),
+                        edit_range: common.selection.to_range().cast(),
                     };
                     common.edit_x_coord = None;
                     return EventAction::Edit;
@@ -922,9 +916,9 @@ impl Part {
                     before_bytes,
                     after_bytes,
                 } => {
-                    self.save_undo_state(None);
+                    self.save_undo_state(common, None);
                     let edit_range = match self.current.clone() {
-                        CurrentAction::ImeStart => self.selection.to_range(),
+                        CurrentAction::ImeStart => common.selection.to_range(),
                         CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
                         _ => return EventAction::Used,
                     };
@@ -934,7 +928,7 @@ impl Part {
                         let start = end - before_bytes;
                         if self.as_str().is_char_boundary(start) {
                             self.replace_range(start..end, "");
-                            self.selection.delete_range(start..end);
+                            common.selection.delete_range(start..end);
                         } else {
                             log::warn!("buggy IME tried to delete range not at char boundary");
                         }
@@ -950,7 +944,7 @@ impl Part {
                         }
                     }
 
-                    if let Some(text) = self.ime_surrounding_text() {
+                    if let Some(text) = self.ime_surrounding_text(common) {
                         cx.update_ime_surrounding_text(&self.id, text);
                     }
 
@@ -966,11 +960,11 @@ impl Part {
             Event::PressEnd { press, .. } if press.is_tertiary() => {
                 let rel_pos = (press.coord - self.rect().pos).cast();
                 let mut index = self.display.text_index_nearest(rel_pos);
-                self.cancel_selection_and_ime(cx);
+                self.cancel_selection_and_ime(common, cx);
                 self.request_key_focus(cx, FocusSource::Pointer);
 
                 if let Some(content) = cx.get_primary() {
-                    self.save_undo_state(Some(EditOp::Clipboard));
+                    self.save_undo_state(common, Some(EditOp::Clipboard));
 
                     let range = self.trim_paste(common.wrap, &content);
                     self.replace_range(index..index, &content[range.clone()]);
@@ -988,16 +982,16 @@ impl Part {
                     repeats,
                 } => {
                     if self.current.is_ime_enabled() {
-                        self.clear_ime();
+                        self.clear_ime(common);
                         cx.cancel_ime_focus(&self.id);
                     }
                     self.request_key_focus(cx, FocusSource::Pointer);
-                    self.save_undo_state(Some(EditOp::Cursor));
+                    self.save_undo_state(common, Some(EditOp::Cursor));
                     self.current = CurrentAction::Selection;
 
                     let rel_pos = (coord - self.rect().pos).cast();
                     let cursor = self.display.text_index_nearest(rel_pos);
-                    let anchor = if clear { cursor } else { self.selection.anchor };
+                    let anchor = if clear { cursor } else { common.selection.anchor };
 
                     let range = CursorRange::from(anchor..cursor);
                     if repeats > 1 {
@@ -1021,7 +1015,7 @@ impl Part {
 
                     TextInput::adjust_range(
                         self.text.as_str(),
-                        self.selection,
+                        common.selection,
                         index,
                         repeats,
                         Some(&|index| self.display.find_line(index).map(|r| r.1)),
@@ -1029,17 +1023,17 @@ impl Part {
                 }
                 TextInputAction::PressEnd { coord } => {
                     if self.current.is_ime_enabled() {
-                        self.clear_ime();
+                        self.clear_ime(common);
                         cx.cancel_ime_focus(&self.id);
                     }
-                    self.save_undo_state(Some(EditOp::Cursor));
+                    self.save_undo_state(common, Some(EditOp::Cursor));
                     if self.current == CurrentAction::Selection {
-                        self.set_primary(cx);
+                        self.set_primary(common, cx);
                     } else {
                         let rel_pos = (coord - self.rect().pos).cast();
                         let index = self.display.text_index_nearest(rel_pos);
-                        self.selection.cursor = index;
-                        self.selection.clear_selection();
+                        common.selection.cursor = index;
+                        common.selection.clear_selection();
                     }
                     self.current = CurrentAction::None;
 
@@ -1049,9 +1043,9 @@ impl Part {
             },
         };
 
-        if range != self.selection {
-            self.selection = range;
-            self.set_view_offset_from_cursor(cx);
+        if range != common.selection {
+            common.selection = range;
+            self.set_view_offset_from_cursor(common, cx);
             common.edit_x_coord = None;
             cx.redraw();
         }
@@ -1077,12 +1071,12 @@ impl Part {
     ///
     /// This should be called if e.g. key-input interrupts the current
     /// action.
-    fn cancel_selection_and_ime(&mut self, cx: &mut EventState) {
+    fn cancel_selection_and_ime(&mut self, common: &mut Common, cx: &mut EventState) {
         if self.current == CurrentAction::Selection {
             self.input_handler.stop_selecting();
             self.current = CurrentAction::None;
         } else if self.current.is_ime_enabled() {
-            self.clear_ime();
+            self.clear_ime(common);
             cx.cancel_ime_focus(&self.id);
         }
     }
@@ -1091,20 +1085,20 @@ impl Part {
     ///
     /// One should also call [`EventCx::cancel_ime_focus`] unless this is
     /// implied.
-    fn clear_ime(&mut self) {
+    fn clear_ime(&mut self, common: &mut Common) {
         if self.current.is_ime_enabled() {
             let action = std::mem::replace(&mut self.current, CurrentAction::None);
             if let CurrentAction::ImePreedit { edit_range } = action {
-                self.selection.set_position(edit_range.start.cast());
+                common.selection.set_position(edit_range.start.cast());
                 self.replace_range(edit_range.cast(), "");
             }
         }
     }
 
-    fn ime_surrounding_text(&self) -> Option<ImeSurroundingText> {
+    fn ime_surrounding_text(&self, common: &Common) -> Option<ImeSurroundingText> {
         const MAX_TEXT_BYTES: usize = ImeSurroundingText::MAX_TEXT_BYTES;
 
-        let sel_range = self.selection.to_range();
+        let sel_range = common.selection.to_range();
         let edit_range = match self.current.clone() {
             CurrentAction::ImePreedit { edit_range } => Some(edit_range.cast()),
             _ => None,
@@ -1145,9 +1139,9 @@ impl Part {
             text = self.as_str()[range].to_string();
         }
 
-        let cursor = self.selection.cursor.saturating_sub(start);
+        let cursor = common.selection.cursor.saturating_sub(start);
         // Terminology difference: our sel_index is called 'anchor'
-        let sel_index = self.selection.anchor.saturating_sub(start);
+        let sel_index = common.selection.anchor.saturating_sub(start);
         ImeSurroundingText::new(text, cursor, sel_index)
             .inspect_err(|err| {
                 // TODO: use Display for err not Debug
@@ -1157,13 +1151,13 @@ impl Part {
     }
 
     /// Call to set IME position only while IME is active
-    fn set_ime_cursor_area(&self, cx: &mut EventState) {
+    fn set_ime_cursor_area(&self, common: &Common, cx: &mut EventState) {
         if !self.is_prepared() {
             return;
         }
 
         let range = match self.current.clone() {
-            CurrentAction::ImeStart => self.selection.to_range(),
+            CurrentAction::ImeStart => common.selection.to_range(),
             CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
             _ => return,
         };
@@ -1200,7 +1194,7 @@ impl Part {
     /// Call before an edit to (potentially) commit current state based on last_edit
     ///
     /// Call with [`None`] to force commit of any uncommitted changes.
-    fn save_undo_state(&mut self, edit: Option<EditOp>) {
+    fn save_undo_state(&mut self, common: &mut Common, edit: Option<EditOp>) {
         if let Some(op) = edit
             && op.try_merge(&mut self.last_edit)
         {
@@ -1209,7 +1203,7 @@ impl Part {
 
         self.last_edit = edit;
         self.undo_stack
-            .try_push((self.as_str().to_string(), self.selection));
+            .try_push((self.as_str().to_string(), common.selection));
     }
 
     /// Request key focus, if we don't have it or IME
@@ -1248,10 +1242,10 @@ impl Part {
         let editable = !common.read_only;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
-        let cursor = self.selection.cursor;
+        let cursor = common.selection.cursor;
         let len = self.as_str().len();
         let multi_line = common.wrap;
-        let selection = self.selection.to_range();
+        let selection = common.selection.to_range();
         let have_sel = selection.end > selection.start;
         let string;
 
@@ -1436,7 +1430,7 @@ impl Part {
                 Action::Delete(prev..cursor, EditOp::Delete)
             }
             Command::SelectAll => {
-                self.selection.anchor = 0;
+                common.selection.anchor = 0;
                 shift = true; // hack
                 Action::Move(len, None)
             }
@@ -1468,7 +1462,7 @@ impl Part {
         }
 
         if !matches!(action, Action::None) {
-            self.cancel_selection_and_ime(cx);
+            self.cancel_selection_and_ime(common, cx);
         }
 
         let edit_op = match action {
@@ -1477,12 +1471,12 @@ impl Part {
             Action::Activate | Action::UndoRedo(_) => None,
             Action::Insert(_, edit) | Action::Delete(_, edit) => Some(edit),
         };
-        self.save_undo_state(edit_op);
+        self.save_undo_state(common, edit_op);
 
         let action = match action {
             Action::None => unreachable!(),
             Action::Deselect => {
-                self.selection.clear_selection();
+                common.selection.clear_selection();
                 cx.redraw();
                 EventAction::Cursor
             }
@@ -1496,22 +1490,22 @@ impl Part {
                     index..index
                 };
                 self.replace_range(range, s);
-                self.selection.set_position(index + s.len());
+                common.selection.set_position(index + s.len());
                 common.edit_x_coord = None;
                 EventAction::Edit
             }
             Action::Delete(sel, _) => {
                 self.replace_range(sel.clone(), "");
-                self.selection.set_position(sel.start);
+                common.selection.set_position(sel.start);
                 common.edit_x_coord = None;
                 EventAction::Edit
             }
             Action::Move(index, x_coord) => {
-                self.selection.cursor = index;
+                common.selection.cursor = index;
                 if !shift {
-                    self.selection.clear_selection();
+                    common.selection.clear_selection();
                 } else {
-                    self.set_primary(cx);
+                    self.set_primary(common, cx);
                 }
                 common.edit_x_coord = x_coord;
                 cx.redraw();
@@ -1524,7 +1518,7 @@ impl Part {
                         self.status = Status::New;
                         common.edit_x_coord = None;
                     }
-                    self.selection = *cursor;
+                    common.selection = *cursor;
                     EventAction::Edit
                 } else {
                     EventAction::Used
@@ -1536,9 +1530,9 @@ impl Part {
     }
 
     /// Set primary clipboard (mouse buffer) contents from selection
-    fn set_primary(&self, cx: &mut EventCx) {
-        if self.has_key_focus && !self.selection.is_empty() && cx.has_primary() {
-            let range = self.selection.to_range();
+    fn set_primary(&self, common: &Common, cx: &mut EventCx) {
+        if self.has_key_focus && !common.selection.is_empty() && cx.has_primary() {
+            let range = common.selection.to_range();
             cx.set_primary(String::from(&self.as_str()[range]));
         }
     }
@@ -1548,8 +1542,8 @@ impl Part {
     /// It is assumed that the text has not changed.
     ///
     /// A redraw is assumed since the cursor moved.
-    fn set_view_offset_from_cursor(&mut self, cx: &mut EventCx) {
-        let cursor = self.selection.cursor;
+    fn set_view_offset_from_cursor(&mut self, common: &Common, cx: &mut EventCx) {
+        let cursor = common.selection.cursor;
         if self.is_prepared()
             && let Some(marker) = self.display.text_glyph_pos(cursor).next_back()
         {
@@ -1602,7 +1596,8 @@ impl Editor {
     /// [`Self::set_string`] to commit changes to the undo history.
     #[inline]
     pub fn pre_commit(&mut self) {
-        self.part.save_undo_state(Some(EditOp::Synthetic));
+        self.part
+            .save_undo_state(&mut self.common, Some(EditOp::Synthetic));
     }
 
     /// Clear text contents and undo history
@@ -1638,13 +1633,13 @@ impl Editor {
             return; // no change
         }
 
-        self.part.cancel_selection_and_ime(cx);
+        self.part.cancel_selection_and_ime(&mut self.common, cx);
 
         self.part.text = text;
         self.part.require_reprepare();
 
         let len = self.as_str().len();
-        self.part.selection.set_max_len(len);
+        self.common.selection.set_max_len(len);
         self.common.edit_x_coord = None;
         self.error_state = None;
     }
@@ -1655,11 +1650,11 @@ impl Editor {
     /// guard.
     #[inline]
     pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
-        self.part.cancel_selection_and_ime(cx);
+        self.part.cancel_selection_and_ime(&mut self.common, cx);
 
-        let selection = self.part.selection.to_range();
+        let selection = self.common.selection.to_range();
         self.part.replace_range(selection.clone(), text);
-        self.part
+        self.common
             .selection
             .set_position(selection.start + text.len());
         self.error_state = None;
@@ -1668,7 +1663,7 @@ impl Editor {
     /// Access the cursor index / selection range
     #[inline]
     pub fn cursor_range(&self) -> CursorRange {
-        self.part.selection
+        self.common.selection
     }
 
     /// Set the cursor index / range
@@ -1678,7 +1673,7 @@ impl Editor {
     #[inline]
     pub fn set_cursor_range(&mut self, range: CursorRange) {
         self.common.edit_x_coord = None;
-        self.part.selection = range;
+        self.common.selection = range;
     }
 
     /// Get whether this text-edit widget is read-only
