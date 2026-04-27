@@ -7,22 +7,21 @@
 
 use std::ops::Range;
 
-/// Cursor index / selection range
-///
-/// This is essentially a pair of indices: the selection index and the edit
-/// index.
+/// Cursor index and selection range
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CursorRange {
-    sel: usize,
-    edit: usize,
+    /// The start or end of the selection.
+    pub anchor: usize,
+    /// The cursor (edit) index.
+    pub cursor: usize,
 }
 
 impl From<usize> for CursorRange {
     #[inline]
     fn from(index: usize) -> Self {
         CursorRange {
-            sel: index,
-            edit: index,
+            anchor: index,
+            cursor: index,
         }
     }
 }
@@ -31,54 +30,37 @@ impl From<Range<usize>> for CursorRange {
     #[inline]
     fn from(range: Range<usize>) -> Self {
         CursorRange {
-            sel: range.start,
-            edit: range.end,
+            anchor: range.start,
+            cursor: range.end,
         }
     }
 }
 
 impl CursorRange {
-    /// Construct from `(selection, edit)` positions
-    ///
-    /// Constructs as a range, with the cursor at the `edit` position.
-    ///
-    /// See also:
-    ///
-    /// - `Default`: an empty cursor at index 0
-    /// - `From<usize>`: construct from an index (empty selection)
-    /// - `From<Range<usize>>`: construct from a range (potentially non-empty
-    ///   selection; edit position is set to the range's end)
-    #[inline]
-    pub fn new(sel: usize, edit: usize) -> Self {
-        CursorRange { sel, edit }
-    }
-
     /// True if the selection index equals the cursor index
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.edit == self.sel
+        self.cursor == self.anchor
     }
 
-    /// Get the selection index
-    pub fn sel_index(&self) -> usize {
-        self.sel
-    }
-
-    /// Get the edit index (also known as the cursor)
-    pub fn edit_index(&self) -> usize {
-        self.edit
-    }
-
-    /// Get the selection range
+    /// Convert to a [`Range`], increasing
     ///
-    /// This range is from the edit index to the selection index or reversed,
-    /// whichever is increasing.
-    pub fn range(&self) -> Range<usize> {
-        let mut range = self.edit..self.sel;
-        if range.start > range.end {
-            std::mem::swap(&mut range.start, &mut range.end);
+    /// The return value has `range.start <= range.end`.
+    pub fn to_range(&self) -> Range<usize> {
+        let mut range = *self;
+        if range.anchor > range.cursor {
+            range.reverse();
         }
-        range
+        range.anchor..range.cursor
+    }
+
+    /// Reverse the selection
+    ///
+    /// Swaps the selection and edit indices. The result of [`Self::to_range`] is
+    /// not affected by this method.
+    #[inline]
+    pub fn reverse(&mut self) {
+        std::mem::swap(&mut self.anchor, &mut self.cursor);
     }
 
     /// Clear selection
@@ -86,32 +68,16 @@ impl CursorRange {
     /// Sets the selection index to the edit index.
     #[inline]
     pub fn clear_selection(&mut self) {
-        self.sel = self.edit;
+        self.anchor = self.cursor;
     }
 
     /// Set the cursor position and clear the selection
     ///
     /// Both indices are set to `index`.
     #[inline]
-    pub fn set_cursor(&mut self, index: usize) {
-        self.sel = index;
-        self.edit = index;
-    }
-
-    /// Set the cursor index
-    ///
-    /// Does not adjust the selection index.
-    #[inline]
-    pub fn set_edit_index(&mut self, index: usize) {
-        self.edit = index;
-    }
-
-    /// Set the selection index
-    ///
-    /// Does not adjust the cursor (edit index).
-    #[inline]
-    pub fn set_sel_index(&mut self, index: usize) {
-        self.sel = index;
+    pub fn set_position(&mut self, index: usize) {
+        self.anchor = index;
+        self.cursor = index;
     }
 
     /// Apply new limit to the maximum length
@@ -120,8 +86,8 @@ impl CursorRange {
     /// that the selection does not exceed the length of the new string.
     #[inline]
     pub fn set_max_len(&mut self, len: usize) {
-        self.edit = self.edit.min(len);
-        self.sel = self.sel.min(len);
+        self.cursor = self.cursor.min(len);
+        self.anchor = self.anchor.min(len);
     }
 
     /// Adjust all indices for a deletion from the source text
@@ -136,7 +102,7 @@ impl CursorRange {
                 index
             }
         };
-        self.edit = adjust(self.edit);
-        self.sel = adjust(self.sel);
+        self.cursor = adjust(self.cursor);
+        self.anchor = adjust(self.anchor);
     }
 }

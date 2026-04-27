@@ -601,30 +601,30 @@ impl TextInput {
     /// otherwise it is expanded in word mode.
     pub fn expand_range(
         text: &str,
-        range: CursorRange,
+        mut range: CursorRange,
         line_range: Option<&dyn Fn(usize) -> Option<std::ops::Range<usize>>>,
     ) -> CursorRange {
-        let mut anchor = range.sel_index();
-        let mut cursor = range.edit_index();
-        let index = cursor;
-        if cursor < anchor {
-            std::mem::swap(&mut anchor, &mut cursor);
+        let index = range.cursor;
+        if range.cursor < range.anchor {
+            range.reverse();
         }
 
         if let Some(line_range) = line_range {
-            anchor = line_range(anchor).map(|r| r.start).unwrap_or(0);
-            cursor = line_range(cursor).map(|r| r.end).unwrap_or(text.len());
+            range.anchor = line_range(range.anchor).map(|r| r.start).unwrap_or(0);
+            range.cursor = line_range(range.cursor)
+                .map(|r| r.end)
+                .unwrap_or(text.len());
         } else {
             'outer: {
                 let mut iter = text.unicode_word_indices();
                 for (start, word) in iter.by_ref() {
-                    if start <= anchor
+                    if start <= range.anchor
                         && let end = start + word.len()
-                        && anchor <= end
+                        && range.anchor <= end
                     {
-                        anchor = start;
-                        if cursor <= end {
-                            cursor = end;
+                        range.anchor = start;
+                        if range.cursor <= end {
+                            range.cursor = end;
                             break 'outer;
                         }
                         break;
@@ -632,49 +632,42 @@ impl TextInput {
                 }
 
                 for (start, word) in iter {
-                    if start <= cursor
+                    if start <= range.cursor
                         && let end = start + word.len()
-                        && cursor <= end
+                        && range.cursor <= end
                     {
-                        cursor = end;
+                        range.cursor = end;
                         break 'outer;
                     }
                 }
             }
         }
 
-        if (index * 2 < anchor + cursor) == (anchor < cursor) {
-            std::mem::swap(&mut anchor, &mut cursor);
+        if (index * 2 < range.anchor + range.cursor) == (range.anchor < range.cursor) {
+            range.reverse();
         }
-        CursorRange::from(anchor..cursor)
+        range
     }
 
     /// Utility function to adjust an already-expanded range in word or line mode
     pub fn adjust_range(
         text: &str,
-        range: CursorRange,
+        mut range: CursorRange,
         index: usize,
         repeats: u32,
         line_range: Option<&dyn Fn(usize) -> Option<std::ops::Range<usize>>>,
     ) -> CursorRange {
-        let mut anchor = range.sel_index();
-        let mut cursor = range.edit_index();
-
-        if anchor < cursor && index <= anchor || anchor > cursor && index >= anchor {
-            cursor = anchor;
+        if range.anchor < range.cursor && index <= range.anchor
+            || range.anchor > range.cursor && index >= range.anchor
+        {
+            range.cursor = range.anchor;
             if repeats > 1 {
-                let range = TextInput::expand_range(
-                    text,
-                    CursorRange::from(anchor..cursor),
-                    line_range.filter(|_| repeats >= 3),
-                );
-                anchor = range.sel_index();
-                cursor = range.edit_index();
+                range = TextInput::expand_range(text, range, line_range.filter(|_| repeats >= 3));
             }
         }
 
-        if anchor <= cursor && anchor < index {
-            cursor = if repeats <= 1 {
+        if range.anchor <= range.cursor && range.anchor < index {
+            range.cursor = if repeats <= 1 {
                 index
             } else if repeats >= 3
                 && let Some(line_range) = line_range
@@ -695,8 +688,8 @@ impl TextInput {
                     })
                     .unwrap_or(text.len())
             }
-        } else if cursor <= anchor && index < anchor {
-            cursor = if repeats <= 1 {
+        } else if range.cursor <= range.anchor && index < range.anchor {
+            range.cursor = if repeats <= 1 {
                 index
             } else if repeats >= 3
                 && let Some(line_range) = line_range
@@ -716,7 +709,7 @@ impl TextInput {
             }
         }
 
-        CursorRange::from(anchor..cursor)
+        range
     }
 }
 

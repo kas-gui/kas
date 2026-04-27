@@ -71,7 +71,7 @@ mod ScrollTextCore {
             };
 
             let pos = self.rect().pos - offset;
-            let range: std::ops::Range<u32> = self.selection.range().cast();
+            let range: std::ops::Range<u32> = self.selection.to_range().cast();
 
             let mut tokens = [(0, format::Colors::default()); 3];
             let tokens = if range.is_empty() {
@@ -94,8 +94,8 @@ mod ScrollTextCore {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::TextLabel {
                 text: self.text.as_str(),
-                cursor: self.selection.edit_index(),
-                sel_index: self.selection.sel_index(),
+                cursor: self.selection.cursor,
+                anchor: self.selection.anchor,
             }
         }
     }
@@ -200,7 +200,7 @@ mod ScrollTextCore {
 
         fn set_primary(&self, cx: &mut EventCx) {
             if self.has_sel_focus && !self.selection.is_empty() && cx.has_primary() {
-                let range = self.selection.range();
+                let range = self.selection.to_range();
                 cx.set_primary(String::from(&self.text.as_str()[range]));
             }
         }
@@ -253,14 +253,14 @@ mod ScrollTextCore {
                         return Used;
                     }
                     Command::SelectAll => {
-                        self.selection.set_sel_index(0);
-                        self.selection.set_edit_index(self.text.str_len());
+                        self.selection.anchor = 0;
+                        self.selection.cursor = self.text.str_len();
                         self.set_primary(cx);
                         cx.redraw();
                         return Used;
                     }
                     Command::Cut | Command::Copy => {
-                        let range = self.selection.range();
+                        let range = self.selection.to_range();
                         cx.set_clipboard((self.text.as_str()[range]).to_string());
                         return Used;
                     }
@@ -293,7 +293,7 @@ mod ScrollTextCore {
 
                         let rel_pos = (coord - self.rect().pos).cast();
                         let cursor = self.text.unchecked_display().text_index_nearest(rel_pos);
-                        let anchor = if clear { cursor } else { self.selection.sel_index() };
+                        let anchor = if clear { cursor } else { self.selection.anchor };
 
                         let range = CursorRange::from(anchor..cursor);
                         if repeats > 1 {
@@ -329,7 +329,7 @@ mod ScrollTextCore {
 
             if range != self.selection {
                 self.selection = range;
-                self.set_view_offset_from_cursor(cx, range.edit_index());
+                self.set_view_offset_from_cursor(cx, range.cursor);
                 cx.redraw();
             }
             Used
