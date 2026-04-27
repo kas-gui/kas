@@ -158,26 +158,11 @@ impl SelectionHelper {
         self.anchor = self.anchor.min(len);
     }
 
-    /// Set the anchor to the edit position
-    ///
-    /// This is used to start a drag-selection. If `clear`, then the selection
-    /// position is also set to the edit position.
-    ///
-    /// [`Self::expand`] may be used to expand the selection from this anchor.
-    #[inline]
-    pub fn set_anchor(&mut self, clear: bool) {
-        self.anchor = self.edit;
-        if clear {
-            self.sel = self.edit;
-        }
-    }
-
     /// Expand the selection from the range between edit and anchor positions
     ///
-    /// This moves the cursor range. To obtain repeatable
-    /// behaviour on drag-selection, set the anchor ([`Self::set_anchor`])
-    /// initially, then set the edit position and call this method each time
-    /// the cursor moves.
+    /// This moves both the selection and edit indices, using the anchor as a
+    /// fixed point (note that this method is the only means by which the
+    /// selection and anchor positions may diverge).
     ///
     /// The selection is expanded by words or lines (if `lines`). Line expansion
     /// requires that text has been prepared (see [`Text::prepare`][super::Text::prepare]).

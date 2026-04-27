@@ -1013,7 +1013,9 @@ impl Part {
                     self.current = CurrentAction::Selection;
 
                     self.set_cursor_from_coord(cx, coord);
-                    self.selection.set_anchor(clear);
+                    if clear {
+                        self.selection.clear_selection();
+                    }
                     if repeats > 1 {
                         self.selection.expand(
                             self.text.as_str(),
