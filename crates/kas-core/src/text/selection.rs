@@ -61,18 +61,12 @@ impl CursorRange {
         self.edit == self.sel
     }
 
-    /// Clear selection without changing the edit index
-    #[inline]
-    pub fn set_empty(&mut self) {
-        self.sel = self.edit;
-    }
-
     /// Get the selection index
     pub fn sel_index(&self) -> usize {
         self.sel
     }
 
-    /// Get the edit cursor index
+    /// Get the edit index (also known as the cursor)
     pub fn edit_index(&self) -> usize {
         self.edit
     }
@@ -117,7 +111,18 @@ impl<T: Into<CursorRange>> From<T> for SelectionHelper {
 }
 
 impl SelectionHelper {
-    /// Set the cursor position, clearing the selection
+    /// Clear selection
+    ///
+    /// Sets the selection and anchor indices to the edit index.
+    #[inline]
+    pub fn clear_selection(&mut self) {
+        self.sel = self.edit;
+        self.anchor = self.edit;
+    }
+
+    /// Set the cursor position and clear the selection
+    ///
+    /// All three indices are set to `index`.
     #[inline]
     pub fn set_cursor(&mut self, index: usize) {
         self.cursor.sel = index;
@@ -125,15 +130,17 @@ impl SelectionHelper {
         self.anchor = index;
     }
 
-    /// Set the cursor index without adjusting the selection index
+    /// Set the cursor index
+    ///
+    /// Does not adjust the selection index or anchor.
     #[inline]
     pub fn set_edit_index(&mut self, index: usize) {
         self.edit = index;
     }
 
-    /// Set the selection index without adjusting the edit index
+    /// Set the selection index and anchor
     ///
-    /// The anchor index is also set to the selection index.
+    /// Does not adjust the cursor (edit index).
     #[inline]
     pub fn set_sel_index(&mut self, index: usize) {
         self.sel = index;

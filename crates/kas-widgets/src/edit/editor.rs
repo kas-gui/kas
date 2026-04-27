@@ -817,7 +817,7 @@ impl Part {
                 // NOTE: we can assume that we will receive Ime::Disabled if IME is active
                 if !self.selection.is_empty() {
                     self.save_undo_state(None);
-                    self.selection.set_empty();
+                    self.selection.clear_selection();
                 }
                 self.input_handler.stop_selecting();
                 cx.redraw();
@@ -1049,7 +1049,7 @@ impl Part {
                         self.set_primary(cx);
                     } else {
                         self.set_cursor_from_coord(cx, coord);
-                        self.selection.set_empty();
+                        self.selection.clear_selection();
                     }
                     self.current = CurrentAction::None;
 
@@ -1484,7 +1484,7 @@ impl Part {
         let action = match action {
             Action::None => unreachable!(),
             Action::Deselect => {
-                self.selection.set_empty();
+                self.selection.clear_selection();
                 cx.redraw();
                 EventAction::Cursor
             }
@@ -1511,7 +1511,7 @@ impl Part {
             Action::Move(index, x_coord) => {
                 self.selection.set_edit_index(index);
                 if !shift {
-                    self.selection.set_empty();
+                    self.selection.clear_selection();
                 } else {
                     self.set_primary(cx);
                 }

@@ -258,7 +258,7 @@ mod ScrollTextCore {
             match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
-                        self.selection.set_empty();
+                        self.selection.clear_selection();
                         cx.redraw();
                         Used
                     }
@@ -285,7 +285,7 @@ mod ScrollTextCore {
                 }
                 Event::LostSelFocus => {
                     self.has_sel_focus = false;
-                    self.selection.set_empty();
+                    self.selection.clear_selection();
                     cx.redraw();
                     Used
                 }
