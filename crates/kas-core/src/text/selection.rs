@@ -203,7 +203,7 @@ impl SelectionHelper {
             end = line_range(range.end).map(|r| r.end).unwrap_or(text.len());
         }
 
-        if self.edit < self.sel {
+        if self.edit * 2 < start + end {
             std::mem::swap(&mut start, &mut end);
         }
         self.sel = start;
