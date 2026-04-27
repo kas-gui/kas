@@ -10,7 +10,7 @@ use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
 use kas::text::format::{self, FormattableText};
-use kas::text::{CursorRange, SelectionHelper, Text};
+use kas::text::{CursorRange, Text};
 use kas::theme::TextClass;
 
 #[impl_self]
@@ -35,7 +35,7 @@ mod ScrollTextCore {
         core: widget_core!(),
         text: Text<T>,
         text_fn: Option<Box<dyn Fn(&ConfigCx, &A) -> T + Send>>,
-        selection: SelectionHelper,
+        selection: CursorRange,
         has_sel_focus: bool,
         input_handler: TextInput,
     }
@@ -110,7 +110,7 @@ mod ScrollTextCore {
                 core: Default::default(),
                 text: Text::new(text, TextClass::Standard, true),
                 text_fn: None,
-                selection: SelectionHelper::default(),
+                selection: CursorRange::default(),
                 has_sel_focus: false,
                 input_handler: Default::default(),
             }
@@ -312,7 +312,7 @@ mod ScrollTextCore {
 
                         TextInput::adjust_range(
                             self.text.as_str(),
-                            *self.selection,
+                            self.selection,
                             index,
                             repeats,
                             Some(&line_range),
@@ -327,8 +327,8 @@ mod ScrollTextCore {
                 },
             };
 
-            if range != *self.selection {
-                self.selection = range.into();
+            if range != self.selection {
+                self.selection = range;
                 self.set_view_offset_from_cursor(cx, range.edit_index());
                 cx.redraw();
             }

@@ -25,7 +25,7 @@ use kas::geom::{Rect, Vec2};
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::text::fonts::FontSelector;
-use kas::text::{CursorRange, Direction, NotReady, SelectionHelper, Status, TextDisplay, format};
+use kas::text::{CursorRange, Direction, NotReady, Status, TextDisplay, format};
 use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
 use kas::{Layout, autoimpl};
@@ -141,7 +141,7 @@ pub struct Part {
     display: TextDisplay,
     highlight: highlight::Cache,
     text: String,
-    selection: SelectionHelper,
+    selection: CursorRange,
     edit_x_coord: Option<f32>,
     last_edit: Option<EditOp>,
     undo_stack: UndoStack<(String, CursorRange)>,
@@ -417,7 +417,7 @@ impl Part {
     /// Access the cursor index / selection range
     #[inline]
     pub fn cursor_range(&self) -> CursorRange {
-        *self.selection
+        self.selection
     }
 
     /// Check whether the text is fully prepared and ready for usage
@@ -1037,7 +1037,7 @@ impl Part {
 
                     TextInput::adjust_range(
                         self.text.as_str(),
-                        *self.selection,
+                        self.selection,
                         index,
                         repeats,
                         Some(&|index| self.display.find_line(index).map(|r| r.1)),
@@ -1065,8 +1065,8 @@ impl Part {
             },
         };
 
-        if range != *self.selection {
-            self.selection = range.into();
+        if range != self.selection {
+            self.selection = range;
             self.set_view_offset_from_cursor(cx);
             self.edit_x_coord = None;
             cx.redraw();
@@ -1163,7 +1163,6 @@ impl Part {
 
         let cursor = self.selection.edit_index().saturating_sub(start);
         // Terminology difference: our sel_index is called 'anchor'
-        // SelectionHelper::anchor is not the same thing.
         let sel_index = self.selection.sel_index().saturating_sub(start);
         ImeSurroundingText::new(text, cursor, sel_index)
             .inspect_err(|err| {
@@ -1226,7 +1225,7 @@ impl Part {
 
         self.last_edit = edit;
         self.undo_stack
-            .try_push((self.as_str().to_string(), *self.selection));
+            .try_push((self.as_str().to_string(), self.selection));
     }
 
     /// Request key focus, if we don't have it or IME
@@ -1540,7 +1539,7 @@ impl Part {
                         self.status = Status::New;
                         self.edit_x_coord = None;
                     }
-                    self.selection = (*cursor).into();
+                    self.selection = *cursor;
                     EventAction::Edit
                 } else {
                     EventAction::Used
@@ -1683,7 +1682,7 @@ impl Editor {
     /// Access the cursor index / selection range
     #[inline]
     pub fn cursor_range(&self) -> CursorRange {
-        *self.part.selection
+        self.part.selection
     }
 
     /// Set the cursor index / range
@@ -1693,7 +1692,7 @@ impl Editor {
     #[inline]
     pub fn set_cursor_range(&mut self, range: CursorRange) {
         self.part.edit_x_coord = None;
-        self.part.selection = range.into();
+        self.part.selection = range;
     }
 
     /// Get whether this text-edit widget is read-only

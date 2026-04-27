@@ -5,7 +5,6 @@
 
 //! Tools for text selection
 
-use kas_macros::autoimpl;
 use std::ops::Range;
 
 /// Cursor index / selection range
@@ -81,69 +80,38 @@ impl CursorRange {
         }
         range
     }
-}
 
-/// Text-selection logic
-///
-/// This struct holds a [`CursorRange`]. There is no requirement on the order of these two
-/// positions. Each may be adjusted independently.
-///
-/// Additionally, this struct holds the selection anchor index. This usually
-/// equals the selection index, but when using double-click or triple-click
-/// selection, the anchor represents the initially-clicked position while the
-/// selection index represents the expanded position.
-#[derive(Clone, Debug, Default)]
-#[autoimpl(Deref, DerefMut using self.cursor)]
-pub struct SelectionHelper {
-    cursor: CursorRange,
-    anchor: usize,
-}
-
-impl<T: Into<CursorRange>> From<T> for SelectionHelper {
-    fn from(x: T) -> Self {
-        let cursor = x.into();
-        SelectionHelper {
-            cursor,
-            anchor: cursor.sel,
-        }
-    }
-}
-
-impl SelectionHelper {
     /// Clear selection
     ///
-    /// Sets the selection and anchor indices to the edit index.
+    /// Sets the selection index to the edit index.
     #[inline]
     pub fn clear_selection(&mut self) {
         self.sel = self.edit;
-        self.anchor = self.edit;
     }
 
     /// Set the cursor position and clear the selection
     ///
-    /// All three indices are set to `index`.
+    /// Both indices are set to `index`.
     #[inline]
     pub fn set_cursor(&mut self, index: usize) {
-        self.cursor.sel = index;
-        self.cursor.edit = index;
-        self.anchor = index;
+        self.sel = index;
+        self.edit = index;
     }
 
     /// Set the cursor index
     ///
-    /// Does not adjust the selection index or anchor.
+    /// Does not adjust the selection index.
     #[inline]
     pub fn set_edit_index(&mut self, index: usize) {
         self.edit = index;
     }
 
-    /// Set the selection index and anchor
+    /// Set the selection index
     ///
     /// Does not adjust the cursor (edit index).
     #[inline]
     pub fn set_sel_index(&mut self, index: usize) {
         self.sel = index;
-        self.anchor = index;
     }
 
     /// Apply new limit to the maximum length
@@ -154,7 +122,6 @@ impl SelectionHelper {
     pub fn set_max_len(&mut self, len: usize) {
         self.edit = self.edit.min(len);
         self.sel = self.sel.min(len);
-        self.anchor = self.anchor.min(len);
     }
 
     /// Adjust all indices for a deletion from the source text
@@ -171,6 +138,5 @@ impl SelectionHelper {
         };
         self.edit = adjust(self.edit);
         self.sel = adjust(self.sel);
-        self.anchor = adjust(self.anchor);
     }
 }

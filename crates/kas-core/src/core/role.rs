@@ -125,9 +125,7 @@ pub enum Role<'a> {
         /// The cursor index within `contents`
         cursor: usize,
         /// The selection index. Equals `cursor` if the selection is empty.
-        /// May be less than or greater than `cursor`. (Aside: some toolkits
-        /// call this the selection anchor but Kas does not; see
-        /// [`kas::text::SelectionHelper`].)
+        /// May be less than or greater than `cursor`.
         sel_index: usize,
     },
     /// Editable text
