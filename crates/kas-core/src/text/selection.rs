@@ -139,13 +139,6 @@ impl SelectionHelper {
         self.sel = index;
         self.anchor = index;
     }
-    /// Set the selection index only
-    ///
-    /// Prefer [`Self::set_sel_index`] unless you know you don't want to set the anchor.
-    #[inline]
-    pub fn set_sel_index_only(&mut self, index: usize) {
-        self.sel = index;
-    }
 
     /// Apply new limit to the maximum length
     ///

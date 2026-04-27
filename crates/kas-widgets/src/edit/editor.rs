@@ -904,7 +904,7 @@ impl Part {
                     self.replace_range(edit_range.clone(), text);
                     edit_range.end = edit_range.start + text.len();
                     if let Some((start, end)) = cursor {
-                        self.selection.set_sel_index_only(edit_range.start + start);
+                        self.selection.set_sel_index(edit_range.start + start);
                         self.selection.set_edit_index(edit_range.start + end);
                     } else {
                         self.selection.set_cursor(edit_range.start + text.len());
