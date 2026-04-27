@@ -244,7 +244,9 @@ mod ScrollTextCore {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            let line_range = |index| self.text.find_line(index).ok().flatten().map(|r| r.1);
             let old_range = self.selection.range();
+
             match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
@@ -295,11 +297,8 @@ mod ScrollTextCore {
                         }
 
                         if repeats > 1 {
-                            self.selection.expand(
-                                self.text.as_str(),
-                                &|index| self.text.find_line(index).ok().flatten().map(|r| r.1),
-                                repeats >= 3,
-                            );
+                            self.selection
+                                .expand(self.text.as_str(), &line_range, repeats >= 3);
                         }
 
                         if !self.has_sel_focus {
@@ -312,11 +311,8 @@ mod ScrollTextCore {
                         self.selection.set_edit_index(index);
 
                         if repeats > 1 {
-                            self.selection.expand(
-                                self.text.as_str(),
-                                &|index| self.text.find_line(index).ok().flatten().map(|r| r.1),
-                                repeats >= 3,
-                            );
+                            self.selection
+                                .expand(self.text.as_str(), &line_range, repeats >= 3);
                         }
                     }
                     TextInputAction::PressEnd { .. } => {
