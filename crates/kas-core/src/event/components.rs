@@ -8,9 +8,11 @@
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
+use crate::text::CursorRange;
 use crate::{ActionMoved, Id};
 use kas_macros::{autoimpl, impl_default};
 use std::time::Instant;
+use unicode_segmentation::UnicodeSegmentation;
 
 const TIMER_SELECT: TimerHandle = TimerHandle::new(1 << 60, true);
 const TIMER_KINETIC: TimerHandle = TimerHandle::new((1 << 60) + 1, true);
@@ -591,6 +593,130 @@ impl TextInput {
         if self.is_selecting() {
             self.phase = TextPhase::None;
         }
+    }
+
+    /// Utility function to expand a selection to word or line mode
+    ///
+    /// If `line_range` is provided, the selection is expanded in line mode,
+    /// otherwise it is expanded in word mode.
+    pub fn expand_range(
+        text: &str,
+        range: CursorRange,
+        line_range: Option<&dyn Fn(usize) -> Option<std::ops::Range<usize>>>,
+    ) -> CursorRange {
+        let mut anchor = range.sel_index();
+        let mut cursor = range.edit_index();
+        let index = cursor;
+        if cursor < anchor {
+            std::mem::swap(&mut anchor, &mut cursor);
+        }
+
+        if let Some(line_range) = line_range {
+            anchor = line_range(anchor).map(|r| r.start).unwrap_or(0);
+            cursor = line_range(cursor).map(|r| r.end).unwrap_or(text.len());
+        } else {
+            'outer: {
+                let mut iter = text.unicode_word_indices();
+                for (start, word) in iter.by_ref() {
+                    if start <= anchor
+                        && let end = start + word.len()
+                        && anchor <= end
+                    {
+                        anchor = start;
+                        if cursor <= end {
+                            cursor = end;
+                            break 'outer;
+                        }
+                        break;
+                    }
+                }
+
+                for (start, word) in iter {
+                    if start <= cursor
+                        && let end = start + word.len()
+                        && cursor <= end
+                    {
+                        cursor = end;
+                        break 'outer;
+                    }
+                }
+            }
+        }
+
+        if (index * 2 < anchor + cursor) == (anchor < cursor) {
+            std::mem::swap(&mut anchor, &mut cursor);
+        }
+        CursorRange::from(anchor..cursor)
+    }
+
+    /// Utility function to adjust an already-expanded range in word or line mode
+    pub fn adjust_range(
+        text: &str,
+        range: CursorRange,
+        index: usize,
+        repeats: u32,
+        line_range: Option<&dyn Fn(usize) -> Option<std::ops::Range<usize>>>,
+    ) -> CursorRange {
+        let mut anchor = range.sel_index();
+        let mut cursor = range.edit_index();
+
+        if anchor < cursor && index <= anchor || anchor > cursor && index >= anchor {
+            cursor = anchor;
+            if repeats > 1 {
+                let range = TextInput::expand_range(
+                    text,
+                    CursorRange::from(anchor..cursor),
+                    line_range.filter(|_| repeats >= 3),
+                );
+                anchor = range.sel_index();
+                cursor = range.edit_index();
+            }
+        }
+
+        if anchor <= cursor && anchor < index {
+            cursor = if repeats <= 1 {
+                index
+            } else if repeats >= 3
+                && let Some(line_range) = line_range
+            {
+                line_range(index).map(|r| r.end).unwrap_or(text.len())
+            } else {
+                let start = text[..index]
+                    .split_word_bound_indices()
+                    .next_back()
+                    .map(|(i, _)| i)
+                    .unwrap_or(0);
+
+                text[start..]
+                    .split_word_bound_indices()
+                    .find_map(|(i, _)| {
+                        let pos = start + i;
+                        (pos >= index).then_some(pos)
+                    })
+                    .unwrap_or(text.len())
+            }
+        } else if cursor <= anchor && index < anchor {
+            cursor = if repeats <= 1 {
+                index
+            } else if repeats >= 3
+                && let Some(line_range) = line_range
+            {
+                line_range(index).map(|r| r.start).unwrap_or(0)
+            } else {
+                let end = text[index..]
+                    .char_indices()
+                    .nth(1)
+                    .map(|(i, _)| index + i)
+                    .unwrap_or(text.len());
+                text[..end]
+                    .split_word_bound_indices()
+                    .rev()
+                    .find_map(|(i, _)| (i <= index).then_some(i))
+                    .unwrap_or(0)
+            }
+        }
+
+        CursorRange::from(anchor..cursor)
     }
 }
 
