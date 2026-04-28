@@ -198,17 +198,6 @@ mod ScrollTextCore {
             self
         }
 
-        fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
-            let rel_pos = (coord - self.rect().pos).cast();
-            if let Ok(index) = self.text.text_index_nearest(rel_pos) {
-                if index != self.selection.edit_index() {
-                    self.selection.set_edit_index(index);
-                    self.set_view_offset_from_cursor(cx, index);
-                    cx.redraw();
-                }
-            }
-        }
-
         fn set_primary(&self, cx: &mut EventCx) {
             if self.has_sel_focus && !self.selection.is_empty() && cx.has_primary() {
                 let range = self.selection.range();
@@ -255,52 +244,56 @@ mod ScrollTextCore {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            let old_range = self.selection.range();
             match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                         self.selection.clear_selection();
                         cx.redraw();
-                        Used
+                        return Used;
                     }
                     Command::SelectAll => {
                         self.selection.set_sel_index(0);
                         self.selection.set_edit_index(self.text.str_len());
                         self.set_primary(cx);
                         cx.redraw();
-                        Used
+                        return Used;
                     }
                     Command::Cut | Command::Copy => {
                         let range = self.selection.range();
                         cx.set_clipboard((self.text.as_str()[range]).to_string());
-                        Used
+                        return Used;
                     }
-                    _ => Unused,
+                    _ => return Unused,
                 },
                 Event::SelFocus(source) => {
                     self.has_sel_focus = true;
                     if source == FocusSource::Pointer {
                         self.set_primary(cx);
                     }
-                    Used
+                    return Used;
                 }
                 Event::LostSelFocus => {
                     self.has_sel_focus = false;
                     self.selection.clear_selection();
                     cx.redraw();
-                    Used
+                    return Used;
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
-                    TextInputAction::Used => Used,
-                    TextInputAction::Unused => Unused,
+                    TextInputAction::Used => return Used,
+                    TextInputAction::Unused => return Unused,
                     TextInputAction::PressStart {
                         coord,
                         clear,
                         repeats,
                     } => {
-                        self.set_cursor_from_coord(cx, coord);
+                        let rel_pos = (coord - self.rect().pos).cast();
+                        let index = self.text.unchecked_display().text_index_nearest(rel_pos);
+                        self.selection.set_edit_index(index);
                         if clear {
                             self.selection.clear_selection();
                         }
+
                         if repeats > 1 {
                             self.selection.expand(
                                 self.text.as_str(),
@@ -312,10 +305,12 @@ mod ScrollTextCore {
                         if !self.has_sel_focus {
                             cx.request_sel_focus(self.id(), FocusSource::Pointer);
                         }
-                        Used
                     }
                     TextInputAction::PressMove { coord, repeats } => {
-                        self.set_cursor_from_coord(cx, coord);
+                        let rel_pos = (coord - self.rect().pos).cast();
+                        let index = self.text.unchecked_display().text_index_nearest(rel_pos);
+                        self.selection.set_edit_index(index);
+
                         if repeats > 1 {
                             self.selection.expand(
                                 self.text.as_str(),
@@ -323,16 +318,21 @@ mod ScrollTextCore {
                                 repeats >= 3,
                             );
                         }
-                        Used
                     }
                     TextInputAction::PressEnd { .. } => {
                         if self.has_sel_focus {
                             self.set_primary(cx);
                         }
-                        Used
+                        return Used;
                     }
                 },
+            };
+
+            if old_range != self.selection.range() {
+                self.set_view_offset_from_cursor(cx, self.selection.edit_index());
+                cx.redraw();
             }
+            Used
         }
     }
 }
