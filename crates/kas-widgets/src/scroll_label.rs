@@ -10,7 +10,7 @@ use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
 use kas::text::format::{self, FormattableText};
-use kas::text::{SelectionHelper, Text};
+use kas::text::{CursorRange, SelectionHelper, Text};
 use kas::theme::TextClass;
 
 #[impl_self]
@@ -245,9 +245,7 @@ mod ScrollTextCore {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             let line_range = |index| self.text.find_line(index).ok().flatten().map(|r| r.1);
-            let old_range = self.selection.range();
-
-            match event {
+            let range = match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                         self.selection.clear_selection();
@@ -289,31 +287,36 @@ mod ScrollTextCore {
                         clear,
                         repeats,
                     } => {
-                        let rel_pos = (coord - self.rect().pos).cast();
-                        let index = self.text.unchecked_display().text_index_nearest(rel_pos);
-                        self.selection.set_edit_index(index);
-                        if clear {
-                            self.selection.clear_selection();
-                        }
-
-                        if repeats > 1 {
-                            self.selection
-                                .expand(self.text.as_str(), &line_range, repeats >= 3);
-                        }
-
                         if !self.has_sel_focus {
                             cx.request_sel_focus(self.id(), FocusSource::Pointer);
+                        }
+
+                        let rel_pos = (coord - self.rect().pos).cast();
+                        let cursor = self.text.unchecked_display().text_index_nearest(rel_pos);
+                        let anchor = if clear { cursor } else { self.selection.sel_index() };
+
+                        let range = CursorRange::from(anchor..cursor);
+                        if repeats > 1 {
+                            TextInput::expand_range(
+                                self.text.as_str(),
+                                range,
+                                (repeats >= 3).then_some(&line_range),
+                            )
+                        } else {
+                            range
                         }
                     }
                     TextInputAction::PressMove { coord, repeats } => {
                         let rel_pos = (coord - self.rect().pos).cast();
                         let index = self.text.unchecked_display().text_index_nearest(rel_pos);
-                        self.selection.set_edit_index(index);
 
-                        if repeats > 1 {
-                            self.selection
-                                .expand(self.text.as_str(), &line_range, repeats >= 3);
-                        }
+                        TextInput::adjust_range(
+                            self.text.as_str(),
+                            *self.selection,
+                            index,
+                            repeats,
+                            Some(&line_range),
+                        )
                     }
                     TextInputAction::PressEnd { .. } => {
                         if self.has_sel_focus {
@@ -324,8 +327,9 @@ mod ScrollTextCore {
                 },
             };
 
-            if old_range != self.selection.range() {
-                self.set_view_offset_from_cursor(cx, self.selection.edit_index());
+            if range != *self.selection {
+                self.selection = range.into();
+                self.set_view_offset_from_cursor(cx, range.edit_index());
                 cx.redraw();
             }
             Used

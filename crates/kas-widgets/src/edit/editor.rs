@@ -772,8 +772,7 @@ impl Part {
         }
 
         let mut event_action = EventAction::Used;
-        let old_range = self.selection.range();
-        match event {
+        let range = match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
                 if !self.input_handler.is_selecting() {
                     self.request_key_focus(cx, source);
@@ -982,8 +981,7 @@ impl Part {
             }
             Event::PressEnd { press, .. } if press.is_tertiary() => {
                 let rel_pos = (press.coord - self.rect().pos).cast();
-                let index = self.display.text_index_nearest(rel_pos);
-                self.selection.set_edit_index(index);
+                let mut index = self.display.text_index_nearest(rel_pos);
                 self.cancel_selection_and_ime(cx);
                 self.request_key_focus(cx, FocusSource::Pointer);
 
@@ -992,9 +990,10 @@ impl Part {
 
                     let range = self.trim_paste(&content);
                     self.replace_range(index..index, &content[range.clone()]);
-                    self.selection.set_cursor(index + range.len());
+                    index += range.len();
                     event_action = EventAction::Edit;
                 }
+                index.into()
             }
             event => match self.input_handler.handle(cx, self.id.clone(), event) {
                 TextInputAction::Used => return EventAction::Used,
@@ -1008,25 +1007,25 @@ impl Part {
                         self.clear_ime();
                         cx.cancel_ime_focus(&self.id);
                     }
+                    self.request_key_focus(cx, FocusSource::Pointer);
                     self.save_undo_state(Some(EditOp::Cursor));
                     self.current = CurrentAction::Selection;
 
                     let rel_pos = (coord - self.rect().pos).cast();
-                    let index = self.display.text_index_nearest(rel_pos);
-                    self.selection.set_edit_index(index);
-                    if clear {
-                        self.selection.clear_selection();
-                    }
+                    let cursor = self.display.text_index_nearest(rel_pos);
+                    let anchor = if clear { cursor } else { self.selection.sel_index() };
 
+                    let range = CursorRange::from(anchor..cursor);
                     if repeats > 1 {
-                        self.selection.expand(
+                        TextInput::expand_range(
                             self.text.as_str(),
-                            &|index| self.display.find_line(index).map(|r| r.1),
-                            repeats >= 3,
-                        );
+                            range,
+                            (repeats >= 3)
+                                .then_some(&|index| self.display.find_line(index).map(|r| r.1)),
+                        )
+                    } else {
+                        range
                     }
-
-                    self.request_key_focus(cx, FocusSource::Pointer);
                 }
                 TextInputAction::PressMove { coord, repeats } => {
                     if self.current != CurrentAction::Selection {
@@ -1035,15 +1034,14 @@ impl Part {
 
                     let rel_pos = (coord - self.rect().pos).cast();
                     let index = self.display.text_index_nearest(rel_pos);
-                    self.selection.set_edit_index(index);
 
-                    if repeats > 1 {
-                        self.selection.expand(
-                            self.text.as_str(),
-                            &|index| self.display.find_line(index).map(|r| r.1),
-                            repeats >= 3,
-                        );
-                    }
+                    TextInput::adjust_range(
+                        self.text.as_str(),
+                        *self.selection,
+                        index,
+                        repeats,
+                        Some(&|index| self.display.find_line(index).map(|r| r.1)),
+                    )
                 }
                 TextInputAction::PressEnd { coord } => {
                     if self.current.is_ime_enabled() {
@@ -1067,7 +1065,8 @@ impl Part {
             },
         };
 
-        if old_range != self.selection.range() {
+        if range != *self.selection {
+            self.selection = range.into();
             self.set_view_offset_from_cursor(cx);
             self.edit_x_coord = None;
             cx.redraw();

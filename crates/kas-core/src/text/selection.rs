@@ -7,7 +7,6 @@
 
 use kas_macros::autoimpl;
 use std::ops::Range;
-use unicode_segmentation::UnicodeSegmentation;
 
 /// Cursor index / selection range
 ///
@@ -156,58 +155,6 @@ impl SelectionHelper {
         self.edit = self.edit.min(len);
         self.sel = self.sel.min(len);
         self.anchor = self.anchor.min(len);
-    }
-
-    /// Expand the selection from the range between edit and anchor positions
-    ///
-    /// This moves both the selection and edit indices, using the anchor as a
-    /// fixed point (note that this method is the only means by which the
-    /// selection and anchor positions may diverge).
-    ///
-    /// The selection is expanded by words or lines (if `lines`). Line expansion
-    /// requires that text has been prepared (see [`Text::prepare`][super::Text::prepare]).
-    ///
-    /// Input `line_range` should map a text index to the range of the enclosing
-    /// line (if available).
-    pub fn expand(
-        &mut self,
-        text: &str,
-        line_range: &dyn Fn(usize) -> Option<std::ops::Range<usize>>,
-        lines: bool,
-    ) {
-        let mut range = self.edit..self.anchor;
-        if range.start > range.end {
-            std::mem::swap(&mut range.start, &mut range.end);
-        }
-        let (mut start, mut end);
-        if !lines {
-            end = text[range.start..]
-                .char_indices()
-                .nth(1)
-                .map(|(i, _)| range.start + i)
-                .unwrap_or(text.len());
-            start = text[0..end]
-                .split_word_bound_indices()
-                .next_back()
-                .map(|(index, _)| index)
-                .unwrap_or(0);
-            end = text[start..]
-                .split_word_bound_indices()
-                .find_map(|(index, _)| {
-                    let pos = start + index;
-                    (pos >= range.end).then_some(pos)
-                })
-                .unwrap_or(text.len());
-        } else {
-            start = line_range(range.start).map(|r| r.start).unwrap_or(0);
-            end = line_range(range.end).map(|r| r.end).unwrap_or(text.len());
-        }
-
-        if self.edit * 2 < start + end {
-            std::mem::swap(&mut start, &mut end);
-        }
-        self.sel = start;
-        self.edit = end;
     }
 
     /// Adjust all indices for a deletion from the source text
