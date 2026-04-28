@@ -10,7 +10,7 @@ use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
 use kas::text::format::{self, FormattableText};
-use kas::text::{SelectionHelper, Text};
+use kas::text::{CursorRange, Text};
 use kas::theme::TextClass;
 
 #[impl_self]
@@ -35,7 +35,7 @@ mod ScrollTextCore {
         core: widget_core!(),
         text: Text<T>,
         text_fn: Option<Box<dyn Fn(&ConfigCx, &A) -> T + Send>>,
-        selection: SelectionHelper,
+        selection: CursorRange,
         has_sel_focus: bool,
         input_handler: TextInput,
     }
@@ -71,7 +71,7 @@ mod ScrollTextCore {
             };
 
             let pos = self.rect().pos - offset;
-            let range: std::ops::Range<u32> = self.selection.range().cast();
+            let range: std::ops::Range<u32> = self.selection.to_range().cast();
 
             let mut tokens = [(0, format::Colors::default()); 3];
             let tokens = if range.is_empty() {
@@ -94,8 +94,8 @@ mod ScrollTextCore {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::TextLabel {
                 text: self.text.as_str(),
-                cursor: self.selection.edit_index(),
-                sel_index: self.selection.sel_index(),
+                cursor: self.selection.cursor,
+                anchor: self.selection.anchor,
             }
         }
     }
@@ -110,7 +110,7 @@ mod ScrollTextCore {
                 core: Default::default(),
                 text: Text::new(text, TextClass::Standard, true),
                 text_fn: None,
-                selection: SelectionHelper::default(),
+                selection: CursorRange::default(),
                 has_sel_focus: false,
                 input_handler: Default::default(),
             }
@@ -198,20 +198,9 @@ mod ScrollTextCore {
             self
         }
 
-        fn set_cursor_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
-            let rel_pos = (coord - self.rect().pos).cast();
-            if let Ok(index) = self.text.text_index_nearest(rel_pos) {
-                if index != self.selection.edit_index() {
-                    self.selection.set_edit_index(index);
-                    self.set_view_offset_from_cursor(cx, index);
-                    cx.redraw();
-                }
-            }
-        }
-
         fn set_primary(&self, cx: &mut EventCx) {
             if self.has_sel_focus && !self.selection.is_empty() && cx.has_primary() {
-                let range = self.selection.range();
+                let range = self.selection.to_range();
                 cx.set_primary(String::from(&self.text.as_str()[range]));
             }
         }
@@ -255,82 +244,95 @@ mod ScrollTextCore {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            match event {
+            let line_range = |index| self.text.find_line(index).ok().flatten().map(|r| r.1);
+            let range = match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
-                        self.selection.set_empty();
+                        self.selection.clear_selection();
                         cx.redraw();
-                        Used
+                        return Used;
                     }
                     Command::SelectAll => {
-                        self.selection.set_sel_index(0);
-                        self.selection.set_edit_index(self.text.str_len());
+                        self.selection.anchor = 0;
+                        self.selection.cursor = self.text.str_len();
                         self.set_primary(cx);
                         cx.redraw();
-                        Used
+                        return Used;
                     }
                     Command::Cut | Command::Copy => {
-                        let range = self.selection.range();
+                        let range = self.selection.to_range();
                         cx.set_clipboard((self.text.as_str()[range]).to_string());
-                        Used
+                        return Used;
                     }
-                    _ => Unused,
+                    _ => return Unused,
                 },
                 Event::SelFocus(source) => {
                     self.has_sel_focus = true;
                     if source == FocusSource::Pointer {
                         self.set_primary(cx);
                     }
-                    Used
+                    return Used;
                 }
                 Event::LostSelFocus => {
                     self.has_sel_focus = false;
-                    self.selection.set_empty();
+                    self.selection.clear_selection();
                     cx.redraw();
-                    Used
+                    return Used;
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
-                    TextInputAction::Used => Used,
-                    TextInputAction::Unused => Unused,
+                    TextInputAction::Used => return Used,
+                    TextInputAction::Unused => return Unused,
                     TextInputAction::PressStart {
                         coord,
                         clear,
                         repeats,
                     } => {
-                        self.set_cursor_from_coord(cx, coord);
-                        self.selection.set_anchor(clear);
-                        if repeats > 1 {
-                            self.selection.expand(
-                                self.text.as_str(),
-                                &|index| self.text.find_line(index).ok().flatten().map(|r| r.1),
-                                repeats >= 3,
-                            );
-                        }
-
                         if !self.has_sel_focus {
                             cx.request_sel_focus(self.id(), FocusSource::Pointer);
                         }
-                        Used
+
+                        let rel_pos = (coord - self.rect().pos).cast();
+                        let cursor = self.text.unchecked_display().text_index_nearest(rel_pos);
+                        let anchor = if clear { cursor } else { self.selection.anchor };
+
+                        let range = CursorRange::from(anchor..cursor);
+                        if repeats > 1 {
+                            TextInput::expand_range(
+                                self.text.as_str(),
+                                range,
+                                (repeats >= 3).then_some(&line_range),
+                            )
+                        } else {
+                            range
+                        }
                     }
                     TextInputAction::PressMove { coord, repeats } => {
-                        self.set_cursor_from_coord(cx, coord);
-                        if repeats > 1 {
-                            self.selection.expand(
-                                self.text.as_str(),
-                                &|index| self.text.find_line(index).ok().flatten().map(|r| r.1),
-                                repeats >= 3,
-                            );
-                        }
-                        Used
+                        let rel_pos = (coord - self.rect().pos).cast();
+                        let index = self.text.unchecked_display().text_index_nearest(rel_pos);
+
+                        TextInput::adjust_range(
+                            self.text.as_str(),
+                            self.selection,
+                            index,
+                            repeats,
+                            Some(&line_range),
+                        )
                     }
                     TextInputAction::PressEnd { .. } => {
                         if self.has_sel_focus {
                             self.set_primary(cx);
                         }
-                        Used
+                        return Used;
                     }
                 },
+            };
+
+            if range != self.selection {
+                self.selection = range;
+                self.set_view_offset_from_cursor(cx, range.cursor);
+                cx.redraw();
             }
+            Used
         }
     }
 }

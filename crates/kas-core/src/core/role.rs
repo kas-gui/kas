@@ -125,10 +125,8 @@ pub enum Role<'a> {
         /// The cursor index within `contents`
         cursor: usize,
         /// The selection index. Equals `cursor` if the selection is empty.
-        /// May be less than or greater than `cursor`. (Aside: some toolkits
-        /// call this the selection anchor but Kas does not; see
-        /// [`kas::text::SelectionHelper`].)
-        sel_index: usize,
+        /// May be less than or greater than `cursor`.
+        anchor: usize,
     },
     /// Editable text
     ///
@@ -136,7 +134,7 @@ pub enum Role<'a> {
     ///
     /// [`kas::messages::SetValueText`] may be used to replace the entire
     /// text. [`kas::messages::ReplaceSelectedText`] may be used to insert text
-    /// at `cursor`, replacing all text between `cursor` and `sel_index`.
+    /// at `cursor`, replacing all text between `cursor` and `anchor`.
     TextInput {
         /// Text contents
         ///

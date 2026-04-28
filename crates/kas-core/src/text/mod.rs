@@ -26,6 +26,6 @@ mod string;
 mod text;
 
 pub use display::ConfiguredDisplay;
-pub use selection::{CursorRange, SelectionHelper};
+pub use selection::CursorRange;
 pub use string::AccessString;
 pub use text::Text;

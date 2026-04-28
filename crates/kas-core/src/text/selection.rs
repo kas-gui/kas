@@ -5,26 +5,23 @@
 
 //! Tools for text selection
 
-use kas_macros::autoimpl;
 use std::ops::Range;
-use unicode_segmentation::UnicodeSegmentation;
 
-/// Cursor index / selection range
-///
-/// This is essentially a pair of indices: the selection index and the edit
-/// index.
+/// Cursor index and selection range
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CursorRange {
-    sel: usize,
-    edit: usize,
+    /// The start or end of the selection.
+    pub anchor: usize,
+    /// The cursor (edit) index.
+    pub cursor: usize,
 }
 
 impl From<usize> for CursorRange {
     #[inline]
     fn from(index: usize) -> Self {
         CursorRange {
-            sel: index,
-            edit: index,
+            anchor: index,
+            cursor: index,
         }
     }
 }
@@ -33,118 +30,54 @@ impl From<Range<usize>> for CursorRange {
     #[inline]
     fn from(range: Range<usize>) -> Self {
         CursorRange {
-            sel: range.start,
-            edit: range.end,
+            anchor: range.start,
+            cursor: range.end,
         }
     }
 }
 
 impl CursorRange {
-    /// Construct from `(selection, edit)` positions
-    ///
-    /// Constructs as a range, with the cursor at the `edit` position.
-    ///
-    /// See also:
-    ///
-    /// - `Default`: an empty cursor at index 0
-    /// - `From<usize>`: construct from an index (empty selection)
-    /// - `From<Range<usize>>`: construct from a range (potentially non-empty
-    ///   selection; edit position is set to the range's end)
-    #[inline]
-    pub fn new(sel: usize, edit: usize) -> Self {
-        CursorRange { sel, edit }
-    }
-
     /// True if the selection index equals the cursor index
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.edit == self.sel
+        self.cursor == self.anchor
     }
 
-    /// Clear selection without changing the edit index
-    #[inline]
-    pub fn set_empty(&mut self) {
-        self.sel = self.edit;
-    }
-
-    /// Get the selection index
-    pub fn sel_index(&self) -> usize {
-        self.sel
-    }
-
-    /// Get the edit cursor index
-    pub fn edit_index(&self) -> usize {
-        self.edit
-    }
-
-    /// Get the selection range
+    /// Convert to a [`Range`], increasing
     ///
-    /// This range is from the edit index to the selection index or reversed,
-    /// whichever is increasing.
-    pub fn range(&self) -> Range<usize> {
-        let mut range = self.edit..self.sel;
-        if range.start > range.end {
-            std::mem::swap(&mut range.start, &mut range.end);
+    /// The return value has `range.start <= range.end`.
+    pub fn to_range(&self) -> Range<usize> {
+        let mut range = *self;
+        if range.anchor > range.cursor {
+            range.reverse();
         }
-        range
-    }
-}
-
-/// Text-selection logic
-///
-/// This struct holds a [`CursorRange`]. There is no requirement on the order of these two
-/// positions. Each may be adjusted independently.
-///
-/// Additionally, this struct holds the selection anchor index. This usually
-/// equals the selection index, but when using double-click or triple-click
-/// selection, the anchor represents the initially-clicked position while the
-/// selection index represents the expanded position.
-#[derive(Clone, Debug, Default)]
-#[autoimpl(Deref, DerefMut using self.cursor)]
-pub struct SelectionHelper {
-    cursor: CursorRange,
-    anchor: usize,
-}
-
-impl<T: Into<CursorRange>> From<T> for SelectionHelper {
-    fn from(x: T) -> Self {
-        let cursor = x.into();
-        SelectionHelper {
-            cursor,
-            anchor: cursor.sel,
-        }
-    }
-}
-
-impl SelectionHelper {
-    /// Set the cursor position, clearing the selection
-    #[inline]
-    pub fn set_cursor(&mut self, index: usize) {
-        self.cursor.sel = index;
-        self.cursor.edit = index;
-        self.anchor = index;
+        range.anchor..range.cursor
     }
 
-    /// Set the cursor index without adjusting the selection index
-    #[inline]
-    pub fn set_edit_index(&mut self, index: usize) {
-        self.edit = index;
-    }
-
-    /// Set the selection index without adjusting the edit index
+    /// Reverse the selection
     ///
-    /// The anchor index is also set to the selection index.
+    /// Swaps the selection and edit indices. The result of [`Self::to_range`] is
+    /// not affected by this method.
     #[inline]
-    pub fn set_sel_index(&mut self, index: usize) {
-        self.sel = index;
-        self.anchor = index;
+    pub fn reverse(&mut self) {
+        std::mem::swap(&mut self.anchor, &mut self.cursor);
     }
-    /// Set the selection index only
+
+    /// Clear selection
     ///
-    /// Prefer [`Self::set_sel_index`] unless you know you don't want to set the anchor.
+    /// Sets the selection index to the edit index.
     #[inline]
-    pub fn set_sel_index_only(&mut self, index: usize) {
-        self.sel = index;
+    pub fn clear_selection(&mut self) {
+        self.anchor = self.cursor;
+    }
+
+    /// Set the cursor position and clear the selection
+    ///
+    /// Both indices are set to `index`.
+    #[inline]
+    pub fn set_position(&mut self, index: usize) {
+        self.anchor = index;
+        self.cursor = index;
     }
 
     /// Apply new limit to the maximum length
@@ -153,76 +86,8 @@ impl SelectionHelper {
     /// that the selection does not exceed the length of the new string.
     #[inline]
     pub fn set_max_len(&mut self, len: usize) {
-        self.edit = self.edit.min(len);
-        self.sel = self.sel.min(len);
+        self.cursor = self.cursor.min(len);
         self.anchor = self.anchor.min(len);
-    }
-
-    /// Set the anchor to the edit position
-    ///
-    /// This is used to start a drag-selection. If `clear`, then the selection
-    /// position is also set to the edit position.
-    ///
-    /// [`Self::expand`] may be used to expand the selection from this anchor.
-    #[inline]
-    pub fn set_anchor(&mut self, clear: bool) {
-        self.anchor = self.edit;
-        if clear {
-            self.sel = self.edit;
-        }
-    }
-
-    /// Expand the selection from the range between edit and anchor positions
-    ///
-    /// This moves the cursor range. To obtain repeatable
-    /// behaviour on drag-selection, set the anchor ([`Self::set_anchor`])
-    /// initially, then set the edit position and call this method each time
-    /// the cursor moves.
-    ///
-    /// The selection is expanded by words or lines (if `lines`). Line expansion
-    /// requires that text has been prepared (see [`Text::prepare`][super::Text::prepare]).
-    ///
-    /// Input `line_range` should map a text index to the range of the enclosing
-    /// line (if available).
-    pub fn expand(
-        &mut self,
-        text: &str,
-        line_range: &dyn Fn(usize) -> Option<std::ops::Range<usize>>,
-        lines: bool,
-    ) {
-        let mut range = self.edit..self.anchor;
-        if range.start > range.end {
-            std::mem::swap(&mut range.start, &mut range.end);
-        }
-        let (mut start, mut end);
-        if !lines {
-            end = text[range.start..]
-                .char_indices()
-                .nth(1)
-                .map(|(i, _)| range.start + i)
-                .unwrap_or(text.len());
-            start = text[0..end]
-                .split_word_bound_indices()
-                .next_back()
-                .map(|(index, _)| index)
-                .unwrap_or(0);
-            end = text[start..]
-                .split_word_bound_indices()
-                .find_map(|(index, _)| {
-                    let pos = start + index;
-                    (pos >= range.end).then_some(pos)
-                })
-                .unwrap_or(text.len());
-        } else {
-            start = line_range(range.start).map(|r| r.start).unwrap_or(0);
-            end = line_range(range.end).map(|r| r.end).unwrap_or(text.len());
-        }
-
-        if self.edit < self.sel {
-            std::mem::swap(&mut start, &mut end);
-        }
-        self.sel = start;
-        self.edit = end;
     }
 
     /// Adjust all indices for a deletion from the source text
@@ -237,8 +102,7 @@ impl SelectionHelper {
                 index
             }
         };
-        self.edit = adjust(self.edit);
-        self.sel = adjust(self.sel);
+        self.cursor = adjust(self.cursor);
         self.anchor = adjust(self.anchor);
     }
 }
