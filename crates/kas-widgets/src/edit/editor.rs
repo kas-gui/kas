@@ -74,6 +74,7 @@ pub struct Common {
     direction: Direction,
     wrap: bool,
     read_only: bool,
+    has_key_focus: bool,
     edit_x_coord: Option<f32>,
     selection: CursorRange,
     last_edit: Option<EditOp>,
@@ -93,6 +94,7 @@ impl Common {
             direction: Direction::Auto,
             wrap,
             read_only: false,
+            has_key_focus: false,
             edit_x_coord: None,
             selection: CursorRange::default(),
             last_edit: Some(EditOp::Initial),
@@ -151,7 +153,6 @@ pub struct Part {
     display: TextDisplay,
     highlight: highlight::Cache,
     text: String,
-    has_key_focus: bool,
 }
 
 /// Inner editor interface
@@ -377,7 +378,6 @@ impl Default for Part {
             display: TextDisplay::default(),
             highlight: Default::default(),
             text: Default::default(),
-            has_key_focus: false,
         }
     }
 }
@@ -764,7 +764,7 @@ impl Part {
             Event::SelFocus(source) => {
                 // NOTE: sel focus implies key focus since we only request
                 // the latter. We must set before calling self.set_primary.
-                self.has_key_focus = true;
+                common.has_key_focus = true;
                 if source == FocusSource::Pointer {
                     self.set_primary(common, cx);
                 }
@@ -772,7 +772,7 @@ impl Part {
                 return EventAction::Used;
             }
             Event::KeyFocus => {
-                self.has_key_focus = true;
+                common.has_key_focus = true;
                 self.set_view_offset_from_cursor(common, cx);
 
                 return if common.current.is_none() {
@@ -786,7 +786,7 @@ impl Part {
                 };
             }
             Event::LostKeyFocus => {
-                self.has_key_focus = false;
+                common.has_key_focus = false;
                 cx.redraw();
                 return if !common.current.is_ime_enabled() {
                     EventAction::FocusLost
@@ -861,7 +861,7 @@ impl Part {
                             cx.cancel_ime_focus(&self.id);
                         }
                     }
-                    return if !self.has_key_focus {
+                    return if !common.has_key_focus {
                         EventAction::FocusGained
                     } else {
                         EventAction::Used
@@ -869,7 +869,7 @@ impl Part {
                 }
                 Ime::Disabled => {
                     self.clear_ime(common);
-                    return if !self.has_key_focus {
+                    return if !common.has_key_focus {
                         EventAction::FocusLost
                     } else {
                         EventAction::Used
@@ -1213,7 +1213,7 @@ impl Part {
 
     /// Request key focus, if we don't have it or IME
     fn request_key_focus(&self, common: &Common, cx: &mut EventCx, source: FocusSource) {
-        if !self.has_key_focus && !common.current.is_ime_enabled() {
+        if !common.has_key_focus && !common.current.is_ime_enabled() {
             cx.request_key_focus(self.id.clone(), source);
         }
     }
@@ -1536,7 +1536,7 @@ impl Part {
 
     /// Set primary clipboard (mouse buffer) contents from selection
     fn set_primary(&self, common: &Common, cx: &mut EventCx) {
-        if self.has_key_focus && !common.selection.is_empty() && cx.has_primary() {
+        if common.has_key_focus && !common.selection.is_empty() && cx.has_primary() {
             let range = common.selection.to_range();
             cx.set_primary(String::from(&self.as_str()[range]));
         }
@@ -1704,7 +1704,7 @@ impl Editor {
     /// This is true when the widget is has keyboard or IME focus.
     #[inline]
     pub fn has_input_focus(&self) -> bool {
-        self.part.has_key_focus || self.common.current.is_ime_enabled()
+        self.common.has_key_focus || self.common.current.is_ime_enabled()
     }
 
     /// Get whether the input state is erroneous
