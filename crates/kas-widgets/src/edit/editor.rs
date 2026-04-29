@@ -868,11 +868,122 @@ impl Part {
         cx.set_ime_cursor_area(&common.id, rect + Offset::conv(self.rect.pos));
     }
 
+    /// Handle IME methods on a given `Part`.
+    fn handle_ime(&mut self, common: &mut Common, cx: &mut EventCx, event: Ime) -> EventAction {
+        match event {
+            Ime::Enabled => {
+                match common.current {
+                    CurrentAction::None => {
+                        common.current = CurrentAction::ImeStart;
+                        self.set_ime_cursor_area(common, cx);
+                    }
+                    CurrentAction::ImeStart | CurrentAction::ImePreedit { .. } => {
+                        // already enabled
+                    }
+                    CurrentAction::Selection => {
+                        unreachable!()
+                    }
+                }
+                if !common.has_key_focus {
+                    EventAction::FocusGained
+                } else {
+                    EventAction::Used
+                }
+            }
+            Ime::Disabled => {
+                self.clear_ime(common);
+                if !common.has_key_focus {
+                    EventAction::FocusLost
+                } else {
+                    EventAction::Used
+                }
+            }
+            Ime::Preedit { text, cursor } => {
+                common.save_undo_state(self, None);
+                let mut edit_range = match common.current.clone() {
+                    CurrentAction::ImeStart if cursor.is_some() => common.selection.to_range(),
+                    CurrentAction::ImeStart => return EventAction::Used,
+                    CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                    _ => return EventAction::Used,
+                };
+
+                self.replace_range(edit_range.clone(), text);
+                edit_range.end = edit_range.start + text.len();
+                if let Some((start, end)) = cursor {
+                    common.selection.anchor = edit_range.start + start;
+                    common.selection.cursor = edit_range.start + end;
+                } else {
+                    common.selection.set_position(edit_range.start + text.len());
+                }
+
+                common.current = CurrentAction::ImePreedit {
+                    edit_range: edit_range.cast(),
+                };
+                common.edit_x_coord = None;
+                EventAction::Preedit
+            }
+            Ime::Commit { text } => {
+                common.save_undo_state(self, Some(EditOp::Ime));
+                let edit_range = match common.current.clone() {
+                    CurrentAction::ImeStart => common.selection.to_range(),
+                    CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                    _ => return EventAction::Used,
+                };
+
+                self.replace_range(edit_range.clone(), text);
+                common.selection.set_position(edit_range.start + text.len());
+
+                common.current = CurrentAction::ImePreedit {
+                    edit_range: common.selection.to_range().cast(),
+                };
+                common.edit_x_coord = None;
+                EventAction::Edit
+            }
+            Ime::DeleteSurrounding {
+                before_bytes,
+                after_bytes,
+            } => {
+                common.save_undo_state(self, None);
+                let edit_range = match common.current.clone() {
+                    CurrentAction::ImeStart => common.selection.to_range(),
+                    CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                    _ => return EventAction::Used,
+                };
+
+                if before_bytes > 0 {
+                    let end = edit_range.start;
+                    let start = end - before_bytes;
+                    if self.as_str().is_char_boundary(start) {
+                        self.replace_range(start..end, "");
+                        common.selection.delete_range(start..end);
+                    } else {
+                        log::warn!("buggy IME tried to delete range not at char boundary");
+                    }
+                }
+
+                if after_bytes > 0 {
+                    let start = edit_range.end;
+                    let end = start + after_bytes;
+                    if self.as_str().is_char_boundary(end) {
+                        self.replace_range(start..end, "");
+                    } else {
+                        log::warn!("buggy IME tried to delete range not at char boundary");
+                    }
+                }
+
+                if let Some(text) = self.ime_surrounding_text(common) {
+                    cx.update_ime_surrounding_text(&common.id, text);
+                }
+
+                EventAction::Used
+            }
+        }
+    }
+
     /// Handle an event
     ///
     /// If [`EventAction::requires_repreparation`] then the caller **must** call
     /// re-prepare the text by calling [`Self::prepare_and_scroll`].
-    #[inline]
     pub fn handle_event(
         &mut self,
         common: &mut Common,
@@ -979,115 +1090,15 @@ impl Part {
                     }
                 };
             }
-            Event::Ime(ime) => match ime {
-                Ime::Enabled => {
-                    match common.current {
-                        CurrentAction::None => {
-                            common.current = CurrentAction::ImeStart;
-                            self.set_ime_cursor_area(common, cx);
-                        }
-                        CurrentAction::ImeStart | CurrentAction::ImePreedit { .. } => {
-                            // already enabled
-                        }
-                        CurrentAction::Selection => {
-                            // Do not interrupt selection
-                            cx.cancel_ime_focus(&common.id);
-                        }
-                    }
-                    return if !common.has_key_focus {
-                        EventAction::FocusGained
-                    } else {
-                        EventAction::Used
-                    };
+            Event::Ime(ime) => {
+                if matches!(common.current, CurrentAction::Selection) {
+                    // Selection takes priority over IME
+                    cx.cancel_ime_focus(&common.id);
+                    return EventAction::Unused;
                 }
-                Ime::Disabled => {
-                    self.clear_ime(common);
-                    return if !common.has_key_focus {
-                        EventAction::FocusLost
-                    } else {
-                        EventAction::Used
-                    };
-                }
-                Ime::Preedit { text, cursor } => {
-                    common.save_undo_state(self, None);
-                    let mut edit_range = match common.current.clone() {
-                        CurrentAction::ImeStart if cursor.is_some() => common.selection.to_range(),
-                        CurrentAction::ImeStart => return EventAction::Used,
-                        CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                        _ => return EventAction::Used,
-                    };
 
-                    self.replace_range(edit_range.clone(), text);
-                    edit_range.end = edit_range.start + text.len();
-                    if let Some((start, end)) = cursor {
-                        common.selection.anchor = edit_range.start + start;
-                        common.selection.cursor = edit_range.start + end;
-                    } else {
-                        common.selection.set_position(edit_range.start + text.len());
-                    }
-
-                    common.current = CurrentAction::ImePreedit {
-                        edit_range: edit_range.cast(),
-                    };
-                    common.edit_x_coord = None;
-                    return EventAction::Preedit;
-                }
-                Ime::Commit { text } => {
-                    common.save_undo_state(self, Some(EditOp::Ime));
-                    let edit_range = match common.current.clone() {
-                        CurrentAction::ImeStart => common.selection.to_range(),
-                        CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                        _ => return EventAction::Used,
-                    };
-
-                    self.replace_range(edit_range.clone(), text);
-                    common.selection.set_position(edit_range.start + text.len());
-
-                    common.current = CurrentAction::ImePreedit {
-                        edit_range: common.selection.to_range().cast(),
-                    };
-                    common.edit_x_coord = None;
-                    return EventAction::Edit;
-                }
-                Ime::DeleteSurrounding {
-                    before_bytes,
-                    after_bytes,
-                } => {
-                    common.save_undo_state(self, None);
-                    let edit_range = match common.current.clone() {
-                        CurrentAction::ImeStart => common.selection.to_range(),
-                        CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-                        _ => return EventAction::Used,
-                    };
-
-                    if before_bytes > 0 {
-                        let end = edit_range.start;
-                        let start = end - before_bytes;
-                        if self.as_str().is_char_boundary(start) {
-                            self.replace_range(start..end, "");
-                            common.selection.delete_range(start..end);
-                        } else {
-                            log::warn!("buggy IME tried to delete range not at char boundary");
-                        }
-                    }
-
-                    if after_bytes > 0 {
-                        let start = edit_range.end;
-                        let end = start + after_bytes;
-                        if self.as_str().is_char_boundary(end) {
-                            self.replace_range(start..end, "");
-                        } else {
-                            log::warn!("buggy IME tried to delete range not at char boundary");
-                        }
-                    }
-
-                    if let Some(text) = self.ime_surrounding_text(common) {
-                        cx.update_ime_surrounding_text(&common.id, text);
-                    }
-
-                    return EventAction::Used;
-                }
-            },
+                return self.handle_ime(common, cx, ime);
+            }
             Event::PressStart(press) if press.is_tertiary() => {
                 return match press.grab_click(common.id.clone()).complete(cx) {
                     Unused => EventAction::Unused,
