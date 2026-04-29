@@ -66,36 +66,39 @@ impl EventAction {
 }
 
 /// Editor state common to all parts
-#[derive(Debug, Default)]
-pub struct Common<H: Highlighter> {
+#[derive(Debug)]
+pub struct Common {
     colors: SchemeColors,
-    highlighter: H,
+    font: FontSelector,
+    dpem: f32,
+    direction: Direction,
+    wrap: bool,
+    read_only: bool,
 }
 
-impl<H: Highlighter> Common<H> {
-    /// Replace the highlighter
+impl Common {
+    /// Construct a new instance
     #[inline]
-    pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Common<H2> {
+    pub fn new(wrap: bool) -> Self {
         Common {
             colors: SchemeColors::default(),
-            highlighter,
+            font: FontSelector::default(),
+            dpem: 16.0,
+            direction: Direction::Auto,
+            wrap,
+            read_only: false,
         }
-    }
-
-    /// Set a new highlighter of the same type
-    ///
-    /// Also call [`Part::require_reprepare`]()
-    /// on each part to ensure the highlighting is updated.
-    pub fn set_highlighter(&mut self, highlighter: H) {
-        self.highlighter = highlighter;
     }
 
     /// Configure `Common` data
     #[inline]
     #[must_use]
-    pub fn configure(&mut self, cx: &mut ConfigCx) -> Option<ActionResetStatus> {
-        if let Some(_) = self.highlighter.configure(cx) {
-            self.colors = self.highlighter.scheme_colors();
+    pub fn configure(&mut self, cx: &SizeCx) -> Option<ActionResetStatus> {
+        let font = cx.font(TextClass::Editor);
+        let dpem = cx.dpem(TextClass::Editor);
+        if font != self.font || dpem != self.dpem {
+            self.font = font;
+            self.dpem = dpem;
             Some(ActionResetStatus)
         } else {
             None
@@ -131,11 +134,6 @@ impl<H: Highlighter> Common<H> {
 pub struct Part {
     // TODO(opt): id is duplicated here since macros don't let us put the core here
     id: Id,
-    font: FontSelector,
-    dpem: f32,
-    direction: Direction,
-    wrap: bool,
-    read_only: bool,
     rect: Rect,
     status: Status,
     display: TextDisplay,
@@ -156,6 +154,7 @@ pub struct Part {
 /// [`Deref`](std::ops::Deref) from [`EditBoxCore`] and [`EditBox`].
 #[autoimpl(Debug)]
 pub struct Editor {
+    common: Common,
     part: Part,
     error_state: Option<Option<Cow<'static, str>>>,
 }
@@ -174,7 +173,7 @@ pub struct Editor {
 ///
 /// See also [`Part`] (accessible through [`Self::part`]).
 #[derive(Debug)]
-pub struct Component<H: Highlighter>(pub Editor, pub Common<H>);
+pub struct Component<H: Highlighter>(pub Editor, pub H);
 
 impl<H: Highlighter> Layout for Component<H> {
     #[inline]
@@ -184,19 +183,19 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
-        self.0.part.size_rules(cx, axis)
+        self.0.part.size_rules(&self.0.common, cx, axis)
     }
 
     #[inline]
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
-        self.0.part.set_rect(cx, rect);
+        self.0.part.set_rect(&mut self.0.common, cx, rect);
     }
 
     #[inline]
     fn draw(&self, draw: DrawCx) {
         self.0
             .part
-            .draw_with_offset(draw, &self.1.colors, self.rect(), Offset::ZERO);
+            .draw_with_offset(draw, &self.0.common, self.rect(), Offset::ZERO);
     }
 }
 
@@ -208,17 +207,18 @@ impl<H: Highlighter> Component<H> {
         H: Default,
     {
         let editor = Editor {
-            part: Part::new(wrap),
+            common: Common::new(wrap),
+            part: Part::default(),
             error_state: None,
         };
-        Component(editor, Common::default())
+        Component(editor, H::default())
     }
 
     /// Set whether long lines are automatically wrapped
     #[inline]
     pub fn set_wrap(&mut self, wrap: bool) {
-        self.0.part.wrap = wrap;
-        self.0.part.status = Status::New;
+        self.0.common.wrap = wrap;
+        self.0.part.status = self.0.part.status.min(Status::LevelRuns);
     }
 
     /// Set the base text direction
@@ -228,22 +228,19 @@ impl<H: Highlighter> Component<H> {
     /// non-directional content.
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
-        self.0.part.set_direction(direction);
+        self.0.common.direction = direction;
+        self.0.part.status = Status::New;
     }
 
     /// Replace the highlighter
     #[inline]
     pub fn with_highlighter<H2: Highlighter>(self, highlighter: H2) -> Component<H2> {
-        let common = Common {
-            colors: self.1.colors,
-            highlighter,
-        };
-        Component(self.0, common)
+        Component(self.0, highlighter)
     }
 
     /// Set a new highlighter of the same type
     pub fn set_highlighter(&mut self, highlighter: H) {
-        self.1.highlighter = highlighter;
+        self.1 = highlighter;
         self.0.part.require_reprepare();
     }
 
@@ -254,7 +251,7 @@ impl<H: Highlighter> Component<H> {
         if self.0.error_state.is_some() {
             Background::Error
         } else {
-            self.1.background_color()
+            self.0.common.background_color()
         }
     }
 
@@ -265,6 +262,8 @@ impl<H: Highlighter> Component<H> {
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
         self.0.part = self.0.part.with_text(text);
+        let index = if self.0.common.wrap { 0 } else { self.0.part.text.len() };
+        self.0.part.selection.set_position(index);
         self
     }
 
@@ -277,10 +276,16 @@ impl<H: Highlighter> Component<H> {
     /// Configure component
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
-        if let Some(ActionResetStatus) = self.1.configure(cx) {
+        if let Some(ActionResetStatus) = self.0.common.configure(&cx.size_cx()) {
             self.0.part.require_reprepare();
         }
-        self.0.part.configure(&mut self.1, cx, id);
+        if let Some(_) = self.1.configure(cx) {
+            self.0.common.colors = self.1.scheme_colors();
+            self.0.part.require_reprepare();
+        }
+
+        self.0.part.configure(id);
+        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
     }
 
     /// Fully prepare text for display
@@ -296,8 +301,8 @@ impl<H: Highlighter> Component<H> {
             return;
         }
 
-        self.0.part.prepare_runs(&mut self.1);
-        self.0.part.prepare_wrap();
+        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
+        self.0.part.prepare_wrap(&mut self.0.common);
     }
 
     /// Fully prepare text for display, ensuring the cursor is within view
@@ -307,7 +312,9 @@ impl<H: Highlighter> Component<H> {
     /// be called after changes to the text, alignment or wrap-width.
     #[inline]
     pub fn prepare_and_scroll(&mut self, cx: &mut EventCx) {
-        self.0.part.prepare_and_scroll(&mut self.1, cx);
+        self.0
+            .part
+            .prepare_and_scroll(&mut self.0.common, &mut self.1, cx);
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -318,7 +325,7 @@ impl<H: Highlighter> Component<H> {
     /// modify `self`.
     #[inline]
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
-        self.0.part.prepare_runs(&mut self.1);
+        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
         self.0.part.display.measure_height(wrap_width, max_lines)
     }
 
@@ -327,15 +334,17 @@ impl<H: Highlighter> Component<H> {
     pub fn draw_with_offset(&self, draw: DrawCx, rect: Rect, offset: Offset) {
         self.0
             .part
-            .draw_with_offset(draw, &self.1.colors, rect, offset);
+            .draw_with_offset(draw, &self.0.common, rect, offset);
     }
 
     /// Handle an event
     #[inline]
     pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
-        let action = self.0.part.handle_event(cx, event);
+        let action = self.0.part.handle_event(&mut self.0.common, cx, event);
         if action.requires_repreparation() {
-            self.0.part.prepare_and_scroll(&mut self.1, cx);
+            self.0
+                .part
+                .prepare_and_scroll(&mut self.0.common, &mut self.1, cx);
         }
         action
     }
@@ -347,17 +356,11 @@ impl<H: Highlighter> Component<H> {
     }
 }
 
-impl Part {
-    /// Construct a new instance
+impl Default for Part {
     #[inline]
-    pub fn new(wrap: bool) -> Self {
+    fn default() -> Self {
         Part {
             id: Id::default(),
-            font: FontSelector::default(),
-            dpem: 16.0,
-            direction: Direction::Auto,
-            wrap,
-            read_only: false,
             rect: Rect::ZERO,
             status: Status::New,
             display: TextDisplay::default(),
@@ -372,18 +375,9 @@ impl Part {
             input_handler: Default::default(),
         }
     }
+}
 
-    /// Set the base text direction
-    ///
-    /// If [`Direction::Auto`] or [`Direction::AutoRtl`] is used, the direction
-    /// will be updated on edit to persist the last used text direction to
-    /// non-directional content.
-    #[inline]
-    pub fn set_direction(&mut self, direction: Direction) {
-        self.direction = direction;
-        self.status = Status::New;
-    }
-
+impl Part {
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `Part`.
@@ -392,10 +386,7 @@ impl Part {
     pub fn with_text(mut self, text: impl ToString) -> Self {
         debug_assert!(self.current == CurrentAction::None && !self.input_handler.is_selecting());
         let text = text.to_string();
-        let len = text.len();
         self.text = text;
-        let index = if self.wrap { 0 } else { len };
-        self.selection.set_position(index);
         self
     }
 
@@ -435,20 +426,8 @@ impl Part {
     /// Configure component
     ///
     /// [`Common::configure`] must be called before this method.
-    pub fn configure<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut ConfigCx, id: Id) {
+    pub fn configure(&mut self, id: Id) {
         self.id = id;
-        let cx = cx.size_cx();
-        let font = cx.font(TextClass::Editor);
-        let dpem = cx.dpem(TextClass::Editor);
-        if font != self.font {
-            self.font = font;
-            self.dpem = dpem;
-            self.status = Status::New;
-        } else if dpem != self.dpem {
-            self.dpem = dpem;
-            self.status = self.status.min(Status::ResizeLevelRuns);
-        }
-        self.prepare_runs(common);
     }
 
     /// Perform run-breaking and shaping
@@ -459,17 +438,16 @@ impl Part {
     /// the [`Status`] to [`Status::LevelRuns`].
     /// This method must be called again after any edits to the `Part`'s text.
     #[inline]
-    pub fn prepare_runs<H: Highlighter>(&mut self, common: &mut Common<H>) {
-        fn inner<H: Highlighter>(part: &mut Part, common: &mut Common<H>) {
-            part.highlight
-                .highlight(&part.text, &mut common.highlighter);
+    pub fn prepare_runs<H: Highlighter>(&mut self, common: &mut Common, highlighter: &mut H) {
+        fn inner<H: Highlighter>(part: &mut Part, common: &mut Common, highlighter: &mut H) {
+            part.highlight.highlight(&part.text, highlighter);
 
             let text = part.text.as_str();
-            let font_tokens = part.highlight.font_tokens(part.dpem, part.font);
+            let font_tokens = part.highlight.font_tokens(common.dpem, common.font);
             match part.status {
                 Status::New => part
                     .display
-                    .prepare_runs(text, part.direction, font_tokens)
+                    .prepare_runs(text, common.direction, font_tokens)
                     .expect("no suitable font found"),
                 Status::ResizeLevelRuns => part.display.resize_runs(text, font_tokens),
                 _ => return,
@@ -477,8 +455,8 @@ impl Part {
 
             part.status = Status::LevelRuns;
 
-            if part.direction.is_auto() {
-                part.direction = if part.display.text_is_rtl() {
+            if common.direction.is_auto() {
+                common.direction = if part.display.text_is_rtl() {
                     Direction::AutoRtl
                 } else {
                     Direction::Auto
@@ -487,7 +465,7 @@ impl Part {
         }
 
         if self.status < Status::LevelRuns {
-            inner(self, common);
+            inner(self, common, highlighter);
         }
     }
 
@@ -498,11 +476,11 @@ impl Part {
     }
 
     /// Solve size rules
-    pub fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    pub fn size_rules(&mut self, common: &Common, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
         let rules = if axis.is_horizontal() {
             let mut bound = 0i32;
-            if self.wrap {
-                let (min, ideal) = cx.wrapped_line_len(TextClass::Editor, self.dpem);
+            if common.wrap {
+                let (min, ideal) = cx.wrapped_line_len(TextClass::Editor, common.dpem);
                 if self.status >= Status::LevelRuns {
                     bound = self.display.measure_width(ideal.cast()).cast_ceil();
                 }
@@ -514,7 +492,7 @@ impl Part {
                 SizeRules::new(bound, bound, Stretch::Filler)
             }
         } else {
-            let wrap_width = self
+            let wrap_width = common
                 .wrap
                 .then(|| axis.other().map(|w| w.cast()))
                 .flatten()
@@ -537,13 +515,13 @@ impl Part {
     /// should be very cheap.
     ///
     /// Note that editors always use default alignment of content.
-    pub fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect) {
+    pub fn set_rect(&mut self, common: &mut Common, cx: &mut SizeCx, rect: Rect) {
         if rect.size.0 != self.rect.size.0 {
             self.status = self.status.min(Status::LevelRuns);
         }
         self.rect = rect;
 
-        self.prepare_wrap();
+        self.prepare_wrap(common);
         if self.current.is_ime_enabled() {
             self.set_ime_cursor_area(cx);
         }
@@ -567,7 +545,7 @@ impl Part {
     /// changes to alignment or the wrap-width.
     ///
     /// Returns `true` when the size of the bounding-box changes.
-    fn prepare_wrap(&mut self) -> bool {
+    fn prepare_wrap(&mut self, common: &mut Common) -> bool {
         if self.status < Status::LevelRuns || self.rect.size.0 == 0 {
             return false;
         };
@@ -576,7 +554,7 @@ impl Part {
 
         if self.status == Status::LevelRuns {
             let align_width = self.rect.size.0.cast();
-            let wrap_width = if !self.wrap { f32::INFINITY } else { align_width };
+            let wrap_width = if !common.wrap { f32::INFINITY } else { align_width };
             self.display
                 .prepare_lines(wrap_width, align_width, Align::Default);
             self.display.ensure_non_negative_alignment();
@@ -592,13 +570,18 @@ impl Part {
     /// [`Status`] (which is advanced to [`Status::Ready`]). This method should
     /// be called after changes to the text, alignment or wrap-width.
     #[inline]
-    pub fn prepare_and_scroll<H: Highlighter>(&mut self, common: &mut Common<H>, cx: &mut EventCx) {
+    pub fn prepare_and_scroll<H: Highlighter>(
+        &mut self,
+        common: &mut Common,
+        highlighter: &mut H,
+        cx: &mut EventCx,
+    ) {
         if self.is_prepared() {
             return;
         }
 
-        self.prepare_runs(common);
-        if self.prepare_wrap() {
+        self.prepare_runs(common, highlighter);
+        if self.prepare_wrap(common) {
             cx.resize();
             self.set_view_offset_from_cursor(cx);
         }
@@ -633,13 +616,7 @@ impl Part {
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
-    pub fn draw_with_offset(
-        &self,
-        mut draw: DrawCx,
-        colors: &SchemeColors,
-        rect: Rect,
-        offset: Offset,
-    ) {
+    pub fn draw_with_offset(&self, mut draw: DrawCx, common: &Common, rect: Rect, offset: Offset) {
         if !self.is_prepared() {
             return;
         }
@@ -649,7 +626,7 @@ impl Part {
 
         let color_tokens = self.highlight.color_tokens();
         let default_colors = format::Colors {
-            foreground: colors.foreground,
+            foreground: common.colors.foreground,
             background: None,
         };
         let mut buf = [(0, default_colors); 3];
@@ -662,17 +639,17 @@ impl Part {
             }
         } else if color_tokens.is_empty() {
             buf[1].0 = range.start;
-            buf[1].1.foreground = colors.selection_foreground;
-            buf[1].1.background = Some(colors.selection_background);
+            buf[1].1.foreground = common.colors.selection_foreground;
+            buf[1].1.background = Some(common.colors.selection_background);
             buf[2].0 = range.end;
             let r0 = if range.start > 0 { 0 } else { 1 };
             &buf[r0..]
         } else {
             let set_selection_colors = |c: &mut format::Colors| {
-                if c.foreground == colors.foreground {
-                    c.foreground = colors.selection_foreground;
+                if c.foreground == common.colors.foreground {
+                    c.foreground = common.colors.selection_foreground;
                 }
-                c.background = Some(colors.selection_background);
+                c.background = Some(common.colors.selection_background);
             };
 
             vec.reserve(color_tokens.len() + 2);
@@ -749,13 +726,13 @@ impl Part {
             draw.decorate_text(pos, rect, &self.display, &tokens[r0..]);
         }
 
-        if !self.read_only && draw.ev_state().has_input_focus(&self.id) == Some(true) {
+        if !common.read_only && draw.ev_state().has_input_focus(&self.id) == Some(true) {
             draw.text_cursor(
                 pos,
                 rect,
                 &self.display,
                 self.selection.cursor,
-                Some(colors.cursor),
+                Some(common.colors.cursor),
             );
         }
     }
@@ -765,7 +742,12 @@ impl Part {
     /// If [`EventAction::requires_repreparation`] then the caller **must** call
     /// re-prepare the text by calling [`Self::prepare_and_scroll`].
     #[inline]
-    pub fn handle_event(&mut self, cx: &mut EventCx, event: Event) -> EventAction {
+    pub fn handle_event(
+        &mut self,
+        common: &mut Common,
+        cx: &mut EventCx,
+        event: Event,
+    ) -> EventAction {
         if !self.is_prepared() {
             debug_assert!(false);
             return EventAction::Unused;
@@ -824,7 +806,7 @@ impl Part {
                 cx.redraw();
                 return EventAction::Used;
             }
-            Event::Command(cmd, code) => match self.cmd_action(cx, cmd, code) {
+            Event::Command(cmd, code) => match self.cmd_action(common, cx, cmd, code) {
                 Ok(action) => {
                     if matches!(action, EventAction::Cursor) {
                         self.set_view_offset_from_cursor(cx);
@@ -833,7 +815,9 @@ impl Part {
                 }
                 Err(NotReady) => return EventAction::Used,
             },
-            Event::Key(event, false) if event.state == ElementState::Pressed && !self.read_only => {
+            Event::Key(event, false)
+                if event.state == ElementState::Pressed && !common.read_only =>
+            {
                 return if let Some(text) = &event.text {
                     self.save_undo_state(Some(EditOp::KeyInput));
                     self.cancel_selection_and_ime(cx);
@@ -850,7 +834,7 @@ impl Part {
                         .shortcuts()
                         .try_match_event(cx.modifiers(), event);
                     if let Some(cmd) = opt_cmd {
-                        match self.cmd_action(cx, cmd, Some(event.physical_key)) {
+                        match self.cmd_action(common, cx, cmd, Some(event.physical_key)) {
                             Ok(action) => {
                                 if matches!(action, EventAction::Cursor) {
                                     self.set_view_offset_from_cursor(cx);
@@ -988,7 +972,7 @@ impl Part {
                 if let Some(content) = cx.get_primary() {
                     self.save_undo_state(Some(EditOp::Clipboard));
 
-                    let range = self.trim_paste(&content);
+                    let range = self.trim_paste(common.wrap, &content);
                     self.replace_range(index..index, &content[range.clone()]);
                     index += range.len();
                     event_action = EventAction::Edit;
@@ -1235,9 +1219,9 @@ impl Part {
         }
     }
 
-    fn trim_paste(&self, text: &str) -> Range<usize> {
+    fn trim_paste(&self, wrap: bool, text: &str) -> Range<usize> {
         let mut end = text.len();
-        if !self.wrap {
+        if !wrap {
             // We cut the content short on control characters and
             // ignore them (preventing line-breaks and ignoring any
             // actions such as recursive-paste).
@@ -1254,18 +1238,19 @@ impl Part {
     /// Drive action of a [`Command`]
     fn cmd_action(
         &mut self,
+        common: &mut Common,
         cx: &mut EventCx,
         mut cmd: Command,
         code: Option<PhysicalKey>,
     ) -> Result<EventAction, NotReady> {
         debug_assert!(self.is_prepared());
 
-        let editable = !self.read_only;
+        let editable = !common.read_only;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let cursor = self.selection.cursor;
         let len = self.as_str().len();
-        let multi_line = self.wrap;
+        let multi_line = common.wrap;
         let selection = self.selection.to_range();
         let have_sel = selection.end > selection.start;
         let string;
@@ -1410,7 +1395,7 @@ impl Part {
                     v.0 = x;
                 }
                 // TODO: page height should be an input?
-                let mut line_height = self.dpem;
+                let mut line_height = common.dpem;
                 if let Some(line) = self.display.lines().next() {
                     line_height = line.bottom() - line.top();
                 }
@@ -1465,7 +1450,7 @@ impl Part {
             }
             Command::Paste if editable => {
                 if let Some(content) = cx.get_clipboard() {
-                    let range = self.trim_paste(&content);
+                    let range = self.trim_paste(common.wrap, &content);
                     string = content;
                     Action::Insert(&string[range], EditOp::Clipboard)
                 } else {
@@ -1700,19 +1685,19 @@ impl Editor {
     /// Get whether this text-edit widget is read-only
     #[inline]
     pub fn is_read_only(&self) -> bool {
-        self.part.read_only
+        self.common.read_only
     }
 
     /// Set whether this text-edit widget is editable
     #[inline]
     pub fn set_read_only(&mut self, read_only: bool) {
-        self.part.read_only = read_only;
+        self.common.read_only = read_only;
     }
 
     /// True if the editor uses multi-line mode
     #[inline]
     pub fn multi_line(&self) -> bool {
-        self.part.wrap
+        self.common.wrap
     }
 
     /// Get whether the widget has input focus
