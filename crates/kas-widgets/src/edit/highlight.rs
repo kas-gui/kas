@@ -138,9 +138,7 @@ impl Highlighter for Plain {
     }
 
     #[inline]
-    fn new_state(&self) -> Self::State {
-        ()
-    }
+    fn new_state(&self) -> Self::State {}
 
     #[inline]
     fn highlight_line(

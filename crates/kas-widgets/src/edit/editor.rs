@@ -208,7 +208,7 @@ impl<H: Highlighter> Component<H> {
     {
         let editor = Editor {
             common: Common::new(wrap),
-            part: Part::new(),
+            part: Part::default(),
             error_state: None,
         };
         Component(editor, H::default())
@@ -356,10 +356,9 @@ impl<H: Highlighter> Component<H> {
     }
 }
 
-impl Part {
-    /// Construct a new instance
+impl Default for Part {
     #[inline]
-    pub fn new() -> Self {
+    fn default() -> Self {
         Part {
             id: Id::default(),
             rect: Rect::ZERO,
@@ -376,7 +375,9 @@ impl Part {
             input_handler: Default::default(),
         }
     }
+}
 
+impl Part {
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `Part`.
