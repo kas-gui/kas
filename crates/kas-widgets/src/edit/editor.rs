@@ -68,6 +68,8 @@ impl EventAction {
 /// Editor state common to all parts
 #[derive(Debug)]
 pub struct Common {
+    /// We store a copy of the widget id here, since the latter is inaccessible
+    id: Id,
     colors: SchemeColors,
     font: FontSelector,
     dpem: f32,
@@ -88,6 +90,7 @@ impl Common {
     #[inline]
     pub fn new(wrap: bool) -> Self {
         Common {
+            id: Id::default(),
             colors: SchemeColors::default(),
             font: FontSelector::default(),
             dpem: 16.0,
@@ -107,7 +110,8 @@ impl Common {
     /// Configure `Common` data
     #[inline]
     #[must_use]
-    pub fn configure(&mut self, cx: &SizeCx) -> Option<ActionResetStatus> {
+    pub fn configure(&mut self, cx: &SizeCx, id: Id) -> Option<ActionResetStatus> {
+        self.id = id;
         let font = cx.font(TextClass::Editor);
         let dpem = cx.dpem(TextClass::Editor);
         if font != self.font || dpem != self.dpem {
@@ -146,8 +150,6 @@ impl Common {
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug)]
 pub struct Part {
-    // TODO(opt): id is duplicated here since macros don't let us put the core here
-    id: Id,
     rect: Rect,
     status: Status,
     display: TextDisplay,
@@ -288,7 +290,7 @@ impl<H: Highlighter> Component<H> {
     /// Configure component
     #[inline]
     pub fn configure(&mut self, cx: &mut ConfigCx, id: Id) {
-        if let Some(ActionResetStatus) = self.0.common.configure(&cx.size_cx()) {
+        if let Some(ActionResetStatus) = self.0.common.configure(&cx.size_cx(), id) {
             self.0.part.require_reprepare();
         }
         if let Some(_) = self.1.configure(cx) {
@@ -296,7 +298,6 @@ impl<H: Highlighter> Component<H> {
             self.0.part.require_reprepare();
         }
 
-        self.0.part.configure(id);
         self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
     }
 
@@ -372,7 +373,6 @@ impl Default for Part {
     #[inline]
     fn default() -> Self {
         Part {
-            id: Id::default(),
             rect: Rect::ZERO,
             status: Status::New,
             display: TextDisplay::default(),
@@ -402,7 +402,7 @@ impl Part {
 
     /// Get the base directionality of the text
     ///
-    /// [`Self::configure`] should be called before this method.
+    /// [`Self::prepare_runs`] should be called before this method.
     #[inline]
     pub fn text_is_rtl(&self) -> bool {
         debug_assert!(self.status >= Status::ResizeLevelRuns);
@@ -421,19 +421,11 @@ impl Part {
         self.status = Status::New;
     }
 
-    /// Configure component
-    ///
-    /// [`Common::configure`] must be called before this method.
-    pub fn configure(&mut self, id: Id) {
-        self.id = id;
-    }
-
     /// Perform run-breaking and shaping
     ///
     /// This represents a high-level step of preparation required before
-    /// displaying text. After the `Part` is [configured](Self::configure), this
-    /// method should be called before any sizing operations. This will advance
-    /// the [`Status`] to [`Status::LevelRuns`].
+    /// displaying text. This method should be called before any sizing
+    /// operations. This will advance the [`Status`] to [`Status::LevelRuns`].
     /// This method must be called again after any edits to the `Part`'s text.
     #[inline]
     pub fn prepare_runs<H: Highlighter>(&mut self, common: &mut Common, highlighter: &mut H) {
@@ -724,7 +716,7 @@ impl Part {
             draw.decorate_text(pos, rect, &self.display, &tokens[r0..]);
         }
 
-        if !common.read_only && draw.ev_state().has_input_focus(&self.id) == Some(true) {
+        if !common.read_only && draw.ev_state().has_input_focus(&common.id) == Some(true) {
             draw.text_cursor(
                 pos,
                 rect,
@@ -779,7 +771,7 @@ impl Part {
                     let hint = Default::default();
                     let purpose = ImePurpose::Normal;
                     let surrounding_text = self.ime_surrounding_text(common);
-                    cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
+                    cx.replace_ime_focus(common.id.clone(), hint, purpose, surrounding_text);
                     EventAction::FocusGained
                 } else {
                     EventAction::Used
@@ -858,7 +850,7 @@ impl Part {
                         }
                         CurrentAction::Selection => {
                             // Do not interrupt selection
-                            cx.cancel_ime_focus(&self.id);
+                            cx.cancel_ime_focus(&common.id);
                         }
                     }
                     return if !common.has_key_focus {
@@ -949,14 +941,14 @@ impl Part {
                     }
 
                     if let Some(text) = self.ime_surrounding_text(common) {
-                        cx.update_ime_surrounding_text(&self.id, text);
+                        cx.update_ime_surrounding_text(&common.id, text);
                     }
 
                     return EventAction::Used;
                 }
             },
             Event::PressStart(press) if press.is_tertiary() => {
-                return match press.grab_click(self.id.clone()).complete(cx) {
+                return match press.grab_click(common.id.clone()).complete(cx) {
                     Unused => EventAction::Unused,
                     Used => EventAction::Used,
                 };
@@ -977,7 +969,7 @@ impl Part {
                 }
                 index.into()
             }
-            event => match common.input_handler.handle(cx, self.id.clone(), event) {
+            event => match common.input_handler.handle(cx, common.id.clone(), event) {
                 TextInputAction::Used => return EventAction::Used,
                 TextInputAction::Unused => return EventAction::Unused,
                 TextInputAction::PressStart {
@@ -987,7 +979,7 @@ impl Part {
                 } => {
                     if common.current.is_ime_enabled() {
                         self.clear_ime(common);
-                        cx.cancel_ime_focus(&self.id);
+                        cx.cancel_ime_focus(&common.id);
                     }
                     self.request_key_focus(common, cx, FocusSource::Pointer);
                     self.save_undo_state(common, Some(EditOp::Cursor));
@@ -1028,7 +1020,7 @@ impl Part {
                 TextInputAction::PressEnd { coord } => {
                     if common.current.is_ime_enabled() {
                         self.clear_ime(common);
-                        cx.cancel_ime_focus(&self.id);
+                        cx.cancel_ime_focus(&common.id);
                     }
                     self.save_undo_state(common, Some(EditOp::Cursor));
                     if common.current == CurrentAction::Selection {
@@ -1081,7 +1073,7 @@ impl Part {
             common.current = CurrentAction::None;
         } else if common.current.is_ime_enabled() {
             self.clear_ime(common);
-            cx.cancel_ime_focus(&self.id);
+            cx.cancel_ime_focus(&common.id);
         }
     }
 
@@ -1192,7 +1184,7 @@ impl Part {
             return;
         };
 
-        cx.set_ime_cursor_area(&self.id, rect + Offset::conv(self.rect.pos));
+        cx.set_ime_cursor_area(&common.id, rect + Offset::conv(self.rect.pos));
     }
 
     /// Call before an edit to (potentially) commit current state based on last_edit
@@ -1214,7 +1206,7 @@ impl Part {
     /// Request key focus, if we don't have it or IME
     fn request_key_focus(&self, common: &Common, cx: &mut EventCx, source: FocusSource) {
         if !common.has_key_focus && !common.current.is_ime_enabled() {
-            cx.request_key_focus(self.id.clone(), source);
+            cx.request_key_focus(common.id.clone(), source);
         }
     }
 
@@ -1565,7 +1557,7 @@ impl Editor {
     /// Get a reference to the widget's identifier
     #[inline]
     pub fn id_ref(&self) -> &Id {
-        &self.part.id
+        &self.common.id
     }
 
     /// Get the widget's identifier
