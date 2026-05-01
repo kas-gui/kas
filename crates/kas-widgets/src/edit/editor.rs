@@ -727,6 +727,147 @@ impl Part {
         }
     }
 
+    /// Replace a section of text
+    ///
+    /// This may be used to edit the raw text instead of replacing it.
+    /// One must call [`Text::prepare`] afterwards.
+    ///
+    /// One may simulate an unbounded range by via `start..usize::MAX`.
+    ///
+    /// Currently this is not significantly more efficient than
+    /// [`Text::set_text`]. This may change in the future (TODO).
+    #[inline]
+    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
+        self.text.replace_range(range, replace_with);
+        self.require_reprepare();
+    }
+
+    fn trim_paste(&self, wrap: bool, text: &str) -> Range<usize> {
+        let mut end = text.len();
+        if !wrap {
+            // We cut the content short on control characters and
+            // ignore them (preventing line-breaks and ignoring any
+            // actions such as recursive-paste).
+            for (i, c) in text.char_indices() {
+                if c < '\u{20}' || ('\u{7f}'..='\u{9f}').contains(&c) {
+                    end = i;
+                    break;
+                }
+            }
+        }
+        0..end
+    }
+
+    /// Clean up IME state
+    ///
+    /// One should also call [`EventCx::cancel_ime_focus`] unless this is
+    /// implied.
+    fn clear_ime(&mut self, common: &mut Common) {
+        if common.current.is_ime_enabled() {
+            let action = std::mem::replace(&mut common.current, CurrentAction::None);
+            if let CurrentAction::ImePreedit { edit_range } = action {
+                common.selection.set_position(edit_range.start.cast());
+                self.replace_range(edit_range.cast(), "");
+            }
+        }
+    }
+
+    fn ime_surrounding_text(&self, common: &Common) -> Option<ImeSurroundingText> {
+        const MAX_TEXT_BYTES: usize = ImeSurroundingText::MAX_TEXT_BYTES;
+
+        let sel_range = common.selection.to_range();
+        let edit_range = match common.current.clone() {
+            CurrentAction::ImePreedit { edit_range } => Some(edit_range.cast()),
+            _ => None,
+        };
+        let mut range = edit_range.clone().unwrap_or(sel_range);
+        let initial_range = range.clone();
+        let edit_len = edit_range.clone().map(|r| r.len()).unwrap_or(0);
+
+        if self.status >= Status::Wrapped {
+            if let Some((_, line_range)) = self.display.find_line(range.start) {
+                range.start = line_range.start;
+            }
+            if let Some((_, line_range)) = self.display.find_line(range.end) {
+                range.end = line_range.end;
+            }
+        }
+
+        if range.len() - edit_len > MAX_TEXT_BYTES {
+            range.end = range.end.min(initial_range.end + MAX_TEXT_BYTES / 2);
+            while !self.as_str().is_char_boundary(range.end) {
+                range.end -= 1;
+            }
+
+            if range.len() - edit_len > MAX_TEXT_BYTES {
+                range.start = range.start.max(initial_range.start - MAX_TEXT_BYTES / 2);
+                while !self.as_str().is_char_boundary(range.start) {
+                    range.start += 1;
+                }
+            }
+        }
+
+        let start = range.start;
+        let mut text = String::with_capacity(range.len() - edit_len);
+        if let Some(er) = edit_range {
+            text.push_str(&self.as_str()[range.start..er.start]);
+            text.push_str(&self.as_str()[er.end..range.end]);
+        } else {
+            text = self.as_str()[range].to_string();
+        }
+
+        let cursor = common.selection.cursor.saturating_sub(start);
+        // Terminology difference: our sel_index is called 'anchor'
+        let sel_index = common.selection.anchor.saturating_sub(start);
+        ImeSurroundingText::new(text, cursor, sel_index)
+            .inspect_err(|err| {
+                // TODO: use Display for err not Debug
+                log::warn!("Editor::ime_surrounding_text failed: {err:?}")
+            })
+            .ok()
+    }
+
+    /// Call to set IME position only while IME is active
+    fn set_ime_cursor_area(&self, common: &Common, cx: &mut EventState) {
+        if !self.is_prepared() {
+            return;
+        }
+
+        let range = match common.current.clone() {
+            CurrentAction::ImeStart => common.selection.to_range(),
+            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+            _ => return,
+        };
+
+        let (m1, m2);
+        if range.is_empty() {
+            let mut iter = self.display.text_glyph_pos(range.start);
+            m1 = iter.next();
+            m2 = iter.next();
+        } else {
+            m1 = self.display.text_glyph_pos(range.start).next_back();
+            m2 = self.display.text_glyph_pos(range.end).next();
+        }
+
+        let rect = if let Some((c1, c2)) = m1.zip(m2) {
+            let left = c1.pos.0.min(c2.pos.0);
+            let right = c1.pos.0.max(c2.pos.0);
+            let top = (c1.pos.1 - c1.ascent).min(c2.pos.1 - c2.ascent);
+            let bottom = (c1.pos.1 - c1.descent).max(c2.pos.1 - c2.ascent);
+            let p1 = Vec2(left, top).cast_floor();
+            let p2 = Vec2(right, bottom).cast_ceil();
+            Rect::from_coords(p1, p2)
+        } else if let Some(c) = m1.or(m2) {
+            let p1 = Vec2(c.pos.0, c.pos.1 - c.ascent).cast_floor();
+            let p2 = Vec2(c.pos.0, c.pos.1 - c.descent).cast_ceil();
+            Rect::from_coords(p1, p2)
+        } else {
+            return;
+        };
+
+        cx.set_ime_cursor_area(&common.id, rect + Offset::conv(self.rect.pos));
+    }
+
     /// Handle an event
     ///
     /// If [`EventAction::requires_repreparation`] then the caller **must** call
@@ -1048,21 +1189,6 @@ impl Part {
         event_action
     }
 
-    /// Replace a section of text
-    ///
-    /// This may be used to edit the raw text instead of replacing it.
-    /// One must call [`Text::prepare`] afterwards.
-    ///
-    /// One may simulate an unbounded range by via `start..usize::MAX`.
-    ///
-    /// Currently this is not significantly more efficient than
-    /// [`Text::set_text`]. This may change in the future (TODO).
-    #[inline]
-    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
-        self.text.replace_range(range, replace_with);
-        self.require_reprepare();
-    }
-
     /// Cancel on-going selection and IME actions
     ///
     /// This should be called if e.g. key-input interrupts the current
@@ -1075,116 +1201,6 @@ impl Part {
             self.clear_ime(common);
             cx.cancel_ime_focus(&common.id);
         }
-    }
-
-    /// Clean up IME state
-    ///
-    /// One should also call [`EventCx::cancel_ime_focus`] unless this is
-    /// implied.
-    fn clear_ime(&mut self, common: &mut Common) {
-        if common.current.is_ime_enabled() {
-            let action = std::mem::replace(&mut common.current, CurrentAction::None);
-            if let CurrentAction::ImePreedit { edit_range } = action {
-                common.selection.set_position(edit_range.start.cast());
-                self.replace_range(edit_range.cast(), "");
-            }
-        }
-    }
-
-    fn ime_surrounding_text(&self, common: &Common) -> Option<ImeSurroundingText> {
-        const MAX_TEXT_BYTES: usize = ImeSurroundingText::MAX_TEXT_BYTES;
-
-        let sel_range = common.selection.to_range();
-        let edit_range = match common.current.clone() {
-            CurrentAction::ImePreedit { edit_range } => Some(edit_range.cast()),
-            _ => None,
-        };
-        let mut range = edit_range.clone().unwrap_or(sel_range);
-        let initial_range = range.clone();
-        let edit_len = edit_range.clone().map(|r| r.len()).unwrap_or(0);
-
-        if self.status >= Status::Wrapped {
-            if let Some((_, line_range)) = self.display.find_line(range.start) {
-                range.start = line_range.start;
-            }
-            if let Some((_, line_range)) = self.display.find_line(range.end) {
-                range.end = line_range.end;
-            }
-        }
-
-        if range.len() - edit_len > MAX_TEXT_BYTES {
-            range.end = range.end.min(initial_range.end + MAX_TEXT_BYTES / 2);
-            while !self.as_str().is_char_boundary(range.end) {
-                range.end -= 1;
-            }
-
-            if range.len() - edit_len > MAX_TEXT_BYTES {
-                range.start = range.start.max(initial_range.start - MAX_TEXT_BYTES / 2);
-                while !self.as_str().is_char_boundary(range.start) {
-                    range.start += 1;
-                }
-            }
-        }
-
-        let start = range.start;
-        let mut text = String::with_capacity(range.len() - edit_len);
-        if let Some(er) = edit_range {
-            text.push_str(&self.as_str()[range.start..er.start]);
-            text.push_str(&self.as_str()[er.end..range.end]);
-        } else {
-            text = self.as_str()[range].to_string();
-        }
-
-        let cursor = common.selection.cursor.saturating_sub(start);
-        // Terminology difference: our sel_index is called 'anchor'
-        let sel_index = common.selection.anchor.saturating_sub(start);
-        ImeSurroundingText::new(text, cursor, sel_index)
-            .inspect_err(|err| {
-                // TODO: use Display for err not Debug
-                log::warn!("Editor::ime_surrounding_text failed: {err:?}")
-            })
-            .ok()
-    }
-
-    /// Call to set IME position only while IME is active
-    fn set_ime_cursor_area(&self, common: &Common, cx: &mut EventState) {
-        if !self.is_prepared() {
-            return;
-        }
-
-        let range = match common.current.clone() {
-            CurrentAction::ImeStart => common.selection.to_range(),
-            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
-            _ => return,
-        };
-
-        let (m1, m2);
-        if range.is_empty() {
-            let mut iter = self.display.text_glyph_pos(range.start);
-            m1 = iter.next();
-            m2 = iter.next();
-        } else {
-            m1 = self.display.text_glyph_pos(range.start).next_back();
-            m2 = self.display.text_glyph_pos(range.end).next();
-        }
-
-        let rect = if let Some((c1, c2)) = m1.zip(m2) {
-            let left = c1.pos.0.min(c2.pos.0);
-            let right = c1.pos.0.max(c2.pos.0);
-            let top = (c1.pos.1 - c1.ascent).min(c2.pos.1 - c2.ascent);
-            let bottom = (c1.pos.1 - c1.descent).max(c2.pos.1 - c2.ascent);
-            let p1 = Vec2(left, top).cast_floor();
-            let p2 = Vec2(right, bottom).cast_ceil();
-            Rect::from_coords(p1, p2)
-        } else if let Some(c) = m1.or(m2) {
-            let p1 = Vec2(c.pos.0, c.pos.1 - c.ascent).cast_floor();
-            let p2 = Vec2(c.pos.0, c.pos.1 - c.descent).cast_ceil();
-            Rect::from_coords(p1, p2)
-        } else {
-            return;
-        };
-
-        cx.set_ime_cursor_area(&common.id, rect + Offset::conv(self.rect.pos));
     }
 }
 
@@ -1213,22 +1229,6 @@ impl Common {
 }
 
 impl Part {
-    fn trim_paste(&self, wrap: bool, text: &str) -> Range<usize> {
-        let mut end = text.len();
-        if !wrap {
-            // We cut the content short on control characters and
-            // ignore them (preventing line-breaks and ignoring any
-            // actions such as recursive-paste).
-            for (i, c) in text.char_indices() {
-                if c < '\u{20}' || ('\u{7f}'..='\u{9f}').contains(&c) {
-                    end = i;
-                    break;
-                }
-            }
-        }
-        0..end
-    }
-
     /// Drive action of a [`Command`]
     fn cmd_action(
         &mut self,
