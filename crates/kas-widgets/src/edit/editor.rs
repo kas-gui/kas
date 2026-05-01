@@ -1237,7 +1237,8 @@ impl Common {
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let cursor = self.selection.cursor;
-        let len = part.as_str().len();
+        let part_len = part.as_str().len();
+        let doc_len = part_len;
         let multi_line = self.wrap;
         let selection = self.selection.to_range();
         let have_sel = selection.end > selection.start;
@@ -1276,7 +1277,7 @@ impl Common {
             Command::Left | Command::Home if !shift && have_sel => {
                 Action::Move(selection.start, None)
             }
-            Command::Left if cursor > 0 => GraphemeCursor::new(cursor, len, true)
+            Command::Left if cursor > 0 => GraphemeCursor::new(cursor, part_len, true)
                 .prev_boundary(part.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
@@ -1284,7 +1285,7 @@ impl Common {
             Command::Right | Command::End if !shift && have_sel => {
                 Action::Move(selection.end, None)
             }
-            Command::Right if cursor < len => GraphemeCursor::new(cursor, len, true)
+            Command::Right if cursor < part_len => GraphemeCursor::new(cursor, part_len, true)
                 .next_boundary(part.as_str(), 0)
                 .unwrap()
                 .map(|index| Action::Move(index, None))
@@ -1306,9 +1307,12 @@ impl Common {
                 }
                 Action::Move(p, None)
             }
-            Command::WordRight if cursor < len => {
+            Command::WordRight if cursor < part_len => {
                 let mut iter = part.as_str()[cursor..].split_word_bound_indices().skip(1);
-                let mut p = iter.next().map(|(index, _)| cursor + index).unwrap_or(len);
+                let mut p = iter
+                    .next()
+                    .map(|(index, _)| cursor + index)
+                    .unwrap_or(part_len);
                 while part.as_str()[p..]
                     .chars()
                     .next()
@@ -1344,7 +1348,7 @@ impl Common {
                 };
                 const HALF: usize = usize::MAX / 2;
                 let nearest_end = match line {
-                    0..=HALF => len,
+                    0..=HALF => part_len,
                     _ => 0,
                 };
                 part.display
@@ -1360,16 +1364,16 @@ impl Common {
                     .unwrap_or(0);
                 Action::Move(index, None)
             }
-            Command::End if cursor < len => {
+            Command::End if cursor < part_len => {
                 let index = part
                     .display
                     .find_line(cursor)
                     .map(|r| r.1.end)
-                    .unwrap_or(len);
+                    .unwrap_or(part_len);
                 Action::Move(index, None)
             }
             Command::DocHome if cursor > 0 => Action::Move(0, None),
-            Command::DocEnd if cursor < len => Action::Move(len, None),
+            Command::DocEnd if cursor < doc_len => Action::Move(doc_len, None),
             // Avoid use of unused navigation keys (e.g. by ScrollComponent):
             Command::Home | Command::End | Command::DocHome | Command::DocEnd => Action::None,
             Command::PageUp | Command::PageDown if multi_line => {
@@ -1398,12 +1402,12 @@ impl Common {
             Command::Delete | Command::DelBack if editable && have_sel => {
                 Action::Delete(selection.clone(), EditOp::Delete)
             }
-            Command::Delete if editable => GraphemeCursor::new(cursor, len, true)
+            Command::Delete if editable => GraphemeCursor::new(cursor, part_len, true)
                 .next_boundary(part.as_str(), 0)
                 .unwrap()
                 .map(|next| Action::Delete(cursor..next, EditOp::Delete))
                 .unwrap_or(Action::None),
-            Command::DelBack if editable => GraphemeCursor::new(cursor, len, true)
+            Command::DelBack if editable => GraphemeCursor::new(cursor, part_len, true)
                 .prev_boundary(part.as_str(), 0)
                 .unwrap()
                 .map(|prev| Action::Delete(prev..cursor, EditOp::Delete))
@@ -1413,7 +1417,7 @@ impl Common {
                     .split_word_bound_indices()
                     .nth(1)
                     .map(|(index, _)| cursor + index)
-                    .unwrap_or(len);
+                    .unwrap_or(part_len);
                 Action::Delete(cursor..next, EditOp::Delete)
             }
             Command::DelWordBack if editable => {
@@ -1427,7 +1431,7 @@ impl Common {
             Command::SelectAll => {
                 self.selection.anchor = 0;
                 shift = true; // hack
-                Action::Move(len, None)
+                Action::Move(doc_len, None)
             }
             Command::Cut if editable && have_sel => {
                 cx.set_clipboard((part.as_str()[selection.clone()]).into());
