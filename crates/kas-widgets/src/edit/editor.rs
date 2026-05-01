@@ -969,6 +969,16 @@ impl Part {
 }
 
 impl Common {
+    fn text_index_nearest(&self, part: &Part, coord: Coord) -> usize {
+        let rel_pos = (coord - part.rect().pos).cast();
+        if part.is_prepared() {
+            part.display.text_index_nearest(rel_pos)
+        } else {
+            debug_assert!(false);
+            0
+        }
+    }
+
     /// Handle an event
     ///
     /// If [`EventAction::requires_repreparation`] then the caller **must** call
@@ -1088,8 +1098,7 @@ impl Common {
                 };
             }
             Event::PressEnd { press, .. } if press.is_tertiary() => {
-                let rel_pos = (press.coord - part.rect().pos).cast();
-                let mut index = part.display.text_index_nearest(rel_pos);
+                let mut index = self.text_index_nearest(part, press.coord);
                 self.cancel_selection_and_ime(part, cx);
                 self.request_key_focus(cx, FocusSource::Pointer);
 
@@ -1119,8 +1128,7 @@ impl Common {
                     self.save_undo_state(part, Some(EditOp::Cursor));
                     self.current = CurrentAction::Selection;
 
-                    let rel_pos = (coord - part.rect().pos).cast();
-                    let cursor = part.display.text_index_nearest(rel_pos);
+                    let cursor = self.text_index_nearest(part, coord);
                     let anchor = if clear { cursor } else { self.selection.anchor };
 
                     let range = CursorRange::from(anchor..cursor);
@@ -1140,8 +1148,7 @@ impl Common {
                         return EventAction::Used;
                     }
 
-                    let rel_pos = (coord - part.rect().pos).cast();
-                    let index = part.display.text_index_nearest(rel_pos);
+                    let index = self.text_index_nearest(part, coord);
 
                     TextInput::adjust_range(
                         part.text.as_str(),
@@ -1160,8 +1167,7 @@ impl Common {
                     if self.current == CurrentAction::Selection {
                         self.set_primary(part, cx);
                     } else {
-                        let rel_pos = (coord - part.rect().pos).cast();
-                        let index = part.display.text_index_nearest(rel_pos);
+                        let index = self.text_index_nearest(part, coord);
                         self.selection.cursor = index;
                         self.selection.clear_selection();
                     }
@@ -1386,7 +1392,8 @@ impl Common {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
-                Action::Move(part.display.text_index_nearest(v.into()), Some(v.0))
+                let pos = part.rect.pos + Offset::conv_nearest(v);
+                Action::Move(self.text_index_nearest(part, pos), Some(v.0))
             }
             Command::Delete | Command::DelBack if editable && have_sel => {
                 Action::Delete(selection.clone(), EditOp::Delete)
