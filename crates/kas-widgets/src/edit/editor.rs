@@ -324,8 +324,8 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn prepare_and_scroll(&mut self, cx: &mut EventCx) {
         self.0
-            .part
-            .prepare_and_scroll(&mut self.0.common, &mut self.1, cx);
+            .common
+            .prepare_and_scroll(&mut self.0.part, &mut self.1, cx);
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -354,8 +354,8 @@ impl<H: Highlighter> Component<H> {
         let action = self.0.common.handle_event(&mut self.0.part, cx, event);
         if action.requires_repreparation() {
             self.0
-                .part
-                .prepare_and_scroll(&mut self.0.common, &mut self.1, cx);
+                .common
+                .prepare_and_scroll(&mut self.0.part, &mut self.1, cx);
         }
         action
     }
@@ -539,30 +539,6 @@ impl Part {
 
         self.status = Status::Ready;
         bb != self.display.bounding_box()
-    }
-
-    /// Fully prepare text for display, ensuring the cursor is within view
-    ///
-    /// This method performs all required steps of preparation according to the
-    /// [`Status`] (which is advanced to [`Status::Ready`]). This method should
-    /// be called after changes to the text, alignment or wrap-width.
-    #[inline]
-    pub fn prepare_and_scroll<H: Highlighter>(
-        &mut self,
-        common: &mut Common,
-        highlighter: &mut H,
-        cx: &mut EventCx,
-    ) {
-        if self.is_prepared() {
-            return;
-        }
-
-        self.prepare_runs(common, highlighter);
-        if self.prepare_wrap(common) {
-            cx.resize();
-            common.set_view_offset_from_cursor(self, cx);
-        }
-        cx.redraw();
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -969,6 +945,30 @@ impl Part {
 }
 
 impl Common {
+    /// Fully prepare text for display, ensuring the cursor is within view
+    ///
+    /// This method performs all required steps of preparation according to the
+    /// [`Status`] (which is advanced to [`Status::Ready`]). This method should
+    /// be called after changes to the text, alignment or wrap-width.
+    #[inline]
+    pub fn prepare_and_scroll<H: Highlighter>(
+        &mut self,
+        part: &mut Part,
+        highlighter: &mut H,
+        cx: &mut EventCx,
+    ) {
+        if part.is_prepared() {
+            return;
+        }
+
+        part.prepare_runs(self, highlighter);
+        if part.prepare_wrap(self) {
+            cx.resize();
+            self.set_view_offset_from_cursor(part, cx);
+        }
+        cx.redraw();
+    }
+
     fn text_index_nearest(&self, part: &Part, coord: Coord) -> usize {
         let rel_pos = (coord - part.rect().pos).cast();
         if part.is_prepared() {
@@ -982,7 +982,7 @@ impl Common {
     /// Handle an event
     ///
     /// If [`EventAction::requires_repreparation`] then the caller **must** call
-    /// re-prepare the text by calling [`Part::prepare_and_scroll`].
+    /// re-prepare the text by calling [`Common::prepare_and_scroll`].
     pub fn handle_event(&mut self, part: &mut Part, cx: &mut EventCx, event: Event) -> EventAction {
         if !part.is_prepared() {
             debug_assert!(false);
