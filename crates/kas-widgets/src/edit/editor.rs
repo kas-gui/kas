@@ -31,6 +31,7 @@ use kas::util::UndoStack;
 use kas::{Layout, autoimpl};
 use std::borrow::Cow;
 use std::num::NonZeroUsize;
+use std::rc::Rc;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 /// Action: text parts should have their status reset to [`Status::New`] and be re-prepared
@@ -80,7 +81,7 @@ pub struct Common {
     edit_x_coord: Option<f32>,
     selection: CursorRange,
     last_edit: Option<EditOp>,
-    undo_stack: UndoStack<(String, CursorRange)>,
+    undo_stack: UndoStack<(Rc<String>, CursorRange)>,
     current: CurrentAction,
     input_handler: TextInput,
 }
@@ -154,7 +155,7 @@ pub struct Part {
     status: Status,
     display: TextDisplay,
     highlight: highlight::Cache,
-    text: String,
+    text: Rc<String>,
 }
 
 /// Inner editor interface
@@ -389,8 +390,7 @@ impl Part {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        let text = text.to_string();
-        self.text = text;
+        self.text = Rc::new(text.to_string());
         self
     }
 
@@ -738,7 +738,7 @@ impl Part {
     /// [`Text::set_text`]. This may change in the future (TODO).
     #[inline]
     fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
-        self.text.replace_range(range, replace_with);
+        Rc::make_mut(&mut self.text).replace_range(range, replace_with);
         self.require_reprepare();
     }
 
@@ -1221,7 +1221,7 @@ impl Common {
 
         self.last_edit = edit;
         self.undo_stack
-            .try_push((part.as_str().to_string(), self.selection));
+            .try_push((Rc::clone(&part.text), self.selection));
     }
 
     /// Request key focus, if we don't have it or IME
@@ -1514,8 +1514,8 @@ impl Common {
             }
             Action::UndoRedo(redo) => {
                 if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
-                    if part.text.as_str() != text {
-                        part.text = text.clone();
+                    if !Rc::ptr_eq(&part.text, text) {
+                        part.text = Rc::clone(text);
                         part.status = Status::New;
                         self.edit_x_coord = None;
                     }
@@ -1636,7 +1636,7 @@ impl Editor {
 
         self.common.cancel_selection_and_ime(&mut self.part, cx);
 
-        self.part.text = text;
+        self.part.text = Rc::new(text);
         self.part.require_reprepare();
 
         let len = self.as_str().len();
