@@ -834,25 +834,7 @@ impl Part {
     /// Handle IME methods on a given `Part`.
     fn handle_ime(&mut self, common: &mut Common, cx: &mut EventCx, event: Ime) -> EventAction {
         match event {
-            Ime::Enabled => {
-                match common.current {
-                    CurrentAction::None => {
-                        common.current = CurrentAction::ImeStart;
-                        self.set_ime_cursor_area(common, cx);
-                    }
-                    CurrentAction::ImeStart | CurrentAction::ImePreedit { .. } => {
-                        // already enabled
-                    }
-                    CurrentAction::Selection => {
-                        unreachable!()
-                    }
-                }
-                if !common.has_key_focus {
-                    EventAction::FocusGained
-                } else {
-                    EventAction::Used
-                }
-            }
+            Ime::Enabled => EventAction::Unused,
             Ime::Disabled => {
                 self.clear_ime(common);
                 if !common.has_key_focus {
@@ -862,7 +844,6 @@ impl Part {
                 }
             }
             Ime::Preedit { text, cursor } => {
-                common.save_undo_state(self, None);
                 let mut edit_range = match common.current.clone() {
                     CurrentAction::ImeStart if cursor.is_some() => common.selection.to_range(),
                     CurrentAction::ImeStart => return EventAction::Used,
@@ -886,7 +867,6 @@ impl Part {
                 EventAction::Preedit
             }
             Ime::Commit { text } => {
-                common.save_undo_state(self, Some(EditOp::Ime));
                 let edit_range = match common.current.clone() {
                     CurrentAction::ImeStart => common.selection.to_range(),
                     CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
@@ -906,7 +886,6 @@ impl Part {
                 before_bytes,
                 after_bytes,
             } => {
-                common.save_undo_state(self, None);
                 let edit_range = match common.current.clone() {
                     CurrentAction::ImeStart => common.selection.to_range(),
                     CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
@@ -1083,10 +1062,30 @@ impl Common {
                 };
             }
             Event::Ime(ime) => {
-                if matches!(self.current, CurrentAction::Selection) {
-                    // Selection takes priority over IME
-                    cx.cancel_ime_focus(&self.id);
-                    return EventAction::Unused;
+                match self.current {
+                    CurrentAction::None if ime == Ime::Enabled => {
+                        self.current = CurrentAction::ImeStart;
+                        part.set_ime_cursor_area(self, cx);
+
+                        return if !self.has_key_focus {
+                            EventAction::FocusGained
+                        } else {
+                            EventAction::Used
+                        };
+                    }
+                    CurrentAction::Selection => {
+                        cx.cancel_ime_focus(&self.id);
+                        return EventAction::Unused;
+                    }
+                    _ => (),
+                }
+
+                if let Some(opt_op) = match ime {
+                    Ime::Enabled | Ime::Disabled => None,
+                    Ime::Preedit { .. } | Ime::DeleteSurrounding { .. } => Some(None),
+                    Ime::Commit { .. } => Some(Some(EditOp::Ime)),
+                } {
+                    self.save_undo_state(part, opt_op);
                 }
 
                 return part.handle_ime(self, cx, ime);
