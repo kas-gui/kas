@@ -601,9 +601,9 @@ impl TextInput {
     /// otherwise it is expanded in word mode.
     pub fn expand_range(
         text: &str,
-        mut range: CursorRange,
+        mut range: CursorRange<usize>,
         line_range: Option<&dyn Fn(usize) -> Option<std::ops::Range<usize>>>,
-    ) -> CursorRange {
+    ) -> CursorRange<usize> {
         let index = range.cursor;
         if range.cursor < range.anchor {
             range.reverse();
@@ -652,11 +652,11 @@ impl TextInput {
     /// Utility function to adjust an already-expanded range in word or line mode
     pub fn adjust_range(
         text: &str,
-        mut range: CursorRange,
+        mut range: CursorRange<usize>,
         index: usize,
         repeats: u32,
         line_range: Option<&dyn Fn(usize) -> Option<std::ops::Range<usize>>>,
-    ) -> CursorRange {
+    ) -> CursorRange<usize> {
         if range.anchor < range.cursor && index <= range.anchor
             || range.anchor > range.cursor && index >= range.anchor
         {

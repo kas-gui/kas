@@ -9,16 +9,16 @@ use std::ops::Range;
 
 /// Cursor index and selection range
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct CursorRange {
+pub struct CursorRange<Index> {
     /// The start or end of the selection.
-    pub anchor: usize,
+    pub anchor: Index,
     /// The cursor (edit) index.
-    pub cursor: usize,
+    pub cursor: Index,
 }
 
-impl From<usize> for CursorRange {
+impl<Index: Copy> From<Index> for CursorRange<Index> {
     #[inline]
-    fn from(index: usize) -> Self {
+    fn from(index: Index) -> Self {
         CursorRange {
             anchor: index,
             cursor: index,
@@ -26,9 +26,9 @@ impl From<usize> for CursorRange {
     }
 }
 
-impl From<Range<usize>> for CursorRange {
+impl<Index> From<Range<Index>> for CursorRange<Index> {
     #[inline]
-    fn from(range: Range<usize>) -> Self {
+    fn from(range: Range<Index>) -> Self {
         CursorRange {
             anchor: range.start,
             cursor: range.end,
@@ -36,7 +36,7 @@ impl From<Range<usize>> for CursorRange {
     }
 }
 
-impl CursorRange {
+impl<Index: Copy + Eq + Ord> CursorRange<Index> {
     /// True if the selection index equals the cursor index
     #[inline]
     pub fn is_empty(&self) -> bool {
@@ -46,7 +46,7 @@ impl CursorRange {
     /// Convert to a [`Range`], increasing
     ///
     /// The return value has `range.start <= range.end`.
-    pub fn to_range(&self) -> Range<usize> {
+    pub fn to_range(&self) -> Range<Index> {
         let mut range = *self;
         if range.anchor > range.cursor {
             range.reverse();
@@ -75,7 +75,7 @@ impl CursorRange {
     ///
     /// Both indices are set to `index`.
     #[inline]
-    pub fn set_position(&mut self, index: usize) {
+    pub fn set_position(&mut self, index: Index) {
         self.anchor = index;
         self.cursor = index;
     }
@@ -85,24 +85,8 @@ impl CursorRange {
     /// Call this method if the string changes under the selection to ensure
     /// that the selection does not exceed the length of the new string.
     #[inline]
-    pub fn set_max_len(&mut self, len: usize) {
+    pub fn set_max_len(&mut self, len: Index) {
         self.cursor = self.cursor.min(len);
         self.anchor = self.anchor.min(len);
-    }
-
-    /// Adjust all indices for a deletion from the source text
-    pub fn delete_range(&mut self, range: Range<usize>) {
-        let len = range.len();
-        let adjust = |index: usize| -> usize {
-            if index >= range.end {
-                index - len
-            } else if index > range.start {
-                range.start
-            } else {
-                index
-            }
-        };
-        self.cursor = adjust(self.cursor);
-        self.anchor = adjust(self.anchor);
     }
 }

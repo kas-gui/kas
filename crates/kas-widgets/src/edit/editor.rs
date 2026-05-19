@@ -102,9 +102,9 @@ pub struct Common {
     read_only: bool,
     has_key_focus: bool,
     edit_x_coord: Option<f32>,
-    selection: CursorRange,
+    selection: CursorRange<usize>,
     last_edit: Option<EditOp>,
-    undo_stack: UndoStack<(Rc<String>, CursorRange)>,
+    undo_stack: UndoStack<(Rc<String>, CursorRange<usize>)>,
     current: CurrentAction,
     input_handler: TextInput,
 }
@@ -965,7 +965,18 @@ impl Part {
                     let start = end - before_bytes;
                     if self.as_str().is_char_boundary(start) {
                         self.replace_range(start..end, "");
-                        common.selection.delete_range(start..end);
+                        let len = end - start;
+                        let adjust = |index: usize| -> usize {
+                            if index >= end {
+                                index - len
+                            } else if index > start {
+                                start
+                            } else {
+                                index
+                            }
+                        };
+                        common.selection.cursor = adjust(common.selection.cursor);
+                        common.selection.anchor = adjust(common.selection.anchor);
                     } else {
                         log::warn!("buggy IME tried to delete range not at char boundary");
                     }
@@ -1804,7 +1815,7 @@ impl Editor {
 
     /// Access the cursor index / selection range
     #[inline]
-    pub fn cursor_range(&self) -> CursorRange {
+    pub fn cursor_range(&self) -> CursorRange<usize> {
         self.common.selection
     }
 
@@ -1813,7 +1824,7 @@ impl Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     #[inline]
-    pub fn set_cursor_range(&mut self, range: CursorRange) {
+    pub fn set_cursor_range(&mut self, range: CursorRange<usize>) {
         self.common.edit_x_coord = None;
         self.common.selection = range;
     }
