@@ -16,6 +16,7 @@ pub use edit_field::EditBoxCore;
 pub use editor::Editor;
 pub use guard::*;
 
+use kas::cast::Cast;
 use kas::event::PhysicalKey;
 use std::fmt::Debug;
 use std::ops::Range;
@@ -59,11 +60,12 @@ enum CurrentAction {
     None,
     /// IME is enabled but no input has yet been given. This is special in that
     /// a selection may exist (which would get replaced by the pre-edit text).
-    ImeStart,
+    ImeStart(u32),
     /// We have some pre-edit text within the given range (if non-empty).
     ///
     /// This text should be deleted if IME is cancelled.
     ImePreedit {
+        part: u32,
         /// Range of the pre-edit text
         edit_range: Range<u32>,
     },
@@ -71,17 +73,29 @@ enum CurrentAction {
 }
 
 impl CurrentAction {
+    #[inline]
     fn is_none(&self) -> bool {
         *self == CurrentAction::None
+    }
+
+    /// Returns `Some(part)` when IME is enabled using the given `part`.
+    ///
+    /// This does not imply a pre-edit (or any IME input).
+    #[inline]
+    fn ime_part(&self) -> Option<usize> {
+        match self {
+            CurrentAction::None | CurrentAction::Selection => None,
+            CurrentAction::ImeStart(part) | CurrentAction::ImePreedit { part, .. } => {
+                Some((*part).cast())
+            }
+        }
     }
 
     /// Check whether IME is enabled
     ///
     /// This does not imply a pre-edit (or any IME input).
+    #[inline]
     fn is_ime_enabled(&self) -> bool {
-        matches!(
-            self,
-            CurrentAction::ImeStart | CurrentAction::ImePreedit { .. }
-        )
+        self.ime_part().is_some()
     }
 }

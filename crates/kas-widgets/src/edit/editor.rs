@@ -730,7 +730,7 @@ impl Part {
             draw.decorate_text(pos, rect, &self.display, decorations);
         }
 
-        if let CurrentAction::ImePreedit { edit_range } = common.current.clone() {
+        if let CurrentAction::ImePreedit { edit_range, .. } = common.current.clone() {
             let tokens = [
                 Default::default(),
                 (edit_range.start, format::Decoration {
@@ -792,7 +792,7 @@ impl Part {
     fn clear_ime(&mut self, common: &mut Common) {
         if common.current.is_ime_enabled() {
             let action = std::mem::replace(&mut common.current, CurrentAction::None);
-            if let CurrentAction::ImePreedit { edit_range } = action {
+            if let CurrentAction::ImePreedit { edit_range, .. } = action {
                 common.selection.set_position(edit_range.start.cast());
                 self.replace_range(edit_range.cast(), "");
             }
@@ -804,7 +804,7 @@ impl Part {
 
         let sel_range = common.selection.to_range();
         let edit_range = match common.current.clone() {
-            CurrentAction::ImePreedit { edit_range } => Some(edit_range.cast()),
+            CurrentAction::ImePreedit { edit_range, .. } => Some(edit_range.cast()),
             _ => None,
         };
         let mut range = edit_range.clone().unwrap_or(sel_range);
@@ -861,8 +861,8 @@ impl Part {
         }
 
         let range = match common.current.clone() {
-            CurrentAction::ImeStart => common.selection.to_range(),
-            CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+            CurrentAction::ImeStart(_) => common.selection.to_range(),
+            CurrentAction::ImePreedit { edit_range, .. } => edit_range.cast(),
             _ => return,
         };
 
@@ -908,10 +908,12 @@ impl Part {
                 }
             }
             Ime::Preedit { text, cursor } => {
-                let mut edit_range = match common.current.clone() {
-                    CurrentAction::ImeStart if cursor.is_some() => common.selection.to_range(),
-                    CurrentAction::ImeStart => return EventAction::Used,
-                    CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                let (part, mut edit_range) = match common.current.clone() {
+                    CurrentAction::ImeStart(part) if cursor.is_some() => {
+                        (part, common.selection.to_range())
+                    }
+                    CurrentAction::ImeStart(_) => return EventAction::Used,
+                    CurrentAction::ImePreedit { part, edit_range } => (part, edit_range.cast()),
                     _ => return EventAction::Used,
                 };
 
@@ -925,15 +927,16 @@ impl Part {
                 }
 
                 common.current = CurrentAction::ImePreedit {
+                    part,
                     edit_range: edit_range.cast(),
                 };
                 common.edit_x_coord = None;
                 EventAction::Preedit
             }
             Ime::Commit { text } => {
-                let edit_range = match common.current.clone() {
-                    CurrentAction::ImeStart => common.selection.to_range(),
-                    CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                let (part, edit_range) = match common.current.clone() {
+                    CurrentAction::ImeStart(part) => (part, common.selection.to_range()),
+                    CurrentAction::ImePreedit { part, edit_range } => (part, edit_range.cast()),
                     _ => return EventAction::Used,
                 };
 
@@ -941,6 +944,7 @@ impl Part {
                 common.selection.set_position(edit_range.start + text.len());
 
                 common.current = CurrentAction::ImePreedit {
+                    part,
                     edit_range: common.selection.to_range().cast(),
                 };
                 common.edit_x_coord = None;
@@ -951,8 +955,8 @@ impl Part {
                 after_bytes,
             } => {
                 let edit_range = match common.current.clone() {
-                    CurrentAction::ImeStart => common.selection.to_range(),
-                    CurrentAction::ImePreedit { edit_range } => edit_range.cast(),
+                    CurrentAction::ImeStart(_) => common.selection.to_range(),
+                    CurrentAction::ImePreedit { edit_range, .. } => edit_range.cast(),
                     _ => return EventAction::Used,
                 };
 
@@ -1065,8 +1069,8 @@ impl Common {
 
     /// Get the part used by IME operations
     fn ime_part<'p>(&self, parts: &'p mut impl PartList) -> Option<&'p mut Part> {
-        if self.current.is_ime_enabled() {
-            Some(parts.get_mut(0)) // TODO
+        if let Some(part) = self.current.ime_part() {
+            Some(parts.get_mut(part))
         } else {
             None
         }
@@ -1122,7 +1126,7 @@ impl Common {
             Event::LostKeyFocus => {
                 self.has_key_focus = false;
                 cx.redraw();
-                return if !self.current.is_ime_enabled() {
+                return if self.current.is_ime_enabled() {
                     EventAction::FocusLost
                 } else {
                     EventAction::Used
@@ -1183,7 +1187,7 @@ impl Common {
                 let p = 0; // TODO
                 match self.current {
                     CurrentAction::None if ime == Ime::Enabled => {
-                        self.current = CurrentAction::ImeStart;
+                        self.current = CurrentAction::ImeStart(p.cast());
                         parts.get(p).set_ime_cursor_area(self, cx);
 
                         return if !self.has_key_focus {
