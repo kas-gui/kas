@@ -1255,7 +1255,6 @@ impl Common {
         }
 
         enum Action<'a> {
-            None,
             Deselect,
             Activate,
             Insert(&'a str, EditOp),
@@ -1277,19 +1276,23 @@ impl Common {
             Command::Left | Command::Home if !shift && have_sel => {
                 Action::Move(selection.start, None)
             }
-            Command::Left if cursor > 0 => GraphemeCursor::new(cursor, part_len, true)
-                .prev_boundary(part.as_str(), 0)
-                .unwrap()
-                .map(|index| Action::Move(index, None))
-                .unwrap_or(Action::None),
+            Command::Left if cursor > 0 => {
+                let byte = GraphemeCursor::new(cursor, part_len, true)
+                    .prev_boundary(part.as_str(), 0)
+                    .unwrap()
+                    .unwrap_or(0);
+                Action::Move(byte, None)
+            }
             Command::Right | Command::End if !shift && have_sel => {
                 Action::Move(selection.end, None)
             }
-            Command::Right if cursor < part_len => GraphemeCursor::new(cursor, part_len, true)
-                .next_boundary(part.as_str(), 0)
-                .unwrap()
-                .map(|index| Action::Move(index, None))
-                .unwrap_or(Action::None),
+            Command::Right if cursor < part_len => {
+                let byte = GraphemeCursor::new(cursor, part_len, true)
+                    .next_boundary(part.as_str(), 0)
+                    .unwrap()
+                    .unwrap_or(part_len);
+                Action::Move(byte, None)
+            }
             Command::WordLeft if cursor > 0 => {
                 let mut iter = part.as_str()[0..cursor].split_word_bound_indices();
                 let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
@@ -1328,7 +1331,9 @@ impl Common {
                 Action::Move(p, None)
             }
             // Avoid use of unused navigation keys (e.g. by ScrollComponent):
-            Command::Left | Command::Right | Command::WordLeft | Command::WordRight => Action::None,
+            Command::Left | Command::Right | Command::WordLeft | Command::WordRight => {
+                return Ok(EventAction::Used);
+            }
             Command::Up | Command::Down if multi_line => {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
@@ -1375,7 +1380,9 @@ impl Common {
             Command::DocHome if cursor > 0 => Action::Move(0, None),
             Command::DocEnd if cursor < doc_len => Action::Move(doc_len, None),
             // Avoid use of unused navigation keys (e.g. by ScrollComponent):
-            Command::Home | Command::End | Command::DocHome | Command::DocEnd => Action::None,
+            Command::Home | Command::End | Command::DocHome | Command::DocEnd => {
+                return Ok(EventAction::Used);
+            }
             Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = part
                     .display
@@ -1402,16 +1409,28 @@ impl Common {
             Command::Delete | Command::DelBack if editable && have_sel => {
                 Action::Delete(selection.clone(), EditOp::Delete)
             }
-            Command::Delete if editable => GraphemeCursor::new(cursor, part_len, true)
-                .next_boundary(part.as_str(), 0)
-                .unwrap()
-                .map(|next| Action::Delete(cursor..next, EditOp::Delete))
-                .unwrap_or(Action::None),
-            Command::DelBack if editable => GraphemeCursor::new(cursor, part_len, true)
-                .prev_boundary(part.as_str(), 0)
-                .unwrap()
-                .map(|prev| Action::Delete(prev..cursor, EditOp::Delete))
-                .unwrap_or(Action::None),
+            Command::Delete if editable => {
+                if let Some(action) = GraphemeCursor::new(cursor, part_len, true)
+                    .next_boundary(part.as_str(), 0)
+                    .unwrap()
+                    .map(|next| Action::Delete(cursor..next, EditOp::Delete))
+                {
+                    action
+                } else {
+                    return Ok(EventAction::Used);
+                }
+            }
+            Command::DelBack if editable => {
+                if let Some(action) = GraphemeCursor::new(cursor, part_len, true)
+                    .prev_boundary(part.as_str(), 0)
+                    .unwrap()
+                    .map(|prev| Action::Delete(prev..cursor, EditOp::Delete))
+                {
+                    action
+                } else {
+                    return Ok(EventAction::Used);
+                }
+            }
             Command::DelWord if editable => {
                 let next = part.as_str()[cursor..]
                     .split_word_bound_indices()
@@ -1439,7 +1458,7 @@ impl Common {
             }
             Command::Copy if have_sel => {
                 cx.set_clipboard((part.as_str()[selection.clone()]).into());
-                Action::None
+                return Ok(EventAction::Used);
             }
             Command::Paste if editable => {
                 if let Some(content) = cx.get_clipboard() {
@@ -1447,7 +1466,7 @@ impl Common {
                     string = content;
                     Action::Insert(&string[range], EditOp::Replace)
                 } else {
-                    Action::None
+                    return Ok(EventAction::Used);
                 }
             }
             Command::Undo | Command::Redo if editable => Action::UndoRedo(cmd == Command::Redo),
@@ -1456,16 +1475,12 @@ impl Common {
 
         // We can receive some commands without key focus as a result of
         // selection focus. Request focus on edit actions (like Command::Cut).
-        if !matches!(action, Action::None | Action::Deselect) {
+        if !matches!(action, Action::Deselect) {
             self.request_key_focus(cx, FocusSource::Synthetic);
         }
-
-        if !matches!(action, Action::None) {
-            self.cancel_selection_and_ime(part, cx);
-        }
+        self.cancel_selection_and_ime(part, cx);
 
         let edit_op = match action {
-            Action::None => return Ok(EventAction::Used),
             Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
             Action::Activate | Action::UndoRedo(_) => None,
             Action::Insert(_, edit) | Action::Delete(_, edit) => Some(edit),
@@ -1473,7 +1488,6 @@ impl Common {
         self.save_undo_state(part, edit_op);
 
         let action = match action {
-            Action::None => unreachable!(),
             Action::Deselect => {
                 self.selection.clear_selection();
                 cx.redraw();
