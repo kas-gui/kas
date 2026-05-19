@@ -89,6 +89,11 @@ impl TextIndex {
     }
 }
 
+fn subrange_of(range: &Range<TextIndex>, part: u32) -> Range<usize> {
+    debug_assert!(range.start.part == part && range.end.part == part);
+    range.start.byte()..range.end.byte()
+}
+
 /// Editor state common to all parts
 #[derive(Debug)]
 pub struct Common {
@@ -191,6 +196,12 @@ pub trait PartList {
 
     fn iter(&self) -> impl Iterator<Item = &Part>;
     fn iter_mut(&mut self) -> impl Iterator<Item = &mut Part>;
+
+    /// If `true`, this list supports insertion and deletion; if `false`, the
+    /// list has exactly one `Part`.
+    fn variable_length(&self) -> bool;
+    fn insert(&mut self, index: usize, part: Part);
+    fn delete(&mut self, index: usize);
 }
 
 impl PartList for Part {
@@ -219,6 +230,21 @@ impl PartList for Part {
     #[inline]
     fn iter_mut(&mut self) -> impl Iterator<Item = &mut Part> {
         std::iter::once(self)
+    }
+
+    #[inline]
+    fn variable_length(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn insert(&mut self, _: usize, _: Part) {
+        unimplemented!()
+    }
+
+    #[inline]
+    fn delete(&mut self, _: usize) {
+        unimplemented!()
     }
 }
 
@@ -755,16 +781,8 @@ impl Part {
     }
 
     /// Replace a section of text
-    ///
-    /// This may be used to edit the raw text instead of replacing it.
-    /// One must call [`Text::prepare`] afterwards.
-    ///
-    /// One may simulate an unbounded range by via `start..usize::MAX`.
-    ///
-    /// Currently this is not significantly more efficient than
-    /// [`Text::set_text`]. This may change in the future (TODO).
     #[inline]
-    fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
+    fn replace_range(&mut self, range: Range<usize>, replace_with: &str) {
         Rc::make_mut(&mut self.text).replace_range(range, replace_with);
         self.require_reprepare();
     }
@@ -1003,6 +1021,58 @@ impl Part {
 }
 
 impl Common {
+    /// Replace a section of text
+    ///
+    /// Returns the index of the end of the replacement.
+    #[inline]
+    fn replace_range(
+        &mut self,
+        parts: &mut impl PartList,
+        range: Range<TextIndex>,
+        replace_with: &str,
+    ) -> TextIndex {
+        debug_assert!(range.start <= range.end);
+        if !parts.variable_length() {
+            let range = subrange_of(&range, 0);
+            parts.get_mut(0).replace_range(range.clone(), replace_with);
+            return TextIndex::new(0, range.start + replace_with.len());
+        }
+
+        let mut p = range.start.part();
+        let p_end = range.end.part();
+        let mut b_start = range.start.byte();
+        let mut last_line_end = 0;
+        for line_range in kas::text::LineIterator::new(replace_with) {
+            let line = &replace_with[line_range];
+            last_line_end = b_start + line.len();
+            if p < p_end {
+                let part = parts.get_mut(p);
+                let b_end = if p + 1 != p_end {
+                    part.text.len()
+                } else {
+                    range.end.byte()
+                };
+                part.replace_range(b_start..b_end, line);
+            } else {
+                parts.insert(p, Part {
+                    text: Rc::new(line.to_string()),
+                    ..Default::default()
+                });
+            }
+            p += 1;
+            b_start = 0;
+        }
+
+        let p_repl_end = p;
+
+        while p < p_end {
+            parts.delete(p);
+            p += 1;
+        }
+
+        TextIndex::new(p_repl_end, last_line_end)
+    }
+
     /// Fully prepare text for display, ensuring the cursor is within view
     ///
     /// This method performs all required steps of preparation according to the
@@ -1167,10 +1237,12 @@ impl Common {
                     self.save_undo_state(parts, Some(EditOp::KeyInput));
                     self.cancel_selection_and_ime(parts, cx);
 
+                    let p = 0; // TODO
                     let selection = self.selection.to_range();
-                    let part = parts.get_mut(0); // TODO
-                    part.replace_range(selection.clone(), text);
-                    self.selection.set_position(selection.start + text.len());
+                    let range =
+                        TextIndex::new(p, selection.start)..TextIndex::new(p, selection.end);
+                    let end = self.replace_range(parts, range, text);
+                    self.selection.set_position(end.byte());
                     self.edit_x_coord = None;
 
                     EventAction::Edit
@@ -1231,8 +1303,7 @@ impl Common {
                 };
             }
             Event::PressEnd { press, .. } if press.is_tertiary() => {
-                let cursor = self.text_index_nearest(parts, press.coord);
-                let mut index = cursor.byte();
+                let mut cursor = self.text_index_nearest(parts, press.coord);
                 self.cancel_selection_and_ime(parts, cx);
                 self.request_key_focus(cx, FocusSource::Pointer);
 
@@ -1241,11 +1312,10 @@ impl Common {
 
                     let part = parts.get_mut(cursor.part());
                     let range = part.trim_paste(self.wrap, &content);
-                    part.replace_range(index..index, &content[range.clone()]);
-                    index += range.len();
+                    cursor = self.replace_range(parts, cursor..cursor, &content[range.clone()]);
                     event_action = EventAction::Edit;
                 }
-                index.into()
+                cursor.byte().into()
             }
             event => match self.input_handler.handle(cx, self.id.clone(), event) {
                 TextInputAction::Used => return EventAction::Used,
@@ -1637,20 +1707,22 @@ impl Common {
             }
             Action::Activate => EventAction::Activate(code),
             Action::Insert(s, _) => {
-                let mut index = cursor;
+                let mut index = TextIndex::new(p, cursor);
                 let range = if have_sel {
-                    index = selection.start;
-                    selection.clone()
+                    index.byte = selection.start.cast();
+                    let end = TextIndex::new(p, selection.end);
+                    index..end
                 } else {
                     index..index
                 };
-                part.replace_range(range, s);
-                self.selection.set_position(index + s.len());
+                index = self.replace_range(parts, range, s);
+                self.selection.set_position(index.byte());
                 self.edit_x_coord = None;
                 EventAction::Edit
             }
             Action::Delete(sel, _) => {
-                part.replace_range(sel.clone(), "");
+                let range = TextIndex::new(p, sel.start)..TextIndex::new(p, sel.end);
+                self.replace_range(parts, range, "");
                 self.selection.set_position(sel.start);
                 self.edit_x_coord = None;
                 EventAction::Edit
