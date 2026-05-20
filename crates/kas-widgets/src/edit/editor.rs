@@ -109,7 +109,8 @@ pub struct Common {
     edit_x_coord: Option<f32>,
     selection: CursorRange<TextIndex>,
     last_edit: Option<EditOp>,
-    undo_stack: UndoStack<(Rc<String>, CursorRange<TextIndex>)>,
+    /// Stack items: (first_part_num, num_parts, Vec of saved texts from first_part_num, selection)
+    undo_stack: UndoStack<(usize, usize, Vec<Rc<String>>, CursorRange<TextIndex>)>,
     current: CurrentAction,
     input_handler: TextInput,
 }
@@ -1284,10 +1285,16 @@ impl Common {
             },
             Event::Key(event, false) if event.state == ElementState::Pressed && !self.read_only => {
                 return if let Some(text) = &event.text {
-                    self.save_undo_state(parts, Some(EditOp::KeyInput));
+                    let selection = self.selection.to_range();
+                    self.save_undo_state(
+                        parts,
+                        Some(EditOp::KeyInput(
+                            selection.start.part(),
+                            selection.end.part(),
+                        )),
+                    );
                     self.cancel_selection_and_ime(parts, cx);
 
-                    let selection = self.selection.to_range();
                     let end = self.replace_range(parts, selection.clone(), text);
                     self.selection.set_position(end);
                     self.edit_x_coord = None;
@@ -1336,7 +1343,7 @@ impl Common {
                 if let Some(opt_op) = match ime {
                     Ime::Enabled | Ime::Disabled => None,
                     Ime::Preedit { .. } | Ime::DeleteSurrounding { .. } => Some(None),
-                    Ime::Commit { .. } => Some(Some(EditOp::Ime)),
+                    Ime::Commit { .. } => Some(Some(EditOp::Ime(p))),
                 } {
                     self.save_undo_state(parts, opt_op);
                 }
@@ -1355,9 +1362,10 @@ impl Common {
                 self.request_key_focus(cx, FocusSource::Pointer);
 
                 if let Some(content) = cx.get_primary() {
-                    self.save_undo_state(parts, Some(EditOp::Replace));
+                    let p = cursor.part();
+                    self.save_undo_state(parts, Some(EditOp::Replace(p, p)));
 
-                    let part = parts.get_mut(cursor.part());
+                    let part = parts.get_mut(p);
                     let range = part.trim_paste(self.wrap, &content);
                     cursor = self.replace_range(parts, cursor..cursor, &content[range.clone()]);
                     event_action = EventAction::Edit;
@@ -1480,9 +1488,20 @@ impl Common {
         }
 
         self.last_edit = edit;
-        let part = parts.get(0); // TODO
+        let (part, texts) = match edit {
+            None | Some(EditOp::Initial) | Some(EditOp::Cursor) => (0, vec![]),
+            Some(EditOp::Ime(part)) => (part, vec![Rc::clone(&parts.get(part).text)]),
+            Some(EditOp::KeyInput(start, last))
+            | Some(EditOp::KeyDelete(start, last))
+            | Some(EditOp::Replace(start, last)) => {
+                let texts = (start..last + 1)
+                    .map(|part| Rc::clone(&parts.get(part).text))
+                    .collect();
+                (start, texts)
+            }
+        };
         self.undo_stack
-            .try_push((Rc::clone(&part.text), self.selection));
+            .try_push((part, parts.len(), texts, self.selection));
     }
 
     /// Request key focus, if we don't have it or IME
@@ -1526,8 +1545,9 @@ impl Common {
         enum Action<'a> {
             Deselect,
             Activate,
-            Insert(&'a str, EditOp),
-            Delete(Range<TextIndex>, EditOp),
+            // bool in Insert, Delete indices "is key input" (i.e. undo op is mergeable)
+            Insert(&'a str, bool),
+            Delete(Range<TextIndex>, bool),
             Move(TextIndex, Option<f32>),
             UndoRedo(bool),
         }
@@ -1537,11 +1557,11 @@ impl Common {
             Command::Activate => Action::Activate,
             Command::Enter if shift || !multi_line => Action::Activate,
             Command::Enter if editable && multi_line => {
-                Action::Insert('\n'.encode_utf8(&mut buf), EditOp::KeyInput)
+                Action::Insert('\n'.encode_utf8(&mut buf), true)
             }
             // NOTE: we might choose to optionally handle Tab in the future,
             // but without some workaround it prevents keyboard navigation.
-            // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), EditOp::Insert),
+            // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), true),
             Command::Left | Command::Home if !shift && have_sel => {
                 Action::Move(selection.start, None)
             }
@@ -1708,17 +1728,14 @@ impl Common {
                 Action::Move(TextIndex::new(c_p, index), Some(v.0))
             }
             Command::Delete | Command::DelBack if editable && have_sel => {
-                Action::Delete(selection.clone(), EditOp::Delete)
+                Action::Delete(selection.clone(), true)
             }
             Command::Delete if editable => {
                 if let Some(action) = GraphemeCursor::new(cursor, c_part_len, true)
                     .next_boundary(c_part.as_str(), 0)
                     .unwrap()
                     .map(|next| {
-                        Action::Delete(
-                            self.selection.cursor..TextIndex::new(c_p, next),
-                            EditOp::Delete,
-                        )
+                        Action::Delete(self.selection.cursor..TextIndex::new(c_p, next), true)
                     })
                 {
                     action
@@ -1731,10 +1748,7 @@ impl Common {
                     .prev_boundary(c_part.as_str(), 0)
                     .unwrap()
                     .map(|prev| {
-                        Action::Delete(
-                            TextIndex::new(c_p, prev)..self.selection.cursor,
-                            EditOp::Delete,
-                        )
+                        Action::Delete(TextIndex::new(c_p, prev)..self.selection.cursor, true)
                     })
                 {
                     action
@@ -1748,10 +1762,7 @@ impl Common {
                     .nth(1)
                     .map(|(index, _)| cursor + index)
                     .unwrap_or(c_part_len);
-                Action::Delete(
-                    self.selection.cursor..TextIndex::new(c_p, next),
-                    EditOp::Delete,
-                )
+                Action::Delete(self.selection.cursor..TextIndex::new(c_p, next), true)
             }
             Command::DelWordBack if editable => {
                 let prev = c_part.as_str()[0..cursor]
@@ -1759,10 +1770,7 @@ impl Common {
                     .next_back()
                     .map(|(index, _)| index)
                     .unwrap_or(0);
-                Action::Delete(
-                    TextIndex::new(c_p, prev)..self.selection.cursor,
-                    EditOp::Delete,
-                )
+                Action::Delete(TextIndex::new(c_p, prev)..self.selection.cursor, true)
             }
             Command::SelectAll => {
                 self.selection.anchor = TextIndex::new(0, 0);
@@ -1775,7 +1783,7 @@ impl Common {
                 let text = self.copy_selection_to_string(parts);
                 cx.set_clipboard(text);
                 if cmd == Command::Cut && editable {
-                    Action::Delete(selection.clone(), EditOp::Replace)
+                    Action::Delete(selection.clone(), false)
                 } else {
                     return Ok(EventAction::Used);
                 }
@@ -1784,7 +1792,7 @@ impl Common {
                 if let Some(content) = cx.get_clipboard() {
                     let range = c_part.trim_paste(self.wrap, &content);
                     string = content;
-                    Action::Insert(&string[range], EditOp::Replace)
+                    Action::Insert(&string[range], false)
                 } else {
                     return Ok(EventAction::Used);
                 }
@@ -1803,7 +1811,20 @@ impl Common {
         let edit_op = match action {
             Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
             Action::Activate | Action::UndoRedo(_) => None,
-            Action::Insert(_, edit) | Action::Delete(_, edit) => Some(edit),
+            Action::Insert(_, false) => Some(EditOp::Replace(
+                selection.start.part(),
+                selection.end.part(),
+            )),
+            Action::Insert(_, true) => Some(EditOp::KeyInput(
+                selection.start.part(),
+                selection.end.part(),
+            )),
+            Action::Delete(ref range, false) => {
+                Some(EditOp::Replace(range.start.part(), range.end.part()))
+            }
+            Action::Delete(ref range, true) => {
+                Some(EditOp::KeyDelete(range.start.part(), range.end.part()))
+            }
         };
         self.save_undo_state(parts, edit_op);
 
@@ -1840,13 +1861,38 @@ impl Common {
                 EventAction::Cursor
             }
             Action::UndoRedo(redo) => {
-                if let Some((text, cursor)) = self.undo_stack.undo_or_redo(redo) {
-                    let part = parts.get_mut(0); // TODO
-                    if !Rc::ptr_eq(&part.text, text) {
-                        part.text = Rc::clone(text);
-                        part.status = Status::New;
-                        self.edit_x_coord = None;
+                if let Some((p, old_num_parts, texts, cursor)) = self.undo_stack.undo_or_redo(redo)
+                {
+                    let mut p = *p;
+                    let mut n = 0;
+                    if parts.len() < *old_num_parts {
+                        n = old_num_parts - parts.len();
+                        for text in &texts[..n] {
+                            let part = Part {
+                                text: Rc::clone(text),
+                                ..Default::default()
+                            };
+                            parts.insert(p, part);
+                            p += 1;
+                        }
+                    } else if parts.len() > *old_num_parts {
+                        let mut n_delete = parts.len() - old_num_parts;
+                        while n_delete > 0 {
+                            parts.delete(p);
+                            n_delete -= 1;
+                        }
                     }
+
+                    for text in &texts[n..] {
+                        let part = parts.get_mut(p);
+                        if !Rc::ptr_eq(&part.text, text) {
+                            part.text = Rc::clone(text);
+                            part.status = Status::New;
+                        }
+                        p += 1;
+                    }
+
+                    self.edit_x_coord = None;
                     self.selection = *cursor;
                     EventAction::Edit
                 } else {
@@ -1956,7 +2002,7 @@ impl Editor {
         }
 
         self.common
-            .save_undo_state(&mut self.part, Some(EditOp::Replace));
+            .save_undo_state(&mut self.part, Some(EditOp::Replace(0, 0)));
 
         self.common.cancel_selection_and_ime(&mut self.part, cx);
 
@@ -1975,7 +2021,7 @@ impl Editor {
     #[inline]
     pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
         self.common
-            .save_undo_state(&mut self.part, Some(EditOp::Replace));
+            .save_undo_state(&mut self.part, Some(EditOp::Replace(0, 0)));
 
         self.common.cancel_selection_and_ime(&mut self.part, cx);
 

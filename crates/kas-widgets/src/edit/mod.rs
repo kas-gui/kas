@@ -22,6 +22,8 @@ use std::fmt::Debug;
 use std::ops::Range;
 
 /// Describes the change source of a history (undo) state
+///
+/// Many variants include the `part` or part `range` affected.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum EditOp {
     /// Initial state
@@ -29,13 +31,13 @@ enum EditOp {
     /// Cursor movement or selection adjustment
     Cursor,
     /// Keyboard
-    KeyInput,
+    KeyInput(usize, usize),
     /// Input Method Editor
-    Ime,
+    Ime(usize),
     /// Deletion due to key press
-    Delete,
+    KeyDelete(usize, usize),
     /// Replacement of a range, e.g. via the clipboard. Does not merge.
-    Replace,
+    Replace(usize, usize),
 }
 
 impl EditOp {
@@ -46,7 +48,7 @@ impl EditOp {
                 *last = self;
                 true
             }
-            (EditOp::KeyInput | EditOp::Delete, Some(last)) if self == *last => true,
+            (EditOp::KeyInput(_, _) | EditOp::KeyDelete(_, _), Some(last)) if self == *last => true,
             _ => false,
         }
     }
