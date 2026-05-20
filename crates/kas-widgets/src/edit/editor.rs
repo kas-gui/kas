@@ -1094,7 +1094,7 @@ impl Common {
                 self.request_key_focus(cx, FocusSource::Pointer);
 
                 if let Some(content) = cx.get_primary() {
-                    self.save_undo_state(part, Some(EditOp::Clipboard));
+                    self.save_undo_state(part, Some(EditOp::Replace));
 
                     let range = part.trim_paste(self.wrap, &content);
                     part.replace_range(index..index, &content[range.clone()]);
@@ -1424,7 +1424,7 @@ impl Common {
             }
             Command::Cut if editable && have_sel => {
                 cx.set_clipboard((part.as_str()[selection.clone()]).into());
-                Action::Delete(selection.clone(), EditOp::Clipboard)
+                Action::Delete(selection.clone(), EditOp::Replace)
             }
             Command::Copy if have_sel => {
                 cx.set_clipboard((part.as_str()[selection.clone()]).into());
@@ -1434,7 +1434,7 @@ impl Common {
                 if let Some(content) = cx.get_clipboard() {
                     let range = part.trim_paste(self.wrap, &content);
                     string = content;
-                    Action::Insert(&string[range], EditOp::Clipboard)
+                    Action::Insert(&string[range], EditOp::Replace)
                 } else {
                     Action::None
                 }
@@ -1578,28 +1578,22 @@ impl Editor {
         self.part.text_is_rtl()
     }
 
-    /// Commit outstanding changes to the undo history
-    ///
-    /// Call this *before* changing the text with [`Self::set_str`] or
-    /// [`Self::set_string`] to commit changes to the undo history.
-    #[inline]
-    pub fn pre_commit(&mut self) {
-        self.common
-            .save_undo_state(&mut self.part, Some(EditOp::Synthetic));
-    }
-
     /// Clear text contents and undo history
     #[inline]
     pub fn clear(&mut self, cx: &mut EventState) {
         self.common.last_edit = Some(EditOp::Initial);
         self.common.undo_stack.clear();
-        self.set_string(cx, String::new());
+        self.common.cancel_selection_and_ime(&mut self.part, cx);
+
+        Rc::make_mut(&mut self.part.text).clear();
+        self.part.require_reprepare();
+
+        self.common.selection.set_max_len(0);
+        self.common.edit_x_coord = None;
+        self.error_state = None;
     }
 
     /// Set text contents from a `str`
-    ///
-    /// This does not interact with undo history; see also [`Self::clear`],
-    /// [`Self::pre_commit`].
     ///
     /// Returns `true` if the text may have changed.
     #[inline]
@@ -1614,12 +1608,14 @@ impl Editor {
 
     /// Set text contents from a `String`
     ///
-    /// This does not interact with undo history or call action handlers on the
-    /// guard.
+    /// This method does not call action handlers on the guard.
     pub fn set_string(&mut self, cx: &mut EventState, text: String) {
         if self.as_str() == text {
             return; // no change
         }
+
+        self.common
+            .save_undo_state(&mut self.part, Some(EditOp::Replace));
 
         self.common.cancel_selection_and_ime(&mut self.part, cx);
 
@@ -1634,10 +1630,12 @@ impl Editor {
 
     /// Replace selected text
     ///
-    /// This does not interact with undo history or call action handlers on the
-    /// guard.
+    /// This method does not call action handlers on the guard.
     #[inline]
     pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
+        self.common
+            .save_undo_state(&mut self.part, Some(EditOp::Replace));
+
         self.common.cancel_selection_and_ime(&mut self.part, cx);
 
         let selection = self.common.selection.to_range();

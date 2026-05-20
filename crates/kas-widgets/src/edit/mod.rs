@@ -33,10 +33,8 @@ enum EditOp {
     Ime,
     /// Deletion due to key press
     Delete,
-    /// Cut to or paste from clipboard
-    Clipboard,
-    /// Programmatic edit
-    Synthetic,
+    /// Replacement of a range, e.g. via the clipboard. Does not merge.
+    Replace,
 }
 
 impl EditOp {
