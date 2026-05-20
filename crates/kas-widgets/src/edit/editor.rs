@@ -271,12 +271,9 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        debug_assert!(
-            self.0.common.current == CurrentAction::None
-                && !self.0.common.input_handler.is_selecting()
-        );
+        debug_assert!(self.0.common.last_edit == Some(EditOp::Initial));
 
-        self.0.part = self.0.part.with_text(text);
+        self.0.part.text = Rc::new(text.to_string());
         let index = if self.0.common.wrap { 0 } else { self.0.part.text.len() };
         self.0.common.selection.set_position(index);
         self
@@ -384,16 +381,6 @@ impl Default for Part {
 }
 
 impl Part {
-    /// Set the initial text (inline)
-    ///
-    /// This method should only be used on a new `Part`.
-    #[inline]
-    #[must_use]
-    pub fn with_text(mut self, text: impl ToString) -> Self {
-        self.text = Rc::new(text.to_string());
-        self
-    }
-
     /// Get text contents
     #[inline]
     pub fn as_str(&self) -> &str {
