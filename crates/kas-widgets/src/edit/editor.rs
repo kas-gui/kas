@@ -182,7 +182,10 @@ pub struct Part {
 }
 
 /// A list of parts
+#[allow(clippy::len_without_is_empty)]
 pub trait PartList {
+    fn len(&self) -> usize;
+
     fn get(&self, part: usize) -> &Part;
     fn get_mut(&mut self, part: usize) -> &mut Part;
 
@@ -191,6 +194,11 @@ pub trait PartList {
 }
 
 impl PartList for Part {
+    #[inline]
+    fn len(&self) -> usize {
+        1
+    }
+
     #[inline]
     fn get(&self, part: usize) -> &Part {
         assert!(part == 0, "invalid part index");
@@ -1016,16 +1024,43 @@ impl Common {
 
     /// Get the [`TextIndex`] nearest to `coord` within `parts`
     fn text_index_nearest(&self, parts: &impl PartList, coord: Coord) -> TextIndex {
-        let p = 0; // TODO
-        let part = parts.get(p);
-        let rel_pos = (coord - part.rect().pos).cast();
-        if part.is_prepared() {
-            let byte = part.display.text_index_nearest(rel_pos);
-            TextIndex::new(p, byte)
-        } else {
-            debug_assert!(false);
-            TextIndex::new(p, 0)
+        let mut l_bound = 0;
+        let mut u_bound = parts.len();
+        let mut p = u_bound / 2;
+        let mut best_dist = i32::MAX;
+        let mut best_p = p;
+        loop {
+            let part = parts.get(p);
+            debug_assert!(part.is_prepared());
+            let (y0, y1) = (part.rect.pos.1, part.rect.pos2().1 - 1);
+
+            let dist = y0.saturating_sub(coord.1).max(coord.1.saturating_sub(y1));
+            if dist < best_dist {
+                best_dist = dist;
+                best_p = p;
+            }
+
+            if coord.1 < y0 {
+                if p <= l_bound {
+                    break;
+                }
+                u_bound = p;
+                p = l_bound + (p - l_bound) / 2;
+            } else if y1 < coord.1 {
+                if p >= u_bound {
+                    break;
+                }
+                l_bound = p;
+                p = p + (u_bound - p) / 2;
+            } else {
+                break;
+            }
         }
+
+        let part = parts.get(best_p);
+        let rel_pos = (coord - part.rect().pos).cast();
+        let byte = part.display.text_index_nearest(rel_pos);
+        TextIndex::new(p, byte)
     }
 
     /// Get the part used by IME operations
