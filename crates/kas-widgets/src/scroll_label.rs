@@ -35,7 +35,7 @@ mod ScrollTextCore {
         core: widget_core!(),
         text: Text<T>,
         text_fn: Option<Box<dyn Fn(&ConfigCx, &A) -> T + Send>>,
-        selection: CursorRange,
+        selection: CursorRange<usize>,
         has_sel_focus: bool,
         input_handler: TextInput,
     }

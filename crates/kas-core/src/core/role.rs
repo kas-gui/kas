@@ -144,7 +144,7 @@ pub enum Role<'a> {
         /// Whether the text input supports multi-line text
         multi_line: bool,
         /// The cursor index and selection range
-        cursor: CursorRange,
+        cursor: CursorRange<usize>,
     },
     /// A gripable handle
     ///

@@ -210,12 +210,10 @@ mod EditBoxCore {
 
             if let Some(SetValueText(string)) = cx.try_pop() {
                 self.edit(cx, data, |edit, cx| {
-                    edit.pre_commit();
                     edit.set_string(cx, string);
                 });
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
                 self.edit(cx, data, |edit, cx| {
-                    edit.pre_commit();
                     edit.replace_selected_text(cx, &text);
                 });
             }
