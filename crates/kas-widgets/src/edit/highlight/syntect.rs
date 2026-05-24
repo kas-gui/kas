@@ -45,7 +45,7 @@ impl SyntectHighlighter {
     /// See [`SyntaxSet::load_defaults_newlines`] documentation.
     pub fn syntaxes() -> &'static SyntaxSet {
         static SET: OnceLock<SyntaxSet> = OnceLock::new();
-        SET.get_or_init(|| SyntaxSet::load_defaults_newlines())
+        SET.get_or_init(SyntaxSet::load_defaults_newlines)
     }
 
     /// Construct a new highlighter for the given [`SyntaxReference`]
@@ -120,7 +120,7 @@ impl super::Highlighter for SyntectHighlighter {
                 .theme
                 .settings
                 .foreground
-                .map(|c| into_kas_text_color(c))
+                .map(into_kas_text_color)
                 .unwrap_or_default(),
             background: self
                 .theme
@@ -135,19 +135,19 @@ impl super::Highlighter for SyntectHighlighter {
                 .theme
                 .settings
                 .caret
-                .map(|c| into_kas_text_color(c))
+                .map(into_kas_text_color)
                 .unwrap_or_default(),
             selection_foreground: self
                 .theme
                 .settings
                 .selection_foreground
-                .map(|c| into_kas_text_color(c))
+                .map(into_kas_text_color)
                 .unwrap_or(Color::SELECTION),
             selection_background: self
                 .theme
                 .settings
                 .selection
-                .map(|c| into_kas_text_color(c))
+                .map(into_kas_text_color)
                 .unwrap_or(Color::SELECTION),
         }
     }
@@ -155,7 +155,7 @@ impl super::Highlighter for SyntectHighlighter {
     #[inline]
     fn new_state(&self) -> Self::State {
         let state = HighlightState::new(&self.highlighter, Default::default());
-        let parse_state = ParseState::new(&self.syntax);
+        let parse_state = ParseState::new(self.syntax);
         State(state, parse_state)
     }
 
