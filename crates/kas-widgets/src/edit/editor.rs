@@ -328,6 +328,50 @@ impl PartList for Part {
     }
 }
 
+impl PartList for Vec<Part> {
+    #[inline]
+    fn len(&self) -> u32 {
+        Vec::len(self).cast()
+    }
+
+    #[inline]
+    fn get(&self, part: u32) -> &Part {
+        let p: usize = part.cast();
+        <[Part]>::get(self, p).expect("invalid part index")
+    }
+
+    #[inline]
+    fn get_mut(&mut self, part: u32) -> &mut Part {
+        let p: usize = part.cast();
+        <[Part]>::get_mut(self, p).expect("invalid part index")
+    }
+
+    #[inline]
+    fn iter(&self) -> impl Iterator<Item = &Part> {
+        <[Part]>::iter(self)
+    }
+
+    #[inline]
+    fn iter_mut(&mut self) -> impl Iterator<Item = &mut Part> {
+        <[Part]>::iter_mut(self)
+    }
+
+    #[inline]
+    fn variable_length(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn insert(&mut self, index: u32, part: Part) {
+        Vec::insert(self, index.cast(), part);
+    }
+
+    #[inline]
+    fn delete(&mut self, index: u32) {
+        Vec::remove(self, index.cast());
+    }
+}
+
 /// Inner editor interface
 ///
 /// This type provides an API usable by [`EditGuard`] and (read-only) via
