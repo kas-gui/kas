@@ -290,7 +290,7 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
-        self.0.part.set_rect(&mut self.0.common, cx, rect);
+        self.0.part.set_rect(&self.0.common, cx, rect);
     }
 
     #[inline]
@@ -406,7 +406,7 @@ impl<H: Highlighter> Component<H> {
         }
 
         self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
-        self.0.part.prepare_wrap(&mut self.0.common);
+        self.0.part.prepare_wrap(&self.0.common);
     }
 
     /// Fully prepare text for display, ensuring the cursor is within view
@@ -586,7 +586,7 @@ impl Part {
     /// should be very cheap.
     ///
     /// Note that editors always use default alignment of content.
-    pub fn set_rect(&mut self, common: &mut Common, cx: &mut SizeCx, rect: Rect) {
+    pub fn set_rect(&mut self, common: &Common, cx: &mut SizeCx, rect: Rect) {
         if rect.size.0 != self.rect.size.0 {
             self.status = self.status.min(Status::LevelRuns);
         }
@@ -616,7 +616,7 @@ impl Part {
     /// changes to alignment or the wrap-width.
     ///
     /// Returns `true` when the size of the bounding-box changes.
-    fn prepare_wrap(&mut self, common: &mut Common) -> bool {
+    fn prepare_wrap(&mut self, common: &Common) -> bool {
         if self.status < Status::LevelRuns || self.rect.size.0 == 0 {
             return false;
         };
