@@ -420,7 +420,14 @@ impl<H: Highlighter> Component<H> {
             self.0.part.require_reprepare();
         }
 
-        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
+        self.prepare_runs();
+    }
+
+    fn prepare_runs(&mut self) {
+        if self.0.part.status < Status::LevelRuns {
+            self.0.part.prepare_runs(&self.0.common, &mut self.1);
+            self.0.common.update_direction(&self.0.part);
+        }
     }
 
     /// Fully prepare text for display
@@ -436,7 +443,7 @@ impl<H: Highlighter> Component<H> {
             return;
         }
 
-        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
+        self.prepare_runs();
         self.0.part.prepare_wrap(&self.0.common);
     }
 
@@ -460,7 +467,7 @@ impl<H: Highlighter> Component<H> {
     /// modify `self`.
     #[inline]
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
-        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
+        self.prepare_runs();
         self.0.part.display.measure_height(wrap_width, max_lines)
     }
 
@@ -527,6 +534,12 @@ impl Part {
         self.status == Status::Ready
     }
 
+    /// Check the [`Status`] directly
+    #[inline]
+    pub fn status(&self) -> Status {
+        self.status
+    }
+
     /// Force full repreparation of text
     #[inline]
     pub fn require_reprepare(&mut self) {
@@ -536,39 +549,26 @@ impl Part {
     /// Perform run-breaking and shaping
     ///
     /// This represents a high-level step of preparation required before
-    /// displaying text. This method should be called before any sizing
-    /// operations. This will advance the [`Status`] to [`Status::LevelRuns`].
-    /// This method must be called again after any edits to the `Part`'s text.
+    /// displaying text: it advances the [`Self::status`] to
+    /// [`Status::LevelRuns`]. This method is safe to call from any status,
+    /// though it is suggested to only call when the status is less than
+    /// [`Status::LevelRuns`].
     #[inline]
-    pub fn prepare_runs<H: Highlighter>(&mut self, common: &mut Common, highlighter: &mut H) {
-        fn inner<H: Highlighter>(part: &mut Part, common: &mut Common, highlighter: &mut H) {
-            part.highlight.highlight(&part.text, highlighter);
+    pub fn prepare_runs<H: Highlighter>(&mut self, common: &Common, highlighter: &mut H) {
+        self.highlight.highlight(&self.text, highlighter);
 
-            let text = part.text.as_str();
-            let font_tokens = part.highlight.font_tokens(common.dpem, common.font);
-            match part.status {
-                Status::New => part
-                    .display
-                    .prepare_runs(text, common.direction, font_tokens)
-                    .expect("no suitable font found"),
-                Status::ResizeLevelRuns => part.display.resize_runs(text, font_tokens),
-                _ => return,
-            }
-
-            part.status = Status::LevelRuns;
-
-            if common.direction.is_auto() {
-                common.direction = if part.display.text_is_rtl() {
-                    Direction::AutoRtl
-                } else {
-                    Direction::Auto
-                };
-            }
+        let text = self.text.as_str();
+        let font_tokens = self.highlight.font_tokens(common.dpem, common.font);
+        match self.status {
+            Status::New => self
+                .display
+                .prepare_runs(text, common.direction, font_tokens)
+                .expect("no suitable font found"),
+            Status::ResizeLevelRuns => self.display.resize_runs(text, font_tokens),
+            _ => return,
         }
 
-        if self.status < Status::LevelRuns {
-            inner(self, common, highlighter);
-        }
+        self.status = Status::LevelRuns;
     }
 
     /// Get the assigned [`Rect`]
@@ -640,14 +640,15 @@ impl Part {
     /// Perform line wrapping and alignment
     ///
     /// This represents a high-level step of preparation required before
-    /// displaying text. After [run-breaking](Self::prepare_runs), this method
-    /// should be called before displaying the text. This will advance
-    /// the [status](ConfiguredDisplay::status) to [`Status::Ready`].
-    /// This method must be called again after [`Self::prepare_runs`] and after
-    /// changes to alignment or the wrap-width.
+    /// displaying text: it advances [`Self::status`] from [`Status::LevelRuns`]
+    /// to [`Status::Ready`].
+    ///
+    /// If [`Self::status`] is less than [`Status::LevelRuns`], this method
+    /// returns early, otherwise it performs line-wrapping (if required) and
+    /// sets the status to [`Status::Ready`].
     ///
     /// Returns `true` when the size of the bounding-box changes.
-    fn prepare_wrap(&mut self, common: &Common) -> bool {
+    pub fn prepare_wrap(&mut self, common: &Common) -> bool {
         if self.status < Status::LevelRuns || self.rect.size.0 == 0 {
             return false;
         };
@@ -1149,9 +1150,14 @@ impl Common {
     ) {
         let mut any_resized = false;
 
-        for part in parts.iter_mut() {
+        for (i, part) in parts.iter_mut().enumerate() {
             if !part.is_prepared() {
-                part.prepare_runs(self, highlighter);
+                if part.status < Status::LevelRuns {
+                    part.prepare_runs(self, highlighter);
+                    if i == 0 {
+                        self.update_direction(part);
+                    }
+                }
                 any_resized |= part.prepare_wrap(self);
             }
         }
