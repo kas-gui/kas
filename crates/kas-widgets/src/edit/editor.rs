@@ -512,6 +512,15 @@ impl Default for Part {
     }
 }
 
+impl<S: ToString> From<S> for Part {
+    fn from(text: S) -> Self {
+        Part {
+            text: Rc::new(text.to_string()),
+            ..Default::default()
+        }
+    }
+}
+
 impl Part {
     /// Get text contents
     #[inline]
@@ -1117,10 +1126,7 @@ impl Common {
                 };
                 part.replace_range(b_start..b_end, line);
             } else {
-                parts.insert(p, Part {
-                    text: Rc::new(line.to_string()),
-                    ..Default::default()
-                });
+                parts.insert(p, Part::from(line));
             }
             p += 1;
             b_start = 0;
