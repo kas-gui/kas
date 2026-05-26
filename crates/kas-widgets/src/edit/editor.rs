@@ -153,10 +153,41 @@ impl Common {
         }
     }
 
+    /// Get the base text direction
+    #[inline]
+    pub fn direction(&self) -> Direction {
+        self.direction
+    }
+
+    /// Set the base text direction
+    #[inline]
+    pub fn set_direction(&mut self, direction: Direction) -> ActionResetStatus {
+        self.direction = direction;
+        ActionResetStatus
+    }
+
+    /// Update the base text direction if in automatic mode to reflect the
+    /// current text direction of the `part`
+    pub fn update_direction(&mut self, part: &Part) {
+        if self.direction.is_auto() {
+            self.direction = if part.display.text_is_rtl() {
+                Direction::AutoRtl
+            } else {
+                Direction::Auto
+            };
+        }
+    }
+
     /// Read highlighter colors
     #[inline]
     pub fn colors(&self) -> &SchemeColors {
         &self.colors
+    }
+
+    /// Set highlighter colors
+    #[inline]
+    pub fn set_colors(&mut self, colors: SchemeColors) {
+        self.colors = colors;
     }
 
     /// Get the theme-defined background color
