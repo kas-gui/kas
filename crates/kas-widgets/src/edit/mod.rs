@@ -13,7 +13,7 @@ pub mod highlight;
 
 pub use edit_box::EditBox;
 pub use edit_field::EditBoxCore;
-pub use editor::Editor;
+pub use editor::{Common, Editor, Part};
 pub use guard::*;
 
 use kas::cast::Cast;
