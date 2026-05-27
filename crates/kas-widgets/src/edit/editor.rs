@@ -275,7 +275,8 @@ pub trait PartList {
     /// list has exactly one `Part`.
     fn variable_length(&self) -> bool;
     fn insert(&mut self, index: u32, part: Part);
-    fn delete(&mut self, index: u32);
+    fn remove(&mut self, index: u32) -> Part;
+    fn delete(&mut self, range: Range<u32>);
 }
 
 impl PartList for Part {
@@ -317,7 +318,12 @@ impl PartList for Part {
     }
 
     #[inline]
-    fn delete(&mut self, _: u32) {
+    fn remove(&mut self, _: u32) -> Part {
+        unimplemented!()
+    }
+
+    #[inline]
+    fn delete(&mut self, _: Range<u32>) {
         unimplemented!()
     }
 }
@@ -361,8 +367,14 @@ impl PartList for Vec<Part> {
     }
 
     #[inline]
-    fn delete(&mut self, index: u32) {
-        Vec::remove(self, index.cast());
+    fn remove(&mut self, index: u32) -> Part {
+        Vec::remove(self, index.cast())
+    }
+
+    #[inline]
+    fn delete(&mut self, range: Range<u32>) {
+        let range: Range<usize> = range.cast();
+        Vec::drain(self, range);
     }
 }
 
@@ -1237,45 +1249,88 @@ impl Common {
         &mut self,
         parts: &mut impl PartList,
         range: Range<TextIndex>,
-        replace_with: &str,
+        replacement: &str,
     ) -> TextIndex {
         self.validate_range(parts, range.clone());
 
         if !parts.variable_length() {
             let range = subrange_of(&range, 0);
-            parts.get_mut(0).replace_range(range.clone(), replace_with);
-            return TextIndex::new(0, range.start + replace_with.len());
+            parts.get_mut(0).replace_range(range.clone(), replacement);
+            return TextIndex::new(0, range.start + replacement.len());
         }
 
         let mut p = range.start.part();
         let p_end = range.end.part();
         let mut b_start = range.start.byte();
-        let mut last_line_end = 0;
-        for (line, _) in kas::text::Lines::new(replace_with) {
-            last_line_end = b_start + line.len();
-            if p < p_end {
+        debug_assert!(b_start <= parts.get(p).text.len());
+
+        // Break the input text into lines.
+        let mut lines = kas::text::Lines::new(replacement).map(|(line, _)| line);
+        let mut line = lines.next().unwrap_or("");
+        let mut remainder = None;
+
+        for next_line in lines {
+            if p <= p_end {
                 let part = parts.get_mut(p);
-                let b_end = if p + 1 != p_end {
-                    part.text.len()
-                } else {
-                    range.end.byte()
-                };
-                part.replace_range(b_start..b_end, line);
+                let end = part.text.len();
+                if p == p_end {
+                    let b_end = range.end.byte();
+                    debug_assert!(b_end <= end);
+                    if b_end < end {
+                        remainder = Some(part.as_str()[b_end..].to_string());
+                    }
+                }
+                part.replace_range(b_start..end, line);
             } else {
                 parts.insert(p, Part::from(line));
             }
+
             p += 1;
             b_start = 0;
+            line = next_line;
         }
 
-        let p_repl_end = p;
+        // Handle the last input line slightly differently to the above loop
+        let last_line_end = if b_start > 0 {
+            let part = parts.get_mut(p);
+            let mut end = part.text.len();
+            if p == p_end {
+                debug_assert!(range.end.byte() <= end);
+                end = end.min(range.end.byte());
+            }
 
-        while p < p_end {
-            parts.delete(p);
-            p += 1;
-        }
+            part.replace_range(b_start..end, line);
+            end = b_start + line.len();
 
-        TextIndex::new(p_repl_end, last_line_end)
+            if p_end > p {
+                parts.delete(p + 1..p_end);
+                let part = parts.remove(p + 1);
+                let rest = &part.as_str()[range.end.byte()..];
+                parts.get_mut(p).replace_range(end..end, rest);
+            }
+
+            end
+        } else if p <= p_end {
+            // Remove excess lines
+            parts.delete(p..p_end);
+
+            let part = parts.get_mut(p);
+            debug_assert!(range.end.byte() <= part.text.len());
+            let end = range.end.byte().min(part.text.len());
+            part.replace_range(b_start..end, line);
+            b_start + line.len()
+        } else {
+            let mut part = Part::from(line);
+            let len = line.len();
+
+            if let Some(remainder) = remainder.take() {
+                part.replace_range(len..len, &remainder);
+            }
+            parts.insert(p, part);
+            len
+        };
+
+        TextIndex::new(p, last_line_end)
     }
 
     fn copy_selection_to_string(&self, parts: &impl PartList) -> String {
@@ -2019,11 +2074,8 @@ impl Common {
                             p += 1;
                         }
                     } else if parts.len() > *old_num_parts {
-                        let mut n_delete = parts.len() - old_num_parts;
-                        while n_delete > 0 {
-                            parts.delete(p);
-                            n_delete -= 1;
-                        }
+                        let n_delete = parts.len() - old_num_parts;
+                        parts.delete(p..p + n_delete);
                     }
 
                     for text in &texts[n..] {
