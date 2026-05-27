@@ -62,7 +62,7 @@ impl Data {
                 return;
             }
             Control::UpdateCurrent(text) => {
-                self.active_string = text.clone();
+                self.active_string = text;
                 return;
             }
         };
@@ -88,7 +88,7 @@ impl EditGuard for ListEntryGuard {
 
     fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
         if data.active == self.0 {
-            cx.push(Control::UpdateCurrent(edit.clone_string()));
+            cx.push(Control::UpdateCurrent(edit.as_str().to_string()));
         }
     }
 }
@@ -117,7 +117,7 @@ mod ListEntry {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.active != n {
-                    cx.push(Control::Select(n, self.edit.clone_string()));
+                    cx.push(Control::Select(n, self.edit.as_str().to_string()));
                 }
             }
         }

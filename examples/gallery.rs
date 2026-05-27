@@ -21,6 +21,7 @@ use kas::widgets::edit::{EditGuard, Editor, highlight::SyntectHighlighter};
 use kas::widgets::{column, *};
 use kas::window::Popup;
 use std::ops::Range;
+use std::rc::Rc;
 
 #[derive(Debug, Default)]
 struct AppData {
@@ -63,10 +64,10 @@ fn widgets() -> Page<AppData> {
         Check(bool),
         Combo(Entry),
         Radio(u32),
-        Edit(String),
+        Edit(Rc<String>),
         Slider(i32),
         SpinBox(i32),
-        Text(String),
+        Text(Rc<String>),
     }
 
     impl_scope! {
@@ -78,11 +79,11 @@ fn widgets() -> Page<AppData> {
             value: i32 = 5,
             entry: Entry,
             ratio: f32 = 0.0,
-            text: String,
+            text: Rc<String>,
         }
     }
     let data = Data {
-        text: "Use button to edit →".to_string(),
+        text: Rc::new("Use button to edit →".to_string()),
         ..Default::default()
     };
 
@@ -91,7 +92,7 @@ fn widgets() -> Page<AppData> {
         type Data = Data;
 
         fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
-            cx.push(Item::Edit(edit.clone_string()));
+            cx.push(Item::Edit(edit.clone_text()));
             Used
         }
 
@@ -119,11 +120,9 @@ fn widgets() -> Page<AppData> {
 
             fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
                 if let Some(MsgEdit) = cx.try_pop() {
-                    // TODO: do not always set text: if this is a true pop-up it
-                    // should not normally lose data.
                     self.popup.inner.edit(cx, |edit, cx| {
                         edit.clear(cx);
-                        edit.set_string(cx, data.text.clone());
+                        edit.set_text(cx, data.text.clone());
                     });
                     // let ed = TextEdit::new(text, true);
                     // cx.add_window::<()>(ed.into_window("Edit text"));
@@ -156,7 +155,7 @@ fn widgets() -> Page<AppData> {
         ],
         row![
             "Button",
-            Button::label_msg("&Press me", Item::Button).map_any()
+            Button::label("&Press me").with(|cx, _| cx.push(Item::Button)).map_any()
         ],
         row![
             "Button row",

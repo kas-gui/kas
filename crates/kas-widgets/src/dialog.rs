@@ -280,7 +280,7 @@ mod AlertUnsaved {
 #[derive(Debug)]
 pub enum TextEditResult {
     Cancel,
-    Ok(String),
+    Ok(std::rc::Rc<String>),
 }
 
 #[derive(Clone, Debug)]
@@ -334,7 +334,7 @@ mod TextEdit {
 
         fn close(&mut self, cx: &mut EventCx, commit: bool) -> IsUsed {
             cx.push(if commit {
-                TextEditResult::Ok(self.edit.clone_string())
+                TextEditResult::Ok(self.edit.clone_text())
             } else {
                 TextEditResult::Cancel
             });

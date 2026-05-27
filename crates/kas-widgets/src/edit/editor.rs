@@ -528,6 +528,20 @@ impl Part {
         self.text.as_str()
     }
 
+    /// Get text contents as a reference to the internal [`Rc`]
+    #[inline]
+    pub fn text(&self) -> &Rc<String> {
+        &self.text
+    }
+
+    /// Clone text contents
+    ///
+    /// Text is stored using [`Rc`] internally.
+    #[inline]
+    pub fn clone_text(&self) -> Rc<String> {
+        Rc::clone(&self.text)
+    }
+
     /// Get the base directionality of the text
     ///
     /// [`Self::prepare_runs`] should be called before this method.
@@ -1529,12 +1543,12 @@ impl Common {
         self.last_edit = edit;
         let (part, texts) = match edit {
             None | Some(EditOp::Initial) | Some(EditOp::Cursor) => (0, vec![]),
-            Some(EditOp::Ime(part)) => (part, vec![Rc::clone(&parts.get(part).text)]),
+            Some(EditOp::Ime(part)) => (part, vec![parts.get(part).clone_text()]),
             Some(EditOp::KeyInput(start, last))
             | Some(EditOp::KeyDelete(start, last))
             | Some(EditOp::Replace(start, last)) => {
                 let texts = (start..last + 1)
-                    .map(|part| Rc::clone(&parts.get(part).text))
+                    .map(|part| parts.get(part).clone_text())
                     .collect();
                 (start, texts)
             }
@@ -1989,10 +2003,18 @@ impl Editor {
         self.part.text.as_str()
     }
 
-    /// Get the text contents as a `String`
+    /// Get text contents as a reference to the internal [`Rc`]
     #[inline]
-    pub fn clone_string(&self) -> String {
-        self.as_str().to_string()
+    pub fn text(&self) -> &Rc<String> {
+        self.part.text()
+    }
+
+    /// Clone text contents
+    ///
+    /// Text is stored using [`Rc`] internally.
+    #[inline]
+    pub fn clone_text(&self) -> Rc<String> {
+        self.part.clone_text()
     }
 
     /// Get the (horizontal) text direction
@@ -2021,7 +2043,9 @@ impl Editor {
 
     /// Set text contents from a `str`
     ///
-    /// Returns `true` if the text may have changed.
+    /// This method does not call action handlers on the guard.
+    ///
+    /// Returns `true` if the text contents changed.
     #[inline]
     pub fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
         if self.as_str() != text {
@@ -2035,17 +2059,40 @@ impl Editor {
     /// Set text contents from a `String`
     ///
     /// This method does not call action handlers on the guard.
-    pub fn set_string(&mut self, cx: &mut EventState, text: String) {
-        if self.as_str() == text {
-            return; // no change
+    ///
+    /// Returns `true` if the text contents changed.
+    #[inline]
+    pub fn set_string(&mut self, cx: &mut EventState, text: String) -> bool {
+        if self.as_str() != text {
+            self.set_text_unchecked(cx, Rc::new(text));
+            true
+        } else {
+            false
         }
+    }
 
+    /// Set text contents from an `Rc<String>`
+    ///
+    /// This method does not call action handlers on the guard.
+    ///
+    /// Returns `true` if the text contents changed.
+    #[inline]
+    pub fn set_text(&mut self, cx: &mut EventState, text: Rc<String>) -> bool {
+        if self.part.text != text {
+            self.set_text_unchecked(cx, text);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn set_text_unchecked(&mut self, cx: &mut EventState, text: Rc<String>) {
         self.common
             .save_undo_state(&mut self.part, Some(EditOp::Replace(0, 0)));
 
         self.common.cancel_selection_and_ime(&mut self.part, cx);
 
-        self.part.text = Rc::new(text);
+        self.part.text = text;
         self.part.require_reprepare();
 
         let len = TextIndex::new(0, self.as_str().len());
