@@ -1177,19 +1177,15 @@ impl Common {
             }
 
             if coord.1 < y0 {
-                if p <= l_bound {
-                    break;
-                }
                 u_bound = p;
-                p = l_bound + (p - l_bound) / 2;
             } else if y1 < coord.1 {
-                if p >= u_bound {
-                    break;
-                }
                 l_bound = p;
-                p = p + (u_bound - p) / 2;
-            } else {
+            }
+            let q = l_bound + (u_bound - l_bound) / 2;
+            if p == q {
                 break;
+            } else {
+                p = q;
             }
         }
 
