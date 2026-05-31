@@ -47,7 +47,7 @@ impl Pipeline {
     ) -> Self {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("R2C pipeline_layout"),
-            bind_group_layouts: &[bgl_common],
+            bind_group_layouts: &[Some(bgl_common)],
             immediate_size: 0,
         });
 

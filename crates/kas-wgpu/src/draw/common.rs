@@ -52,8 +52,8 @@ impl<V: bytemuck::Pod> Window<V> {
 
         if req_len <= self.buffer_size {
             let buffer = self.buffer.as_ref().unwrap();
-            let mut slice = staging_belt.write_buffer(encoder, buffer, 0, byte_len);
-            copy_to_slice(&mut self.passes, &mut slice);
+            let mut view = staging_belt.write_buffer(encoder, buffer, 0, byte_len);
+            copy_to_slice(&mut self.passes, &mut view);
         } else {
             // Size must be a multiple of alignment
             let mask = wgpu::COPY_BUFFER_ALIGNMENT - 1;
@@ -65,23 +65,26 @@ impl<V: bytemuck::Pod> Window<V> {
                 mapped_at_creation: true,
             });
 
-            let mut slice = buffer.slice(..byte_len.get()).get_mapped_range_mut();
-            copy_to_slice(&mut self.passes, &mut slice);
-            drop(slice);
+            let mut view = buffer.slice(..byte_len.get()).get_mapped_range_mut();
+            copy_to_slice(&mut self.passes, &mut view);
+            drop(view);
 
             buffer.unmap();
             self.buffer = Some(buffer);
             self.buffer_size = buffer_size;
         }
 
-        fn copy_to_slice<V: bytemuck::Pod>(passes: &mut [PassData<V>], slice: &mut [u8]) {
+        fn copy_to_slice<V: bytemuck::Pod>(
+            passes: &mut [PassData<V>],
+            view: &mut wgpu::BufferViewMut,
+        ) {
             let mut byte_offset = 0;
             for pass in passes.iter_mut() {
                 let len = u32::conv(pass.vertices.len());
                 let byte_len = u64::from(len) * u64::conv(size_of::<V>());
                 let byte_end = byte_offset + byte_len;
 
-                slice[usize::conv(byte_offset)..usize::conv(byte_end)]
+                view.slice(usize::conv(byte_offset)..usize::conv(byte_end))
                     .copy_from_slice(bytemuck::cast_slice(&pass.vertices));
 
                 pass.vertices.clear();

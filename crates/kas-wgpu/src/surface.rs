@@ -12,7 +12,7 @@ use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use kas::geom::Size;
 use kas::runner::{HasDisplayAndWindowHandle, RunError, WindowSurface};
 use std::time::Instant;
-use wgpu::PresentMode;
+use wgpu::{CurrentSurfaceTexture, PresentMode};
 
 /// Per-window data
 pub struct Surface<C: CustomPipe> {
@@ -113,21 +113,19 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
 
     /// Return time at which render finishes
     fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Instant {
+        // TODO: review error handling
         let frame = match self.surface.get_current_texture() {
-            Ok(frame) => frame,
-            Err(e) => {
-                // This error has not been observed. Can it be fixed by
-                // re-configuring the surface? Does it ever occur anyway?
-                log::error!("WindowSurface::present: failed to get frame texture: {e}");
+            CurrentSurfaceTexture::Success(frame) | CurrentSurfaceTexture::Suboptimal(frame) => {
+                frame
+            }
+            CurrentSurfaceTexture::Timeout
+            | CurrentSurfaceTexture::Occluded
+            | CurrentSurfaceTexture::Outdated
+            | CurrentSurfaceTexture::Lost
+            | CurrentSurfaceTexture::Validation => {
                 return Instant::now();
             }
         };
-
-        #[cfg(debug_assertions)]
-        if frame.suboptimal {
-            // Does this ever occur? Should we care?
-            log::warn!("WindowSurface::present: sub-optimal frame should be re-created");
-        }
 
         let view = frame.texture.create_view(&Default::default());
 

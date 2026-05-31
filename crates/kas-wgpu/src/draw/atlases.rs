@@ -129,7 +129,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("atlas pipeline layout"),
-            bind_group_layouts: &[bg_common, &bg_tex_layout],
+            bind_group_layouts: &[Some(bg_common), Some(&bg_tex_layout)],
             immediate_size: 0,
         });
 
@@ -363,16 +363,19 @@ impl<I: bytemuck::Pod> Window<I> {
                 mapped_at_creation: true,
             });
 
-            let mut slice = buffer.slice(..byte_len.get()).get_mapped_range_mut();
-            copy_to_slice(&mut self.passes, &mut slice);
-            drop(slice);
+            let mut view = buffer.slice(..byte_len.get()).get_mapped_range_mut();
+            copy_to_slice(&mut self.passes, &mut view);
+            drop(view);
 
             buffer.unmap();
             self.buffer = Some(buffer);
             self.buffer_size = buffer_size;
         }
 
-        fn copy_to_slice<I: bytemuck::Pod>(passes: &mut [PassData<I>], slice: &mut [u8]) {
+        fn copy_to_slice<I: bytemuck::Pod>(
+            passes: &mut [PassData<I>],
+            view: &mut wgpu::BufferViewMut,
+        ) {
             let mut byte_offset = 0;
             for pass in passes.iter_mut() {
                 let byte_start = byte_offset;
@@ -382,7 +385,7 @@ impl<I: bytemuck::Pod> Window<I> {
                     let byte_len = u64::from(len) * u64::conv(size_of::<I>());
                     let byte_end = byte_offset + byte_len;
 
-                    slice[usize::conv(byte_offset)..usize::conv(byte_end)]
+                    view.slice(usize::conv(byte_offset)..usize::conv(byte_end))
                         .copy_from_slice(bytemuck::cast_slice(&atlas.instances));
 
                     byte_offset = byte_end;

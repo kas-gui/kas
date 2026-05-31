@@ -121,7 +121,7 @@ impl CustomPipeBuilder for PipeBuilder {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[bgl_common],
+            bind_group_layouts: &[Some(bgl_common)],
             immediate_size: size_of::<PushConstants>().cast(),
         });
 
