@@ -192,7 +192,7 @@ mod Editor {
                     if action == EditorAction::Save
                         && let Some(file) = self.file.clone()
                     {
-                        let contents = self.editor.clone_string();
+                        let contents = self.editor.clone_text();
                         cx.send_async(self.id(), async move {
                             Saved(file.write(contents.as_bytes()).await)
                         });

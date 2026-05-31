@@ -109,7 +109,7 @@ impl EditGuard for ListEntryGuard {
     }
 
     fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &MyItem) {
-        cx.push(Control::Update(self.0, edit.clone_string()));
+        cx.push(Control::Update(self.0, edit.as_str().to_string()));
     }
 }
 

@@ -153,10 +153,41 @@ impl Common {
         }
     }
 
+    /// Get the base text direction
+    #[inline]
+    pub fn direction(&self) -> Direction {
+        self.direction
+    }
+
+    /// Set the base text direction
+    #[inline]
+    pub fn set_direction(&mut self, direction: Direction) -> ActionResetStatus {
+        self.direction = direction;
+        ActionResetStatus
+    }
+
+    /// Update the base text direction if in automatic mode to reflect the
+    /// current text direction of the `part`
+    pub fn update_direction(&mut self, part: &Part) {
+        if self.direction.is_auto() {
+            self.direction = if part.display.text_is_rtl() {
+                Direction::AutoRtl
+            } else {
+                Direction::Auto
+            };
+        }
+    }
+
     /// Read highlighter colors
     #[inline]
     pub fn colors(&self) -> &SchemeColors {
         &self.colors
+    }
+
+    /// Set highlighter colors
+    #[inline]
+    pub fn set_colors(&mut self, colors: SchemeColors) {
+        self.colors = colors;
     }
 
     /// Get the theme-defined background color
@@ -290,7 +321,7 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
-        self.0.part.set_rect(&mut self.0.common, cx, rect);
+        self.0.part.set_rect(&self.0.common, cx, rect);
     }
 
     #[inline]
@@ -389,7 +420,14 @@ impl<H: Highlighter> Component<H> {
             self.0.part.require_reprepare();
         }
 
-        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
+        self.prepare_runs();
+    }
+
+    fn prepare_runs(&mut self) {
+        if self.0.part.status < Status::LevelRuns {
+            self.0.part.prepare_runs(&self.0.common, &mut self.1);
+            self.0.common.update_direction(&self.0.part);
+        }
     }
 
     /// Fully prepare text for display
@@ -405,8 +443,8 @@ impl<H: Highlighter> Component<H> {
             return;
         }
 
-        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
-        self.0.part.prepare_wrap(&mut self.0.common);
+        self.prepare_runs();
+        self.0.part.prepare_wrap(&self.0.common);
     }
 
     /// Fully prepare text for display, ensuring the cursor is within view
@@ -429,7 +467,7 @@ impl<H: Highlighter> Component<H> {
     /// modify `self`.
     #[inline]
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
-        self.0.part.prepare_runs(&mut self.0.common, &mut self.1);
+        self.prepare_runs();
         self.0.part.display.measure_height(wrap_width, max_lines)
     }
 
@@ -474,11 +512,34 @@ impl Default for Part {
     }
 }
 
+impl<S: ToString> From<S> for Part {
+    fn from(text: S) -> Self {
+        Part {
+            text: Rc::new(text.to_string()),
+            ..Default::default()
+        }
+    }
+}
+
 impl Part {
     /// Get text contents
     #[inline]
     pub fn as_str(&self) -> &str {
         self.text.as_str()
+    }
+
+    /// Get text contents as a reference to the internal [`Rc`]
+    #[inline]
+    pub fn text(&self) -> &Rc<String> {
+        &self.text
+    }
+
+    /// Clone text contents
+    ///
+    /// Text is stored using [`Rc`] internally.
+    #[inline]
+    pub fn clone_text(&self) -> Rc<String> {
+        Rc::clone(&self.text)
     }
 
     /// Get the base directionality of the text
@@ -496,6 +557,12 @@ impl Part {
         self.status == Status::Ready
     }
 
+    /// Check the [`Status`] directly
+    #[inline]
+    pub fn status(&self) -> Status {
+        self.status
+    }
+
     /// Force full repreparation of text
     #[inline]
     pub fn require_reprepare(&mut self) {
@@ -505,39 +572,26 @@ impl Part {
     /// Perform run-breaking and shaping
     ///
     /// This represents a high-level step of preparation required before
-    /// displaying text. This method should be called before any sizing
-    /// operations. This will advance the [`Status`] to [`Status::LevelRuns`].
-    /// This method must be called again after any edits to the `Part`'s text.
+    /// displaying text: it advances the [`Self::status`] to
+    /// [`Status::LevelRuns`]. This method is safe to call from any status,
+    /// though it is suggested to only call when the status is less than
+    /// [`Status::LevelRuns`].
     #[inline]
-    pub fn prepare_runs<H: Highlighter>(&mut self, common: &mut Common, highlighter: &mut H) {
-        fn inner<H: Highlighter>(part: &mut Part, common: &mut Common, highlighter: &mut H) {
-            part.highlight.highlight(&part.text, highlighter);
+    pub fn prepare_runs<H: Highlighter>(&mut self, common: &Common, highlighter: &mut H) {
+        self.highlight.highlight(&self.text, highlighter);
 
-            let text = part.text.as_str();
-            let font_tokens = part.highlight.font_tokens(common.dpem, common.font);
-            match part.status {
-                Status::New => part
-                    .display
-                    .prepare_runs(text, common.direction, font_tokens)
-                    .expect("no suitable font found"),
-                Status::ResizeLevelRuns => part.display.resize_runs(text, font_tokens),
-                _ => return,
-            }
-
-            part.status = Status::LevelRuns;
-
-            if common.direction.is_auto() {
-                common.direction = if part.display.text_is_rtl() {
-                    Direction::AutoRtl
-                } else {
-                    Direction::Auto
-                };
-            }
+        let text = self.text.as_str();
+        let font_tokens = self.highlight.font_tokens(common.dpem, common.font);
+        match self.status {
+            Status::New => self
+                .display
+                .prepare_runs(text, common.direction, font_tokens)
+                .expect("no suitable font found"),
+            Status::ResizeLevelRuns => self.display.resize_runs(text, font_tokens),
+            _ => return,
         }
 
-        if self.status < Status::LevelRuns {
-            inner(self, common, highlighter);
-        }
+        self.status = Status::LevelRuns;
     }
 
     /// Get the assigned [`Rect`]
@@ -586,7 +640,7 @@ impl Part {
     /// should be very cheap.
     ///
     /// Note that editors always use default alignment of content.
-    pub fn set_rect(&mut self, common: &mut Common, cx: &mut SizeCx, rect: Rect) {
+    pub fn set_rect(&mut self, common: &Common, cx: &mut SizeCx, rect: Rect) {
         if rect.size.0 != self.rect.size.0 {
             self.status = self.status.min(Status::LevelRuns);
         }
@@ -609,14 +663,15 @@ impl Part {
     /// Perform line wrapping and alignment
     ///
     /// This represents a high-level step of preparation required before
-    /// displaying text. After [run-breaking](Self::prepare_runs), this method
-    /// should be called before displaying the text. This will advance
-    /// the [status](ConfiguredDisplay::status) to [`Status::Ready`].
-    /// This method must be called again after [`Self::prepare_runs`] and after
-    /// changes to alignment or the wrap-width.
+    /// displaying text: it advances [`Self::status`] from [`Status::LevelRuns`]
+    /// to [`Status::Ready`].
+    ///
+    /// If [`Self::status`] is less than [`Status::LevelRuns`], this method
+    /// returns early, otherwise it performs line-wrapping (if required) and
+    /// sets the status to [`Status::Ready`].
     ///
     /// Returns `true` when the size of the bounding-box changes.
-    fn prepare_wrap(&mut self, common: &mut Common) -> bool {
+    pub fn prepare_wrap(&mut self, common: &Common) -> bool {
         if self.status < Status::LevelRuns || self.rect.size.0 == 0 {
             return false;
         };
@@ -1085,10 +1140,7 @@ impl Common {
                 };
                 part.replace_range(b_start..b_end, line);
             } else {
-                parts.insert(p, Part {
-                    text: Rc::new(line.to_string()),
-                    ..Default::default()
-                });
+                parts.insert(p, Part::from(line));
             }
             p += 1;
             b_start = 0;
@@ -1118,9 +1170,14 @@ impl Common {
     ) {
         let mut any_resized = false;
 
-        for part in parts.iter_mut() {
+        for (i, part) in parts.iter_mut().enumerate() {
             if !part.is_prepared() {
-                part.prepare_runs(self, highlighter);
+                if part.status < Status::LevelRuns {
+                    part.prepare_runs(self, highlighter);
+                    if i == 0 {
+                        self.update_direction(part);
+                    }
+                }
                 any_resized |= part.prepare_wrap(self);
             }
         }
@@ -1177,19 +1234,15 @@ impl Common {
             }
 
             if coord.1 < y0 {
-                if p <= l_bound {
-                    break;
-                }
                 u_bound = p;
-                p = l_bound + (p - l_bound) / 2;
             } else if y1 < coord.1 {
-                if p >= u_bound {
-                    break;
-                }
                 l_bound = p;
-                p = p + (u_bound - p) / 2;
-            } else {
+            }
+            let q = l_bound + (u_bound - l_bound) / 2;
+            if p == q {
                 break;
+            } else {
+                p = q;
             }
         }
 
@@ -1490,12 +1543,12 @@ impl Common {
         self.last_edit = edit;
         let (part, texts) = match edit {
             None | Some(EditOp::Initial) | Some(EditOp::Cursor) => (0, vec![]),
-            Some(EditOp::Ime(part)) => (part, vec![Rc::clone(&parts.get(part).text)]),
+            Some(EditOp::Ime(part)) => (part, vec![parts.get(part).clone_text()]),
             Some(EditOp::KeyInput(start, last))
             | Some(EditOp::KeyDelete(start, last))
             | Some(EditOp::Replace(start, last)) => {
                 let texts = (start..last + 1)
-                    .map(|part| Rc::clone(&parts.get(part).text))
+                    .map(|part| parts.get(part).clone_text())
                     .collect();
                 (start, texts)
             }
@@ -1950,10 +2003,18 @@ impl Editor {
         self.part.text.as_str()
     }
 
-    /// Get the text contents as a `String`
+    /// Get text contents as a reference to the internal [`Rc`]
     #[inline]
-    pub fn clone_string(&self) -> String {
-        self.as_str().to_string()
+    pub fn text(&self) -> &Rc<String> {
+        self.part.text()
+    }
+
+    /// Clone text contents
+    ///
+    /// Text is stored using [`Rc`] internally.
+    #[inline]
+    pub fn clone_text(&self) -> Rc<String> {
+        self.part.clone_text()
     }
 
     /// Get the (horizontal) text direction
@@ -1982,7 +2043,9 @@ impl Editor {
 
     /// Set text contents from a `str`
     ///
-    /// Returns `true` if the text may have changed.
+    /// This method does not call action handlers on the guard.
+    ///
+    /// Returns `true` if the text contents changed.
     #[inline]
     pub fn set_str(&mut self, cx: &mut EventState, text: &str) -> bool {
         if self.as_str() != text {
@@ -1996,17 +2059,40 @@ impl Editor {
     /// Set text contents from a `String`
     ///
     /// This method does not call action handlers on the guard.
-    pub fn set_string(&mut self, cx: &mut EventState, text: String) {
-        if self.as_str() == text {
-            return; // no change
+    ///
+    /// Returns `true` if the text contents changed.
+    #[inline]
+    pub fn set_string(&mut self, cx: &mut EventState, text: String) -> bool {
+        if self.as_str() != text {
+            self.set_text_unchecked(cx, Rc::new(text));
+            true
+        } else {
+            false
         }
+    }
 
+    /// Set text contents from an `Rc<String>`
+    ///
+    /// This method does not call action handlers on the guard.
+    ///
+    /// Returns `true` if the text contents changed.
+    #[inline]
+    pub fn set_text(&mut self, cx: &mut EventState, text: Rc<String>) -> bool {
+        if self.part.text != text {
+            self.set_text_unchecked(cx, text);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn set_text_unchecked(&mut self, cx: &mut EventState, text: Rc<String>) {
         self.common
             .save_undo_state(&mut self.part, Some(EditOp::Replace(0, 0)));
 
         self.common.cancel_selection_and_ime(&mut self.part, cx);
 
-        self.part.text = Rc::new(text);
+        self.part.text = text;
         self.part.require_reprepare();
 
         let len = TextIndex::new(0, self.as_str().len());

@@ -150,9 +150,9 @@ impl SolveCache {
         );
         log::debug!(
             "find_constraints: min={:?}, ideal={:?}, margins={:?}",
-            &self.min,
-            &self.ideal,
-            &self.margins
+            self.min,
+            self.ideal,
+            self.margins
         );
         self.last_width = self.ideal.0;
     }
