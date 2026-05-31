@@ -411,9 +411,9 @@ impl<'a> EventCx<'a> {
         let id = widget.id();
         log::trace!(
             "start_key_event: window={id}, physical_key={:?}, logical_key={:?}, without_modifiers={:?}",
-            &event.physical_key,
-            &event.logical_key,
-            &event.key_without_modifiers
+            event.physical_key,
+            event.logical_key,
+            event.key_without_modifiers
         );
 
         let opt_cmd = self

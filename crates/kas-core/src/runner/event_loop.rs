@@ -223,12 +223,12 @@ where
         while let Some(pending) = self.shared.pending.pop_front() {
             match pending {
                 Pending::Update => {
-                    for (_, window) in self.windows.iter_mut() {
+                    for window in self.windows.values_mut() {
                         window.update(&self.data);
                     }
                 }
                 Pending::ConfigUpdate(action) => {
-                    for (_, window) in self.windows.iter_mut() {
+                    for window in self.windows.values_mut() {
                         window.config_update(&mut self.shared, &self.data, action);
                     }
                 }
