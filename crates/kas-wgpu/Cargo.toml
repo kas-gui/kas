@@ -29,7 +29,7 @@ bytemuck = "1.7.0"
 futures-lite = "2.0"
 log = "0.4"
 thiserror = "2.0.3"
-guillotiere = "0.6.0"
+guillotiere = "0.7.0"
 
 [dependencies.kas]
 # Rename package purely for convenience:
