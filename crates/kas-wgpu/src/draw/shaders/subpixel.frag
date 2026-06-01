@@ -11,8 +11,8 @@ precision mediump float;
 layout(location = 0) in vec2 tex_coord;
 layout(location = 1) in vec4 col;
 
-layout(location = 0) out vec4 frag_color;
-layout(location = 1) out vec4 blend_color;
+layout(location = 0, index = 0) out vec4 frag_color;
+layout(location = 0, index = 1) out vec4 blend_color;
 
 layout(set = 1, binding = 0) uniform texture2D tex;
 layout(set = 1, binding = 1) uniform sampler tex_sampler;
