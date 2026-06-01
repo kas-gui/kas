@@ -53,6 +53,10 @@ impl<C: CustomPipe> DrawPipe<C> {
         let req = adapter.request_device(&desc);
         let (device, queue) = block_on(req).map_err(|e| RunError::Graphics(Box::new(e)))?;
 
+        device.on_uncaptured_error(std::sync::Arc::new(|err| {
+            log::warn!("Uncaptured graphics device error: {err}")
+        }));
+
         let shaders = ShaderManager::new(&device);
 
         // Create staging belt and a local pool
