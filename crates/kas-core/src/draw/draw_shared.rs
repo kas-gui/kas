@@ -9,7 +9,7 @@ use super::{DrawImpl, PassId};
 use crate::ActionRedraw;
 use crate::config::RasterConfig;
 use crate::geom::{Quad, Size, Vec2};
-use crate::text::{TextDisplay, format};
+use crate::text::{Forme, format};
 use crate::theme::ColorsLinear;
 use std::any::Any;
 use std::num::NonZeroU32;
@@ -200,7 +200,7 @@ pub trait DrawSharedImpl: Any {
         pass: PassId,
         pos: Vec2,
         bounding_box: Quad,
-        text: &TextDisplay,
+        text: &Forme,
         theme: &ColorsLinear,
         tokens: &[(u32, format::Colors)],
     );
@@ -215,7 +215,7 @@ pub trait DrawSharedImpl: Any {
         pass: PassId,
         pos: Vec2,
         bounding_box: Quad,
-        text: &TextDisplay,
+        text: &Forme,
         theme: &ColorsLinear,
         decorations: &[(u32, format::Decoration)],
     );

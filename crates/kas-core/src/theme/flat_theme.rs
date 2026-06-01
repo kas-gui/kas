@@ -17,7 +17,7 @@ use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
 use crate::event::EventState;
 use crate::geom::*;
-use crate::text::TextDisplay;
+use crate::text::Forme;
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};

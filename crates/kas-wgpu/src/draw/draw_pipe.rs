@@ -367,7 +367,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         pass: PassId,
         pos: Vec2,
         bb: Quad,
-        text: &text::TextDisplay,
+        text: &text::Forme,
         theme: &ColorsLinear,
         tokens: &[(u32, text::format::Colors)],
     ) {
@@ -394,7 +394,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         pass: PassId,
         pos: Vec2,
         bb: Quad,
-        text: &text::TextDisplay,
+        text: &text::Forme,
         theme: &ColorsLinear,
         decorations: &[(u32, text::format::Decoration)],
     ) {

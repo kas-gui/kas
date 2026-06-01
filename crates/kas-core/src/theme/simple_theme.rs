@@ -17,7 +17,7 @@ use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
 use crate::event::EventState;
 use crate::geom::*;
-use crate::text::{TextDisplay, format};
+use crate::text::{Forme, format};
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};
@@ -351,7 +351,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         id: &Id,
         pos: Coord,
         rect: Rect,
-        text: &TextDisplay,
+        text: &Forme,
         tokens: &[(u32, format::Colors)],
     ) {
         // NOTE: id is passed to allow usage of self.cols.text_disabled if self.ev.is_disabled(id).
@@ -367,7 +367,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         id: &Id,
         pos: Coord,
         rect: Rect,
-        text: &TextDisplay,
+        text: &Forme,
         decorations: &[(u32, format::Decoration)],
     ) {
         // NOTE: see above note on usage of self.cols.text_disabled.
@@ -383,7 +383,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
         id: &Id,
         pos: Coord,
         rect: Rect,
-        text: &TextDisplay,
+        text: &Forme,
         byte: usize,
         color: Option<format::Color>,
     ) {

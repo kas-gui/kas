@@ -85,7 +85,7 @@ impl Methods {
                 id: &Id,
                 pos: Coord,
                 rect: Rect,
-                text: &TextDisplay,
+                text: &Forme,
                 tokens: &[(u32, ::kas::text::format::Colors)],
             ) {
                 (#base).text(id, pos, rect, text, tokens);
@@ -96,7 +96,7 @@ impl Methods {
                 id: &Id,
                 pos: Coord,
                 rect: Rect,
-                text: &TextDisplay,
+                text: &Forme,
                 decorations: &[(u32, ::kas::text::format::Decoration)],
             ) {
                 (#base).decorate_text(id, pos, rect, text, decorations);
@@ -107,7 +107,7 @@ impl Methods {
                 id: &Id,
                 pos: Coord,
                 rect: Rect,
-                text: &TextDisplay,
+                text: &Forme,
                 byte: usize,
                 color: Option<::kas::text::format::Color>,
             ) {
