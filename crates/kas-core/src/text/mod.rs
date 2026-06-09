@@ -15,8 +15,8 @@ pub use kas_text::{
     Vec2, fonts,
 };
 
-mod display;
 pub mod format;
+mod forme;
 /// Glyph rastering
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -25,7 +25,7 @@ mod selection;
 mod string;
 mod text;
 
-pub use display::ConfiguredForme;
+pub use forme::ConfiguredForme;
 pub use selection::CursorRange;
 pub use string::AccessString;
 pub use text::Text;
