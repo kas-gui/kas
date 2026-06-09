@@ -17,7 +17,7 @@ use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
-use kas::text::TextDisplay;
+use kas::text::Forme;
 use kas::theme::dimensions as dim;
 use kas::theme::{Background, ThemeDraw, ThemeSize};
 use kas::theme::{ColorsLinear, FlatTheme, InputState, SimpleTheme, Theme};

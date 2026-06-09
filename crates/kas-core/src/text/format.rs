@@ -10,7 +10,7 @@ use std::num::NonZeroU32;
 use super::fonts::FontSelector;
 use crate::draw::color::{Rgba, Rgba8Srgb};
 use crate::theme::ColorsLinear;
-pub use kas_text::format::FontToken;
+pub use kas_text::FontToken;
 
 #[cfg(feature = "markdown")] mod markdown;
 #[cfg(feature = "markdown")] pub use markdown::Markdown;
@@ -171,7 +171,7 @@ pub trait FormattableText: std::cmp::PartialEq {
     ///
     /// These tokens are used to select the font and font size.
     /// Each text object has a configured
-    /// [font size][super::ConfiguredDisplay::set_font_size] and [`FontSelector`]; these
+    /// [font size][super::ConfiguredForme::set_font_size] and [`FontSelector`]; these
     /// values are passed as a reference (`dpem` and `font`).
     ///
     /// The iterator is expected to yield a stream of tokens such that

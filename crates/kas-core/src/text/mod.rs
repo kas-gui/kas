@@ -11,12 +11,12 @@
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
 pub use kas_text::{
-    Align, DPU, Direction, Line, LineIterator, MarkerPos, MarkerPosIter, NotReady, Status,
-    TextDisplay, Vec2, fonts,
+    Align, DPU, Direction, Forme, Line, LineIterator, MarkerPos, MarkerPosIter, NotReady, Status,
+    Vec2, fonts,
 };
 
-mod display;
 pub mod format;
+mod forme;
 /// Glyph rastering
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -25,7 +25,7 @@ mod selection;
 mod string;
 mod text;
 
-pub use display::ConfiguredDisplay;
+pub use forme::ConfiguredForme;
 pub use selection::CursorRange;
 pub use string::AccessString;
 pub use text::Text;

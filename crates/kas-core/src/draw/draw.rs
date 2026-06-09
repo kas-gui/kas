@@ -9,7 +9,7 @@ use super::{AnimationState, color::Rgba};
 #[allow(unused)] use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState, WindowCommon};
 use crate::geom::{Offset, Quad, Rect, Vec2};
-use crate::text::{TextDisplay, format};
+use crate::text::{Forme, format};
 use crate::theme::ColorsLinear;
 use std::any::Any;
 use std::time::Instant;
@@ -132,7 +132,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
         &mut self,
         pos: Vec2,
         bounding_box: Quad,
-        text: &TextDisplay,
+        text: &Forme,
         theme: &ColorsLinear,
         col: Rgba,
     ) {
@@ -268,7 +268,7 @@ pub trait Draw {
         &mut self,
         pos: Vec2,
         bounding_box: Quad,
-        text: &TextDisplay,
+        text: &Forme,
         theme: &ColorsLinear,
         tokens: &[(u32, format::Colors)],
     ) {
@@ -285,7 +285,7 @@ pub trait Draw {
         &mut self,
         pos: Vec2,
         bounding_box: Quad,
-        text: &TextDisplay,
+        text: &Forme,
         theme: &ColorsLinear,
         decorations: &[(u32, format::Decoration)],
     ) {

@@ -20,18 +20,18 @@ use std::num::NonZeroUsize;
 ///
 /// This struct contains:
 /// -   A [`FormattableText`]
-/// -   A [`ConfiguredDisplay`] (accessible using `*self`)
+/// -   A [`ConfiguredForme`] (accessible using `*self`)
 ///
 /// This struct tracks the
-/// [state of preparation][TextDisplay#status-of-preparation] and will perform
+/// [state of preparation][Forme#status-of-preparation] and will perform
 /// steps as required. Typical usage of this struct is as follows:
 /// -   Construct with some text and [`TextClass`]
-/// -   Configure by calling [`ConfiguredDisplay::configure`]
+/// -   Configure by calling [`ConfiguredForme::configure`]
 /// -   Size and draw using [`Layout`] methods
 #[derive(Clone, Debug)]
 #[autoimpl(Deref, DerefMut using self.inner)]
 pub struct Text<T: FormattableText> {
-    inner: ConfiguredDisplay,
+    inner: ConfiguredForme,
     text: T,
 }
 
@@ -55,11 +55,11 @@ impl<T: FormattableText> Layout for Text<T> {
 
     #[inline]
     fn draw(&self, mut draw: DrawCx) {
-        if let Ok(display) = self.display() {
+        if let Ok(forme) = self.forme() {
             let rect = self.rect();
             let tokens = self.color_tokens();
-            draw.text(rect.pos, rect, display, tokens);
-            draw.decorate_text(rect.pos, rect, display, self.decorations());
+            draw.text(rect.pos, rect, forme, tokens);
+            draw.decorate_text(rect.pos, rect, forme, self.decorations());
         }
     }
 }
@@ -71,7 +71,7 @@ impl<T: FormattableText> Text<T> {
     #[inline]
     pub fn new(text: T, class: TextClass, wrap: bool) -> Self {
         Text {
-            inner: ConfiguredDisplay::new(class, wrap),
+            inner: ConfiguredForme::new(class, wrap),
             text,
         }
     }
@@ -95,7 +95,7 @@ impl<T: FormattableText> Text<T> {
     /// Access the formattable text object mutably
     ///
     /// If the text is changed, one **must** call
-    /// <code>self.[require_reprepare][ConfiguredDisplay::require_reprepare]()</code>
+    /// <code>self.[require_reprepare][ConfiguredForme::require_reprepare]()</code>
     /// after this method then [`Text::prepare`].
     #[inline]
     pub fn text_mut(&mut self) -> &mut T {
@@ -119,7 +119,7 @@ impl<T: FormattableText> Text<T> {
         }
 
         self.text = text;
-        self.set_max_status(Status::New);
+        self.set_max_status(Status::Empty);
         true
     }
 
@@ -169,7 +169,7 @@ impl<T: FormattableText> Text<T> {
 
     #[inline]
     fn prepare_runs(&mut self) {
-        if self.status() < Status::LevelRuns {
+        if self.status() < Status::Shaped {
             let (dpem, font) = (self.font_size(), self.font());
             self.inner
                 .prepare_runs(self.text.as_str(), self.text.font_tokens(dpem, font));
@@ -178,7 +178,7 @@ impl<T: FormattableText> Text<T> {
 
     /// Measure required width, up to some `max_width`
     ///
-    /// This method partially prepares the [`TextDisplay`] as required.
+    /// This method partially prepares the [`Forme`] as required.
     ///
     /// This method allows calculation of the width requirement of a text object
     /// without full wrapping and glyph placement. Whenever the requirement
@@ -187,7 +187,7 @@ impl<T: FormattableText> Text<T> {
     /// The return value is unaffected by alignment and wrap configuration.
     pub fn measure_width(&mut self, max_width: f32) -> f32 {
         self.prepare_runs();
-        self.unchecked_display().measure_width(max_width)
+        self.unchecked_forme().measure_width(max_width)
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -198,8 +198,7 @@ impl<T: FormattableText> Text<T> {
     /// modify `self`.
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
         self.prepare_runs();
-        self.unchecked_display()
-            .measure_height(wrap_width, max_lines)
+        self.unchecked_forme().measure_height(wrap_width, max_lines)
     }
 
     /// Prepare text for display, as necessary
@@ -219,8 +218,8 @@ impl<T: FormattableText> Text<T> {
 
         fn inner<T: FormattableText>(this: &mut Text<T>) {
             this.prepare_runs();
-            debug_assert!(this.status() >= Status::LevelRuns);
-            this.inner.prepare_wrap();
+            let result = this.inner.prepare_wrap();
+            debug_assert_eq!(result, Ok(()));
         }
         inner(self);
         true
@@ -234,7 +233,7 @@ impl<T: FormattableText> Text<T> {
     /// This is typically called after updating a `Text` object in a widget.
     pub fn reprepare_action(&mut self, cx: &mut ConfigCx) {
         if self.prepare() {
-            let (tl, br) = self.unchecked_display().bounding_box();
+            let (tl, br) = self.unchecked_forme().bounding_box();
             let bounds: Vec2 = self.rect().size.cast();
             if tl.0 < 0.0 || tl.1 < 0.0 || br.0 > bounds.0 || br.1 > bounds.1 {
                 cx.resize();
@@ -248,14 +247,14 @@ impl<T: FormattableText> Text<T> {
     /// The given `color` is used, ignoring [`Self::color_tokens`]
     /// Decorations are inferred from [`Text::decorations`].
     pub fn draw_with_color(&self, mut draw: DrawCx, color: Rgba) {
-        if let Ok(display) = self.display() {
+        if let Ok(forme) = self.forme() {
             let rect = self.rect();
             let tokens = [(0, format::Colors {
                 foreground: format::Color::from_rgba(color),
                 ..Default::default()
             })];
-            draw.text(rect.pos, rect, display, &tokens);
-            draw.decorate_text(rect.pos, rect, display, self.decorations());
+            draw.text(rect.pos, rect, forme, &tokens);
+            draw.decorate_text(rect.pos, rect, forme, self.decorations());
         }
     }
 }
@@ -272,7 +271,7 @@ impl Text<String> {
     #[inline]
     pub fn insert_str(&mut self, index: usize, text: &str) {
         self.text.insert_str(index, text);
-        self.set_max_status(Status::New);
+        self.set_max_status(Status::Empty);
     }
 
     /// Replace a section of text
@@ -287,7 +286,7 @@ impl Text<String> {
     #[inline]
     pub fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
         self.text.replace_range(range, replace_with);
-        self.set_max_status(Status::New);
+        self.set_max_status(Status::Empty);
     }
 
     /// Replace the whole text
@@ -297,6 +296,6 @@ impl Text<String> {
     #[inline]
     pub fn set_string(&mut self, text: String) {
         self.text = text;
-        self.set_max_status(Status::New);
+        self.set_max_status(Status::Empty);
     }
 }

@@ -15,7 +15,7 @@ use crate::event::EventState;
 #[allow(unused)] use crate::event::{Command, ConfigCx};
 use crate::geom::{Coord, Offset, Rect};
 #[allow(unused)] use crate::text::format::FormattableText;
-use crate::text::{TextDisplay, format};
+use crate::text::{Forme, format};
 use crate::theme::ColorsLinear;
 use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
@@ -288,13 +288,7 @@ impl<'a> DrawCx<'a> {
     /// Text is clipped to `rect`, drawing from `pos`; use `pos = rect.pos` if
     /// the text is not scrolled.
     #[inline]
-    pub fn text(
-        &mut self,
-        pos: Coord,
-        rect: Rect,
-        display: &TextDisplay,
-        tokens: &[(u32, format::Colors)],
-    ) {
+    pub fn text(&mut self, pos: Coord, rect: Rect, text: &Forme, tokens: &[(u32, format::Colors)]) {
         if cfg!(debug_assertions) {
             let mut i = 0;
             for (start, _) in tokens {
@@ -303,7 +297,7 @@ impl<'a> DrawCx<'a> {
             }
         }
 
-        self.h.text(&self.id, pos, rect, display, tokens);
+        self.h.text(&self.id, pos, rect, text, tokens);
     }
 
     /// Draw text decorations (e.g. underlines)
@@ -315,7 +309,7 @@ impl<'a> DrawCx<'a> {
         &mut self,
         pos: Coord,
         rect: Rect,
-        display: &TextDisplay,
+        text: &Forme,
         decorations: &[(u32, format::Decoration)],
     ) {
         if cfg!(debug_assertions) {
@@ -327,8 +321,7 @@ impl<'a> DrawCx<'a> {
         }
 
         if !decorations.is_empty() {
-            self.h
-                .decorate_text(&self.id, pos, rect, display, decorations);
+            self.h.decorate_text(&self.id, pos, rect, text, decorations);
         }
     }
 
@@ -339,12 +332,11 @@ impl<'a> DrawCx<'a> {
         &mut self,
         pos: Coord,
         rect: Rect,
-        display: &TextDisplay,
+        text: &Forme,
         byte: usize,
         color: Option<format::Color>,
     ) {
-        self.h
-            .text_cursor(&self.id, pos, rect, display, byte, color);
+        self.h.text_cursor(&self.id, pos, rect, text, byte, color);
     }
 
     /// Draw UI element: check box (without label)
@@ -508,7 +500,7 @@ pub trait ThemeDraw {
         id: &Id,
         pos: Coord,
         rect: Rect,
-        text: &TextDisplay,
+        text: &Forme,
         tokens: &[(u32, format::Colors)],
     );
 
@@ -522,7 +514,7 @@ pub trait ThemeDraw {
         id: &Id,
         pos: Coord,
         rect: Rect,
-        text: &TextDisplay,
+        text: &Forme,
         decorations: &[(u32, format::Decoration)],
     );
 
@@ -534,7 +526,7 @@ pub trait ThemeDraw {
         id: &Id,
         pos: Coord,
         rect: Rect,
-        text: &TextDisplay,
+        text: &Forme,
         byte: usize,
         color: Option<format::Color>,
     );

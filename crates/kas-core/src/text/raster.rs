@@ -18,7 +18,7 @@ use kas::config::RasterConfig;
 use kas::draw::{AllocError, Allocation, PassId, color::Rgba};
 use kas::geom::{Quad, Vec2};
 use kas_text::fonts::{self, FaceId};
-use kas_text::{Glyph, GlyphId, TextDisplay};
+use kas_text::{Forme, Glyph, GlyphId};
 use rustc_hash::FxHashMap as HashMap;
 use swash::zeno::Format;
 
@@ -510,7 +510,7 @@ impl State {
         pass: PassId,
         pos: Vec2,
         bb: Quad,
-        text: &TextDisplay,
+        text: &Forme,
         col: Rgba,
     ) {
         for run in text.runs::<()>(pos.into(), &[]) {
@@ -542,12 +542,12 @@ impl State {
         pass: PassId,
         pos: Vec2,
         bb: Quad,
-        text: &TextDisplay,
+        text: &Forme,
         theme: &ColorsLinear,
         tokens: &[(u32, Colors)],
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
-        // Optimisation: use cheaper TextDisplay::runs method
+        // Optimisation: use cheaper Forme::runs method
         if tokens.len() <= 1
             && tokens
                 .first()
@@ -602,7 +602,7 @@ impl State {
         &mut self,
         pos: Vec2,
         bb: Quad,
-        text: &TextDisplay,
+        text: &Forme,
         theme: &ColorsLinear,
         tokens: &[(u32, Decoration)],
         mut draw_quad: impl FnMut(Quad, Rgba),

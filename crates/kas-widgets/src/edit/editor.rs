@@ -25,7 +25,7 @@ use kas::geom::{Rect, Vec2};
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::text::fonts::FontSelector;
-use kas::text::{CursorRange, Direction, NotReady, Status, TextDisplay, format};
+use kas::text::{CursorRange, Direction, Forme, NotReady, Status, format};
 use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
 use kas::{Layout, autoimpl};
@@ -34,7 +34,7 @@ use std::num::NonZeroUsize;
 use std::rc::Rc;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
-/// Action: text parts should have their status reset to [`Status::New`] and be re-prepared
+/// Action: text parts should have their status reset to [`Status::Empty`] and be re-prepared
 #[must_use]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct ActionResetStatus;
@@ -170,7 +170,7 @@ impl Common {
     /// current text direction of the `part`
     pub fn update_direction(&mut self, part: &Part) {
         if self.direction.is_auto() {
-            self.direction = if part.display.text_is_rtl() {
+            self.direction = if part.forme.text_is_rtl() {
                 Direction::AutoRtl
             } else {
                 Direction::Auto
@@ -214,7 +214,7 @@ pub struct Part {
     part: u32, // part index
     rect: Rect,
     status: Status,
-    display: TextDisplay,
+    forme: Forme,
     highlight: highlight::Cache,
     text: Rc<String>,
 }
@@ -351,7 +351,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn set_wrap(&mut self, wrap: bool) {
         self.0.common.wrap = wrap;
-        self.0.part.status = self.0.part.status.min(Status::LevelRuns);
+        self.0.part.status = self.0.part.status.min(Status::Shaped);
     }
 
     /// Set the base text direction
@@ -362,7 +362,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
         self.0.common.direction = direction;
-        self.0.part.status = Status::New;
+        self.0.part.status = Status::Empty;
     }
 
     /// Replace the highlighter
@@ -424,7 +424,7 @@ impl<H: Highlighter> Component<H> {
     }
 
     fn prepare_runs(&mut self) {
-        if self.0.part.status < Status::LevelRuns {
+        if self.0.part.status < Status::Shaped {
             self.0.part.prepare_runs(&self.0.common, &mut self.1);
             self.0.common.update_direction(&self.0.part);
         }
@@ -439,7 +439,7 @@ impl<H: Highlighter> Component<H> {
     /// edits to the text to trigger any required resizing and scrolling.
     #[inline]
     pub fn prepare(&mut self) {
-        if self.0.part.is_prepared() {
+        if self.0.part.is_ready() {
             return;
         }
 
@@ -468,7 +468,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     pub fn measure_height(&mut self, wrap_width: f32, max_lines: Option<NonZeroUsize>) -> f32 {
         self.prepare_runs();
-        self.0.part.display.measure_height(wrap_width, max_lines)
+        self.0.part.forme.measure_height(wrap_width, max_lines)
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
@@ -504,8 +504,8 @@ impl Default for Part {
         Part {
             part: 0,
             rect: Rect::ZERO,
-            status: Status::New,
-            display: TextDisplay::default(),
+            status: Status::Empty,
+            forme: Forme::default(),
             highlight: Default::default(),
             text: Default::default(),
         }
@@ -547,13 +547,13 @@ impl Part {
     /// [`Self::prepare_runs`] should be called before this method.
     #[inline]
     pub fn text_is_rtl(&self) -> bool {
-        debug_assert!(self.status >= Status::ResizeLevelRuns);
-        self.display.text_is_rtl()
+        debug_assert!(self.status >= Status::Shaped);
+        self.forme.text_is_rtl()
     }
 
     /// Check whether the text is fully prepared and ready for usage
     #[inline]
-    pub fn is_prepared(&self) -> bool {
+    pub fn is_ready(&self) -> bool {
         self.status == Status::Ready
     }
 
@@ -566,16 +566,16 @@ impl Part {
     /// Force full repreparation of text
     #[inline]
     pub fn require_reprepare(&mut self) {
-        self.status = Status::New;
+        self.status = Status::Empty;
     }
 
     /// Perform run-breaking and shaping
     ///
     /// This represents a high-level step of preparation required before
     /// displaying text: it advances the [`Self::status`] to
-    /// [`Status::LevelRuns`]. This method is safe to call from any status,
+    /// [`Status::Shaped`]. This method is safe to call from any status,
     /// though it is suggested to only call when the status is less than
-    /// [`Status::LevelRuns`].
+    /// [`Status::Shaped`].
     #[inline]
     pub fn prepare_runs<H: Highlighter>(&mut self, common: &Common, highlighter: &mut H) {
         self.highlight.highlight(&self.text, highlighter);
@@ -583,15 +583,15 @@ impl Part {
         let text = self.text.as_str();
         let font_tokens = self.highlight.font_tokens(common.dpem, common.font);
         match self.status {
-            Status::New => self
-                .display
-                .prepare_runs(text, common.direction, font_tokens)
+            Status::Empty => self
+                .forme
+                .set_text(text, common.direction)
+                .with_tokens(font_tokens, true)
                 .expect("no suitable font found"),
-            Status::ResizeLevelRuns => self.display.resize_runs(text, font_tokens),
             _ => return,
         }
 
-        self.status = Status::LevelRuns;
+        self.status = Status::Shaped;
     }
 
     /// Get the assigned [`Rect`]
@@ -606,13 +606,13 @@ impl Part {
             let mut bound = 0i32;
             if common.wrap {
                 let (min, ideal) = cx.wrapped_line_len(TextClass::Editor, common.dpem);
-                if self.status >= Status::LevelRuns {
-                    bound = self.display.measure_width(ideal.cast()).cast_ceil();
+                if self.status >= Status::Shaped {
+                    bound = self.forme.measure_width(ideal.cast()).cast_ceil();
                 }
                 SizeRules::new(bound.min(min), bound.min(ideal), Stretch::Filler)
             } else {
-                if self.status >= Status::LevelRuns {
-                    bound = self.display.measure_width(f32::INFINITY).cast_ceil();
+                if self.status >= Status::Shaped {
+                    bound = self.forme.measure_width(f32::INFINITY).cast_ceil();
                 }
                 SizeRules::new(bound, bound, Stretch::Filler)
             }
@@ -623,8 +623,8 @@ impl Part {
                 .flatten()
                 .unwrap_or(f32::INFINITY);
             let mut bound = 0i32;
-            if self.status >= Status::LevelRuns {
-                bound = self.display.measure_height(wrap_width, None).cast_ceil();
+            if self.status >= Status::Shaped {
+                bound = self.forme.measure_height(wrap_width, None).cast_ceil();
             }
             SizeRules::new(bound, bound, Stretch::Filler)
         };
@@ -642,7 +642,7 @@ impl Part {
     /// Note that editors always use default alignment of content.
     pub fn set_rect(&mut self, common: &Common, cx: &mut SizeCx, rect: Rect) {
         if rect.size.0 != self.rect.size.0 {
-            self.status = self.status.min(Status::LevelRuns);
+            self.status = self.status.min(Status::Shaped);
         }
         self.rect = rect;
 
@@ -663,31 +663,31 @@ impl Part {
     /// Perform line wrapping and alignment
     ///
     /// This represents a high-level step of preparation required before
-    /// displaying text: it advances [`Self::status`] from [`Status::LevelRuns`]
+    /// displaying text: it advances [`Self::status`] from [`Status::Shaped`]
     /// to [`Status::Ready`].
     ///
-    /// If [`Self::status`] is less than [`Status::LevelRuns`], this method
+    /// If [`Self::status`] is less than [`Status::Shaped`], this method
     /// returns early, otherwise it performs line-wrapping (if required) and
     /// sets the status to [`Status::Ready`].
     ///
     /// Returns `true` when the size of the bounding-box changes.
     pub fn prepare_wrap(&mut self, common: &Common) -> bool {
-        if self.status < Status::LevelRuns || self.rect.size.0 == 0 {
+        if self.status < Status::Shaped || self.rect.size.0 == 0 {
             return false;
         };
 
-        let bb = self.display.bounding_box();
+        let bb = self.forme.bounding_box();
 
-        if self.status == Status::LevelRuns {
+        if self.status == Status::Shaped {
             let align_width = self.rect.size.0.cast();
             let wrap_width = if !common.wrap { f32::INFINITY } else { align_width };
-            self.display
+            self.forme
                 .prepare_lines(wrap_width, align_width, Align::Default);
-            self.display.ensure_non_negative_alignment();
+            self.forme.ensure_non_negative_alignment();
         }
 
         self.status = Status::Ready;
-        bb != self.display.bounding_box()
+        bb != self.forme.bounding_box()
     }
 
     /// Measure required vertical height, wrapping as configured
@@ -700,8 +700,8 @@ impl Part {
         wrap_width: f32,
         max_lines: Option<NonZeroUsize>,
     ) -> Result<f32, NotReady> {
-        if self.status >= Status::LevelRuns {
-            Ok(self.display.measure_height(wrap_width, max_lines))
+        if self.status >= Status::Shaped {
+            Ok(self.forme.measure_height(wrap_width, max_lines))
         } else {
             Err(NotReady)
         }
@@ -709,17 +709,17 @@ impl Part {
 
     /// Implementation of [`Viewport::content_size`]
     pub fn content_size(&self) -> Size {
-        if self.status < Status::Wrapped {
+        if !self.is_ready() {
             return Size::ZERO;
         }
 
-        let (tl, br) = self.display.bounding_box();
+        let (tl, br) = self.forme.bounding_box();
         (Vec2::from(br) - Vec2::from(tl)).cast_ceil()
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
     pub fn draw_with_offset(&self, mut draw: DrawCx, common: &Common, rect: Rect, offset: Offset) {
-        if !self.is_prepared() {
+        if !self.is_ready() {
             return;
         }
 
@@ -825,11 +825,11 @@ impl Part {
             }
             &vec
         };
-        draw.text(pos, rect, &self.display, tokens);
+        draw.text(pos, rect, &self.forme, tokens);
 
         let decorations = self.highlight.decorations();
         if !decorations.is_empty() {
-            draw.decorate_text(pos, rect, &self.display, decorations);
+            draw.decorate_text(pos, rect, &self.forme, decorations);
         }
 
         if let CurrentAction::ImePreedit { edit_range, .. } = common.current.clone() {
@@ -842,7 +842,7 @@ impl Part {
                 (edit_range.end, Default::default()),
             ];
             let r0 = if edit_range.start > 0 { 0 } else { 1 };
-            draw.decorate_text(pos, rect, &self.display, &tokens[r0..]);
+            draw.decorate_text(pos, rect, &self.forme, &tokens[r0..]);
         }
 
         if !common.read_only
@@ -852,7 +852,7 @@ impl Part {
             draw.text_cursor(
                 pos,
                 rect,
-                &self.display,
+                &self.forme,
                 common.selection.cursor.byte(),
                 Some(common.colors.cursor),
             );
@@ -910,11 +910,11 @@ impl Part {
         let initial_range = range.clone();
         let edit_len = edit_range.clone().map(|r| r.len()).unwrap_or(0);
 
-        if self.status >= Status::Wrapped {
-            if let Some((_, line_range)) = self.display.find_line(range.start) {
+        if self.is_ready() {
+            if let Some((_, line_range)) = self.forme.find_line(range.start) {
                 range.start = line_range.start;
             }
-            if let Some((_, line_range)) = self.display.find_line(range.end) {
+            if let Some((_, line_range)) = self.forme.find_line(range.end) {
                 range.end = line_range.end;
             }
         }
@@ -954,7 +954,7 @@ impl Part {
 
     /// Call to set IME position only while IME is active
     fn set_ime_cursor_area(&self, common: &Common, cx: &mut EventState) {
-        if !self.is_prepared() {
+        if !self.is_ready() {
             return;
         }
 
@@ -966,12 +966,12 @@ impl Part {
 
         let (m1, m2);
         if range.is_empty() {
-            let mut iter = self.display.text_glyph_pos(range.start);
+            let mut iter = self.forme.text_glyph_pos(range.start);
             m1 = iter.next();
             m2 = iter.next();
         } else {
-            m1 = self.display.text_glyph_pos(range.start).next_back();
-            m2 = self.display.text_glyph_pos(range.end).next();
+            m1 = self.forme.text_glyph_pos(range.start).next_back();
+            m2 = self.forme.text_glyph_pos(range.end).next();
         }
 
         let rect = if let Some((c1, c2)) = m1.zip(m2) {
@@ -1171,8 +1171,8 @@ impl Common {
         let mut any_resized = false;
 
         for (i, part) in parts.iter_mut().enumerate() {
-            if !part.is_prepared() {
-                if part.status < Status::LevelRuns {
+            if !part.is_ready() {
+                if part.status < Status::Shaped {
                     part.prepare_runs(self, highlighter);
                     if i == 0 {
                         self.update_direction(part);
@@ -1224,7 +1224,7 @@ impl Common {
         let mut best_p = p;
         loop {
             let part = parts.get(p);
-            debug_assert!(part.is_prepared());
+            debug_assert!(part.is_ready());
             let (y0, y1) = (part.rect.pos.1, part.rect.pos2().1 - 1);
 
             let dist = y0.saturating_sub(coord.1).max(coord.1.saturating_sub(y1));
@@ -1248,7 +1248,7 @@ impl Common {
 
         let part = parts.get(best_p);
         let rel_pos = (coord - part.rect().pos).cast();
-        let byte = part.display.text_index_nearest(rel_pos);
+        let byte = part.forme.text_index_nearest(rel_pos);
         TextIndex::new(p, byte)
     }
 
@@ -1451,7 +1451,7 @@ impl Common {
                                 part.text.as_str(),
                                 CursorRange::from(anchor.byte()..cursor.byte()),
                                 (repeats >= 3)
-                                    .then_some(&|index| part.display.find_line(index).map(|r| r.1)),
+                                    .then_some(&|index| part.forme.find_line(index).map(|r| r.1)),
                             );
                             anchor.byte = r.anchor.cast();
                             cursor.byte = r.cursor.cast();
@@ -1476,7 +1476,7 @@ impl Common {
                             CursorRange::from(anchor.byte()..cursor.byte()),
                             index.byte(),
                             repeats,
-                            Some(&|index| part.display.find_line(index).map(|r| r.1)),
+                            Some(&|index| part.forme.find_line(index).map(|r| r.1)),
                         );
                         anchor.byte = r.anchor.cast();
                         cursor.byte = r.cursor.cast();
@@ -1578,7 +1578,7 @@ impl Common {
         let c_p = cursor.part();
         let cursor = cursor.byte();
         let c_part = parts.get(c_p);
-        debug_assert!(c_part.is_prepared());
+        debug_assert!(c_part.is_ready());
         let c_part_len = c_part.as_str().len();
         let multi_line = self.wrap;
         let selection = self.selection.to_range();
@@ -1704,13 +1704,13 @@ impl Common {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => c_part
-                        .display
+                        .forme
                         .text_glyph_pos(cursor)
                         .next_back()
                         .map(|r| r.pos.0)
                         .unwrap_or(0.0),
                 };
-                let mut line = c_part.display.find_line(cursor).map(|r| r.0).unwrap_or(0);
+                let mut line = c_part.forme.find_line(cursor).map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
                 line = match cmd {
                     Command::Up => line.wrapping_sub(1),
@@ -1724,7 +1724,7 @@ impl Common {
                 };
                 // TODO: prev/next
                 c_part
-                    .display
+                    .forme
                     .line_index_nearest(line, x)
                     .map(|index| Action::Move(TextIndex::new(c_p, index), Some(x)))
                     .unwrap_or(Action::Move(TextIndex::new(c_p, nearest_end), None))
@@ -1732,7 +1732,7 @@ impl Common {
             Command::Home if cursor > 0 => {
                 // TODO: we don't need to use find_line if each part represents a line
                 let index = c_part
-                    .display
+                    .forme
                     .find_line(cursor)
                     .map(|r| r.1.start)
                     .unwrap_or(0);
@@ -1740,7 +1740,7 @@ impl Common {
             }
             Command::End if cursor < c_part_len => {
                 let index = c_part
-                    .display
+                    .forme
                     .find_line(cursor)
                     .map(|r| r.1.end)
                     .unwrap_or(c_part_len);
@@ -1758,7 +1758,7 @@ impl Common {
             }
             Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = c_part
-                    .display
+                    .forme
                     .text_glyph_pos(cursor)
                     .next_back()
                     .map(|r| r.pos.into())
@@ -1768,7 +1768,7 @@ impl Common {
                 }
                 // TODO: page height should be an input?
                 let mut line_height = self.dpem;
-                if let Some(line) = c_part.display.lines().next() {
+                if let Some(line) = c_part.forme.lines().next() {
                     line_height = line.bottom() - line.top();
                 }
                 let mut h_dist = line_height * 10.0;
@@ -1940,7 +1940,7 @@ impl Common {
                         let part = parts.get_mut(p);
                         if !Rc::ptr_eq(&part.text, text) {
                             part.text = Rc::clone(text);
-                            part.status = Status::New;
+                            part.status = Status::Empty;
                         }
                         p += 1;
                     }
@@ -1972,8 +1972,8 @@ impl Common {
     fn set_view_offset_from_cursor(&self, parts: &impl PartList, cx: &mut EventCx) {
         let cursor = self.selection.cursor;
         let part = parts.get(cursor.part());
-        if part.is_prepared()
-            && let Some(marker) = part.display.text_glyph_pos(cursor.byte()).next_back()
+        if part.is_ready()
+            && let Some(marker) = part.forme.text_glyph_pos(cursor.byte()).next_back()
         {
             let y0 = (marker.pos.1 - marker.ascent).cast_floor();
             let pos = part.rect.pos + Offset(marker.pos.0.cast_nearest(), y0);

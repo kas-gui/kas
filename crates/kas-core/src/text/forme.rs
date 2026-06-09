@@ -15,10 +15,10 @@ use crate::text::*;
 use crate::theme::{DrawCx, SizeCx, TextClass};
 use std::num::NonZeroUsize;
 
-/// A [`TextDisplay`] plus configuration and state tracking
+/// A [`Forme`] plus configuration and state tracking
 ///
 /// This struct contains:
-/// -   A [`TextDisplay`]
+/// -   A [`Forme`]
 /// -   A [`FontSelector`]
 /// -   Type-setting configuration. Values have reasonable defaults:
 ///     -   The font is derived from the [`TextClass`] by [`Self::configure`],
@@ -28,10 +28,10 @@ use std::num::NonZeroUsize;
 ///     -   Default text direction and alignment is inferred from the text.
 ///
 /// This struct tracks the
-/// [state of preparation][TextDisplay#status-of-preparation], but is unable to
+/// [state of preparation][Forme#status-of-preparation], but is unable to
 /// perform the first step of preparation (run-breaking) by itself.
 #[derive(Clone, Debug)]
-pub struct ConfiguredDisplay {
+pub struct ConfiguredForme {
     font: FontSelector,
     dpem: f32,
     class: TextClass,
@@ -46,10 +46,10 @@ pub struct ConfiguredDisplay {
     status: Status,
 
     rect: Rect,
-    display: TextDisplay,
+    forme: Forme,
 }
 
-impl Layout for ConfiguredDisplay {
+impl Layout for ConfiguredForme {
     fn rect(&self) -> Rect {
         self.rect
     }
@@ -93,39 +93,39 @@ impl Layout for ConfiguredDisplay {
         self.set_align(hints.complete_default().into());
         if rect.size != self.rect.size {
             if rect.size.0 != self.rect.size.0 {
-                self.set_max_status(Status::LevelRuns);
+                self.set_max_status(Status::Shaped);
             } else {
                 self.set_max_status(Status::Wrapped);
             }
         }
         self.rect = rect;
-        self.prepare_wrap();
+        let _ = self.prepare_wrap();
     }
 
     /// Text color and decorations are not present here; derivative types will
     /// likely need their own implementation of this method.
     fn draw(&self, mut draw: DrawCx) {
-        if let Ok(display) = self.display() {
+        if let Ok(forme) = self.forme() {
             let rect = self.rect();
-            draw.text(rect.pos, rect, display, &[]);
+            draw.text(rect.pos, rect, forme, &[]);
         }
     }
 }
 
-impl ConfiguredDisplay {
+impl ConfiguredForme {
     /// Construct a new instance
     #[inline]
     pub fn new(class: TextClass, wrap: bool) -> Self {
-        ConfiguredDisplay {
+        ConfiguredForme {
             font: FontSelector::default(),
             dpem: 16.0,
             class,
             wrap,
             align: Default::default(),
             direction: Direction::default(),
-            status: Status::New,
+            status: Status::Empty,
             rect: Rect::default(),
-            display: Default::default(),
+            forme: Default::default(),
         }
     }
 
@@ -153,13 +153,10 @@ impl ConfiguredDisplay {
     pub fn configure(&mut self, cx: &mut SizeCx) {
         let font = cx.font(self.class);
         let dpem = cx.dpem(self.class);
-        if font != self.font {
+        if font != self.font || dpem != self.dpem {
             self.font = font;
             self.dpem = dpem;
-            self.set_max_status(Status::New);
-        } else if dpem != self.dpem {
-            self.dpem = dpem;
-            self.set_max_status(Status::ResizeLevelRuns);
+            self.set_max_status(Status::Empty);
         }
     }
 
@@ -168,7 +165,7 @@ impl ConfiguredDisplay {
     /// This may be required after calling [`Text::text_mut`](super::Text::text_mut).
     #[inline]
     pub fn require_reprepare(&mut self) {
-        self.set_max_status(Status::New);
+        self.set_max_status(Status::Empty);
     }
 
     /// Get text class
@@ -221,7 +218,7 @@ impl ConfiguredDisplay {
     pub fn set_font(&mut self, font: FontSelector) {
         if font != self.font {
             self.font = font;
-            self.set_max_status(Status::New);
+            self.set_max_status(Status::Empty);
         }
     }
 
@@ -250,7 +247,7 @@ impl ConfiguredDisplay {
     pub fn set_font_size(&mut self, dpem: f32) {
         if dpem != self.dpem {
             self.dpem = dpem;
-            self.set_max_status(Status::ResizeLevelRuns);
+            self.set_max_status(Status::Empty);
         }
     }
 
@@ -279,7 +276,7 @@ impl ConfiguredDisplay {
     pub fn set_direction(&mut self, direction: Direction) {
         if direction != self.direction {
             self.direction = direction;
-            self.set_max_status(Status::New);
+            self.set_max_status(Status::Empty);
         }
     }
 
@@ -303,7 +300,7 @@ impl ConfiguredDisplay {
             if align.0 == self.align.0 {
                 self.set_max_status(Status::Wrapped);
             } else {
-                self.set_max_status(Status::LevelRuns);
+                self.set_max_status(Status::Shaped);
             }
             self.align = align;
         }
@@ -315,8 +312,8 @@ impl ConfiguredDisplay {
     /// falling back to [`Direction::text_is_rtl`].
     #[inline]
     pub fn text_is_rtl(&self, text: &str) -> bool {
-        if self.status >= Status::ResizeLevelRuns {
-            self.display.text_is_rtl()
+        if self.status >= Status::Shaped {
+            self.forme.text_is_rtl()
         } else {
             self.direction.text_is_rtl(text)
         }
@@ -359,7 +356,7 @@ impl ConfiguredDisplay {
     /// Prepare text: perform run-breaking and shaping
     ///
     /// This method advances the [status of preparation](Self::status) from
-    /// [`Status::New`] or [`Status::ResizeLevelRuns`] to [`Status::LevelRuns`].
+    /// [`Status::Empty`] to [`Status::Shaped`].
     /// This is the slowest step of text preparation and requires access to the
     /// `text` and `font_tokens`.
     ///
@@ -370,86 +367,83 @@ impl ConfiguredDisplay {
     /// # Example
     ///
     /// ```rust
-    /// # use kas_core::text::{ConfiguredDisplay, format::FontToken};
+    /// # use kas_core::text::{ConfiguredForme, format::FontToken};
     /// # use kas_core::theme::TextClass;
-    /// let mut display = ConfiguredDisplay::new(TextClass::Standard, true);
-    /// display.prepare_runs("Hello world", std::iter::once(FontToken {
+    /// let mut forme = ConfiguredForme::new(TextClass::Standard, true);
+    /// forme.prepare_runs("Hello world", std::iter::once(FontToken {
     ///     start: 0,
     ///     dpem: 16.0,
     ///     font: Default::default(),
     /// }));
-    /// display.prepare_wrap();
-    /// // display is now ready
+    /// forme.prepare_wrap();
+    /// // forme is now ready
     /// ```
     pub fn prepare_runs(&mut self, text: &str, font_tokens: impl Iterator<Item = FontToken>) {
         let direction = self.direction();
         match self.status() {
-            Status::New => self
-                .unchecked_display_mut()
-                .prepare_runs(text, direction, font_tokens)
+            Status::Empty => self
+                .unchecked_forme_mut()
+                .set_text(text, direction)
+                .with_tokens(font_tokens, false)
                 .expect("no suitable font found"),
-            Status::ResizeLevelRuns => self.unchecked_display_mut().resize_runs(text, font_tokens),
             _ => return,
         }
 
-        self.set_status(Status::LevelRuns);
+        self.set_status(Status::Shaped);
     }
 
     /// Prepare text: perform line wrapping and alignment
     ///
-    /// Actions depend on the [status of preparation](Self::status),
-    ///
-    /// -   If less than [`Status::LevelRuns`], this method will do nothing.
-    ///     [`Self::prepare_runs`] should be called first.
-    /// -   If at exactly [`Status::LevelRuns`], this method will perform line
-    ///     wrapping (see also next item).
-    /// -   If at [`Status::LevelRuns`] or [`Status::Wrapped`], this method will
-    ///     align the text vertically and advance to [`Status::Ready`].
-    pub fn prepare_wrap(&mut self) {
-        if self.status() < Status::LevelRuns {
-            return;
+    /// If the initial [status](Self::status) is less than [`Status::Shaped`],
+    /// this method returns `Err(NotReady)`. Otherwise, this method performs
+    /// line-wrapping and alignment (if required), advancing the status to
+    /// [`Status::Ready`].
+    pub fn prepare_wrap(&mut self) -> Result<(), NotReady> {
+        if self.status() < Status::Shaped {
+            return Err(NotReady);
         }
         let align = self.align();
 
-        if self.status() == Status::LevelRuns {
+        if self.status() == Status::Shaped {
             let align_width = self.rect.size.0.cast();
             let wrap_width = if !self.wrap() { f32::INFINITY } else { align_width };
-            self.unchecked_display_mut()
+            self.unchecked_forme_mut()
                 .prepare_lines(wrap_width, align_width, align.0);
         }
 
         if self.status() <= Status::Wrapped {
             let h = self.rect.size.1.cast();
-            self.unchecked_display_mut().vertically_align(h, align.1);
+            self.unchecked_forme_mut().vertically_align(h, align.1);
         }
 
         self.set_status(Status::Ready);
+        Ok(())
     }
 
-    /// Read the [`TextDisplay`], without checking status
+    /// Read the [`Forme`], without checking status
     #[inline]
-    pub fn unchecked_display(&self) -> &TextDisplay {
-        &self.display
+    pub fn unchecked_forme(&self) -> &Forme {
+        &self.forme
     }
 
-    /// Write to the [`TextDisplay`], without checking status
+    /// Write to the [`Forme`], without checking status
     #[inline]
-    pub fn unchecked_display_mut(&mut self) -> &mut TextDisplay {
-        &mut self.display
+    pub fn unchecked_forme_mut(&mut self) -> &mut Forme {
+        &mut self.forme
     }
 
-    /// Read the [`TextDisplay`], if fully prepared
+    /// Read the [`Forme`], if fully prepared
     #[inline]
-    pub fn display(&self) -> Result<&TextDisplay, NotReady> {
+    pub fn forme(&self) -> Result<&Forme, NotReady> {
         self.check_status(Status::Ready)?;
-        Ok(self.unchecked_display())
+        Ok(self.unchecked_forme())
     }
 
-    /// Read the [`TextDisplay`], if at least wrapped
+    /// Read the [`Forme`], if at least wrapped
     #[inline]
-    pub fn wrapped_display(&self) -> Result<&TextDisplay, NotReady> {
+    pub fn wrapped_forme(&self) -> Result<&Forme, NotReady> {
         self.check_status(Status::Wrapped)?;
-        Ok(self.unchecked_display())
+        Ok(self.unchecked_forme())
     }
 
     /// Offset prepared content to avoid left-overhangs
@@ -464,7 +458,7 @@ impl ConfiguredDisplay {
     /// above the top (the first y-component is never negative).
     #[inline]
     pub fn ensure_no_left_overhang(&mut self) {
-        self.display.ensure_non_negative_alignment();
+        self.forme.ensure_non_negative_alignment();
     }
 
     /// Get the size of the required bounding box
@@ -474,22 +468,22 @@ impl ConfiguredDisplay {
     /// Alignment and size do affect the result.
     #[inline]
     pub fn bounding_box(&self) -> Result<(Vec2, Vec2), NotReady> {
-        let (tl, br) = self.wrapped_display()?.bounding_box();
+        let (tl, br) = self.wrapped_forme()?.bounding_box();
         Ok((tl.into(), br.into()))
     }
 
     /// Get the number of lines (after wrapping)
     ///
-    /// See [`TextDisplay::num_lines`].
+    /// See [`Forme::num_lines`].
     #[inline]
     pub fn num_lines(&self) -> Result<usize, NotReady> {
-        Ok(self.wrapped_display()?.num_lines())
+        Ok(self.wrapped_forme()?.num_lines())
     }
 
     /// Get line properties
     #[inline]
     pub fn get_line(&self, index: usize) -> Result<Option<&Line>, NotReady> {
-        Ok(self.wrapped_display()?.get_line(index))
+        Ok(self.wrapped_forme()?.get_line(index))
     }
 
     /// Iterate over line properties
@@ -497,43 +491,43 @@ impl ConfiguredDisplay {
     /// [Requires status][Self#status-of-preparation]: lines have been wrapped.
     #[inline]
     pub fn lines(&self) -> Result<impl Iterator<Item = &Line>, NotReady> {
-        Ok(self.wrapped_display()?.lines())
+        Ok(self.wrapped_forme()?.lines())
     }
 
     /// Find the line containing text `index`
     ///
     /// Returns the line number and the text-range of the line.
-    /// See [`TextDisplay::find_line`].
+    /// See [`Forme::find_line`].
     #[inline]
     pub fn find_line(
         &self,
         index: usize,
     ) -> Result<Option<(usize, std::ops::Range<usize>)>, NotReady> {
-        Ok(self.wrapped_display()?.find_line(index))
+        Ok(self.wrapped_forme()?.find_line(index))
     }
 
     /// Get the directionality of the current line
     ///
-    /// See [`TextDisplay::line_is_rtl`].
+    /// See [`Forme::line_is_rtl`].
     #[inline]
     pub fn line_is_rtl(&self, line: usize) -> Result<Option<bool>, NotReady> {
-        Ok(self.wrapped_display()?.line_is_rtl(line))
+        Ok(self.wrapped_forme()?.line_is_rtl(line))
     }
 
     /// Find the text index for the glyph nearest the given `pos`
     ///
-    /// See [`TextDisplay::text_index_nearest`].
+    /// See [`Forme::text_index_nearest`].
     #[inline]
     pub fn text_index_nearest(&self, pos: Vec2) -> Result<usize, NotReady> {
-        Ok(self.display()?.text_index_nearest(pos.into()))
+        Ok(self.forme()?.text_index_nearest(pos.into()))
     }
 
     /// Find the text index nearest horizontal-coordinate `x` on `line`
     ///
-    /// See [`TextDisplay::line_index_nearest`].
+    /// See [`Forme::line_index_nearest`].
     #[inline]
     pub fn line_index_nearest(&self, line: usize, x: f32) -> Result<Option<usize>, NotReady> {
-        Ok(self.wrapped_display()?.line_index_nearest(line, x))
+        Ok(self.wrapped_forme()?.line_index_nearest(line, x))
     }
 
     /// Measure required width, up to some `max_width`
@@ -544,8 +538,8 @@ impl ConfiguredDisplay {
     ///
     /// The return value is unaffected by alignment and wrap configuration.
     pub fn measure_width(&self, max_width: f32) -> Result<f32, NotReady> {
-        if self.status >= Status::LevelRuns {
-            Ok(self.display.measure_width(max_width))
+        if self.status >= Status::Shaped {
+            Ok(self.forme.measure_width(max_width))
         } else {
             Err(NotReady)
         }
@@ -559,8 +553,8 @@ impl ConfiguredDisplay {
         wrap_width: f32,
         max_lines: Option<NonZeroUsize>,
     ) -> Result<f32, NotReady> {
-        if self.status >= Status::LevelRuns {
-            Ok(self.display.measure_height(wrap_width, max_lines))
+        if self.status >= Status::Shaped {
+            Ok(self.forme.measure_height(wrap_width, max_lines))
         } else {
             Err(NotReady)
         }
@@ -568,8 +562,8 @@ impl ConfiguredDisplay {
 
     /// Find the starting position (top-left) of the glyph at the given index
     ///
-    /// See [`TextDisplay::text_glyph_pos`].
+    /// See [`Forme::text_glyph_pos`].
     pub fn text_glyph_pos(&self, index: usize) -> Result<MarkerPosIter, NotReady> {
-        Ok(self.display()?.text_glyph_pos(index))
+        Ok(self.forme()?.text_glyph_pos(index))
     }
 }

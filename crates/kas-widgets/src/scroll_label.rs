@@ -66,7 +66,7 @@ mod ScrollTextCore {
         }
 
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            let Ok(display) = self.text.display() else {
+            let Ok(forme) = self.text.forme() else {
                 return;
             };
 
@@ -84,9 +84,9 @@ mod ScrollTextCore {
                 let r0 = if range.start > 0 { 0 } else { 1 };
                 &tokens[r0..]
             };
-            draw.text(pos, rect, display, tokens);
+            draw.text(pos, rect, forme, tokens);
 
-            draw.decorate_text(pos, rect, display, self.text.decorations());
+            draw.decorate_text(pos, rect, forme, self.text.decorations());
         }
     }
 
@@ -292,7 +292,7 @@ mod ScrollTextCore {
                         }
 
                         let rel_pos = (coord - self.rect().pos).cast();
-                        let cursor = self.text.unchecked_display().text_index_nearest(rel_pos);
+                        let cursor = self.text.unchecked_forme().text_index_nearest(rel_pos);
                         let anchor = if clear { cursor } else { self.selection.anchor };
 
                         let range = CursorRange::from(anchor..cursor);
@@ -308,7 +308,7 @@ mod ScrollTextCore {
                     }
                     TextInputAction::PressMove { coord, repeats } => {
                         let rel_pos = (coord - self.rect().pos).cast();
-                        let index = self.text.unchecked_display().text_index_nearest(rel_pos);
+                        let index = self.text.unchecked_forme().text_index_nearest(rel_pos);
 
                         TextInput::adjust_range(
                             self.text.as_str(),
