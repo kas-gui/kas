@@ -25,7 +25,8 @@ use kas::draw::{SharedState, WindowCommon, color};
 use kas::geom::Size;
 use kas::runner::raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use kas::runner::{
-    GraphicsFeatures, GraphicsInstance, HasDisplayAndWindowHandle, RunError, WindowSurface,
+    GraphicsFeatures, GraphicsInstance, HasDisplayAndWindowHandle, PresentResult, RunError,
+    WindowSurface,
 };
 
 /// Graphics context
@@ -67,11 +68,10 @@ impl WindowSurface for Surface {
         self.size = size;
         self.draw.resize(size);
 
-        let width = NonZeroU32::new(size.0.cast()).expect("zero-sized surface");
-        let height = NonZeroU32::new(size.1.cast()).expect("zero-sized surface");
-        self.surface
-            .resize(width, height)
-            .expect("surface resize failed");
+        let (w, h) = NonZeroU32::new(size.0.cast())
+            .zip(NonZeroU32::new(size.1.cast()))
+            .expect("zero-sized surface");
+        self.surface.resize(w, h).expect("surface resize failed");
         true
     }
 
@@ -86,11 +86,14 @@ impl WindowSurface for Surface {
         &mut self.draw.common
     }
 
-    fn present(&mut self, shared: &mut Shared, clear_color: color::Rgba) -> Instant {
-        let mut buffer = self
-            .surface
-            .buffer_mut()
-            .expect("failed to access surface buffer");
+    fn present(&mut self, shared: &mut Shared, clear_color: color::Rgba) -> PresentResult {
+        let mut buffer = match self.surface.buffer_mut() {
+            Ok(b) => b,
+            Err(e) => {
+                log::error!("present surface: {e}");
+                return PresentResult::Fatal;
+            }
+        };
         let width: usize = self.size.0.cast();
         let height: usize = self.size.1.cast();
         debug_assert_eq!(width * height, buffer.len());
@@ -101,8 +104,13 @@ impl WindowSurface for Surface {
         self.draw.render(shared, &mut buffer, (width, height));
 
         let pre_present = Instant::now();
-        buffer.present().expect("failed to present buffer");
-        pre_present
+        match buffer.present() {
+            Ok(()) => PresentResult::Success(pre_present),
+            Err(e) => {
+                log::warn!("failed to present buffer: {e}");
+                PresentResult::Dropped
+            }
+        }
     }
 }
 

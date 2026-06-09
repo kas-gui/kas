@@ -16,6 +16,7 @@ use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::Erased;
+use crate::runner::PresentResult;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, Window as _};
 use crate::window::{BoxedWindow, Decorations, PopupDescriptor, WindowId, WindowWidget};
 use crate::{
@@ -674,33 +675,47 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         } else {
             shared.theme.clear_color()
         };
-        let time3 = window
+        let result = window
             .surface
             .present(&mut shared.draw.as_mut().unwrap().draw, clear_color);
 
-        let text_dur_micros = take(&mut window.surface.common_mut().dur_text);
-        let end = Instant::now();
-        log::trace!(
-            target: "kas_perf::wgpu::window",
-            "do_draw: {}μs ({}μs widgets, {}μs text, {}μs render, {}μs present)",
-            (end - start).as_micros(),
-            (time2 - start).as_micros(),
-            text_dur_micros.as_micros(),
-            (time3 - time2).as_micros(),
-            (end - time2).as_micros()
-        );
+        match result {
+            PresentResult::Success(time3) => {
+                let text_dur_micros = take(&mut window.surface.common_mut().dur_text);
+                let end = Instant::now();
+                log::trace!(
+                    target: "kas_perf::wgpu::window",
+                    "do_draw: {}μs ({}μs widgets, {}μs text, {}μs render, {}μs present)",
+                    (end - start).as_micros(),
+                    (time2 - start).as_micros(),
+                    text_dur_micros.as_micros(),
+                    (time3 - time2).as_micros(),
+                    (end - time2).as_micros()
+                );
 
-        const SECOND: Duration = Duration::from_secs(1);
-        window.frame_count.1 += 1;
-        if window.frame_count.0 + SECOND <= end {
-            log::debug!(
-                "Window {:?}: {} frames in last second",
-                window.window_id,
-                window.frame_count.1
-            );
-            window.frame_count.0 = end;
-            window.frame_count.1 = 0;
-        }
+                const SECOND: Duration = Duration::from_secs(1);
+                window.frame_count.1 += 1;
+                if window.frame_count.0 + SECOND <= end {
+                    log::debug!(
+                        "Window {:?}: {} frames in last second",
+                        window.window_id,
+                        window.frame_count.1
+                    );
+                    window.frame_count.0 = end;
+                    window.frame_count.1 = 0;
+                }
+            }
+            PresentResult::Dropped => (),
+            PresentResult::ReconfigureSurface => {
+                let size: Size = window.surface_size().cast();
+                window
+                    .surface
+                    .configure(&mut shared.draw.as_mut().unwrap().draw, size);
+            }
+            PresentResult::Fatal => {
+                self.ev_state.close_own_window();
+            }
+        };
 
         Ok(())
     }
