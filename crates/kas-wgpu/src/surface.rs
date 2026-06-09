@@ -10,7 +10,7 @@ use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use kas::geom::Size;
-use kas::runner::{HasDisplayAndWindowHandle, RunError, WindowSurface};
+use kas::runner::{HasDisplayAndWindowHandle, PresentResult, RunError, WindowSurface};
 use std::time::Instant;
 use wgpu::{CurrentSurfaceTexture, PresentMode};
 
@@ -111,19 +111,21 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         &mut self.draw.common
     }
 
-    /// Return time at which render finishes
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Instant {
-        // TODO: review error handling
-        let frame = match self.surface.get_current_texture() {
-            CurrentSurfaceTexture::Success(frame) | CurrentSurfaceTexture::Suboptimal(frame) => {
-                frame
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> PresentResult {
+        let (frame, outdated) = match self.surface.get_current_texture() {
+            CurrentSurfaceTexture::Success(frame) => (frame, false),
+            CurrentSurfaceTexture::Suboptimal(frame) => (frame, true),
+            CurrentSurfaceTexture::Timeout | CurrentSurfaceTexture::Occluded => {
+                return PresentResult::Dropped;
             }
-            CurrentSurfaceTexture::Timeout
-            | CurrentSurfaceTexture::Occluded
-            | CurrentSurfaceTexture::Outdated
-            | CurrentSurfaceTexture::Lost
-            | CurrentSurfaceTexture::Validation => {
-                return Instant::now();
+            CurrentSurfaceTexture::Outdated => return PresentResult::ReconfigureSurface,
+            CurrentSurfaceTexture::Lost => {
+                log::error!("present surface: surface has been lost");
+                return PresentResult::Fatal;
+            }
+            CurrentSurfaceTexture::Validation => {
+                log::error!("present surface: validation error");
+                return PresentResult::Fatal;
             }
         };
 
@@ -134,7 +136,12 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
 
         let pre_present = Instant::now();
         frame.present();
-        pre_present
+
+        if !outdated {
+            PresentResult::Success(pre_present)
+        } else {
+            PresentResult::ReconfigureSurface
+        }
     }
 }
 

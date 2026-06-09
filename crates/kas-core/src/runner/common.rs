@@ -41,6 +41,26 @@ pub enum RunError {
     RequestError(#[from] winit::error::RequestError),
 }
 
+/// Frame presentation outcomes
+#[non_exhaustive]
+#[derive(Debug)]
+pub enum PresentResult {
+    /// Success
+    ///
+    /// Includes the time at which rendering finishes (excluding synchronisation delays).
+    Success(Instant),
+    /// The frame was dropped, e.g. due to timeout or being occluded.
+    Dropped,
+    /// The surface is outdated and should be reconfigured.
+    ///
+    /// (The frame may or may not have been presented.)
+    ReconfigureSurface,
+    /// A fatal error: the window should be closed.
+    ///
+    /// An error message should be logged by the method returning this result.
+    Fatal,
+}
+
 /// Enumeration of platforms
 ///
 /// Each option is compile-time enabled only if that platform is possible.
@@ -230,5 +250,5 @@ pub trait WindowSurface {
     /// Present frame
     ///
     /// Return time at which render finishes
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Instant;
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> PresentResult;
 }
