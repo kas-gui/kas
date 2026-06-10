@@ -7,7 +7,7 @@ use crate::collection::{CellInfo, GridDimensions, NameGenerator};
 use crate::parser::{Parser, parse_grid, parse_list};
 use crate::widget_args::{Child, ChildIdent};
 use impl_tools_lib::scope::Scope;
-use proc_macro_error2::emit_error;
+use proc_macro_error3::emit_error;
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{ToTokens, TokenStreamExt, quote};
 use syn::parse::{Parse, ParseStream, Result};

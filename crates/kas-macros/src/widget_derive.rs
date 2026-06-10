@@ -8,7 +8,7 @@ use crate::widget_args::member;
 use impl_tools_lib::SimplePath;
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeAttr, ScopeItem};
-use proc_macro_error2::{emit_error, emit_warning};
+use proc_macro_error3::{emit_error, emit_warning};
 use proc_macro2::Span;
 use quote::{ToTokens, quote};
 use syn::ImplItem::{self, Verbatim};

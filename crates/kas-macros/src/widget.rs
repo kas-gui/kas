@@ -6,7 +6,7 @@
 use crate::widget_args::{Child, ChildIdent, member};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
-use proc_macro_error2::{emit_error, emit_warning};
+use proc_macro_error3::{emit_error, emit_warning};
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
 use syn::ImplItem::{self, Verbatim};

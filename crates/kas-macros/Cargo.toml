@@ -21,7 +21,7 @@ proc-macro = true
 log = []
 
 # Enable reporting of warnings from proc-macros
-nightly = ["proc-macro-error2/nightly"]
+nightly = ["proc-macro-error3/nightly"]
 
 # Enable pedantic warnings. These should be replaced with individual lints,
 # depending on the outcome of RFC 1566 (proc macro diagnostics).
@@ -30,11 +30,9 @@ nightly-pedantic = ["nightly"]
 [dependencies]
 quote = "1.0"
 proc-macro2 = { version = "1.0" }
-proc-macro-error2 = { version = "2.0", default-features = false }
+proc-macro-error3 = { version = "3.0", default-features = false }
 bitflags = "2.3.3"
-
-[dependencies.impl-tools-lib]
-version = "0.11.2" # version used in doc links
+impl-tools-lib = "0.12.0"
 
 [dependencies.syn]
 version = "2.0.22"
