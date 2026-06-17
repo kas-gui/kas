@@ -592,7 +592,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
         solve_cache.apply_rect(self.widget.as_node(data), &mut cx, rect, true);
         if first {
-            solve_cache.print_widget_heirarchy(self.widget.as_tile());
+            solve_cache.print_widget_hierarchy(self.widget.as_tile());
         }
         debug_assert!(solve_cache.min(false) <= solve_cache.ideal(false));
         self.widget.resize_popups(&mut cx, data);

@@ -14,7 +14,7 @@
 //! Results (debug build): 1000 entries requires approx 1s for init and may
 //! have a small delay on resize but is otherwise very fast.
 //!
-//! Results (release build): 1k entries is fast, 10k has some noticable lag
+//! Results (release build): 1k entries is fast, 10k has some noticeable lag
 //! (changing the list length and resizing).
 //! 50k entries (200k widgets) has slow init and resize but most interaction
 //! is still fast.

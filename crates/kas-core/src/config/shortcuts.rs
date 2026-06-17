@@ -270,7 +270,7 @@ mod common {
     }
 
     // NOTE: the only reason we don't use derive is that TOML does not support char as a map key,
-    // thus we must convrt with char::encode_utf8. See toml-lang/toml#1001
+    // thus we must convert with char::encode_utf8. See toml-lang/toml#1001
     impl Serialize for SimpleKey {
         fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             match self {

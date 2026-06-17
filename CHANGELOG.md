@@ -82,7 +82,7 @@ Known issues: this release uses a pinned pre-release of winit which breaks Acces
 
 -   Pass `SizeCx` by `&mut` (#581)
 -   Let `SizeCx` deref mut to `EventState` (#581)
--   Rename `SizeRules::solve_seq` -> `solve_widths` and publically document (#614)
+-   Rename `SizeRules::solve_seq` -> `solve_widths` and publicly document (#614)
 -   Support for prioritised rules-solving (#612)
 -   Let `SizeRules` margins default to zero (remove constructor parameter) (#578)
 -   Add fns `SizeRules::{with_margin, with_margins}` (#578)
@@ -99,7 +99,7 @@ Known issues: this release uses a pinned pre-release of winit which breaks Acces
 -   Revise fns `DrawShared::image_*` (#627, #639)
 -   Remove `MultiThemeBuilder` (#628)
 -   Add `MarkStyle::{Plus, Minus}` (#632)
--   Add fn `DrawCx::text_with_color` and paramter `colors` to fn `text_with_effects` (#636)
+-   Add fn `DrawCx::text_with_color` and parameter `colors` to fn `text_with_effects` (#636)
 -   Rename fns `DrawCx::text_pos` -> `text_with_position`, `text_selected` -> `text_with_selection` (#636)
 
 ### Event handling
@@ -121,7 +121,7 @@ Known issues: this release uses a pinned pre-release of winit which breaks Acces
 -   Remove fns `ConfigCx::text_configure`, `SizeCx::text_rules` (#636)
 -   Remove `kas::text::Text` (#636)
 -   `kas::theme::Text` now supports `mut` access to text object (#572)
--   Add paramameter `max_lines` to fn `measure_height` (#590)
+-   Add parameter `max_lines` to fn `measure_height` (#590)
 -   Multiple font selection improvements in `kas-text` backend
 
 ### Text editing
@@ -183,7 +183,7 @@ Known issues: this release uses a pinned pre-release of winit which breaks Acces
 
 ### Message handling
 
--   Support sending all messages of a specifc type to a pre-set widget (#557)
+-   Support sending all messages of a specific type to a pre-set widget (#557)
 -   Support sending messages to a widget from another window (#557)
 
 ### Specific widgets
@@ -300,7 +300,7 @@ Widget construction is changed substantially with a new trait `Tile` and many sm
 -   Let `#[widget]` support `widget_set_rect!` macro, making implementation of fn `rect` optional (#476)
 -   Remove support for input data for layout-macro-generated widgets (#478)
 -   Move fn `rect` to `Layout`; make fns `Layout::{draw, try_probe}` take `&self` (#480)
--   Improve `WidgetHeirarchy` debugging (#481)
+-   Improve `WidgetHierarchy` debugging (#481)
 -   Replaces fns `for_child*` with `get_child*` (#490)
 -   Prefer usage of `#[impl_self]` over `impl_scope!` (#506)
 -   Support `#[widget = expr]` syntax for mapping a child widget's input data (#507)
@@ -429,7 +429,7 @@ For more on *input data*, read the [design document](https://github.com/kas-gui/
 -   Change behaviour when `Press::grab` is used twice in a row (#412)
 -   Replace `*cx |= action` with `EventState::action(id, action)` (#413)
 -   Apply `Action::RECONFIGURE` and `Action::UPDATE` to sub-trees (#413)
--   Rename `EventState::request_update` to `request_timer` and remove `first` paramameter (#421)
+-   Rename `EventState::request_update` to `request_timer` and remove `first` parameter (#421)
 
 ### Changes to app, windowing, WGPU
 
@@ -442,7 +442,7 @@ For more on *input data*, read the [design document](https://github.com/kas-gui/
 ### Other core changes
 
 -   Add `kas::messages` module (#385)
--   Add `Command::Debug` to print widget heirarchy to log, temporarily activated via F8 (#389)
+-   Add `Command::Debug` to print widget hierarchy to log, temporarily activated via F8 (#389)
 -   Remove `Window` trait; rename `RootWidget` → `Window` (#393)
 -   Rename `ConfigMgr`, `DrawMgr`, `EventMgr`, `SizeMgr` → `ConfigCx`, ... (#399)
 -   Support dragging and drag-resizing of windows via border (#400)
@@ -557,7 +557,7 @@ removes the `gat` feature flag, revises the `SharedData{,Mut}`, `ListData` and
 -   Rename `impl_singleton!` to `singleton!`, moving impl to `impl-tools-lib` (#360)
 -   Re-export macros from `kas{,_core}` root instead of `macros` module (#364)
 -   Bump dependencies: `tiny-skia` v0.8.2, `resvg` and `usvg` v0.28.0 (#362, #366)
--   Bump depencency: `wgpu` v0.14 (#362)
+-   Bump dependency: `wgpu` v0.14 (#362)
 
 ### Other changes
 
@@ -750,7 +750,7 @@ focus) changed to be more in line with traditional UIs:
 -   <kbd>Ctrl</kbd>+<kbd>C</kbd> works on widgets with only selection focus
     (e.g. `ScrollLabel`) (#234)
 -   `next_nav_focus` wraps at end instead of clearing focus (#234)
--   Breaking: `EditGuard::focus_gained` can no longer send a messege (#234)
+-   Breaking: `EditGuard::focus_gained` can no longer send a message (#234)
 -   <kbd>Tab</kbd> cannot focus menus (#235)
 -   Restore nav focus after closing menus (#234)
 -   Click/touch events set nav focus (#234, #240)
@@ -784,7 +784,7 @@ some proposals by [@hummingly](https://github.com/hummingly):
 -   Update README regarding lld and mold linkers with some benchmarks (#242)
 -   Enable text in SVGs using KAS's font config (#244)
 -   Make `InputState` a `bitflags` struct (#244)
--   Apply scale factor to pan theshold (#244)
+-   Apply scale factor to pan threshold (#244)
 
 ## [0.9.1] — 2021-08-03
 
@@ -1053,7 +1053,7 @@ improvements.
 
 -   Update to wgpu v0.6 (#121)
 -   Use pre-compiled GLSL shaders; add simple opt-in build system. This removes
-    the depencency on `shaderc`. (#124)
+    the dependency on `shaderc`. (#124)
 -   Fix shader precision (#128)
 -   Add draw performance metrics (#131)
 
@@ -1261,7 +1261,7 @@ window size limits, and switchable themes and colour schemes.
 
 ### Layouts
 -   Tweak margins; buttons now (temporarily) have an external margin (#53)
--   Allow parents to influence child aliginment (#52)
+-   Allow parents to influence child alignment (#52)
 -   Non-parent widgets may now have frames (#52)
 -   `layout_data` is no longer required for `single` layout (#52)
 -   Add `StretchPolicy` to `SizeRules`; adjust `AxisInfo` (#52)

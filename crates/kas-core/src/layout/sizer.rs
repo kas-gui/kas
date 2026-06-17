@@ -199,10 +199,10 @@ impl SolveCache {
         log::trace!(target: "kas_perf::layout", "apply_rect: {}μs", start.elapsed().as_micros());
     }
 
-    /// Print widget heirarchy in the trace log
+    /// Print widget hierarchy in the trace log
     ///
     /// This is sometimes called after [`Self::apply_rect`].
-    pub fn print_widget_heirarchy(&mut self, widget: &dyn Tile) {
+    pub fn print_widget_hierarchy(&mut self, widget: &dyn Tile) {
         let rect = widget.rect();
         let hier = WidgetHierarchy::new(widget, None);
         log::trace!(

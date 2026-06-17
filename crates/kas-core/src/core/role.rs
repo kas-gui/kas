@@ -120,7 +120,7 @@ pub enum Role<'a> {
         /// Text contents
         ///
         /// NOTE: it is likely that the representation here changes to
-        /// accomodate more complex texts and potentially other details.
+        /// accommodate more complex texts and potentially other details.
         text: &'a str,
         /// The cursor index within `contents`
         cursor: usize,
@@ -139,7 +139,7 @@ pub enum Role<'a> {
         /// Text contents
         ///
         /// NOTE: it is likely that the representation here changes to
-        /// accomodate more complex texts and potentially other details.
+        /// accommodate more complex texts and potentially other details.
         text: &'a str,
         /// Whether the text input supports multi-line text
         multi_line: bool,

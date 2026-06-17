@@ -216,7 +216,7 @@ pub(crate) trait RunnerT {
         let window: WindowWidget<Data> = unsafe { std::mem::transmute(window) };
 
         // By far the simplest way to implement this is to let our call
-        // anscestor, event::Loop::handle, do the work.
+        // ancestor, event::Loop::handle, do the work.
         //
         // In theory we could pass the `ActiveEventLoop` for *each* event
         // handled to create the winit window here or use statics to generate

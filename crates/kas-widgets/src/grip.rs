@@ -202,7 +202,7 @@ mod GripPart {
         /// The input `offset` is clamped between [`Offset::ZERO`] and
         /// [`Self::max_offset`].
         ///
-        /// The return value is a tuple of the new offest.
+        /// The return value is a tuple of the new offset.
         ///
         /// It is expected that [`Self::set_track`] and [`Self::set_size`] are
         /// called before this method.

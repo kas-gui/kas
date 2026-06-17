@@ -639,7 +639,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             });
         }
     } else {
-        // TODO(opt): omit field widget.core._rect if a custom `fn rect` defintion is used
+        // TODO(opt): omit field widget.core._rect if a custom `fn rect` definition is used
         fn_rect = quote! {
             #[inline]
             fn rect(&self) -> ::kas::geom::Rect {

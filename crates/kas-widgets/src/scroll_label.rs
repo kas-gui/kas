@@ -101,7 +101,7 @@ mod ScrollTextCore {
     }
 
     impl<T: FormattableText + 'static> ScrollTextCore<(), T> {
-        /// Construct a `ScrollTextCore` with the given inital `text`
+        /// Construct a `ScrollTextCore` with the given initial `text`
         ///
         /// The text is set from input data on update.
         #[inline]
@@ -425,7 +425,7 @@ mod ScrollText {
     }
 
     impl<T: FormattableText + 'static> ScrollText<(), T> {
-        /// Construct an `ScrollText` with the given inital `text`
+        /// Construct an `ScrollText` with the given initial `text`
         ///
         /// The text is set from input data on update.
         #[inline]

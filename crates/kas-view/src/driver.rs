@@ -14,7 +14,7 @@
 //! read-only [`CheckBox`]).
 //!
 //! Intended usage is to import the module name rather than its contents, thus
-//! allowing referal to e.g. `driver::View`.
+//! allowing referral to e.g. `driver::View`.
 
 #[allow(unused)] use crate::clerk::AsyncClerk;
 use kas::TextOrSource;

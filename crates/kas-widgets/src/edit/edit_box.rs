@@ -320,7 +320,7 @@ mod EditBox {
 }
 
 impl<A: 'static> EditBox<DefaultGuard<A>> {
-    /// Construct an `EditBox` with the given inital `text` (no event handling)
+    /// Construct an `EditBox` with the given initial `text` (no event handling)
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
         EditBox {
@@ -424,7 +424,7 @@ impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
     /// Set whether this `EditBox` uses multi-line mode
     ///
     /// This affects the (vertical) size allocation, alignment, text wrapping
-    /// and whether the <kbd>Enter</kbd> key may instert a line break.
+    /// and whether the <kbd>Enter</kbd> key may insert a line break.
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
