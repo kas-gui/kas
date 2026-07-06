@@ -433,7 +433,7 @@ impl Window<()> {
         Window {
             core: Default::default(),
             props: self.props,
-            // TODO(opt): maybe we shoudn't box here?
+            // TODO(opt): maybe we shouldn't box here?
             inner: Box::new(MapAny::new(self.inner)),
             tooltip: self.tooltip,
             title_bar: self.title_bar,
@@ -730,7 +730,7 @@ impl<Data: AppData> Window<Data> {
             };
 
             cache.apply_rect(node.re(), cx, rect, false);
-            cache.print_widget_heirarchy(node.as_tile());
+            cache.print_widget_hierarchy(node.as_tile());
         });
 
         // Event handlers expect that the popup's rect is now assigned.

@@ -253,7 +253,7 @@ pub struct Press {
     pub coord: Coord,
 }
 
-/// Bulider pattern (see [`PressStart::grab`])
+/// Builder pattern (see [`PressStart::grab`])
 ///
 /// Conclude by calling [`Self::complete`].
 #[must_use]

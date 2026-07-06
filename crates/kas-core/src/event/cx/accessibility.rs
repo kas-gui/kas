@@ -28,7 +28,7 @@ impl EventState {
         let (nodes, root_id) = crate::accesskit::window_nodes(root);
         let tree = Some(accesskit::Tree::new(root_id));
 
-        // AccessKit does not like focus to point at a non-existant node, so we
+        // AccessKit does not like focus to point at a non-existent node, so we
         // filter. See https://github.com/AccessKit/accesskit/issues/587
         let focus = self
             .nav_focus()

@@ -107,7 +107,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from
     /// `parent_pass`; `rect` and `offset` are specified relative to this parent
-    /// and the intersecton of `rect` and the parent's "clip rect" is used.
+    /// and the intersection of `rect` and the parent's "clip rect" is used.
     /// be clipped to `rect` (expressed in the parent's coordinate system).
     ///
     /// Case `class == PassType::Overlay`: the new pass is derived from the
@@ -197,7 +197,7 @@ pub trait Draw {
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from
     /// `parent_pass`; `rect` and `offset` are specified relative to this parent
-    /// and the intersecton of `rect` and the parent's "clip rect" is used.
+    /// and the intersection of `rect` and the parent's "clip rect" is used.
     /// be clipped to `rect` (expressed in the parent's coordinate system).
     ///
     /// Case `class == PassType::Overlay`: the new pass is derived from the
@@ -244,7 +244,7 @@ pub trait Draw {
     /// This command draws a line segment between the points `p1` and `p2`.
     ///
     /// The line will be roughly `width` pixels wide and may exhibit aliasing
-    /// (appearance is implementation-defined). Unless you are targetting only
+    /// (appearance is implementation-defined). Unless you are targeting only
     /// the simplest of backends you probably don't want to use this.
     ///
     /// Note that for rectangular, axis-aligned lines, [`DrawImpl::rect`] should be

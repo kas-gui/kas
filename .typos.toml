@@ -1,0 +1,6 @@
+[default]
+extend-ignore-re = ["Can\\&vas"]
+
+[default.extend-words]
+"ba" = "ba"
+"rasterer" = "rasterer"

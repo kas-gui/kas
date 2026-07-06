@@ -235,7 +235,7 @@ pub enum Event<'a> {
     /// This focus must be requested by calling
     /// [`EventCx::request_key_focus`].
     ///
-    /// This is always preceeded by [`Event::SelFocus`] and is received prior to
+    /// This is always preceded by [`Event::SelFocus`] and is received prior to
     /// [`Event::Key`] events.
     KeyFocus,
     /// Notification that a widget has lost keyboard input focus

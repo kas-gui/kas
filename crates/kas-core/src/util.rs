@@ -51,7 +51,7 @@ impl<'a> fmt::Display for Trail<'a> {
     }
 }
 
-/// Helper to print widget heirarchy
+/// Helper to print widget hierarchy
 ///
 /// Note: output starts with a new line.
 pub struct WidgetHierarchy<'a> {

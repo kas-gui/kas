@@ -330,12 +330,12 @@ mod Flow {
             self.list.resize_with(cx, data, len, f);
         }
 
-        /// Iterate over childern
+        /// Iterate over children
         pub fn iter(&self) -> impl Iterator<Item = &W> {
             self.list.iter()
         }
 
-        /// Mutably iterate over childern
+        /// Mutably iterate over children
         pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut W> {
             self.list.iter_mut()
         }

@@ -254,14 +254,14 @@ impl<W: Widget> Grid<Vec<(GridCellInfo, W)>> {
         self.widgets.get_mut(index).map(|t| &mut t.1)
     }
 
-    /// Iterate over childern
+    /// Iterate over children
     pub fn iter(&self) -> impl Iterator<Item = &(GridCellInfo, W)> {
         ListIter {
             list: &self.widgets,
         }
     }
 
-    /// Mutably iterate over childern
+    /// Mutably iterate over children
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridCellInfo, W)> {
         ListIterMut {
             list: &mut self.widgets,
@@ -426,12 +426,12 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
         None
     }
 
-    /// Iterate over childern
+    /// Iterate over children
     pub fn iter(&self) -> impl Iterator<Item = &(GridCellInfo, W)> {
         ListIter { list: self.0 }
     }
 
-    /// Mutably iterate over childern
+    /// Mutably iterate over children
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridCellInfo, W)> + use<'_, W> {
         ListIterMut { list: self.0 }
     }

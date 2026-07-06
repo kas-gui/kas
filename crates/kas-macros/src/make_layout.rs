@@ -43,7 +43,7 @@ pub struct StorageFields {
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
-    /// Initial validation: the layout does not refer to non-existant fields
+    /// Initial validation: the layout does not refer to non-existent fields
     pub fn validate(&self, fields: &[Member]) {
         let mut used = vec![];
         self.0.validate(fields, &mut used);

@@ -472,7 +472,7 @@ impl<'a> EventCx<'a> {
             if matches!(cmd, Command::Debug) {
                 let over_id = self.mouse.over_id();
                 let hier = WidgetHierarchy::new(widget.as_tile(), over_id.clone());
-                log::debug!("Widget heirarchy (filter={over_id:?}): {hier}");
+                log::debug!("Widget hierarchy (filter={over_id:?}): {hier}");
                 return;
             }
         }

@@ -678,14 +678,14 @@ mod List {
             }
         }
 
-        /// Iterate over childern
+        /// Iterate over children
         pub fn iter(&self) -> impl Iterator<Item = &W> {
             ListIter {
                 list: &self.widgets,
             }
         }
 
-        /// Mutably iterate over childern
+        /// Mutably iterate over children
         pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut W> {
             ListIterMut {
                 list: &mut self.widgets,

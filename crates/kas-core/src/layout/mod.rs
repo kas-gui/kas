@@ -15,7 +15,7 @@
 //! size requirements. It provides various methods to compute derived rules
 //! and [`SizeRules::solve_widths`], the "muscle" of the layout engine.
 //!
-//! [`AxisInfo`], [`Margins`] and [`Stretch`] are auxilliary data types.
+//! [`AxisInfo`], [`Margins`] and [`Stretch`] are auxiliary data types.
 //!
 //! ## Solvers
 //!

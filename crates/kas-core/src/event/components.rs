@@ -456,7 +456,7 @@ pub enum TextInputAction {
     },
     /// Drag-motion of pointer
     ///
-    /// This is always preceeded by [`Self::PressStart`].
+    /// This is always preceded by [`Self::PressStart`].
     ///
     /// The text cursor should be placed at the closest position to `coord`,
     /// creating a selection from the anchor placed by [`Self::PressStart`].
@@ -470,16 +470,16 @@ pub enum TextInputAction {
     },
     /// Release of click or touch event
     ///
-    /// This may or may not be preceeded by [`Self::PressStart`]: touch events
+    /// This may or may not be preceded by [`Self::PressStart`]: touch events
     /// without motion or sufficient delay to enter selection mode will yield
-    /// this variant without a preceeding [`Self::PressStart`].
+    /// this variant without a preceding [`Self::PressStart`].
     ///
-    /// This may or may not be preceeded by [`Self::PressMove`].
+    /// This may or may not be preceded by [`Self::PressMove`].
     ///
     /// Handling should be stateful: if this follows [`Self::PressMove`] then it
-    /// terminates selection mode. If this is not preceeded by
+    /// terminates selection mode. If this is not preceded by
     /// [`Self::PressStart`] then the cursor should be placed at the closest
-    /// position to `coord`. If this is not preceeded by [`Self::PressMove`]
+    /// position to `coord`. If this is not preceded by [`Self::PressMove`]
     /// then it may be considered a "click" action (e.g. to follow a link).
     ///
     /// The widget may wish to request keyboard input focus or IME focus.

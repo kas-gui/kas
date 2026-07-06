@@ -70,7 +70,7 @@ have been added.
 
 ### 0.6.0 — November 2020
 
-A continuation of the work on text, with intial support for rich text,
+A continuation of the work on text, with initial support for rich text,
 exemplified via a Markdown parser. Underline and strike-through may be applied
 to texts at draw-time, and font adjustments (size, bold/italic and font family)
 may be applied as part of text layout.

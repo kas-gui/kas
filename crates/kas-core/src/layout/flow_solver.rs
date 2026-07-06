@@ -136,7 +136,7 @@ impl FlowSolver {
     ///
     /// This does not directly affect the returned [`SizeRules`], but it *does*
     /// affect the width supplied to children when inferring their height
-    /// (see [`AxisInfo::other`]), which could be useful if e.g. child widgtes
+    /// (see [`AxisInfo::other`]), which could be useful if e.g. child widgets
     /// contain text which wraps at this width.
     ///
     /// Further note: the result of [`Self::finish`] for the horizontal axis

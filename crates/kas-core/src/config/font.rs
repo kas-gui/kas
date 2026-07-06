@@ -28,7 +28,7 @@ pub struct FontConfig {
 
     /// Standard fonts
     ///
-    /// Changing this at run-tme is not currently supported.
+    /// Changing this at run-time is not currently supported.
     ///
     /// TODO: read/write support.
     #[cfg_attr(feature = "serde", serde(default = "defaults::fonts"))]
@@ -36,7 +36,7 @@ pub struct FontConfig {
 
     /// Text glyph rastering settings
     ///
-    /// Changing this at run-tme is not currently supported.
+    /// Changing this at run-time is not currently supported.
     #[cfg_attr(feature = "serde", serde(default))]
     raster: RasterConfig,
 }
