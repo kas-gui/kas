@@ -222,23 +222,17 @@ impl Common {
         }
     }
 
-    /// Set the cursor index (clearing any selection)
-    ///
-    /// This does not interact with undo history or call action handlers on the
-    /// guard.
-    #[inline]
-    pub fn set_cursor(&mut self, index: TextIndex) {
-        self.set_cursor_range(CursorRange::from(index));
-    }
-
     /// Set the cursor index / range
     ///
     /// This does not interact with undo history or call action handlers on the
     /// guard.
-    #[inline]
-    pub fn set_cursor_range(&mut self, range: CursorRange<TextIndex>) {
-        self.edit_x_coord = None;
-        self.selection = range;
+    pub fn set_cursor(&mut self, parts: &impl PartList, range: impl Into<CursorRange<TextIndex>>) {
+        let range = range.into();
+        if range != self.selection {
+            self.validate_range(parts, range.to_range());
+            self.selection = range;
+            self.edit_x_coord = None;
+        }
     }
 
     /// Checks whether any edits have landed
@@ -625,6 +619,15 @@ impl Part {
         self.text.as_str()
     }
 
+    fn set_cursor(&self, common: &mut Common, p: u32, range: impl Into<CursorRange<usize>>) {
+        let range = range.into();
+        debug_assert!(range.anchor <= self.as_str().len());
+        debug_assert!(range.cursor <= self.as_str().len());
+        let anchor = TextIndex::new(p, range.anchor);
+        let cursor = TextIndex::new(p, range.cursor);
+        common.selection = CursorRange { anchor, cursor };
+    }
+
     /// Get text contents as a reference to the internal [`Rc`]
     #[inline]
     pub fn text(&self) -> &Rc<String> {
@@ -970,6 +973,8 @@ impl Part {
     /// Replace a section of text
     #[inline]
     fn replace_range(&mut self, range: Range<usize>, replace_with: &str) {
+        debug_assert!(range.start <= range.end);
+        debug_assert!(range.end <= self.as_str().len());
         Rc::make_mut(&mut self.text).replace_range(range, replace_with);
         self.require_reprepare();
     }
@@ -998,10 +1003,7 @@ impl Part {
         if common.current.is_ime_enabled() {
             let action = std::mem::replace(&mut common.current, CurrentAction::None);
             if let CurrentAction::ImePreedit { edit_range, .. } = action {
-                common
-                    .selection
-                    .set_position(TextIndex::new(p, edit_range.start));
-                self.replace_range(edit_range.cast(), "");
+                self.set_cursor(common, p, usize::conv(edit_range.start));
             }
         }
     }
@@ -1131,14 +1133,15 @@ impl Part {
 
                 self.replace_range(edit_range.clone(), text);
                 edit_range.end = edit_range.start + text.len();
-                if let Some((start, end)) = cursor {
-                    common.selection.anchor = TextIndex::new(part, edit_range.start + start);
-                    common.selection.cursor = TextIndex::new(part, edit_range.start + end);
+                let sel = if let Some((start, end)) = cursor {
+                    CursorRange {
+                        anchor: edit_range.start + start,
+                        cursor: edit_range.start + end,
+                    }
                 } else {
-                    common
-                        .selection
-                        .set_position(TextIndex::new(part, edit_range.start + text.len()));
-                }
+                    CursorRange::from(edit_range.start + text.len())
+                };
+                self.set_cursor(common, part, sel);
 
                 common.current = CurrentAction::ImePreedit {
                     part,
@@ -1157,9 +1160,7 @@ impl Part {
                 };
 
                 self.replace_range(edit_range.clone(), text);
-                common
-                    .selection
-                    .set_position(TextIndex::new(part, edit_range.start + text.len()));
+                self.set_cursor(common, part, edit_range.start + text.len());
 
                 common.current = CurrentAction::ImePreedit {
                     part,
@@ -1172,11 +1173,9 @@ impl Part {
                 before_bytes,
                 after_bytes,
             } => {
-                let edit_range = match common.current.clone() {
-                    CurrentAction::ImeStart(part) => {
-                        subrange_of(&common.selection.to_range(), part)
-                    }
-                    CurrentAction::ImePreedit { edit_range, .. } => edit_range.cast(),
+                let (p, edit_range) = match common.current.clone() {
+                    CurrentAction::ImeStart(p) => (p, subrange_of(&common.selection.to_range(), p)),
+                    CurrentAction::ImePreedit { edit_range, part } => (part, edit_range.cast()),
                     _ => return EventAction::Used,
                 };
 
@@ -1186,15 +1185,17 @@ impl Part {
                     if self.as_str().is_char_boundary(start) {
                         self.replace_range(start..end, "");
                         let len = end - start;
-                        let adjust = |index: &mut TextIndex| {
-                            if index.byte() >= end {
-                                index.byte -= u32::conv(len);
-                            } else if index.byte() > start {
-                                index.byte = start.cast();
+                        let adjust = |index: &mut usize| {
+                            if *index >= end {
+                                *index -= len;
+                            } else if *index > start {
+                                *index = start;
                             }
                         };
-                        adjust(&mut common.selection.cursor);
-                        adjust(&mut common.selection.anchor);
+                        let mut sel = subrange_of(&common.selection.to_range(), p);
+                        adjust(&mut sel.start);
+                        adjust(&mut sel.end);
+                        self.set_cursor(common, p, sel);
                     } else {
                         log::warn!("buggy IME tried to delete range not at char boundary");
                     }
@@ -1221,6 +1222,13 @@ impl Part {
 }
 
 impl Common {
+    fn validate_range(&self, parts: &impl PartList, range: Range<TextIndex>) {
+        debug_assert!(range.start <= range.end);
+        debug_assert!(range.end.part() < parts.len());
+        debug_assert!(range.start.byte() <= parts.get(range.start.part()).as_str().len());
+        debug_assert!(range.end.byte() <= parts.get(range.end.part()).as_str().len());
+    }
+
     /// Replace a section of text
     ///
     /// Returns the index of the end of the replacement.
@@ -1231,7 +1239,8 @@ impl Common {
         range: Range<TextIndex>,
         replace_with: &str,
     ) -> TextIndex {
-        debug_assert!(range.start <= range.end);
+        self.validate_range(parts, range.clone());
+
         if !parts.variable_length() {
             let range = subrange_of(&range, 0);
             parts.get_mut(0).replace_range(range.clone(), replace_with);
@@ -1431,7 +1440,7 @@ impl Common {
                     self.cancel_selection_and_ime(parts, cx);
 
                     let end = self.replace_range(parts, selection.clone(), text);
-                    self.selection.set_position(end);
+                    self.set_cursor(parts, end);
                     self.edit_x_coord = None;
 
                     EventAction::Edit
@@ -1578,8 +1587,7 @@ impl Common {
                         self.set_primary(parts, cx);
                     } else {
                         let index = self.text_index_nearest(parts, coord);
-                        self.selection.cursor = index;
-                        self.selection.clear_selection();
+                        self.set_cursor(parts, index);
                     }
                     self.current = CurrentAction::None;
 
@@ -1590,7 +1598,7 @@ impl Common {
         };
 
         if range != self.selection {
-            self.selection = range;
+            self.set_cursor(parts, range);
             self.set_view_offset_from_cursor(parts, cx);
             self.edit_x_coord = None;
             cx.redraw();
@@ -1974,13 +1982,13 @@ impl Common {
                 let mut index = self.selection.cursor;
                 let range = if have_sel { selection.clone() } else { index..index };
                 index = self.replace_range(parts, range, s);
-                self.selection.set_position(index);
+                self.set_cursor(parts, index);
                 self.edit_x_coord = None;
                 EventAction::Edit
             }
             Action::Delete(sel, _) => {
                 self.replace_range(parts, sel.clone(), "");
-                self.selection.set_position(sel.start);
+                self.set_cursor(parts, sel.start);
                 self.edit_x_coord = None;
                 EventAction::Edit
             }
@@ -2028,7 +2036,8 @@ impl Common {
                     }
 
                     self.edit_x_coord = None;
-                    self.selection = *cursor;
+                    let range = *cursor;
+                    self.set_cursor(parts, range);
                     EventAction::Edit
                 } else {
                     EventAction::Used
@@ -2118,7 +2127,7 @@ impl Editor {
         Rc::make_mut(&mut self.part.text).clear();
         self.part.require_reprepare();
 
-        self.common.selection.set_max_len(TextIndex::new(0, 0));
+        self.common.selection.set_position(TextIndex::new(0, 0));
         self.common.edit_x_coord = None;
         self.error_state = None;
     }
@@ -2198,7 +2207,7 @@ impl Editor {
         let end = selection.end.byte();
         self.part.replace_range(start..end, text);
         let index = TextIndex::new(0, start + text.len());
-        self.common.selection.set_position(index);
+        self.common.set_cursor(&self.part, index);
         self.error_state = None;
     }
 
@@ -2217,7 +2226,7 @@ impl Editor {
     /// guard.
     #[inline]
     pub fn set_cursor(&mut self, index: usize) {
-        self.common.set_cursor(TextIndex::new(0, index))
+        self.common.set_cursor(&self.part, TextIndex::new(0, index))
     }
 
     /// Set the cursor index / range
@@ -2226,7 +2235,7 @@ impl Editor {
     /// guard.
     #[inline]
     pub fn set_cursor_range(&mut self, range: CursorRange<usize>) {
-        self.common.set_cursor_range(CursorRange {
+        self.common.set_cursor(&self.part, CursorRange {
             anchor: TextIndex::new(0, range.anchor),
             cursor: TextIndex::new(0, range.cursor),
         });

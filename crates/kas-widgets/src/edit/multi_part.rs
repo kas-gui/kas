@@ -365,7 +365,7 @@ mod Inner {
         fn with_text(mut self, text: &str) -> Self {
             debug_assert!(self.common.is_unedited());
 
-            self.common.set_cursor(TextIndex::new(0, 0));
+            self.common.set_cursor(&self.parts, TextIndex::new(0, 0));
 
             self.parts = kas::text::Lines::new(text)
                 .map(|(line, _)| Part::from(line))
