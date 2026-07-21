@@ -13,7 +13,7 @@ use std::rc::Rc;
 
 use super::anim::AnimState;
 use super::{Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
-use crate::cast::traits::*;
+use crate::cast::{Ceil, Nearest, traits::*};
 use crate::config::{Config, WindowConfig};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
@@ -122,8 +122,8 @@ impl Dimensions {
         let scale = config.scale_factor();
         let font = config.font();
 
-        let text_m0 = (params.m_text.0 * scale).cast_nearest();
-        let text_m1 = (params.m_text.1 * scale).cast_nearest();
+        let text_m0 = (params.m_text.0 * scale).cast_to(Nearest);
+        let text_m1 = (params.m_text.1 * scale).cast_to(Nearest);
 
         let shadow_size = params.shadow_size * scale;
         let shadow_offset = shadow_size * params.shadow_rel_offset;
@@ -136,24 +136,24 @@ impl Dimensions {
             mark_line,
             diagonal_mark_line: mark_line / f32::sqrt(2.0),
             min_line_len_em: 8.0,
-            m_inner: (params.m_inner * scale).cast_nearest(),
-            m_tiny: (params.m_tiny * scale).cast_nearest(),
-            m_small: (params.m_small * scale).cast_nearest(),
-            m_large: (params.m_large * scale).cast_nearest(),
-            m_huge: (params.m_huge * scale).cast_nearest(),
+            m_inner: (params.m_inner * scale).cast_to(Nearest),
+            m_tiny: (params.m_tiny * scale).cast_to(Nearest),
+            m_small: (params.m_small * scale).cast_to(Nearest),
+            m_large: (params.m_large * scale).cast_to(Nearest),
+            m_huge: (params.m_huge * scale).cast_to(Nearest),
             m_text: (text_m0, text_m1),
-            frame: (params.frame * scale).cast_nearest(),
-            frame_window: (params.frame_window * scale).cast_nearest(),
-            frame_popup: (params.frame_popup * scale).cast_nearest(),
-            menu_frame: (params.menu_frame * scale).cast_nearest(),
-            button_frame: (params.button_frame * scale).cast_nearest(),
-            button_inner: (params.button_inner * scale).cast_nearest(),
-            check_box: i32::conv_nearest(params.check_box * scale),
-            mark: i32::conv_nearest(params.mark * scale),
-            grip_len: i32::conv_nearest(params.grip_len * scale),
-            scroll_bar: Size::conv_nearest(params.scroll_bar_size * scale),
-            slider: Size::conv_nearest(params.slider_size * scale),
-            progress_bar: Size::conv_nearest(params.progress_bar * scale),
+            frame: (params.frame * scale).cast_to(Nearest),
+            frame_window: (params.frame_window * scale).cast_to(Nearest),
+            frame_popup: (params.frame_popup * scale).cast_to(Nearest),
+            menu_frame: (params.menu_frame * scale).cast_to(Nearest),
+            button_frame: (params.button_frame * scale).cast_to(Nearest),
+            button_inner: (params.button_inner * scale).cast_to(Nearest),
+            check_box: i32::conv_to(Nearest, params.check_box * scale),
+            mark: i32::conv_to(Nearest, params.mark * scale),
+            grip_len: i32::conv_to(Nearest, params.grip_len * scale),
+            scroll_bar: Size::conv_to(Nearest, params.scroll_bar_size * scale),
+            slider: Size::conv_to(Nearest, params.slider_size * scale),
+            progress_bar: Size::conv_to(Nearest, params.progress_bar * scale),
             shadow_a: shadow_offset - shadow_size,
             shadow_b: shadow_offset + shadow_size,
         }
@@ -211,12 +211,12 @@ impl ThemeSize for Window {
     }
 
     fn wrapped_line_len(&self, _: TextClass, dpem: f32) -> (i32, i32) {
-        let min: i32 = (self.dims.min_line_len_em * dpem).cast_nearest();
+        let min: i32 = (self.dims.min_line_len_em * dpem).cast_to(Nearest);
         (min, 2 * min)
     }
 
     fn min_element_size(&self) -> i32 {
-        (self.dims.scale * 8.0).cast_nearest()
+        (self.dims.scale * 8.0).cast_to(Nearest)
     }
 
     fn min_scroll_size(&self, axis_is_vertical: bool, class: TextClass) -> i32 {
@@ -225,7 +225,7 @@ impl ThemeSize for Window {
         } else {
             self.dims.min_line_len_em
         };
-        (self.dims.dpem[class] * factor).cast_ceil()
+        (self.dims.dpem[class] * factor).cast_to(Ceil)
     }
 
     fn grip_len(&self) -> i32 {
@@ -245,10 +245,10 @@ impl ThemeSize for Window {
             MarginStyle::Large => Margins::splat(self.dims.m_large),
             MarginStyle::Huge => Margins::splat(self.dims.m_huge),
             MarginStyle::Text => Margins::hv_splat(self.dims.m_text),
-            MarginStyle::Px(px) => Margins::splat(u16::conv_nearest(px * self.dims.scale)),
+            MarginStyle::Px(px) => Margins::splat(u16::conv_to(Nearest, px * self.dims.scale)),
             MarginStyle::Em(em) => {
                 let dpem = self.dims.dpem[TextClass::Standard];
-                Margins::splat(u16::conv_nearest(em * dpem))
+                Margins::splat(u16::conv_to(Nearest, em * dpem))
             }
         }
     }
@@ -266,11 +266,11 @@ impl ThemeSize for Window {
             Feature::Mark(style) => {
                 let w = match style {
                     MarkStyle::Chevron(dir) => match dir.is_vertical() == axis_is_vertical {
-                        true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
-                        false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
+                        true => self.dims.mark / 2 + i32::conv_to(Ceil, self.dims.mark_line),
+                        false => self.dims.mark + i32::conv_to(Ceil, self.dims.mark_line),
                     },
                     MarkStyle::X | MarkStyle::Plus | MarkStyle::Minus => {
-                        self.dims.mark + i32::conv_ceil(self.dims.mark_line)
+                        self.dims.mark + i32::conv_to(Ceil, self.dims.mark_line)
                     }
                 };
                 return SizeRules::fixed(w).with_margin(self.dims.m_tiny);

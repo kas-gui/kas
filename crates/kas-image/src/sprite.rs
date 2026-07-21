@@ -6,6 +6,7 @@
 //! 2D pixmap widget
 
 use super::Scaling;
+use kas::cast::Nearest;
 use kas::draw::ImageHandle;
 use kas::layout::LogicalSize;
 use kas::prelude::*;
@@ -138,7 +139,7 @@ mod Sprite {
     impl Layout for Self {
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             if self.scaling.size == LogicalSize::default() {
-                let scale: i32 = (cx.scale_factor() * 0.9).cast_nearest();
+                let scale: i32 = (cx.scale_factor() * 0.9).cast_to(Nearest);
                 debug_assert!(scale >= 1);
                 SizeRules::fixed(self.image_size.extract(axis) * scale)
                     .with_margins(cx.margins(self.scaling.margins).extract(axis))

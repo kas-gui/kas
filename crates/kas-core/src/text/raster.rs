@@ -13,7 +13,7 @@
 use crate::config::SubpixelMode;
 use crate::text::format::{Color, Colors, Decoration, DecorationType, LineStyle};
 use crate::theme::ColorsLinear;
-use kas::cast::traits::*;
+use kas::cast::{Trunc, traits::*};
 use kas::config::RasterConfig;
 use kas::draw::{AllocError, Allocation, PassId, color::Rgba};
 use kas::geom::{Quad, Vec2};
@@ -129,8 +129,8 @@ impl SpriteDescriptor {
 
         let steps = Self::sub_pixel_x_steps(config, dpem);
         let mult = f32::conv(steps);
-        let dpem = u32::conv_trunc(dpem * SCALE_STEPS + 0.5);
-        let x_off = u8::conv_trunc(glyph.position.0.fract() * mult) % steps;
+        let dpem = u32::conv_to(Trunc, dpem * SCALE_STEPS + 0.5);
+        let x_off = u8::conv_to(Trunc, glyph.position.0.fract() * mult) % steps;
         // y-offset serves little purpose since we don't support vertical text
         // and kas-text already rounds the v-caret to the nearest pixel.
         let y_off = 0;
@@ -296,9 +296,9 @@ impl State {
             };
 
             let bounds = outline.px_bounds();
-            let offset: (i32, i32) = (bounds.min.x.cast_trunc(), bounds.min.y.cast_trunc());
+            let offset: (i32, i32) = (bounds.min.x.cast_to(Trunc), bounds.min.y.cast_to(Trunc));
             let size = bounds.max - bounds.min;
-            let size = (u32::conv_trunc(size.x), u32::conv_trunc(size.y));
+            let size = (u32::conv_to(Trunc, size.x), u32::conv_trunc(size.y));
             if size.0 == 0 || size.1 == 0 {
                 // Ignore this common error
                 self.glyphs.insert(desc, Sprite::default());

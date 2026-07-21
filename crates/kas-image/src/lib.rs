@@ -26,7 +26,7 @@ pub use canvas::{Canvas, CanvasProgram};
 pub use sprite::Sprite;
 #[cfg(feature = "svg")] pub use svg::Svg;
 
-use kas::cast::{Conv, ConvFloat};
+use kas::cast::{Conv, ConvTo, Nearest};
 use kas::geom::{Rect, Vec2};
 use kas::impl_scope;
 use kas::layout::{AlignPair, AxisInfo, LogicalSize, SizeRules, Stretch};
@@ -99,9 +99,9 @@ impl Scaling {
 
             // Use smaller ratio, if any is finite
             if rw < rh {
-                size.1 = i32::conv_nearest(rw * logical_size.1);
+                size.1 = i32::conv_to(Nearest, rw * logical_size.1);
             } else if rh < rw {
-                size.0 = i32::conv_nearest(rh * logical_size.0);
+                size.0 = i32::conv_to(Nearest, rh * logical_size.0);
             }
         }
 

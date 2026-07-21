@@ -6,7 +6,7 @@
 //! Event handling components
 
 use super::*;
-use crate::cast::traits::*;
+use crate::cast::{Nearest, Trunc, traits::*};
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 use crate::text::CursorRange;
 use crate::{ActionMoved, Id};
@@ -87,7 +87,7 @@ impl Kinetic {
     pub fn start(&mut self, start: KineticStart) -> Offset {
         self.vel += start.vel;
         let d = self.rest + start.rest;
-        let delta = Offset::conv_trunc(d);
+        let delta = Offset::conv_to(Trunc, d);
         self.rest = d - Vec2::conv(delta);
         self.t_step = Instant::now();
         delta
@@ -120,7 +120,7 @@ impl Kinetic {
         }
 
         let d = self.vel * dur + self.rest;
-        let delta = Offset::conv_trunc(d);
+        let delta = Offset::conv_to(Trunc, d);
         self.rest = d - Vec2::conv(delta);
 
         Some(delta)
@@ -308,7 +308,7 @@ impl ScrollComponent {
 
     fn scroll_by_delta(&mut self, cx: &mut EventCx, d: Vec2) {
         let delta = d + self.kinetic.rest;
-        let offset = delta.cast_nearest();
+        let offset = delta.cast_to(Nearest);
         self.kinetic.rest = delta - Vec2::conv(offset);
         let delta = self.scroll_self_by_delta(cx, offset);
         cx.set_scroll(if delta != Offset::ZERO {

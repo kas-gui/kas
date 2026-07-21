@@ -13,7 +13,7 @@ use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::WindowErased;
 use crate::window::WindowWidget;
 use crate::{ActionRedraw, Id, Node, Tile, TileExt};
-use cast::{CastApprox, CastFloat};
+use cast::{CastApprox, CastTo, Nearest};
 use std::time::{Duration, Instant};
 use winit::cursor::CursorIcon;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -330,7 +330,7 @@ impl<'a> EventCx<'a> {
                 let press = Press {
                     source: PressSource::mouse(Some(grab.button), grab.repetitions),
                     id: self.mouse.over.clone(),
-                    coord: self.mouse.last_position.cast_nearest(),
+                    coord: self.mouse.last_position.cast_to(Nearest),
                 };
                 let event = Event::PressEnd { press, success };
                 to_send = Some((grab.start_id.clone(), event));
@@ -357,7 +357,7 @@ impl<'a> EventCx<'a> {
         self.action_redraw(redraw);
 
         if self.action_moved.is_some() {
-            let over = node.try_probe(self.mouse.last_position.cast_nearest());
+            let over = node.try_probe(self.mouse.last_position.cast_to(Nearest));
             self.set_over(node, over);
         }
     }
@@ -369,7 +369,7 @@ impl<'a> EventCx<'a> {
         data: &A,
         position: DVec2,
     ) {
-        let coord = position.cast_nearest();
+        let coord = position.cast_to(Nearest);
         let id = win.try_probe(coord);
         self.tooltip_motion(win, &id);
         self.handle_pointer_moved_(id, win.as_node(data), coord, position);

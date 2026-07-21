@@ -10,7 +10,7 @@ use kas::config::SubpixelMode;
 use std::collections::HashMap;
 
 use kas::autoimpl;
-use kas::cast::traits::*;
+use kas::cast::{Nearest, traits::*};
 use kas::draw::{
     AllocError, Allocation, Allocator, ImageFormat, ImageId, PassId, UploadError, color,
 };
@@ -318,8 +318,8 @@ impl Format for InstanceRgba {
         offset: Offset,
     ) {
         let (clip_p, clip_q) = (clip_rect.pos, clip_rect.pos2());
-        let p = (Coord::conv_nearest(self.a) - offset).clamp(clip_p, clip_q);
-        let q = (Coord::conv_nearest(self.b) - offset).clamp(clip_p, clip_q);
+        let p = (Coord::conv_to(Nearest, self.a) - offset).clamp(clip_p, clip_q);
+        let q = (Coord::conv_to(Nearest, self.b) - offset).clamp(clip_p, clip_q);
 
         let xdi = 1.0 / (self.b.0 - self.a.0);
         let txd = self.tb.0 - self.ta.0;
@@ -328,11 +328,11 @@ impl Format for InstanceRgba {
 
         for y in p.1..q.1 {
             let ly = (f32::conv(y + offset.1) - self.a.1) * ydi;
-            let ty: usize = (self.ta.1 + tyd * ly).cast_nearest();
+            let ty: usize = (self.ta.1 + tyd * ly).cast_to(Nearest);
 
             for x in p.0..q.0 {
                 let lx = (f32::conv(x + offset.0) - self.a.0) * xdi;
-                let tx: usize = (self.ta.0 + txd * lx).cast_nearest();
+                let tx: usize = (self.ta.0 + txd * lx).cast_to(Nearest);
 
                 let tc = tex[ty * tex_size.0 + tx];
                 let a = tc >> 24;
@@ -368,8 +368,8 @@ impl Format for InstanceMask {
         offset: Offset,
     ) {
         let (clip_p, clip_q) = (clip_rect.pos, clip_rect.pos2());
-        let p = (Coord::conv_nearest(self.a) - offset).clamp(clip_p, clip_q);
-        let q = (Coord::conv_nearest(self.b) - offset).clamp(clip_p, clip_q);
+        let p = (Coord::conv_to(Nearest, self.a) - offset).clamp(clip_p, clip_q);
+        let q = (Coord::conv_to(Nearest, self.b) - offset).clamp(clip_p, clip_q);
 
         let xdi = 1.0 / (self.b.0 - self.a.0);
         let txd = self.tb.0 - self.ta.0;
@@ -378,11 +378,11 @@ impl Format for InstanceMask {
 
         for y in p.1..q.1 {
             let ly = (f32::conv(y + offset.1) - self.a.1) * ydi;
-            let ty: usize = (self.ta.1 + tyd * ly).cast_nearest();
+            let ty: usize = (self.ta.1 + tyd * ly).cast_to(Nearest);
 
             for x in p.0..q.0 {
                 let lx = (f32::conv(x + offset.0) - self.a.0) * xdi;
-                let tx: usize = (self.ta.0 + txd * lx).cast_nearest();
+                let tx: usize = (self.ta.0 + txd * lx).cast_to(Nearest);
 
                 let a = tex[ty * tex_size.0 + tx] as u32;
                 let ba = 255 - a;
@@ -501,8 +501,8 @@ impl Format for InstanceRgbaMask {
         offset: Offset,
     ) {
         let (clip_p, clip_q) = (clip_rect.pos, clip_rect.pos2());
-        let p = (Coord::conv_nearest(self.a) - offset).clamp(clip_p, clip_q);
-        let q = (Coord::conv_nearest(self.b) - offset).clamp(clip_p, clip_q);
+        let p = (Coord::conv_to(Nearest, self.a) - offset).clamp(clip_p, clip_q);
+        let q = (Coord::conv_to(Nearest, self.b) - offset).clamp(clip_p, clip_q);
 
         let xdi = 1.0 / (self.b.0 - self.a.0);
         let txd = self.tb.0 - self.ta.0;
@@ -511,11 +511,11 @@ impl Format for InstanceRgbaMask {
 
         for y in p.1..q.1 {
             let ly = (f32::conv(y + offset.1) - self.a.1) * ydi;
-            let ty: usize = (self.ta.1 + tyd * ly).cast_nearest();
+            let ty: usize = (self.ta.1 + tyd * ly).cast_to(Nearest);
 
             for x in p.0..q.0 {
                 let lx = (f32::conv(x + offset.0) - self.a.0) * xdi;
-                let tx: usize = (self.ta.0 + txd * lx).cast_nearest();
+                let tx: usize = (self.ta.0 + txd * lx).cast_to(Nearest);
 
                 let m = tex[ty * tex_size.0 + tx];
                 let mr = m >> 16 & 0xFF;

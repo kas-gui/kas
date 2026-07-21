@@ -8,6 +8,7 @@
 use super::editor::{Component, EventAction};
 use super::*;
 use crate::edit::highlight::{Highlighter, Plain};
+use kas::cast::Ceil;
 use kas::event::CursorIcon;
 use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
@@ -85,15 +86,15 @@ mod EditBoxCore {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
                 let dpem = cx.dpem(TextClass::Editor);
-                min = (self.width.0 * dpem).cast_ceil();
-                ideal = (self.width.1 * dpem).cast_ceil();
+                min = (self.width.0 * dpem).cast_to(Ceil);
+                ideal = (self.width.1 * dpem).cast_to(Ceil);
             } else if let Some(width) = axis.other() {
                 // Use the height of the first line as a reference
                 let height = self
                     .editor
                     .measure_height(width.cast(), std::num::NonZero::new(1));
-                min = (self.lines.0 * height).cast_ceil();
-                ideal = (self.lines.1 * height).cast_ceil();
+                min = (self.lines.0 * height).cast_to(Ceil);
+                ideal = (self.lines.1 * height).cast_to(Ceil);
             } else {
                 unreachable!()
             };

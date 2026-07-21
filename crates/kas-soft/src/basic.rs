@@ -6,7 +6,7 @@
 //! Basic shapes
 
 use super::color_to_u32;
-use kas::cast::traits::*;
+use kas::cast::{Nearest, traits::*};
 use kas::draw::PassId;
 use kas::draw::color;
 use kas::geom::{Coord, Quad, Vec2};
@@ -97,8 +97,8 @@ impl Draw {
         let (clip_p, clip_q) = (clip_rect.pos, clip_rect.pos2());
 
         for (rect, col) in pass.rects.drain(..) {
-            let p = (Coord::conv_nearest(rect.a) - offset).clamp(clip_p, clip_q);
-            let q = (Coord::conv_nearest(rect.b) - offset).clamp(clip_p, clip_q);
+            let p = (Coord::conv_to(Nearest, rect.a) - offset).clamp(clip_p, clip_q);
+            let q = (Coord::conv_to(Nearest, rect.b) - offset).clamp(clip_p, clip_q);
             let (x0, x1): (usize, usize) = (p.0.cast(), q.0.cast());
             let c = color_to_u32(col);
 
@@ -124,8 +124,8 @@ impl Draw {
             }
             a -= Vec2::splat(r);
             b += Vec2::splat(r);
-            let a = (Coord::conv_nearest(a) - offset).clamp(clip_p, clip_q);
-            let b = (Coord::conv_nearest(b) - offset).clamp(clip_p, clip_q);
+            let a = (Coord::conv_to(Nearest, a) - offset).clamp(clip_p, clip_q);
+            let b = (Coord::conv_to(Nearest, b) - offset).clamp(clip_p, clip_q);
 
             for y in a.1..b.1 {
                 let d1 = dx * (f32::conv(y + offset.1) - p1.1);
