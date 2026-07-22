@@ -113,7 +113,7 @@ impl Images {
                 module: &shaders.vert_image,
                 entry_point: Some("main"),
                 compilation_options: Default::default(),
-                buffers: &[wgpu::VertexBufferLayout {
+                buffers: &[Some(wgpu::VertexBufferLayout {
                     array_stride: size_of::<InstanceRgba>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
@@ -122,7 +122,7 @@ impl Images {
                         2 => Float32x2,
                         3 => Float32x2,
                     ],
-                }],
+                })],
             },
             wgpu::FragmentState {
                 module: &shaders.frag_image,
@@ -146,7 +146,7 @@ impl Images {
                 module: &shaders.vert_glyph,
                 entry_point: Some("main"),
                 compilation_options: Default::default(),
-                buffers: &[wgpu::VertexBufferLayout {
+                buffers: &[Some(wgpu::VertexBufferLayout {
                     array_stride: size_of::<InstanceMask>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
@@ -156,7 +156,7 @@ impl Images {
                         3 => Float32x2,
                         4 => Float32x4,
                     ],
-                }],
+                })],
             },
             wgpu::FragmentState {
                 module: &shaders.frag_glyph,
@@ -185,7 +185,7 @@ impl Images {
                     module: &shaders.vert_glyph,
                     entry_point: Some("main"),
                     compilation_options: Default::default(),
-                    buffers: &[wgpu::VertexBufferLayout {
+                    buffers: &[Some(wgpu::VertexBufferLayout {
                         array_stride: size_of::<InstanceMask>() as wgpu::BufferAddress,
                         step_mode: wgpu::VertexStepMode::Instance,
                         attributes: &wgpu::vertex_attr_array![
@@ -195,7 +195,7 @@ impl Images {
                             3 => Float32x2,
                             4 => Float32x4,
                         ],
-                    }],
+                    })],
                 },
                 wgpu::FragmentState {
                     module: &shaders.frag_subpixel,

@@ -65,7 +65,10 @@ impl<V: bytemuck::Pod> Window<V> {
                 mapped_at_creation: true,
             });
 
-            let mut view = buffer.slice(..byte_len.get()).get_mapped_range_mut();
+            let mut view = buffer
+                .slice(..byte_len.get())
+                .get_mapped_range_mut()
+                .unwrap();
             copy_to_slice(&mut self.passes, &mut view);
             drop(view);
 

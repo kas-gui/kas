@@ -82,6 +82,7 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
+            color_space: wgpu::SurfaceColorSpace::Srgb,
             width: size.0.cast(),
             height: size.1.cast(),
             present_mode,
@@ -135,7 +136,7 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         shared.render(&mut self.draw, &view, clear_color);
 
         let pre_present = Instant::now();
-        frame.present();
+        shared.queue.present(frame);
 
         if !outdated {
             PresentResult::Success(pre_present)
