@@ -54,7 +54,7 @@ impl Default for ClipRegion {
 pub struct DrawPipe<C> {
     pub(crate) adapter: wgpu::Adapter,
     pub(crate) device: wgpu::Device,
-    queue: wgpu::Queue,
+    pub(crate) queue: wgpu::Queue,
     staging_belt: wgpu::util::StagingBelt,
     bgl_common: wgpu::BindGroupLayout,
     light_norm_buf: wgpu::Buffer,

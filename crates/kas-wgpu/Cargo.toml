@@ -38,7 +38,7 @@ package = "kas-core"
 path = "../kas-core"
 
 [dependencies.wgpu]
-version = "29.0.0"
+version = "30.0.0"
 default-features = false
 features = ["spirv"]
 

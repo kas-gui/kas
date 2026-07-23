@@ -69,7 +69,7 @@ impl Pipeline {
                 module: &shaders.vert_flat_round,
                 entry_point: Some("main"),
                 compilation_options: Default::default(),
-                buffers: &[wgpu::VertexBufferLayout {
+                buffers: &[Some(wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![
@@ -79,7 +79,7 @@ impl Pipeline {
                         3 => Float32x2,
                         4 => Float32x2
                     ],
-                }],
+                })],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,

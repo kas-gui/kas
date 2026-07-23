@@ -116,6 +116,7 @@ impl Options {
             power_preference: self.power_preference,
             force_fallback_adapter: self.backends.is_empty(),
             compatible_surface: None,
+            apply_limit_buckets: false,
         }
     }
 

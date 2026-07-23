@@ -45,7 +45,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let mut translation_span = None;
     let mut handle_scroll = false;
     for (index, impl_) in scope.impls.iter_mut().enumerate() {
-        if let Some((_, ref path, _)) = impl_.trait_ {
+        if let Some((ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
                 || *path == parse_quote! { kas::Widget }
                 || *path == parse_quote! { Widget }
@@ -287,6 +287,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     });
                 }
                 field.ty = Type::Path(syn::TypePath {
+                    attrs: vec![],
                     qself: None,
                     path: core_type.into(),
                 });

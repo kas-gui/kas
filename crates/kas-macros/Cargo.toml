@@ -32,10 +32,10 @@ quote = "1.0"
 proc-macro2 = { version = "1.0" }
 proc-macro-error3 = { version = "3.0", default-features = false }
 bitflags = "2.3.3"
-impl-tools-lib = "0.12.0"
+impl-tools-lib = "0.13.0"
 
 [dependencies.syn]
-version = "2.0.22"
+version = "3.0.2"
 # We need 'extra-traits' for equality testing
 # We need 'full' for parsing macros within macro arguments
 features = ["extra-traits", "full", "visit", "visit-mut"]

@@ -65,7 +65,7 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
     let mut widget_impl = None;
 
     for (index, impl_) in scope.impls.iter().enumerate() {
-        if let Some((_, ref path, _)) = impl_.trait_ {
+        if let Some((ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Layout }
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }
