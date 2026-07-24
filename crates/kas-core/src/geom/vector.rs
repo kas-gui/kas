@@ -594,16 +594,7 @@ macro_rules! impl_vec2 {
                 $T(arg.0, arg.1)
             }
         }
-        impl Conv<($f, $f)> for $T {
-            #[inline]
-            fn conv(arg: ($f, $f)) -> Self {
-                $T(arg.0, arg.1)
-            }
-            #[inline]
-            fn try_conv(v: ($f, $f)) -> Result<Self> {
-                Ok(Self::conv(v))
-            }
-        }
+        impl_via_from!(($f, $f): $T);
 
         impl From<$T> for ($f, $f) {
             #[inline]
@@ -611,16 +602,7 @@ macro_rules! impl_vec2 {
                 (v.0, v.1)
             }
         }
-        impl Conv<$T> for ($f, $f) {
-            #[inline]
-            fn conv(v: $T) -> Self {
-                (v.0, v.1)
-            }
-            #[inline]
-            fn try_conv(v: $T) -> Result<Self> {
-                Ok(Self::conv(v))
-            }
-        }
+        impl_via_from!($T: ($f, $f));
 
         impl From<winit::dpi::PhysicalPosition<$f>> for $T {
             #[inline]
@@ -644,16 +626,7 @@ impl From<kas_text::Vec2> for Vec2 {
         Vec2(size.0, size.1)
     }
 }
-impl Conv<kas_text::Vec2> for Vec2 {
-    #[inline]
-    fn conv(size: kas_text::Vec2) -> Self {
-        Vec2(size.0, size.1)
-    }
-    #[inline]
-    fn try_conv(v: kas_text::Vec2) -> Result<Self> {
-        Ok(Self::conv(v))
-    }
-}
+impl_via_from!(kas_text::Vec2: Vec2);
 
 impl From<Vec2> for kas_text::Vec2 {
     #[inline]
@@ -661,29 +634,13 @@ impl From<Vec2> for kas_text::Vec2 {
         kas_text::Vec2(size.0, size.1)
     }
 }
-impl Conv<Vec2> for kas_text::Vec2 {
-    #[inline]
-    fn conv(size: Vec2) -> kas_text::Vec2 {
-        kas_text::Vec2(size.0, size.1)
-    }
-    #[inline]
-    fn try_conv(v: Vec2) -> Result<Self> {
-        Ok(Self::conv(v))
-    }
-}
-
 impl From<Vec2> for DVec2 {
     #[inline]
     fn from(v: Vec2) -> DVec2 {
         DVec2(v.0.into(), v.1.into())
     }
 }
-impl Conv<Vec2> for DVec2 {
-    #[inline]
-    fn try_conv(v: Vec2) -> Result<DVec2> {
-        Ok(DVec2(v.0.into(), v.1.into()))
-    }
-}
+impl_via_from!(Vec2: kas_text::Vec2, DVec2);
 impl ConvApprox<DVec2> for Vec2 {
     fn try_conv_approx(size: DVec2) -> Result<Vec2> {
         Ok(Vec2(size.0.try_cast_approx()?, size.1.try_cast_approx()?))
