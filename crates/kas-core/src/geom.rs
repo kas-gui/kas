@@ -405,12 +405,9 @@ impl std::ops::Div<i32> for Size {
 }
 
 /// Convert an [`Offset`] into a [`Coord`]
-///
-/// In debug mode this asserts that the result is non-negative.
 impl Conv<Offset> for Coord {
     #[inline]
     fn try_conv(v: Offset) -> Result<Self> {
-        debug_assert!(v.0 >= 0 && v.1 >= 0, "Coord::conv({v:?}): negative value");
         Ok(Self(v.0, v.1))
     }
 }
