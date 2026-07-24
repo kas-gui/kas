@@ -145,7 +145,7 @@ impl<F: Format> Allocator for Atlases<F> {
 
         let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
 
-        let tex_size = Vec2::conv(Size::from(tex_size));
+        let tex_size = Vec2::conv(Size::conv(tex_size));
         let a = to_vec2(alloc.rectangle.min);
         let b = to_vec2(alloc.rectangle.max);
         debug_assert!(Vec2::ZERO <= a && a <= b && b <= tex_size);

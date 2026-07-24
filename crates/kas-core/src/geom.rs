@@ -149,23 +149,6 @@ macro_rules! impl_common {
                 self.0 > rhs.0 && self.1 > rhs.1
             }
         }
-
-        impl From<(i32, i32)> for $T {
-            #[inline]
-            fn from(v: (i32, i32)) -> Self {
-                Self(v.0, v.1)
-            }
-        }
-        impl Conv<(i32, i32)> for $T {
-            #[inline]
-            fn conv(v: (i32, i32)) -> Self {
-                Self(v.0, v.1)
-            }
-            #[inline]
-            fn try_conv(v: (i32, i32)) -> Result<Self> {
-                Ok(Self::conv(v))
-            }
-        }
     };
 }
 
@@ -195,6 +178,13 @@ impl Coord {
     #[inline]
     pub const fn splat(n: i32) -> Self {
         Self(n, n)
+    }
+}
+
+impl From<(i32, i32)> for Coord {
+    #[inline]
+    fn from(v: (i32, i32)) -> Self {
+        Self(v.0, v.1)
     }
 }
 
@@ -333,6 +323,21 @@ impl Size {
             let w = i32::conv((i64::conv(self.0) * i64::conv(target.1)) / i64::conv(self.1));
             Some(Size(w, target.1))
         }
+    }
+}
+
+impl Conv<(i32, i32)> for Size {
+    fn try_conv(v: (i32, i32)) -> Result<Self> {
+        if v.0 >= 0 && v.1 >= 0 {
+            Ok(Size(v.0, v.1))
+        } else {
+            Err(Error::Range)
+        }
+    }
+
+    #[inline]
+    fn conv(v: (i32, i32)) -> Self {
+        Self::new(v.0, v.1)
     }
 }
 
@@ -488,6 +493,13 @@ impl Offset {
     }
 }
 
+impl From<(i32, i32)> for Offset {
+    #[inline]
+    fn from(v: (i32, i32)) -> Self {
+        Self(v.0, v.1)
+    }
+}
+
 impl std::ops::Neg for Offset {
     type Output = Self;
 
@@ -566,6 +578,8 @@ impl Conv<Offset> for kas_text::Vec2 {
         Ok(Vec2::try_conv(v)?.into())
     }
 }
+
+impl_via_from!((i32, i32): Coord, Offset);
 
 /// An axis-aligned rectangular region
 ///
