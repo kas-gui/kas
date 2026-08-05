@@ -9,7 +9,7 @@
 
 use std::ops::Add;
 
-use crate::cast::{Conv, ConvFloat};
+use crate::cast::{Conv, ConvTo, Nearest};
 use thiserror::Error;
 
 /// 4-part colour data, linear, sRGB colour space
@@ -561,7 +561,7 @@ fn from_linear(x: f32) -> u8 {
     } else {
         x.powf(1.0 / 2.4) * 1.055 - 0.055
     };
-    u8::conv_nearest(x * 255.0)
+    u8::conv_to(Nearest, x * 255.0)
 }
 
 impl From<Rgba8Srgb> for Rgba {
@@ -592,7 +592,7 @@ impl From<Rgba> for Rgba8Srgb {
             from_linear(c.r),
             from_linear(c.g),
             from_linear(c.b),
-            u8::conv_nearest(c.a * 255.0),
+            u8::conv_to(Nearest, c.a * 255.0),
         ])
     }
 }

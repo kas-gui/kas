@@ -6,9 +6,9 @@
 //! Types used by size rules
 
 use super::SizeRules;
-use crate::cast::*;
 use crate::dir::Directional;
 use crate::geom::{Size, Vec2};
+use cast::{Cast, CastTo, Ceil, Conv, ConvTo, Nearest, Rounding};
 
 // for doc use
 #[allow(unused)] use crate::theme::SizeCx;
@@ -26,8 +26,8 @@ impl LogicalSize {
     ///
     /// Values are multiplied by the window's scale factor and cast to nearest.
     pub fn to_physical(self, scale_factor: f32) -> Size {
-        let w = i32::conv_nearest(self.0 * scale_factor);
-        let h = i32::conv_nearest(self.1 * scale_factor);
+        let w = i32::conv_to(Nearest, self.0 * scale_factor);
+        let h = i32::conv_to(Nearest, self.1 * scale_factor);
         Size(w, h)
     }
 
@@ -47,7 +47,7 @@ impl LogicalSize {
 
     /// Take component and scale
     pub fn extract_scaled(self, dir: impl Directional, scale_factor: f32) -> i32 {
-        (self.extract(dir) * scale_factor).cast_nearest()
+        (self.extract(dir) * scale_factor).cast_to(Nearest)
     }
 }
 
@@ -58,17 +58,27 @@ impl From<(f32, f32)> for LogicalSize {
     }
 }
 
-impl Conv<(i32, i32)> for LogicalSize {
+impl<R: Rounding> ConvTo<(i32, i32), R> for LogicalSize
+where
+    f32: ConvTo<i32, R>,
+{
+    type Error = <f32 as ConvTo<i32, R>>::Error;
+
     #[inline]
-    fn try_conv((w, h): (i32, i32)) -> Result<Self> {
-        Ok(LogicalSize(w.try_cast()?, h.try_cast()?))
+    fn try_conv_to(mode: R, (w, h): (i32, i32)) -> Result<Self, Self::Error> {
+        Ok(LogicalSize(w.try_cast_to(mode)?, h.try_cast_to(mode)?))
     }
 }
 
-impl Conv<(u32, u32)> for LogicalSize {
+impl<R: Rounding> ConvTo<(u32, u32), R> for LogicalSize
+where
+    f32: ConvTo<u32, R>,
+{
+    type Error = <f32 as ConvTo<u32, R>>::Error;
+
     #[inline]
-    fn try_conv((w, h): (u32, u32)) -> Result<Self> {
-        Ok(LogicalSize(w.try_cast()?, h.try_cast()?))
+    fn try_conv_to(mode: R, (w, h): (u32, u32)) -> Result<Self, Self::Error> {
+        Ok(LogicalSize(w.try_cast_to(mode)?, h.try_cast_to(mode)?))
     }
 }
 
@@ -237,8 +247,8 @@ impl LogicalBuilder {
         let min = self.size.extract(axis) * self.scale_factor;
         let ideal = min * self.ideal_factor;
         let margin = self.margin * self.scale_factor;
-        SizeRules::new(min.cast_ceil(), ideal.cast_ceil(), self.stretch)
-            .with_margin(margin.cast_nearest())
+        SizeRules::new(min.cast_to(Ceil), ideal.cast_to(Ceil), self.stretch)
+            .with_margin(margin.cast_to(Nearest))
     }
 }
 

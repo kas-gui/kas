@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use super::SimpleTheme;
 use crate::Id;
-use crate::cast::traits::*;
+use crate::cast::{Ceil, Floor, traits::*};
 use crate::config::{Config, WindowConfig};
 use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
@@ -284,8 +284,8 @@ where
             shadow = Quad::conv(inner_rect);
             shadow.a += self.w.dims.shadow_a * SHADOW_POPUP;
             shadow.b += self.w.dims.shadow_b * SHADOW_POPUP;
-            let a = Coord::conv_floor(shadow.a);
-            let b = Coord::conv_ceil(shadow.b);
+            let a = Coord::conv_to(Floor, shadow.a);
+            let b = Coord::conv_to(Ceil, shadow.b);
             outer_rect = Rect::new(a, (b - a).cast());
         }
         let mut draw = self.draw.new_pass(outer_rect, offset, class);

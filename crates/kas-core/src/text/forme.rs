@@ -6,7 +6,7 @@
 //! Theme-applied Text element
 
 use crate::Layout;
-use crate::cast::{Cast, CastFloat};
+use crate::cast::{Cast, CastTo, Ceil};
 use crate::geom::{Rect, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules, Stretch};
 use crate::text::fonts::FontSelector;
@@ -62,13 +62,13 @@ impl Layout for ConfiguredForme {
                 let (min, ideal) = cx.wrapped_line_len(self.class(), self.font_size());
                 let bound: i32 = self
                     .measure_width(ideal.cast())
-                    .map(|b| b.cast_ceil())
+                    .map(|b| b.cast_to(Ceil))
                     .unwrap_or_default();
                 SizeRules::new(bound.min(min), bound.min(ideal), Stretch::Filler)
             } else {
                 let bound: i32 = self
                     .measure_width(f32::INFINITY)
-                    .map(|b| b.cast_ceil())
+                    .map(|b| b.cast_to(Ceil))
                     .unwrap_or_default();
                 SizeRules::new(bound, bound, Stretch::Filler)
             }
@@ -80,7 +80,7 @@ impl Layout for ConfiguredForme {
                 .unwrap_or(f32::INFINITY);
             let bound: i32 = self
                 .measure_height(wrap_width, None)
-                .map(|b| b.cast_ceil())
+                .map(|b| b.cast_to(Ceil))
                 .unwrap_or_default();
             SizeRules::new(bound, bound, Stretch::Filler)
         };

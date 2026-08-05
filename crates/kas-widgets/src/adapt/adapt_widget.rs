@@ -8,7 +8,7 @@
 use super::*;
 #[allow(unused)] use kas::Events;
 use kas::Widget;
-use kas::cast::{Cast, CastFloat};
+use kas::cast::{Cast, CastTo, Ceil};
 use kas::dir::Directional;
 use kas::geom::Vec2;
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
@@ -168,7 +168,7 @@ pub trait AdaptWidget: Widget + Sized {
         let size = Vec2(w.cast(), h.cast());
         Reserve::new(self, move |cx: &mut SizeCx, axis: AxisInfo| {
             let size = size.extract(axis) * cx.scale_factor();
-            SizeRules::fixed(size.cast_ceil())
+            SizeRules::fixed(size.cast_to(Ceil))
         })
     }
 
@@ -182,7 +182,7 @@ pub trait AdaptWidget: Widget + Sized {
         let size = Vec2(w, h);
         Reserve::new(self, move |cx: &mut SizeCx, axis: AxisInfo| {
             let size = size.extract(axis) * cx.dpem(TextClass::Standard);
-            SizeRules::fixed(size.cast_ceil())
+            SizeRules::fixed(size.cast_to(Ceil))
         })
     }
 

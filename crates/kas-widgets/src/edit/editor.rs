@@ -16,7 +16,7 @@
 
 use super::highlight::{self, Highlighter, SchemeColors};
 use super::*;
-use kas::cast::Cast;
+use kas::cast::{Cast, Ceil, Floor, Nearest};
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{
     ConfigCx, ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll,
@@ -607,12 +607,12 @@ impl Part {
             if common.wrap {
                 let (min, ideal) = cx.wrapped_line_len(TextClass::Editor, common.dpem);
                 if self.status >= Status::Shaped {
-                    bound = self.forme.measure_width(ideal.cast()).cast_ceil();
+                    bound = self.forme.measure_width(ideal.cast()).cast_to(Ceil);
                 }
                 SizeRules::new(bound.min(min), bound.min(ideal), Stretch::Filler)
             } else {
                 if self.status >= Status::Shaped {
-                    bound = self.forme.measure_width(f32::INFINITY).cast_ceil();
+                    bound = self.forme.measure_width(f32::INFINITY).cast_to(Ceil);
                 }
                 SizeRules::new(bound, bound, Stretch::Filler)
             }
@@ -624,7 +624,7 @@ impl Part {
                 .unwrap_or(f32::INFINITY);
             let mut bound = 0i32;
             if self.status >= Status::Shaped {
-                bound = self.forme.measure_height(wrap_width, None).cast_ceil();
+                bound = self.forme.measure_height(wrap_width, None).cast_to(Ceil);
             }
             SizeRules::new(bound, bound, Stretch::Filler)
         };
@@ -714,7 +714,7 @@ impl Part {
         }
 
         let (tl, br) = self.forme.bounding_box();
-        (Vec2::from(br) - Vec2::from(tl)).cast_ceil()
+        (Vec2::from(br) - Vec2::from(tl)).cast_to(Ceil)
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
@@ -979,12 +979,12 @@ impl Part {
             let right = c1.pos.0.max(c2.pos.0);
             let top = (c1.pos.1 - c1.ascent).min(c2.pos.1 - c2.ascent);
             let bottom = (c1.pos.1 - c1.descent).max(c2.pos.1 - c2.ascent);
-            let p1 = Vec2(left, top).cast_floor();
-            let p2 = Vec2(right, bottom).cast_ceil();
+            let p1 = Vec2(left, top).cast_to(Floor);
+            let p2 = Vec2(right, bottom).cast_to(Ceil);
             Rect::from_coords(p1, p2)
         } else if let Some(c) = m1.or(m2) {
-            let p1 = Vec2(c.pos.0, c.pos.1 - c.ascent).cast_floor();
-            let p2 = Vec2(c.pos.0, c.pos.1 - c.descent).cast_ceil();
+            let p1 = Vec2(c.pos.0, c.pos.1 - c.ascent).cast_to(Floor);
+            let p2 = Vec2(c.pos.0, c.pos.1 - c.descent).cast_to(Ceil);
             Rect::from_coords(p1, p2)
         } else {
             return;
@@ -1776,7 +1776,7 @@ impl Common {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
-                let pos = c_part.rect.pos + Offset::conv_nearest(v);
+                let pos = c_part.rect.pos + Offset::conv_to(Nearest, v);
                 let index = self.text_index_nearest(parts, pos).byte();
                 Action::Move(TextIndex::new(c_p, index), Some(v.0))
             }
@@ -1975,9 +1975,9 @@ impl Common {
         if part.is_ready()
             && let Some(marker) = part.forme.text_glyph_pos(cursor.byte()).next_back()
         {
-            let y0 = (marker.pos.1 - marker.ascent).cast_floor();
-            let pos = part.rect.pos + Offset(marker.pos.0.cast_nearest(), y0);
-            let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
+            let y0 = (marker.pos.1 - marker.ascent).cast_to(Floor);
+            let pos = part.rect.pos + Offset(marker.pos.0.cast_to(Nearest), y0);
+            let size = Size(0, i32::conv_to(Ceil, marker.pos.1 - marker.descent) - y0);
             cx.set_scroll(Scroll::Rect(Rect { pos, size }));
         }
     }

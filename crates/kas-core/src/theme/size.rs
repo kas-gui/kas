@@ -65,7 +65,7 @@ impl<'a> SizeCx<'a> {
     /// ```
     /// use kas_core::cast::*;
     /// # let scale_factor = 1.5f32;
-    /// let size: i32 = (100.0 * scale_factor).cast_ceil();
+    /// let size: i32 = (100.0 * scale_factor).cast_to(Ceil);
     /// ```
     ///
     /// This value may change during a program's execution (e.g. when a window

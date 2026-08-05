@@ -13,12 +13,13 @@
 //!
 //! Conversions types mostly use [`Cast`] and [`Conv`]. [`From`] may be used to
 //! simply pack/unpack components. To convert from floating-point types to
-//! integer types, use [`CastApprox`] or [`CastFloat`] to specify the rounding
+//! integer types, use [`CastApprox`] or [`CastTo`] to specify the rounding
 //! mode.
 
 use crate::cast::*;
 use crate::dir::Directional;
 use std::cmp::{Ordering, PartialOrd};
+use std::convert::Infallible;
 
 mod transform;
 mod vector;
@@ -259,10 +260,12 @@ impl std::ops::SubAssign<Size> for Coord {
     }
 }
 
-impl Conv<Coord> for kas_text::Vec2 {
+impl<R: Rounding> ConvTo<Coord, R> for kas_text::Vec2 {
+    type Error = R::MaximumError;
+
     #[inline]
-    fn try_conv(pos: Coord) -> Result<Self> {
-        Ok(Vec2::try_conv(pos)?.into())
+    fn try_conv_to(mode: R, pos: Coord) -> Result<Self, Self::Error> {
+        pos.try_cast_to(mode)
     }
 }
 
@@ -326,17 +329,19 @@ impl Size {
     }
 }
 
-impl Conv<(i32, i32)> for Size {
-    fn try_conv(v: (i32, i32)) -> Result<Self> {
+impl ConvExact<(i32, i32)> for Size {
+    type Error = RangeError;
+
+    fn try_conv_exact(v: (i32, i32)) -> Result<Self, RangeError> {
         if v.0 >= 0 && v.1 >= 0 {
             Ok(Size(v.0, v.1))
         } else {
-            Err(Error::Range)
+            Err(RangeError)
         }
     }
 
     #[inline]
-    fn conv(v: (i32, i32)) -> Self {
+    fn conv_exact(v: (i32, i32)) -> Self {
         Self::new(v.0, v.1)
     }
 }
@@ -405,9 +410,11 @@ impl std::ops::Div<i32> for Size {
 }
 
 /// Convert an [`Offset`] into a [`Coord`]
-impl Conv<Offset> for Coord {
+impl ConvExact<Offset> for Coord {
+    type Error = Infallible;
+
     #[inline]
-    fn try_conv(v: Offset) -> Result<Self> {
+    fn try_conv_exact(v: Offset) -> Result<Self, Infallible> {
         Ok(Self(v.0, v.1))
     }
 }
@@ -415,46 +422,79 @@ impl Conv<Offset> for Coord {
 /// Convert an [`Offset`] into a [`Size`]
 ///
 /// In debug mode this asserts that the result is non-negative.
-impl Conv<Offset> for Size {
+impl ConvExact<Offset> for Size {
+    type Error = RangeError;
+
     #[inline]
-    fn try_conv(v: Offset) -> Result<Self> {
-        debug_assert!(v.0 >= 0 && v.1 >= 0, "Size::conv({v:?}): negative value");
-        Ok(Self(v.0, v.1))
+    fn try_conv_exact(v: Offset) -> Result<Self, RangeError> {
+        if v.0 >= 0 && v.1 >= 0 {
+            Ok(Self(v.0, v.1))
+        } else {
+            Err(RangeError)
+        }
+    }
+
+    #[inline]
+    fn conv_exact(v: Offset) -> Self {
+        debug_assert!(
+            v.0 >= 0 && v.1 >= 0,
+            "ConvExact::conv_exact({v:?}): negative value"
+        );
+        Self(v.0, v.1)
     }
 }
 
 // used for marigns
-impl Conv<Size> for (u16, u16) {
+impl ConvExact<Size> for (u16, u16) {
+    type Error = RangeError;
+
     #[inline]
-    fn try_conv(size: Size) -> Result<Self> {
+    fn try_conv_exact(size: Size) -> Result<Self, RangeError> {
+        Ok((size.0.try_cast()?, size.1.try_cast()?))
+    }
+
+    #[inline]
+    fn conv_exact(size: Size) -> Self {
+        (size.0.cast(), size.1.cast())
+    }
+}
+impl ConvExact<(u16, u16)> for Size {
+    type Error = Infallible;
+
+    #[inline]
+    fn try_conv_exact(v: (u16, u16)) -> Result<Self, Infallible> {
+        Ok(Self(v.0.try_cast()?, v.1.try_cast()?))
+    }
+}
+
+impl ConvExact<(u32, u32)> for Size {
+    type Error = RangeError;
+
+    #[inline]
+    fn try_conv_exact(v: (u32, u32)) -> Result<Self, RangeError> {
+        Ok(Self(v.0.try_cast()?, v.1.try_cast()?))
+    }
+}
+
+impl ConvExact<Size> for (u32, u32) {
+    type Error = RangeError;
+
+    #[inline]
+    fn try_conv_exact(size: Size) -> Result<Self, Self::Error> {
         Ok((size.0.try_cast()?, size.1.try_cast()?))
     }
 }
-impl Conv<(u16, u16)> for Size {
-    #[inline]
-    fn try_conv(v: (u16, u16)) -> Result<Self> {
-        Ok(Self(i32::try_conv(v.0)?, i32::try_conv(v.1)?))
-    }
-}
 
-impl Conv<(u32, u32)> for Size {
-    #[inline]
-    fn try_conv(v: (u32, u32)) -> Result<Self> {
-        Ok(Self(i32::try_conv(v.0)?, i32::try_conv(v.1)?))
-    }
-}
+impl<R: Rounding> ConvTo<Size, R> for kas_text::Vec2
+where
+    f32: ConvTo<i32, R>,
+{
+    type Error = <f32 as ConvTo<i32, R>>::Error;
 
-impl Conv<Size> for (u32, u32) {
     #[inline]
-    fn try_conv(size: Size) -> Result<Self> {
-        Ok((u32::try_conv(size.0)?, u32::try_conv(size.1)?))
-    }
-}
-
-impl Conv<Size> for kas_text::Vec2 {
-    #[inline]
-    fn try_conv(size: Size) -> Result<Self> {
-        Ok(Vec2::try_conv(size)?.into())
+    fn try_conv_to(mode: R, size: Size) -> Result<Self, Self::Error> {
+        let v: Vec2 = size.try_cast_to(mode)?;
+        Ok(v.into())
     }
 }
 
@@ -555,24 +595,34 @@ impl std::ops::Div<i32> for Offset {
     }
 }
 
-impl Conv<Coord> for Offset {
+impl ConvExact<Coord> for Offset {
+    type Error = Infallible;
+
     #[inline]
-    fn try_conv(v: Coord) -> Result<Self> {
+    fn try_conv_exact(v: Coord) -> Result<Self, Infallible> {
         Ok(Self(v.0, v.1))
     }
 }
 
-impl Conv<Size> for Offset {
+impl ConvExact<Size> for Offset {
+    type Error = Infallible;
+
     #[inline]
-    fn try_conv(v: Size) -> Result<Self> {
+    fn try_conv_exact(v: Size) -> Result<Self, Infallible> {
         Ok(Self(v.0, v.1))
     }
 }
 
-impl Conv<Offset> for kas_text::Vec2 {
+impl<R: Rounding> ConvTo<Offset, R> for kas_text::Vec2
+where
+    f32: ConvTo<i32, R>,
+{
+    type Error = <f32 as ConvTo<i32, R>>::Error;
+
     #[inline]
-    fn try_conv(v: Offset) -> Result<Self> {
-        Ok(Vec2::try_conv(v)?.into())
+    fn try_conv_to(mode: R, v: Offset) -> Result<Self, Self::Error> {
+        let v: Vec2 = v.try_cast_to(mode)?;
+        Ok(v.into())
     }
 }
 
@@ -689,16 +739,34 @@ impl std::ops::SubAssign<Offset> for Rect {
 #[cfg(feature = "accesskit")]
 mod accesskit_impls {
     use super::{Coord, Offset, Rect};
-    use crate::cast::{Cast, CastApprox, Conv, ConvApprox, Result};
+    use cast::{ConvExact, ConvTo, ConvertInto, Rounding};
 
-    impl ConvApprox<accesskit::Point> for Coord {
-        fn try_conv_approx(p: accesskit::Point) -> Result<Self> {
-            Ok(Coord(p.x.try_cast_approx()?, p.y.try_cast_approx()?))
+    impl<R: Rounding> ConvTo<accesskit::Point, Approx> for Coord
+    where
+        i32: ConvTo<f64, R>,
+    {
+        type Error = <i32 as ConvTo<f64, R>>::Error;
+
+        fn try_conv_to(mode: R, rect: accesskit::Rect) -> Result<Self, Self::Error> {
+            Ok(Coord(p.x.try_cast_to(mode)?, p.y.try_cast_to(mode)?))
         }
     }
 
-    impl Conv<Rect> for accesskit::Rect {
-        fn try_conv(rect: Rect) -> Result<Self> {
+    impl<R: Rounding> ConvTo<accesskit::Point, Approx> for Offset
+    where
+        i32: ConvTo<f64, R>,
+    {
+        type Error = <i32 as ConvTo<f64, R>>::Error;
+
+        fn try_conv_to(mode: R, rect: accesskit::Rect) -> Result<Self, Self::Error> {
+            Ok(Offset(p.x.try_cast_to(mode)?, p.y.try_cast_to(mode)?))
+        }
+    }
+
+    impl ConvExact<Rect> for accesskit::Rect {
+        type Error = Infallible;
+
+        fn try_convert(rect: Rect) -> Result<Self, Infallible> {
             let p = rect.pos;
             let p2 = rect.pos2();
             Ok(accesskit::Rect {
@@ -710,41 +778,51 @@ mod accesskit_impls {
         }
     }
 
-    impl ConvApprox<accesskit::Rect> for Rect {
-        fn try_conv_approx(rect: accesskit::Rect) -> Result<Self> {
-            let pos = Coord(rect.x0.try_cast_approx()?, rect.y0.try_cast_approx()?);
-            let p2 = Coord(rect.x1.try_cast_approx()?, rect.y1.try_cast_approx()?);
+    impl<R: Rounding> ConvTo<accesskit::Rect, Approx> for Rect
+    where
+        i32: ConvTo<f64, R>,
+    {
+        type Error = <i32 as ConvTo<f64, R>>::Error;
+
+        fn try_conv_to(rect: accesskit::Rect) -> Result<Self, Self::Error> {
+            let mode = R::default();
+            let pos = Coord(rect.x0.try_convert(mode)?, rect.y0.try_convert(mode)?);
+            let p2 = Coord(rect.x1.try_convert(mode)?, rect.y1.try_convert(mode)?);
             let size = (p2 - pos).cast();
             Ok(Rect { pos, size })
-        }
-    }
-
-    impl ConvApprox<accesskit::Point> for Offset {
-        fn try_conv_approx(point: accesskit::Point) -> Result<Self> {
-            Ok(Offset(
-                point.x.try_cast_approx()?,
-                point.y.try_cast_approx()?,
-            ))
         }
     }
 }
 
 mod winit_impls {
     use super::{Coord, Size};
-    use crate::cast::{Cast, CastApprox, Conv, ConvApprox, Result};
+    use cast::{Cast, CastTo, ConvTo, Rounding};
     use winit::dpi::{PhysicalPosition, PhysicalSize};
 
-    impl<X: CastApprox<i32>> ConvApprox<PhysicalPosition<X>> for Coord {
+    impl<R: Rounding, X> ConvTo<PhysicalPosition<X>, R> for Coord
+    where
+        i32: ConvTo<X, R>,
+    {
+        type Error = <i32 as ConvTo<X, R>>::Error;
+
         #[inline]
-        fn try_conv_approx(pos: PhysicalPosition<X>) -> Result<Self> {
-            Ok(Coord(pos.x.try_cast_approx()?, pos.y.try_cast_approx()?))
+        fn try_conv_to(mode: R, pos: PhysicalPosition<X>) -> Result<Self, Self::Error> {
+            Ok(Coord(pos.x.try_cast_to(mode)?, pos.y.try_cast_to(mode)?))
         }
     }
 
-    impl<X: Cast<i32>> Conv<PhysicalSize<X>> for Size {
+    impl<R: Rounding, X> ConvTo<PhysicalSize<X>, R> for Size
+    where
+        i32: ConvTo<X, R>,
+    {
+        type Error = <i32 as ConvTo<X, R>>::Error;
+
         #[inline]
-        fn try_conv(size: PhysicalSize<X>) -> Result<Self> {
-            Ok(Size(size.width.cast(), size.height.cast()))
+        fn try_conv_to(mode: R, size: PhysicalSize<X>) -> Result<Self, Self::Error> {
+            Ok(Size(
+                size.width.try_cast_to(mode)?,
+                size.height.try_cast_to(mode)?,
+            ))
         }
     }
 

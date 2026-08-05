@@ -6,6 +6,7 @@
 //! Toggle widgets
 
 use super::AccessLabel;
+use kas::cast::{Ceil, Floor};
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
@@ -178,11 +179,11 @@ pub(crate) fn shrink_to_text(rect: &mut Rect, direction: Direction, label: &Acce
         match direction {
             Direction::Right => {
                 let offset = label.rect().pos.0 - rect.pos.0;
-                let text_right: i32 = ((bb.1).0).cast_ceil();
+                let text_right: i32 = ((bb.1).0).cast_to(Ceil);
                 rect.size.0 = offset + text_right;
             }
             Direction::Left => {
-                let text_left: i32 = ((bb.0).0).cast_floor();
+                let text_left: i32 = ((bb.0).0).cast_to(Floor);
                 rect.pos.0 += text_left;
                 rect.size.0 -= text_left
             }

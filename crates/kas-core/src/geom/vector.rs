@@ -7,7 +7,7 @@
 //!
 //! For drawing operations, all dimensions use the `f32` type.
 
-use crate::cast::*;
+use crate::cast::{CastTo, Conv, ConvTo, Rounding, impl_via_from};
 use crate::dir::Directional;
 use crate::geom::{Coord, Offset, Rect, Size};
 use std::cmp::{Ordering, PartialOrd};
@@ -152,11 +152,17 @@ impl Sub<Vec2> for Quad {
     }
 }
 
-impl Conv<Rect> for Quad {
+impl<R: Rounding> ConvTo<Rect, R> for Quad
+where
+    f32: ConvTo<i32, R>,
+{
+    type Error = <f32 as ConvTo<i32, R>>::Error;
+
     #[inline]
-    fn try_conv(rect: Rect) -> Result<Self> {
-        let a = Vec2::try_conv(rect.pos)?;
-        let b = a + Vec2::try_conv(rect.size)?;
+    fn try_conv_to(mode: R, rect: Rect) -> Result<Self, Self::Error> {
+        let a = rect.pos.try_cast_to(mode)?;
+        let size: Vec2 = rect.size.try_cast_to(mode)?;
+        let b = a + size;
         Ok(Quad { a, b })
     }
 }
@@ -641,9 +647,14 @@ impl From<Vec2> for DVec2 {
     }
 }
 impl_via_from!(Vec2: kas_text::Vec2, DVec2);
-impl ConvApprox<DVec2> for Vec2 {
-    fn try_conv_approx(size: DVec2) -> Result<Vec2> {
-        Ok(Vec2(size.0.try_cast_approx()?, size.1.try_cast_approx()?))
+impl<R: Rounding> ConvTo<DVec2, R> for Vec2
+where
+    f32: ConvTo<f64, R>,
+{
+    type Error = <f32 as ConvTo<f64, R>>::Error;
+
+    fn try_conv_to(mode: R, size: DVec2) -> Result<Vec2, Self::Error> {
+        Ok(Vec2(size.0.try_cast_to(mode)?, size.1.try_cast_to(mode)?))
     }
 }
 
@@ -651,51 +662,39 @@ impl_vec2!(Vec2, f32);
 impl_vec2!(DVec2, f64);
 
 macro_rules! impl_conv_vec2 {
-    ($S:ty, $T:ty) => {
-        impl Conv<$S> for $T {
+    ($S:ty, $T:ty, $t:ty) => {
+        impl<R: Rounding> ConvTo<$S, R> for $T
+        where
+            $t: ConvTo<i32, R>,
+        {
+            type Error = <$t as ConvTo<i32, R>>::Error;
+
             #[inline]
-            fn try_conv(arg: $S) -> Result<Self> {
-                Ok(Self(arg.0.try_cast()?, arg.1.try_cast()?))
+            fn try_conv_to(mode: R, arg: $S) -> Result<Self, Self::Error> {
+                Ok(Self(arg.0.try_cast_to(mode)?, arg.1.try_cast_to(mode)?))
             }
         }
 
-        impl ConvApprox<$T> for $S {
-            #[inline]
-            fn try_conv_approx(arg: $T) -> Result<Self> {
-                Ok(Self(arg.0.try_cast_approx()?, arg.1.try_cast_approx()?))
-            }
-        }
+        impl<R: Rounding> ConvTo<$T, R> for $S
+        where
+            i32: ConvTo<$t, R>,
+        {
+            type Error = <i32 as ConvTo<$t, R>>::Error;
 
-        impl ConvFloat<$T> for $S {
             #[inline]
-            fn try_conv_trunc(x: $T) -> Result<Self> {
-                Ok(Self(i32::try_conv_trunc(x.0)?, i32::try_conv_trunc(x.1)?))
-            }
-            #[inline]
-            fn try_conv_nearest(x: $T) -> Result<Self> {
-                Ok(Self(
-                    i32::try_conv_nearest(x.0)?,
-                    i32::try_conv_nearest(x.1)?,
-                ))
-            }
-            #[inline]
-            fn try_conv_floor(x: $T) -> Result<Self> {
-                Ok(Self(i32::try_conv_floor(x.0)?, i32::try_conv_floor(x.1)?))
-            }
-            #[inline]
-            fn try_conv_ceil(x: $T) -> Result<Self> {
-                Ok(Self(i32::try_conv_ceil(x.0)?, i32::try_conv_ceil(x.1)?))
+            fn try_conv_to(mode: R, arg: $T) -> Result<Self, Self::Error> {
+                Ok(Self(arg.0.try_cast_to(mode)?, arg.1.try_cast_to(mode)?))
             }
         }
     };
 }
 
-impl_conv_vec2!(Coord, Vec2);
-impl_conv_vec2!(Size, Vec2);
-impl_conv_vec2!(Offset, Vec2);
-impl_conv_vec2!(Coord, DVec2);
-impl_conv_vec2!(Size, DVec2);
-impl_conv_vec2!(Offset, DVec2);
+impl_conv_vec2!(Coord, Vec2, f32);
+impl_conv_vec2!(Size, Vec2, f32);
+impl_conv_vec2!(Offset, Vec2, f32);
+impl_conv_vec2!(Coord, DVec2, f64);
+impl_conv_vec2!(Size, DVec2, f64);
+impl_conv_vec2!(Offset, DVec2, f64);
 
 /// 3D vector
 ///

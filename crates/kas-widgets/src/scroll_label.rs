@@ -6,6 +6,7 @@
 //! Scrollable and selectable label
 
 use super::{ScrollBar, ScrollBarMsg};
+use kas::cast::{Ceil, Floor, Nearest};
 use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
@@ -49,7 +50,7 @@ mod ScrollTextCore {
                 let height = self
                     .text
                     .measure_height(width.cast(), std::num::NonZero::new(3));
-                rules.reduce_min_to(height.cast_ceil());
+                rules.reduce_min_to(height.cast_to(Ceil));
             }
             rules
         }
@@ -59,7 +60,7 @@ mod ScrollTextCore {
         #[inline]
         fn content_size(&self) -> Size {
             if let Ok((tl, br)) = self.text.bounding_box() {
-                (br - tl).cast_ceil()
+                (br - tl).cast_to(Ceil)
             } else {
                 Size::ZERO
             }
@@ -215,9 +216,9 @@ mod ScrollTextCore {
                 .ok()
                 .and_then(|mut m| m.next_back())
             {
-                let y0 = (marker.pos.1 - marker.ascent).cast_floor();
-                let pos = Coord(marker.pos.0.cast_nearest(), y0);
-                let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
+                let y0 = (marker.pos.1 - marker.ascent).cast_to(Floor);
+                let pos = Coord(marker.pos.0.cast_to(Nearest), y0);
+                let size = Size(0, i32::conv_to(Ceil, marker.pos.1 - marker.descent) - y0);
                 cx.set_scroll(Scroll::Rect(Rect { pos, size }));
             }
         }
@@ -373,7 +374,7 @@ mod ScrollText {
             let _ = self.vert_bar.size_rules(cx, axis);
             if axis.is_vertical() {
                 let dpem = cx.dpem(self.text.text.class());
-                rules.reduce_min_to((dpem * 4.0).cast_ceil());
+                rules.reduce_min_to((dpem * 4.0).cast_to(Ceil));
             }
             rules.with_stretch(Stretch::Low)
         }

@@ -13,9 +13,9 @@ pub(crate) mod velocity;
 use super::{EventCx, IsUsed};
 #[allow(unused)] use crate::Events; // for doc-links
 use crate::Id;
+use crate::cast::{Approx, Cast, CastTo, Conv};
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
 use crate::geom::{Coord, DVec2, Offset, Vec2};
-use cast::{Cast, CastApprox, Conv};
 pub(crate) use mouse::Mouse;
 pub(crate) use touch::Touch;
 use winit::event::FingerId;
@@ -191,7 +191,7 @@ impl PressStart {
     /// Get the current press coordinate
     #[inline]
     pub fn coord(&self) -> Coord {
-        self.position.cast_approx()
+        self.position.cast_to(Approx)
     }
 
     /// Grab pan/move/press-end events for widget `id`

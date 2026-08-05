@@ -6,6 +6,7 @@
 //! `Slider` control
 
 use super::{GripMsg, GripPart};
+use kas::cast::Floor;
 use kas::event::FocusSource;
 use kas::messages::{DecrementStep, IncrementStep, SetValueF64};
 use kas::prelude::*;
@@ -246,8 +247,8 @@ mod Slider {
                 frac = 1.0 - frac;
             }
             match self.direction.is_vertical() {
-                false => Offset((max_offset.0 as f64 * frac).cast_floor(), 0),
-                true => Offset(0, (max_offset.1 as f64 * frac).cast_floor()),
+                false => Offset((max_offset.0 as f64 * frac).cast_to(Floor), 0),
+                true => Offset(0, (max_offset.1 as f64 * frac).cast_to(Floor)),
             }
         }
 

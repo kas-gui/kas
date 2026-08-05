@@ -10,7 +10,7 @@ use crate::config::EventWindowConfig;
 use crate::event::{Event, EventCx, EventState, FocusSource, NavAdvance, PressStart};
 use crate::geom::{Affine, DVec2, Vec2};
 use crate::{ActionRedraw, Id, Node};
-use cast::{Cast, CastApprox, CastFloat, Conv};
+use cast::{Cast, CastApprox, CastTo, Conv, Nearest};
 use smallvec::SmallVec;
 use winit::event::FingerId;
 
@@ -259,7 +259,7 @@ impl<'a> EventCx<'a> {
                 let press = Press {
                     source: PressSource::touch(grab.finger_id),
                     id: grab.over,
-                    coord: grab.last_position.cast_nearest(),
+                    coord: grab.last_position.cast_to(Nearest),
                 };
                 let event = Event::PressEnd {
                     press,
@@ -273,7 +273,7 @@ impl<'a> EventCx<'a> {
 
         if self.action_moved.is_some() {
             for grab in self.touch.touch_grab.iter_mut() {
-                grab.over = node.try_probe(grab.last_position.cast_nearest());
+                grab.over = node.try_probe(grab.last_position.cast_to(Nearest));
             }
         }
     }
@@ -310,7 +310,7 @@ impl<'a> EventCx<'a> {
         finger_id: FingerId,
         position: DVec2,
     ) {
-        let coord = position.cast_nearest();
+        let coord = position.cast_to(Nearest);
         let over = node.try_probe(coord);
         self.close_non_ancestors_of(over.as_ref());
 
@@ -337,7 +337,7 @@ impl<'a> EventCx<'a> {
         finger_id: FingerId,
         position: DVec2,
     ) {
-        let coord = position.cast_nearest();
+        let coord = position.cast_to(Nearest);
         let over = node.try_probe(coord);
 
         let mut pan_grab = None;
@@ -402,7 +402,7 @@ impl<'a> EventCx<'a> {
                 let source = PressSource::touch(finger_id);
                 let id = grab.over.clone();
                 let success = id.is_some();
-                let coord = position.cast_nearest();
+                let coord = position.cast_to(Nearest);
                 let press = Press { source, id, coord };
 
                 let event = Event::PressEnd { press, success };
