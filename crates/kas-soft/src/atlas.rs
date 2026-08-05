@@ -297,9 +297,10 @@ impl Format for InstanceRgba {
 
     fn copy_texture_slice(src: &[u8], dst: &mut [Self::C]) {
         assert!(src.len() == 4 * dst.len());
-        for (out, chunk) in dst.iter_mut().zip(src.chunks_exact(4)) {
+        let (chunks, _) = src.as_chunks::<4>();
+        for (out, chunk) in dst.iter_mut().zip(chunks) {
             // We convert color from input RGBA (LE) to ARGB (BE) with pre-multiplied alpha
-            let c = u32::from_le_bytes(chunk.try_into().unwrap());
+            let c = u32::from_le_bytes(*chunk);
             let a = c >> 24 & 0xFF;
             let b = a * (c >> 16 & 0xFF) / 255;
             let g = a * (c >> 8 & 0xFF) / 255;

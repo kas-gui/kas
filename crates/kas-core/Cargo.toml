@@ -144,6 +144,7 @@ collapsible_if = "allow"
 collapsible_else_if = "allow"
 bool_comparison = "allow"
 option_map_unit_fn = "allow"
+needless_late_init = "allow"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(internal_doc)'] }
