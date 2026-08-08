@@ -435,7 +435,7 @@ mod SpinBox {
                 match v.try_cast_approx() {
                     Ok(value) => Some(value),
                     Err(err) => {
-                        log::warn!("Slider failed to handle SetValueF64: {err}");
+                        log::warn!("SpinBox failed to handle SetValueF64: {err}");
                         None
                     }
                 }
