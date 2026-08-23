@@ -103,7 +103,7 @@ impl std::fmt::Debug for SpriteDescriptor {
         let y_steps = ((self.0 & 0xF000_0000_0000_0000) >> 60) as u8;
         f.debug_struct("SpriteDescriptor")
             .field("face", &self.face())
-            .field("glyph", &self.glyph())
+            .field("glyph", &self.glyph_u16())
             .field("dpem_steps", &dpem_steps)
             .field("offset_steps", &(x_steps, y_steps))
             .finish()
@@ -125,7 +125,12 @@ impl SpriteDescriptor {
     /// Construct
     pub fn new(config: &Config, face: FaceId, glyph: Glyph, dpem: f32) -> Self {
         let face: u16 = face.get().cast();
-        let glyph_id: u16 = glyph.id.0;
+        // Input GlyphId is 32-bit. We can only store 16 bits here.
+        let glyph_id: u32 = if glyph.id.to_u32() <= 0xFFFF {
+            glyph.id.to_u32()
+        } else {
+            GlyphId::NOTDEF.to_u32()
+        };
 
         let steps = Self::sub_pixel_x_steps(config, dpem);
         let mult = f32::conv(steps);
@@ -149,9 +154,9 @@ impl SpriteDescriptor {
         FaceId::from((self.0 & 0x0000_0000_0000_FFFF) as u32)
     }
 
-    /// Get `GlyphId` descriptor
-    pub fn glyph(self) -> GlyphId {
-        GlyphId(((self.0 & 0x0000_0000_FFFF_0000) >> 16).cast())
+    /// Get glyph index (16-bit)
+    pub fn glyph_u16(self) -> u16 {
+        ((self.0 & 0x0000_0000_FFFF_0000) >> 16).cast()
     }
 
     /// Get scale (pixels per Em)
@@ -347,7 +352,7 @@ impl State {
         use swash::scale::{Render, Source, StrikeWith, image::Content};
         use swash::zeno::{Angle, Transform};
 
-        let face = fonts::library().get_face_store(face_id);
+        let face = fonts::library().get_face(face_id);
         let font = face.swash();
         let synthesis = face.synthesis();
 
@@ -395,7 +400,7 @@ impl State {
                 .offset(desc.fractional_position(&self.config).into())
                 .transform(transform)
                 .embolden(embolden)
-                .render(&mut scaler, desc.glyph().0)
+                .render(&mut scaler, desc.glyph_u16())
             else {
                 log::warn!("raster_glyphs failed: unable to construct renderer");
                 self.glyphs.insert(desc, Sprite::default());

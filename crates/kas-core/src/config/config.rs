@@ -10,7 +10,6 @@ use super::{FontConfig, FontConfigMsg, ThemeConfig, ThemeConfigMsg};
 use crate::ConfigAction;
 use crate::config::Shortcuts;
 use crate::theme::TextClass;
-use core::f32;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell};
