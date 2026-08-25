@@ -11,7 +11,7 @@ publish = false
 
 [dependencies]
 kas = { version = "0.17.0", features = ["wgpu"], path = "../.." }
-kas-wgpu = { version = "0.17.0", path = "../../crates/kas-wgpu" }
+kas-wgpu = { version = "0.17.0", path = "../../crates/kas-wgpu", features = ["validate-shaders"] }
 chrono = "0.4"
 env_logger = "0.11"
 log = "0.4"

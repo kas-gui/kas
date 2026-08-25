@@ -41,6 +41,9 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         // Use adapter texture size limits to support the largest window surface possible
         let mut desc = CB::device_descriptor(&adapter);
+        if !cfg!(feature = "validate-shaders") {
+            desc.required_features |= wgpu::Features::PASSTHROUGH_SHADERS;
+        }
         if features.subpixel_rendering
             && adapter
                 .features()

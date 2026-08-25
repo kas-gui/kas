@@ -5,7 +5,7 @@
 
 //! Shader management
 
-use wgpu::{ShaderModule, include_spirv};
+use wgpu::ShaderModule;
 
 /// Shader manager
 pub struct ShaderManager {
@@ -24,8 +24,19 @@ pub struct ShaderManager {
     pub frag_subpixel: Option<ShaderModule>,
 }
 
+#[cfg(feature = "validate-shaders")]
 macro_rules! create {
-    ($device:ident, $path:expr) => {{ $device.create_shader_module(include_spirv!($path)) }};
+    ($device:ident, $path:expr) => {
+        $device.create_shader_module(wgpu::include_spirv!($path))
+    };
+}
+
+#[cfg(not(feature = "validate-shaders"))]
+macro_rules! create {
+    ($device:ident, $path:expr) => {
+        // SAFETY: this relies on input of valid SPIRV shaders
+        unsafe { $device.create_shader_module_passthrough(wgpu::include_spirv_raw!($path)) }
+    };
 }
 
 impl ShaderManager {
