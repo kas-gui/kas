@@ -46,6 +46,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                 .features()
                 .contains(wgpu::Features::DUAL_SOURCE_BLENDING)
         {
+            log::info!("Enabling feature DUAL_SOURCE_BLENDING for sub-pixel font rendering");
             desc.required_features |= wgpu::Features::DUAL_SOURCE_BLENDING;
         }
         desc.required_limits = desc.required_limits.using_resolution(adapter.limits());

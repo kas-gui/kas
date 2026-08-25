@@ -171,10 +171,7 @@ impl Images {
         );
 
         let mut atlas_rgba_mask = None;
-        if device
-            .features()
-            .contains(wgpu::Features::DUAL_SOURCE_BLENDING)
-        {
+        if let Some(frag_subpixel) = shaders.frag_subpixel.as_ref() {
             atlas_rgba_mask = Some(atlases::Pipeline::new(
                 device,
                 Some("text subpixel mask pipe"),
@@ -198,7 +195,7 @@ impl Images {
                     })],
                 },
                 wgpu::FragmentState {
-                    module: &shaders.frag_subpixel,
+                    module: frag_subpixel,
                     entry_point: Some("main"),
                     compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
