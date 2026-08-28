@@ -41,11 +41,15 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         // Use adapter texture size limits to support the largest window surface possible
         let mut desc = CB::device_descriptor(&adapter);
+        if !cfg!(feature = "validate-shaders") {
+            desc.required_features |= wgpu::Features::PASSTHROUGH_SHADERS;
+        }
         if features.subpixel_rendering
             && adapter
                 .features()
                 .contains(wgpu::Features::DUAL_SOURCE_BLENDING)
         {
+            log::info!("Enabling feature DUAL_SOURCE_BLENDING for sub-pixel font rendering");
             desc.required_features |= wgpu::Features::DUAL_SOURCE_BLENDING;
         }
         desc.required_limits = desc.required_limits.using_resolution(adapter.limits());

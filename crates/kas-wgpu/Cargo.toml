@@ -24,6 +24,9 @@ gles = ["wgpu/gles"]
 dx12 = ["wgpu/dx12"]
 metal = ["wgpu/metal"]
 
+# Enable SPIRV validation of input shaders
+validate-shaders = ["wgpu/spirv"]
+
 [dependencies]
 bytemuck = "1.7.0"
 futures-lite = "2.0"
@@ -40,7 +43,6 @@ path = "../kas-core"
 [dependencies.wgpu]
 version = "30.0.0"
 default-features = false
-features = ["spirv"]
 
 [build-dependencies]
 glob = "0.3"

@@ -5,7 +5,7 @@
 
 //! Shader management
 
-use wgpu::{ShaderModule, include_spirv};
+use wgpu::ShaderModule;
 
 /// Shader manager
 pub struct ShaderManager {
@@ -21,11 +21,22 @@ pub struct ShaderManager {
     pub frag_shaded_square: ShaderModule,
     pub frag_image: ShaderModule,
     pub frag_glyph: ShaderModule,
-    pub frag_subpixel: ShaderModule,
+    pub frag_subpixel: Option<ShaderModule>,
 }
 
+#[cfg(feature = "validate-shaders")]
 macro_rules! create {
-    ($device:ident, $path:expr) => {{ $device.create_shader_module(include_spirv!($path)) }};
+    ($device:ident, $path:expr) => {
+        $device.create_shader_module(wgpu::include_spirv!($path))
+    };
+}
+
+#[cfg(not(feature = "validate-shaders"))]
+macro_rules! create {
+    ($device:ident, $path:expr) => {
+        // SAFETY: this relies on input of valid SPIRV shaders
+        unsafe { $device.create_shader_module_passthrough(wgpu::include_spirv_raw!($path)) }
+    };
 }
 
 impl ShaderManager {
@@ -44,7 +55,10 @@ impl ShaderManager {
             frag_shaded_square: create!(device, "shaders/shaded_square.frag.spv"),
             frag_image: create!(device, "shaders/image.frag.spv"),
             frag_glyph: create!(device, "shaders/glyph.frag.spv"),
-            frag_subpixel: create!(device, "shaders/subpixel.frag.spv"),
+            frag_subpixel: device
+                .features()
+                .contains(wgpu::Features::DUAL_SOURCE_BLENDING)
+                .then(|| create!(device, "shaders/subpixel.frag.spv")),
         }
     }
 }
