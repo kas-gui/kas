@@ -6,10 +6,12 @@
 //! A simple text editor
 
 use kas::prelude::*;
-use kas::widgets::edit;
 use kas::widgets::edit::highlight::{SyntectHighlighter, SyntectSyntax};
-use kas::widgets::{Button, EditBox, Filler, column, dialog, row};
+use kas::widgets::{Button, Filler, MultiPartEditor, column, dialog, row};
 use rfd::FileHandle;
+
+#[derive(Debug)]
+struct Edited;
 
 #[autoimpl(Clone, Debug, PartialEq, Eq)]
 enum EditorAction {
@@ -41,18 +43,6 @@ fn menus() -> impl Widget<Data = ()> {
     ]
 }
 
-#[derive(Default)]
-struct Guard {
-    edited: bool,
-}
-impl edit::EditGuard for Guard {
-    type Data = ();
-
-    fn edit(&mut self, _: &mut edit::Editor, _: &mut EventCx<'_>, _: &Self::Data) {
-        self.edited = true;
-    }
-}
-
 #[impl_self]
 mod Editor {
     #[widget]
@@ -60,7 +50,8 @@ mod Editor {
     struct Editor {
         core: widget_core!(),
         #[widget]
-        editor: EditBox<Guard, SyntectHighlighter>,
+        editor: MultiPartEditor<SyntectHighlighter>,
+        edited: bool,
         pending: Option<EditorAction>,
         file: Option<FileHandle>,
     }
@@ -73,10 +64,10 @@ mod Editor {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, _: &()) {
-            if let Some(action) = cx.try_pop() {
-                if self.editor.guard().edited
-                    && matches!(action, EditorAction::New | EditorAction::Open)
-                {
+            if let Some(Edited) = cx.try_pop() {
+                self.edited = true;
+            } else if let Some(action) = cx.try_pop() {
+                if self.edited && matches!(action, EditorAction::New | EditorAction::Open) {
                     self.pending = Some(action);
                     dialog::AlertUnsaved::new("The document has been modified. Do you want to save or discard the changes?")
                         .with_title("Open document")
@@ -131,15 +122,13 @@ mod Editor {
                     }
                 };
 
-                self.editor.edit(cx, &(), |edit, cx| {
-                    edit.clear(cx);
-                    edit.set_string(cx, text);
-                });
-                self.editor.set_highlighter(SyntectHighlighter::new(syntax));
-                self.editor.guard_mut().edited = false;
+                self.editor = MultiPartEditor::new(text)
+                    .with_highlighter(SyntectHighlighter::new(syntax))
+                    .on_edit(|cx, _| cx.push(Edited));
+                self.edited = false;
             } else if let Some(Saved(result)) = cx.try_pop() {
                 match result {
-                    Ok(()) => self.editor.guard_mut().edited = false,
+                    Ok(()) => self.edited = false,
                     Err(err) => {
                         dialog::AlertError::new("Error saving file:", &err)
                             .display_for(cx, self.id());
@@ -161,11 +150,8 @@ mod Editor {
         fn new() -> Self {
             Editor {
                 core: Default::default(),
-                editor: EditBox::new(Guard::default())
-                    .with_highlighter(SyntectHighlighter::new_plain())
-                    .with_multi_line(true)
-                    .with_lines(5.0, 20.0)
-                    .with_width_em(10.0, 30.0),
+                editor: MultiPartEditor::new("").with_highlighter(SyntectHighlighter::new_plain()),
+                edited: false,
                 pending: None,
                 file: None,
             }
@@ -174,11 +160,9 @@ mod Editor {
         fn do_action(&mut self, cx: &mut EventCx<'_>, action: EditorAction) {
             match action {
                 EditorAction::New => {
-                    self.editor.edit(cx, &(), |edit, cx| {
-                        edit.clear(cx);
-                        edit.set_string(cx, String::new());
-                    });
-                    self.editor.guard_mut().edited = false;
+                    self.editor =
+                        MultiPartEditor::new("").with_highlighter(SyntectHighlighter::new_plain());
+                    self.edited = false;
                     self.file = None;
                 }
                 EditorAction::Open => {
@@ -192,7 +176,8 @@ mod Editor {
                     if action == EditorAction::Save
                         && let Some(file) = self.file.clone()
                     {
-                        let contents = self.editor.clone_text();
+                        // TODO(opt): use self.editor.text_parts() and Write::write_vectored?
+                        let contents = self.editor.text_to_string();
                         cx.send_async(self.id(), async move {
                             Saved(file.write(contents.as_bytes()).await)
                         });

@@ -40,6 +40,7 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 pub struct ActionResetStatus;
 
 /// Result type of [`Component::handle_event`]
+#[derive(Debug)]
 pub enum EventAction {
     /// Key not used, no action
     Unused,
@@ -66,25 +67,31 @@ impl EventAction {
     }
 }
 
+/// Multi-part text index
+///
+/// This type may also be used with single-part editors, using `part = 0`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-struct TextIndex {
+pub struct TextIndex {
     part: u32,
     byte: u32,
 }
 
 impl TextIndex {
-    fn new(part: impl Cast<u32>, byte: impl Cast<u32>) -> Self {
+    /// Construct
+    pub fn new(part: impl Cast<u32>, byte: impl Cast<u32>) -> Self {
         TextIndex {
             part: part.cast(),
             byte: byte.cast(),
         }
     }
 
-    fn part(&self) -> usize {
+    /// Get the part index
+    pub fn part(&self) -> usize {
         self.part.cast()
     }
 
-    fn byte(&self) -> usize {
+    /// Get the byte index within the part
+    pub fn byte(&self) -> usize {
         self.byte.cast()
     }
 }
@@ -178,6 +185,12 @@ impl Common {
         }
     }
 
+    /// Get whether wrapping is enabled
+    #[inline]
+    pub fn wrap(&self) -> bool {
+        self.wrap
+    }
+
     /// Read highlighter colors
     #[inline]
     pub fn colors(&self) -> &SchemeColors {
@@ -198,6 +211,41 @@ impl Common {
         } else {
             Background::Default
         }
+    }
+
+    /// Access the cursor index / selection range
+    #[inline]
+    pub fn cursor_range(&self) -> CursorRange<TextIndex> {
+        CursorRange {
+            anchor: self.selection.anchor,
+            cursor: self.selection.cursor,
+        }
+    }
+
+    /// Set the cursor index (clearing any selection)
+    ///
+    /// This does not interact with undo history or call action handlers on the
+    /// guard.
+    #[inline]
+    pub fn set_cursor(&mut self, index: TextIndex) {
+        self.set_cursor_range(CursorRange::from(index));
+    }
+
+    /// Set the cursor index / range
+    ///
+    /// This does not interact with undo history or call action handlers on the
+    /// guard.
+    #[inline]
+    pub fn set_cursor_range(&mut self, range: CursorRange<TextIndex>) {
+        self.edit_x_coord = None;
+        self.selection = range;
+    }
+
+    /// Checks whether any edits have landed
+    ///
+    /// This method may be used in sanity checks.
+    pub fn is_unedited(&self) -> bool {
+        self.last_edit == Some(EditOp::Initial)
     }
 }
 
@@ -394,7 +442,7 @@ impl<H: Highlighter> Component<H> {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        debug_assert!(self.0.common.last_edit == Some(EditOp::Initial));
+        debug_assert!(self.0.common.is_unedited());
 
         self.0.part.text = Rc::new(text.to_string());
         let byte = if self.0.common.wrap { 0 } else { self.0.part.text.len() };
@@ -696,7 +744,7 @@ impl Part {
     ///
     /// [`Self::prepare_runs`] should be called before this.
     pub fn measure_height(
-        &mut self,
+        &self,
         wrap_width: f32,
         max_lines: Option<NonZeroUsize>,
     ) -> Result<f32, NotReady> {
@@ -2129,17 +2177,25 @@ impl Editor {
         }
     }
 
+    /// Set the cursor index (clearing any selection)
+    ///
+    /// This does not interact with undo history or call action handlers on the
+    /// guard.
+    #[inline]
+    pub fn set_cursor(&mut self, index: usize) {
+        self.common.set_cursor(TextIndex::new(0, index))
+    }
+
     /// Set the cursor index / range
     ///
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     #[inline]
     pub fn set_cursor_range(&mut self, range: CursorRange<usize>) {
-        self.common.edit_x_coord = None;
-        self.common.selection = CursorRange {
+        self.common.set_cursor_range(CursorRange {
             anchor: TextIndex::new(0, range.anchor),
             cursor: TextIndex::new(0, range.cursor),
-        };
+        });
     }
 
     /// Get whether this text-edit widget is read-only

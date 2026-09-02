@@ -97,7 +97,7 @@ pub use access_label::AccessLabel;
 pub use button::Button;
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
-pub use edit::{EditBox, EditBoxCore};
+pub use edit::{EditBox, EditBoxCore, MultiPartEditor};
 pub use event_config::EventConfig;
 pub use filler::Filler;
 pub use float::Float;

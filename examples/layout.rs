@@ -6,7 +6,7 @@
 //! Demonstration of widget and text layouts
 
 use kas::layout::AlignHints;
-use kas::widgets::{AdaptWidget, CheckBox, EditBox, ScrollLabel, grid};
+use kas::widgets::{AdaptWidget, CheckBox, MultiPartEditor, ScrollLabel, grid};
 use kas::window::Window;
 
 const LIPSUM: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nunc mi, consequat eget urna ut, auctor luctus mi. Sed molestie mi est. Sed non ligula ante. Curabitur ac molestie ante, nec sodales eros. In non arcu at turpis euismod bibendum ut tincidunt eros. Suspendisse blandit maximus nisi, viverra hendrerit elit efficitur et. Morbi ut facilisis eros. Vivamus dignissim, sapien sed mattis consectetur, libero leo imperdiet turpis, ac pulvinar libero purus eu lorem. Etiam quis sollicitudin urna. Integer vitae erat vel neque gravida blandit ac non quam.";
@@ -21,7 +21,7 @@ fn main() -> kas::runner::Result<()> {
         (0..=2, 1) => ScrollLabel::new(LIPSUM),
         (0, 2) => "abc אבג def".align(AlignHints::CENTER),
         (1..=2, 3) => ScrollLabel::new(CRASIT).align(AlignHints::STRETCH),
-        (0, 3) => EditBox::text("A small\nsample\nof text").with_multi_line(true),
+        (0, 3) => MultiPartEditor::new("A small\nsample\nof text"),
     };
     let window = Window::new(ui, "Layout demo").escapable();
 

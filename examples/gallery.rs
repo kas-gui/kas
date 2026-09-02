@@ -276,6 +276,9 @@ fn editor() -> Page<AppData> {
     #[derive(Clone, Debug)]
     struct SetLabelId(Id);
 
+    #[derive(Clone, Debug)]
+    struct UpdateContents(String);
+
     impl_scope! {
         #[derive(Debug)]
         #[impl_default]
@@ -283,22 +286,6 @@ fn editor() -> Page<AppData> {
             dir: Direction = Direction::Up,
             disabled: bool,
             label_id: Id,
-        }
-    }
-
-    struct Guard;
-    impl EditGuard for Guard {
-        type Data = Data;
-
-        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &Data) {
-            cx.set_disabled(edit.id(), data.disabled);
-        }
-
-        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
-            match Markdown::new(edit.as_str()) {
-                Ok(text) => cx.send(data.label_id.clone(), text),
-                Err(err) => edit.set_error(cx, Some(format!("{err}").into())),
-            }
         }
     }
 
@@ -326,11 +313,12 @@ Demonstration of *as-you-type* formatting from **Markdown**.
             .map_any()
             .pack(AlignHints::TOP_RIGHT),
         Splitter::new(collection![
-            EditBox::new(Guard)
-                .with_multi_line(true)
-                .with_lines(4.0, 12.0)
-                .with_text(DOC)
-                .with_highlighter(SyntectHighlighter::new_by_name("Markdown")),
+            MultiPartEditor::new(DOC)
+                .with_highlighter(SyntectHighlighter::new_by_name("Markdown"))
+                .on_edit(|cx, editor| {
+                    cx.push(UpdateContents(editor.text_to_string()));
+                })
+                .map_any(),
             ScrollLabel::new(Markdown::new(DOC).unwrap())
                 .on_configure(|cx, label| {
                     cx.send(label.id(), SetLabelId(label.id()));
@@ -342,6 +330,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         ])
         .on_update(|cx, list, data: &Data| {
             list.set_direction(cx, data.dir);
+            cx.set_disabled(data.disabled);
         }),
     ];
 
@@ -353,6 +342,15 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 Direction::Up => Direction::Right,
                 _ => Direction::Up,
             };
+        })
+        .on_message(|cx, data, UpdateContents(text)| {
+            match Markdown::new(&text) {
+                Ok(text) => cx.send(data.label_id.clone(), text),
+                Err(err) => {
+                    // TODO: display the error in the GUI
+                    eprintln!("{err}");
+                }
+            }
         })
         .on_message(|_, data, SetLabelId(id)| data.label_id = id);
 
