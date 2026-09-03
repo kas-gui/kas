@@ -7,7 +7,7 @@
 
 use super::*;
 use kas::cast::Cast;
-use kas::text::LineIterator;
+use kas::text::LineRanges;
 use kas::text::fonts::{FontSelector, FontStyle, FontWeight};
 use kas::text::format::{Colors, Decoration, FontToken};
 
@@ -85,7 +85,7 @@ impl Cache {
         };
 
         let mut state = highlighter.new_state();
-        for line_range in LineIterator::new(text) {
+        for (line_range, _) in LineRanges::new(text) {
             let line_start = line_range.start;
             let line = &text[line_range];
             highlighter.highlight_line(&mut state, line, &mut |index, token| {

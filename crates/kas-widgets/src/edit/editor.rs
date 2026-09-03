@@ -1187,8 +1187,7 @@ impl Common {
         let p_end = range.end.part();
         let mut b_start = range.start.byte();
         let mut last_line_end = 0;
-        for line_range in kas::text::LineIterator::new(replace_with) {
-            let line = &replace_with[line_range];
+        for (line, _) in kas::text::Lines::new(replace_with) {
             last_line_end = b_start + line.len();
             if p < p_end {
                 let part = parts.get_mut(p);

@@ -3,7 +3,6 @@ use image::ImageFormat;
 use kas::Tile as _;
 use kas::image::{Image, Svg};
 use kas::prelude::*;
-use kas::text::LineIterator;
 use kas::theme::{MarginStyle, TextClass};
 use kas::widgets::{AdaptWidget, Button, Frame, Label, Page, Stack, Text};
 use std::fmt::Write;
@@ -100,10 +99,10 @@ mod TextTile {
             const LINES: usize = 16;
             let mut text = std::fs::read_to_string(path)?;
             let len = text.len();
-            let len = LineIterator::new(&text)
+            let len = kas::text::LineRanges::new(&text)
                 .take(LINES)
                 .last()
-                .map(|range| range.end)
+                .map(|(range, _)| range.end)
                 .unwrap_or(len);
             text.truncate(len);
 

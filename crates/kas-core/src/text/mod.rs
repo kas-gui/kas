@@ -11,8 +11,8 @@
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
 pub use kas_text::{
-    Align, DPU, Direction, Forme, Line, LineIterator, MarkerPos, MarkerPosIter, NotReady, Status,
-    Vec2, fonts,
+    Align, DPU, Direction, Forme, Line, LineRanges, Lines, MarkerPos, MarkerPosIter, NotReady,
+    Status, Vec2, fonts,
 };
 
 pub mod format;
