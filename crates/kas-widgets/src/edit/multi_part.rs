@@ -432,7 +432,8 @@ mod Inner {
 
         #[inline]
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            self.part.draw_with_offset(draw, &self.common, rect, offset);
+            self.part
+                .draw_with_offset(draw, &self.common, 0, rect, offset);
         }
     }
 
