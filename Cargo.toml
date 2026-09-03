@@ -12,7 +12,6 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "A pure-Rust GUI toolkit with stateful widgets"
-readme = "README.md"
 documentation = "https://docs.rs/kas/"
 keywords = ["gui"]
 categories = ["gui"]

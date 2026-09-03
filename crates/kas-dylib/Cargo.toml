@@ -5,7 +5,6 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "KAS GUI / dylib"
-readme = "README.md"
 documentation = "https://docs.rs/kas-dylib/"
 keywords = ["gui"]
 categories = ["gui"]

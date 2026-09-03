@@ -9,7 +9,6 @@ keywords = ["gui", "proc-macro"]
 categories = ["gui"]
 repository.workspace = true
 rust-version.workspace = true
-readme = "README.md"
 documentation = "https://docs.rs/kas-macros/"
 
 [lib]
@@ -39,9 +38,6 @@ version = "3.0.2"
 # We need 'extra-traits' for equality testing
 # We need 'full' for parsing macros within macro arguments
 features = ["extra-traits", "full", "visit", "visit-mut"]
-
-[build-dependencies]
-version_check = "0.9"
 
 [lints.clippy]
 collapsible_if = "allow"
