@@ -113,12 +113,12 @@ mod Editor {
                 self.do_action(cx, EditorAction::Save);
                 return;
             } else if let Some(SetContents(syntax, bytes)) = cx.try_pop() {
-                let text = match String::from_utf8(bytes) {
+                let text = match str::from_utf8(&bytes) {
                     Ok(text) => text,
                     Err(err) => {
                         dialog::AlertError::new("Input is invalid UTF-8:", &err)
                             .display_for(cx, self.id());
-                        String::new()
+                        ""
                     }
                 };
 

@@ -194,7 +194,7 @@ mod MultiPartEditor {
     impl MultiPartEditor<Plain> {
         /// Construct a `MultiPartEditor`
         #[inline]
-        pub fn new(text: impl ToString) -> Self {
+        pub fn new(text: &str) -> Self {
             MultiPartEditor {
                 core: Default::default(),
                 scroll: Default::default(),
@@ -296,15 +296,8 @@ mod MultiPartEditor {
         /// This method should only be used on a new `MultiPartEditor`.
         #[inline]
         #[must_use]
-        pub fn with_text(mut self, text: impl ToString) -> Self {
-            debug_assert!(self.inner.common.is_unedited());
-
-            let text = text.to_string();
-            let byte = if self.inner.common.wrap() { 0 } else { text.len() };
-            self.inner.common.set_cursor(TextIndex::new(0, byte));
-
-            self.inner.part = Part::from(text);
-
+        pub fn with_text(mut self, text: &str) -> Self {
+            self.inner = self.inner.with_text(text);
             self
         }
 
@@ -358,8 +351,10 @@ mod Inner {
         /// This method should only be used on a new `Inner`.
         #[inline]
         #[must_use]
-        fn with_text(mut self, text: impl ToString) -> Self {
-            self.part = text.into();
+        fn with_text(mut self, text: &str) -> Self {
+            debug_assert!(self.common.is_unedited());
+            self.common.set_cursor(TextIndex::new(0, 0));
+            self.part = Part::from(text);
             self
         }
 
