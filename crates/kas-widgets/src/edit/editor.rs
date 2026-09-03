@@ -1393,7 +1393,10 @@ impl Common {
         let part = parts.get(best_p);
         let rel_pos = (coord - part.rect().pos).cast();
         let byte = part.forme.text_index_nearest(rel_pos);
-        TextIndex::new(p, byte)
+        debug_assert!(byte <= part.as_str().len());
+        let index = TextIndex::new(best_p, byte);
+        self.validate_range(parts, index..index);
+        index
     }
 
     /// Get the part used by IME operations
@@ -1720,11 +1723,12 @@ impl Common {
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let cursor = self.selection.cursor;
+        let c_byte = cursor.byte();
         let c_p = cursor.part();
-        let cursor = cursor.byte();
         let c_part = parts.get(c_p);
         debug_assert!(c_part.is_ready());
         let c_part_len = c_part.as_str().len();
+        let num_parts = parts.len();
         let multi_line = self.wrap;
         let selection = self.selection.to_range();
         let have_sel = selection.end > selection.start;
@@ -1764,135 +1768,122 @@ impl Common {
                 Action::Move(selection.start, None)
             }
             Command::Left => {
-                let text;
-                let mut p = c_p;
-                let mut cursor = cursor;
-                if cursor > 0 {
-                    text = c_part.as_str();
-                } else if p > 0 {
-                    p -= 1;
-                    text = parts.get(p).as_str();
-                    cursor = text.len();
+                if c_byte > 0 {
+                    let text = c_part.as_str();
+                    let byte = GraphemeCursor::new(c_byte, text.len(), true)
+                        .prev_boundary(text, 0)
+                        .unwrap()
+                        .unwrap_or(0);
+                    Action::Move(TextIndex::new(c_p, byte), None)
+                } else if c_p > 0 {
+                    let byte = parts.get(c_p - 1).as_str().len();
+                    Action::Move(TextIndex::new(c_p - 1, byte), None)
                 } else {
                     return Ok(EventAction::Used);
-                };
-
-                let byte = GraphemeCursor::new(cursor, text.len(), true)
-                    .prev_boundary(text, 0)
-                    .unwrap()
-                    .unwrap_or(0);
-                Action::Move(TextIndex::new(p, byte), None)
+                }
             }
             Command::Right | Command::End if !shift && have_sel => {
                 Action::Move(selection.end, None)
             }
             Command::Right => {
-                if cursor < c_part_len {
-                    let byte = GraphemeCursor::new(cursor, c_part_len, true)
+                if c_byte < c_part_len {
+                    let byte = GraphemeCursor::new(c_byte, c_part_len, true)
                         .next_boundary(c_part.as_str(), 0)
                         .unwrap()
                         .unwrap_or(c_part_len);
                     Action::Move(TextIndex::new(c_p, byte), None)
+                } else if c_p.checked_add(1).map(|p| p < num_parts).unwrap_or(false) {
+                    Action::Move(TextIndex::new(c_p + 1, 0), None)
                 } else {
-                    let p = c_p + 1;
-                    if p < parts.len() {
-                        Action::Move(TextIndex::new(p, 0), None)
-                    } else {
-                        return Ok(EventAction::Used);
-                    }
+                    return Ok(EventAction::Used);
                 }
             }
-            Command::WordLeft if cursor > 0 => {
-                let mut iter = c_part.as_str()[0..cursor].split_word_bound_indices();
-                let mut byte = iter.next_back().map(|(index, _)| index).unwrap_or(0);
-                while c_part.as_str()[byte..]
-                    .chars()
-                    .next()
-                    .map(|c| c.is_whitespace())
-                    .unwrap_or(false)
-                {
-                    if let Some((index, _)) = iter.next_back() {
-                        byte = index;
-                    } else {
-                        break;
+            Command::WordLeft => {
+                if c_byte > 0 {
+                    let mut iter = c_part.as_str()[0..c_byte].split_word_bound_indices();
+                    let mut byte = iter.next_back().map(|(index, _)| index).unwrap_or(0);
+                    while c_part.as_str()[byte..]
+                        .chars()
+                        .next()
+                        .map(|c| c.is_whitespace())
+                        .unwrap_or(false)
+                    {
+                        if let Some((index, _)) = iter.next_back() {
+                            byte = index;
+                        } else {
+                            break;
+                        }
                     }
+                    Action::Move(TextIndex::new(c_p, byte), None)
+                } else if c_p > 0 {
+                    let byte = parts.get(c_p - 1).as_str().len();
+                    Action::Move(TextIndex::new(c_p - 1, byte), None)
+                } else {
+                    return Ok(EventAction::Used);
                 }
-                // TODO: prev
-                Action::Move(TextIndex::new(c_p, byte), None)
             }
-            Command::WordRight if cursor < c_part_len => {
-                let mut iter = c_part.as_str()[cursor..].split_word_bound_indices().skip(1);
-                let mut byte = iter
-                    .next()
-                    .map(|(index, _)| cursor + index)
-                    .unwrap_or(c_part_len);
-                while c_part.as_str()[byte..]
-                    .chars()
-                    .next()
-                    .map(|c| c.is_whitespace())
-                    .unwrap_or(false)
-                {
-                    if let Some((index, _)) = iter.next() {
-                        byte = cursor + index;
-                    } else {
-                        break;
+            Command::WordRight => {
+                if c_byte < c_part_len {
+                    let mut iter = c_part.as_str()[c_byte..].split_word_bound_indices().skip(1);
+                    let mut byte = iter
+                        .next()
+                        .map(|(index, _)| c_byte + index)
+                        .unwrap_or(c_part_len);
+                    while c_part.as_str()[byte..]
+                        .chars()
+                        .next()
+                        .map(|c| c.is_whitespace())
+                        .unwrap_or(false)
+                    {
+                        if let Some((index, _)) = iter.next() {
+                            byte = c_byte + index;
+                        } else {
+                            break;
+                        }
                     }
+                    Action::Move(TextIndex::new(c_p, byte), None)
+                } else if c_p.checked_add(1).map(|p| p < num_parts).unwrap_or(false) {
+                    Action::Move(TextIndex::new(c_p + 1, 0), None)
+                } else {
+                    return Ok(EventAction::Used);
                 }
-                // TODO: next
-                Action::Move(TextIndex::new(c_p, byte), None)
-            }
-            // Avoid use of unused navigation keys (e.g. by ScrollComponent):
-            Command::WordLeft | Command::WordRight => {
-                return Ok(EventAction::Used);
             }
             Command::Up | Command::Down if multi_line => {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => c_part
                         .forme
-                        .text_glyph_pos(cursor)
+                        .text_glyph_pos(c_byte)
                         .next_back()
                         .map(|r| r.pos.0)
                         .unwrap_or(0.0),
                 };
-                let mut line = c_part.forme.find_line(cursor).map(|r| r.0).unwrap_or(0);
-                // We can tolerate invalid line numbers here!
-                line = match cmd {
-                    Command::Up => line.wrapping_sub(1),
-                    Command::Down => line.wrapping_add(1),
-                    _ => unreachable!(),
+
+                let line = c_part.forme.find_line(c_byte).map(|r| r.0).unwrap_or(0);
+                let (p, line) = match cmd {
+                    Command::Up if line > 0 => (c_p, line - 1),
+                    Command::Up if c_p > 0 => {
+                        let p = c_p - 1;
+                        (p, parts.get(p).forme.num_lines().saturating_sub(1))
+                    }
+                    Command::Down if line + 1 < c_part.forme.num_lines() => (c_p, line + 1),
+                    Command::Down if c_p + 1 < parts.len() => (c_p + 1, 0),
+                    _ => return Ok(EventAction::Used),
                 };
-                const HALF: usize = usize::MAX / 2;
-                let nearest_end = match line {
-                    0..=HALF => c_part_len,
-                    _ => 0,
-                };
-                // TODO: prev/next
-                c_part
-                    .forme
-                    .line_index_nearest(line, x)
-                    .map(|index| Action::Move(TextIndex::new(c_p, index), Some(x)))
-                    .unwrap_or(Action::Move(TextIndex::new(c_p, nearest_end), None))
+
+                if let Some(index) = parts.get(p).forme.line_index_nearest(line, x) {
+                    Action::Move(TextIndex::new(p, index), Some(x))
+                } else {
+                    debug_assert!(false);
+                    return Ok(EventAction::Used);
+                }
             }
-            Command::Home if cursor > 0 => {
-                // TODO: we don't need to use find_line if each part represents a line
-                let index = c_part
-                    .forme
-                    .find_line(cursor)
-                    .map(|r| r.1.start)
-                    .unwrap_or(0);
-                Action::Move(TextIndex::new(c_p, index), None)
+            Command::Home if c_byte > 0 => Action::Move(TextIndex::new(c_p, 0), None),
+            Command::End if c_byte < c_part_len => {
+                Action::Move(TextIndex::new(c_p, c_part_len), None)
             }
-            Command::End if cursor < c_part_len => {
-                let index = c_part
-                    .forme
-                    .find_line(cursor)
-                    .map(|r| r.1.end)
-                    .unwrap_or(c_part_len);
-                Action::Move(TextIndex::new(c_p, index), None)
-            }
-            Command::DocHome if c_p > 0 || cursor > 0 => Action::Move(TextIndex::new(0, 0), None),
-            Command::DocEnd if c_p + 1 < parts.len() || cursor < c_part_len => {
+            Command::DocHome if c_p > 0 || c_byte > 0 => Action::Move(TextIndex::new(0, 0), None),
+            Command::DocEnd if c_p + 1 < parts.len() || c_byte < c_part_len => {
                 let p = parts.len() - 1;
                 let len = parts.get(p).as_str().len();
                 Action::Move(TextIndex::new(p, len), None)
@@ -1904,13 +1895,14 @@ impl Common {
             Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = c_part
                     .forme
-                    .text_glyph_pos(cursor)
+                    .text_glyph_pos(c_byte)
                     .next_back()
                     .map(|r| r.pos.into())
                     .unwrap_or(Vec2::ZERO);
                 if let Some(x) = self.edit_x_coord {
                     v.0 = x;
                 }
+
                 // TODO: page height should be an input?
                 let mut line_height = self.dpem;
                 if let Some(line) = c_part.forme.lines().next() {
@@ -1921,54 +1913,74 @@ impl Common {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
+
+                // v is currently relative to c_part's pos
                 let pos = c_part.rect.pos + Offset::conv_to(Nearest, v);
-                let index = self.text_index_nearest(parts, pos).byte();
-                Action::Move(TextIndex::new(c_p, index), Some(v.0))
+                let index = self.text_index_nearest(parts, pos);
+                Action::Move(index, Some(v.0))
             }
             Command::Delete | Command::DelBack if editable && have_sel => {
                 Action::Delete(selection.clone(), true)
             }
             Command::Delete if editable => {
-                if let Some(action) = GraphemeCursor::new(cursor, c_part_len, true)
-                    .next_boundary(c_part.as_str(), 0)
-                    .unwrap()
-                    .map(|next| {
-                        Action::Delete(self.selection.cursor..TextIndex::new(c_p, next), true)
-                    })
+                let end = if let Ok(Some(next)) =
+                    GraphemeCursor::new(c_byte, c_part_len, true).next_boundary(c_part.as_str(), 0)
+                    && next > c_byte
                 {
-                    action
+                    TextIndex::new(c_p, next)
+                } else if c_p + 1 < parts.len() {
+                    TextIndex::new(c_p + 1, 0)
                 } else {
                     return Ok(EventAction::Used);
-                }
+                };
+                Action::Delete(self.selection.cursor..end, true)
             }
             Command::DelBack if editable => {
-                if let Some(action) = GraphemeCursor::new(cursor, c_part_len, true)
-                    .prev_boundary(c_part.as_str(), 0)
-                    .unwrap()
-                    .map(|prev| {
-                        Action::Delete(TextIndex::new(c_p, prev)..self.selection.cursor, true)
-                    })
+                let start = if c_byte > 0
+                    && let Ok(Some(prev)) = GraphemeCursor::new(c_byte, c_part_len, true)
+                        .prev_boundary(c_part.as_str(), 0)
                 {
-                    action
+                    TextIndex::new(c_p, prev)
+                } else if c_p > 0 {
+                    let p = c_p - 1;
+                    let end = parts.get(p).as_str().len();
+                    TextIndex::new(p, end)
                 } else {
                     return Ok(EventAction::Used);
-                }
+                };
+                Action::Delete(start..self.selection.cursor, true)
             }
             Command::DelWord if editable => {
-                let next = c_part.as_str()[cursor..]
+                let next = c_part.as_str()[c_byte..]
                     .split_word_bound_indices()
                     .nth(1)
-                    .map(|(index, _)| cursor + index)
+                    .map(|(index, _)| c_byte + index)
                     .unwrap_or(c_part_len);
-                Action::Delete(self.selection.cursor..TextIndex::new(c_p, next), true)
+                let end = if next > c_byte {
+                    TextIndex::new(c_p, next)
+                } else if c_p + 1 < parts.len() {
+                    TextIndex::new(c_p + 1, 0)
+                } else {
+                    return Ok(EventAction::Used);
+                };
+                Action::Delete(self.selection.cursor..end, true)
             }
             Command::DelWordBack if editable => {
-                let prev = c_part.as_str()[0..cursor]
-                    .split_word_bound_indices()
-                    .next_back()
-                    .map(|(index, _)| index)
-                    .unwrap_or(0);
-                Action::Delete(TextIndex::new(c_p, prev)..self.selection.cursor, true)
+                let start = if c_byte > 0 {
+                    let prev = c_part.as_str()[0..c_byte]
+                        .split_word_bound_indices()
+                        .next_back()
+                        .map(|(index, _)| index)
+                        .unwrap_or(0);
+                    TextIndex::new(c_p, prev)
+                } else if c_p > 0 {
+                    let p = c_p - 1;
+                    let end = parts.get(p).as_str().len();
+                    TextIndex::new(p, end)
+                } else {
+                    return Ok(EventAction::Used);
+                };
+                Action::Delete(start..self.selection.cursor, true)
             }
             Command::SelectAll => {
                 self.selection.anchor = TextIndex::new(0, 0);
