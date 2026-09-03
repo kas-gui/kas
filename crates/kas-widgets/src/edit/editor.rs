@@ -86,8 +86,8 @@ impl TextIndex {
     }
 
     /// Get the part index
-    pub fn part(&self) -> usize {
-        self.part.cast()
+    pub fn part(&self) -> u32 {
+        self.part
     }
 
     /// Get the byte index within the part
@@ -117,7 +117,7 @@ pub struct Common {
     selection: CursorRange<TextIndex>,
     last_edit: Option<EditOp>,
     /// Stack items: (first_part_num, num_parts, Vec of saved texts from first_part_num, selection)
-    undo_stack: UndoStack<(usize, usize, Vec<Rc<String>>, CursorRange<TextIndex>)>,
+    undo_stack: UndoStack<(u32, u32, Vec<Rc<String>>, CursorRange<TextIndex>)>,
     current: CurrentAction,
     input_handler: TextInput,
 }
@@ -270,10 +270,10 @@ pub struct Part {
 /// A list of parts
 #[allow(clippy::len_without_is_empty)]
 pub trait PartList {
-    fn len(&self) -> usize;
+    fn len(&self) -> u32;
 
-    fn get(&self, part: usize) -> &Part;
-    fn get_mut(&mut self, part: usize) -> &mut Part;
+    fn get(&self, part: u32) -> &Part;
+    fn get_mut(&mut self, part: u32) -> &mut Part;
 
     fn iter(&self) -> impl Iterator<Item = &Part>;
     fn iter_mut(&mut self) -> impl Iterator<Item = &mut Part>;
@@ -281,24 +281,24 @@ pub trait PartList {
     /// If `true`, this list supports insertion and deletion; if `false`, the
     /// list has exactly one `Part`.
     fn variable_length(&self) -> bool;
-    fn insert(&mut self, index: usize, part: Part);
-    fn delete(&mut self, index: usize);
+    fn insert(&mut self, index: u32, part: Part);
+    fn delete(&mut self, index: u32);
 }
 
 impl PartList for Part {
     #[inline]
-    fn len(&self) -> usize {
+    fn len(&self) -> u32 {
         1
     }
 
     #[inline]
-    fn get(&self, part: usize) -> &Part {
+    fn get(&self, part: u32) -> &Part {
         assert!(part == 0, "invalid part index");
         self
     }
 
     #[inline]
-    fn get_mut(&mut self, part: usize) -> &mut Part {
+    fn get_mut(&mut self, part: u32) -> &mut Part {
         assert!(part == 0, "invalid part index");
         self
     }
@@ -319,12 +319,12 @@ impl PartList for Part {
     }
 
     #[inline]
-    fn insert(&mut self, _: usize, _: Part) {
+    fn insert(&mut self, _: u32, _: Part) {
         unimplemented!()
     }
 
     #[inline]
-    fn delete(&mut self, _: usize) {
+    fn delete(&mut self, _: u32) {
         unimplemented!()
     }
 }
@@ -1965,9 +1965,9 @@ impl Common {
                 if let Some((p, old_num_parts, texts, cursor)) = self.undo_stack.undo_or_redo(redo)
                 {
                     let mut p = *p;
-                    let mut n = 0;
+                    let mut n: usize = 0;
                     if parts.len() < *old_num_parts {
-                        n = old_num_parts - parts.len();
+                        n = (old_num_parts - parts.len()).cast();
                         for text in &texts[..n] {
                             let part = Part {
                                 text: Rc::clone(text),

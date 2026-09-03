@@ -33,13 +33,13 @@ enum EditOp {
     /// Cursor movement or selection adjustment
     Cursor,
     /// Keyboard
-    KeyInput(usize, usize),
+    KeyInput(u32, u32),
     /// Input Method Editor
-    Ime(usize),
+    Ime(u32),
     /// Deletion due to key press
-    KeyDelete(usize, usize),
+    KeyDelete(u32, u32),
     /// Replacement of a range, e.g. via the clipboard. Does not merge.
-    Replace(usize, usize),
+    Replace(u32, u32),
 }
 
 impl EditOp {
@@ -86,7 +86,7 @@ impl CurrentAction {
     ///
     /// This does not imply a pre-edit (or any IME input).
     #[inline]
-    fn ime_part(&self) -> Option<usize> {
+    fn ime_part(&self) -> Option<u32> {
         match self {
             CurrentAction::None | CurrentAction::Selection => None,
             CurrentAction::ImeStart(part) | CurrentAction::ImePreedit { part, .. } => {
