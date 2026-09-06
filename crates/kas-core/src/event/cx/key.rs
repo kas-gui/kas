@@ -531,6 +531,7 @@ impl<'a> EventCx<'a> {
 
                     super::Ime::Disabled
                 }
+                _ => unreachable!(),
             };
 
             self.send_event(widget, id, Event::Ime(event));

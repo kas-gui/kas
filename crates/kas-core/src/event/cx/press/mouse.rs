@@ -454,6 +454,7 @@ impl<'a> EventCx<'a> {
             MouseScrollDelta::PixelDelta(pos) => {
                 ScrollDelta::PixelDelta(DVec2::from(pos).cast_approx())
             }
+            _ => return,
         });
         if let Some(id) = self.mouse.over.clone() {
             self.send_event(window, id, event);
