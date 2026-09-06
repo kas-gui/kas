@@ -9,7 +9,6 @@ keywords = ["gui", "wgpu"]
 categories = ["gui"]
 repository.workspace = true
 rust-version.workspace = true
-readme = "README.md"
 documentation = "https://docs.rs/kas-wgpu/"
 
 [package.metadata.docs.rs]

@@ -12,7 +12,6 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "A pure-Rust GUI toolkit with stateful widgets"
-readme = "README.md"
 documentation = "https://docs.rs/kas/"
 keywords = ["gui"]
 categories = ["gui"]
@@ -175,4 +174,4 @@ resolver = "2"
 
 [patch.crates-io.kas-text]
 git = "https://github.com/kas-gui/kas-text.git"
-rev = "d7a40e847b3551eecd33d468b76231cece23631b"
+rev = "575d0ac8bdbb56f8028c15ba1c05f07d2eb66f8d"

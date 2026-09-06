@@ -9,7 +9,6 @@ keywords = ["gui", "softbuffer"]
 categories = ["gui"]
 repository.workspace = true
 rust-version.workspace = true
-readme = "README.md"
 documentation = "https://docs.rs/kas-soft/"
 
 [package.metadata.docs.rs]

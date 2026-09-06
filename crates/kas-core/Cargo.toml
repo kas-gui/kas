@@ -5,7 +5,6 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "KAS GUI / core"
-readme = "README.md"
 documentation = "https://docs.rs/kas-core/"
 keywords = ["gui"]
 categories = ["gui"]

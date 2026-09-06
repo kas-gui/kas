@@ -86,8 +86,8 @@ impl TextIndex {
     }
 
     /// Get the part index
-    pub fn part(&self) -> usize {
-        self.part.cast()
+    pub fn part(&self) -> u32 {
+        self.part
     }
 
     /// Get the byte index within the part
@@ -117,7 +117,7 @@ pub struct Common {
     selection: CursorRange<TextIndex>,
     last_edit: Option<EditOp>,
     /// Stack items: (first_part_num, num_parts, Vec of saved texts from first_part_num, selection)
-    undo_stack: UndoStack<(usize, usize, Vec<Rc<String>>, CursorRange<TextIndex>)>,
+    undo_stack: UndoStack<(u32, u32, Vec<Rc<String>>, CursorRange<TextIndex>)>,
     current: CurrentAction,
     input_handler: TextInput,
 }
@@ -259,7 +259,6 @@ impl Common {
 /// methods: [`Self::content_size`], [`Self::draw_with_offset`].
 #[autoimpl(Debug)]
 pub struct Part {
-    part: u32, // part index
     rect: Rect,
     status: Status,
     forme: Forme,
@@ -270,10 +269,10 @@ pub struct Part {
 /// A list of parts
 #[allow(clippy::len_without_is_empty)]
 pub trait PartList {
-    fn len(&self) -> usize;
+    fn len(&self) -> u32;
 
-    fn get(&self, part: usize) -> &Part;
-    fn get_mut(&mut self, part: usize) -> &mut Part;
+    fn get(&self, part: u32) -> &Part;
+    fn get_mut(&mut self, part: u32) -> &mut Part;
 
     fn iter(&self) -> impl Iterator<Item = &Part>;
     fn iter_mut(&mut self) -> impl Iterator<Item = &mut Part>;
@@ -281,24 +280,24 @@ pub trait PartList {
     /// If `true`, this list supports insertion and deletion; if `false`, the
     /// list has exactly one `Part`.
     fn variable_length(&self) -> bool;
-    fn insert(&mut self, index: usize, part: Part);
-    fn delete(&mut self, index: usize);
+    fn insert(&mut self, index: u32, part: Part);
+    fn delete(&mut self, index: u32);
 }
 
 impl PartList for Part {
     #[inline]
-    fn len(&self) -> usize {
+    fn len(&self) -> u32 {
         1
     }
 
     #[inline]
-    fn get(&self, part: usize) -> &Part {
+    fn get(&self, part: u32) -> &Part {
         assert!(part == 0, "invalid part index");
         self
     }
 
     #[inline]
-    fn get_mut(&mut self, part: usize) -> &mut Part {
+    fn get_mut(&mut self, part: u32) -> &mut Part {
         assert!(part == 0, "invalid part index");
         self
     }
@@ -319,12 +318,12 @@ impl PartList for Part {
     }
 
     #[inline]
-    fn insert(&mut self, _: usize, _: Part) {
+    fn insert(&mut self, _: u32, _: Part) {
         unimplemented!()
     }
 
     #[inline]
-    fn delete(&mut self, _: usize) {
+    fn delete(&mut self, _: u32) {
         unimplemented!()
     }
 }
@@ -376,7 +375,7 @@ impl<H: Highlighter> Layout for Component<H> {
     fn draw(&self, draw: DrawCx) {
         self.0
             .part
-            .draw_with_offset(draw, &self.0.common, self.rect(), Offset::ZERO);
+            .draw_with_offset(draw, &self.0.common, 0, self.rect(), Offset::ZERO);
     }
 }
 
@@ -524,7 +523,7 @@ impl<H: Highlighter> Component<H> {
     pub fn draw_with_offset(&self, draw: DrawCx, rect: Rect, offset: Offset) {
         self.0
             .part
-            .draw_with_offset(draw, &self.0.common, rect, offset);
+            .draw_with_offset(draw, &self.0.common, 0, rect, offset);
     }
 
     /// Handle an event
@@ -550,7 +549,6 @@ impl Default for Part {
     #[inline]
     fn default() -> Self {
         Part {
-            part: 0,
             rect: Rect::ZERO,
             status: Status::Empty,
             forme: Forme::default(),
@@ -695,8 +693,8 @@ impl Part {
         self.rect = rect;
 
         self.prepare_wrap(common);
-        if common.current.is_ime_enabled() {
-            self.set_ime_cursor_area(common, cx);
+        if let Some(p) = common.current.ime_part() {
+            self.set_ime_cursor_area(common, cx, p);
         }
     }
 
@@ -766,26 +764,33 @@ impl Part {
     }
 
     /// Implementation of [`Viewport::draw_with_offset`]
-    pub fn draw_with_offset(&self, mut draw: DrawCx, common: &Common, rect: Rect, offset: Offset) {
+    pub fn draw_with_offset(
+        &self,
+        mut draw: DrawCx,
+        common: &Common,
+        p: u32,
+        rect: Rect,
+        offset: Offset,
+    ) {
         if !self.is_ready() {
             return;
         }
 
         let pos = self.rect.pos - offset;
         let range = common.selection.to_range();
-        let range = if self.part < range.start.part || self.part > range.end.part {
+        let range = if p < range.start.part || p > range.end.part {
             0..0
         } else {
-            let start = if self.part == range.start.part {
+            let start = if p == range.start.part {
                 range.start.byte
             } else {
-                debug_assert!(self.part > range.start.part);
+                debug_assert!(p > range.start.part);
                 0
             };
-            let end = if self.part == range.end.part {
+            let end = if p == range.end.part {
                 range.end.byte
             } else {
-                debug_assert!(self.part < range.end.part);
+                debug_assert!(p < range.end.part);
                 self.text.len().cast()
             };
             start..end
@@ -894,7 +899,7 @@ impl Part {
         }
 
         if !common.read_only
-            && self.part == common.selection.cursor.part
+            && p == common.selection.cursor.part
             && draw.ev_state().has_input_focus(&common.id) == Some(true)
         {
             draw.text_cursor(
@@ -934,22 +939,22 @@ impl Part {
     ///
     /// One should also call [`EventCx::cancel_ime_focus`] unless this is
     /// implied.
-    fn clear_ime(&mut self, common: &mut Common) {
+    fn clear_ime(&mut self, common: &mut Common, p: u32) {
         if common.current.is_ime_enabled() {
             let action = std::mem::replace(&mut common.current, CurrentAction::None);
             if let CurrentAction::ImePreedit { edit_range, .. } = action {
                 common
                     .selection
-                    .set_position(TextIndex::new(self.part, edit_range.start));
+                    .set_position(TextIndex::new(p, edit_range.start));
                 self.replace_range(edit_range.cast(), "");
             }
         }
     }
 
-    fn ime_surrounding_text(&self, common: &Common) -> Option<ImeSurroundingText> {
+    fn ime_surrounding_text(&self, common: &Common, p: u32) -> Option<ImeSurroundingText> {
         const MAX_TEXT_BYTES: usize = ImeSurroundingText::MAX_TEXT_BYTES;
 
-        let sel_range = subrange_of(&common.selection.to_range(), self.part);
+        let sel_range = subrange_of(&common.selection.to_range(), p);
         let edit_range = match common.current.clone() {
             CurrentAction::ImePreedit { edit_range, .. } => Some(edit_range.cast()),
             _ => None,
@@ -1001,13 +1006,13 @@ impl Part {
     }
 
     /// Call to set IME position only while IME is active
-    fn set_ime_cursor_area(&self, common: &Common, cx: &mut EventState) {
+    fn set_ime_cursor_area(&self, common: &Common, cx: &mut EventState, p: u32) {
         if !self.is_ready() {
             return;
         }
 
         let range = match common.current.clone() {
-            CurrentAction::ImeStart(_) => subrange_of(&common.selection.to_range(), self.part),
+            CurrentAction::ImeStart(_) => subrange_of(&common.selection.to_range(), p),
             CurrentAction::ImePreedit { edit_range, .. } => edit_range.cast(),
             _ => return,
         };
@@ -1042,11 +1047,17 @@ impl Part {
     }
 
     /// Handle IME methods on a given `Part`.
-    fn handle_ime(&mut self, common: &mut Common, cx: &mut EventCx, event: Ime) -> EventAction {
+    fn handle_ime(
+        &mut self,
+        common: &mut Common,
+        cx: &mut EventCx,
+        p: u32,
+        event: Ime,
+    ) -> EventAction {
         match event {
             Ime::Enabled => EventAction::Unused,
             Ime::Disabled => {
-                self.clear_ime(common);
+                self.clear_ime(common, p);
                 if !common.has_key_focus {
                     EventAction::FocusLost
                 } else {
@@ -1144,7 +1155,7 @@ impl Part {
                     }
                 }
 
-                if let Some(text) = self.ime_surrounding_text(common) {
+                if let Some(text) = self.ime_surrounding_text(common, p) {
                     cx.update_ime_surrounding_text(&common.id, text);
                 }
 
@@ -1176,8 +1187,7 @@ impl Common {
         let p_end = range.end.part();
         let mut b_start = range.start.byte();
         let mut last_line_end = 0;
-        for line_range in kas::text::LineIterator::new(replace_with) {
-            let line = &replace_with[line_range];
+        for (line, _) in kas::text::Lines::new(replace_with) {
             last_line_end = b_start + line.len();
             if p < p_end {
                 let part = parts.get_mut(p);
@@ -1301,9 +1311,9 @@ impl Common {
     }
 
     /// Get the part used by IME operations
-    fn ime_part<'p>(&self, parts: &'p mut impl PartList) -> Option<&'p mut Part> {
-        if let Some(part) = self.current.ime_part() {
-            Some(parts.get_mut(part))
+    fn ime_part<'p>(&self, parts: &'p mut impl PartList) -> Option<(u32, &'p mut Part)> {
+        if let Some(p) = self.current.ime_part() {
+            Some((p, parts.get_mut(p)))
         } else {
             None
         }
@@ -1348,8 +1358,9 @@ impl Common {
                 return if self.current.is_none() {
                     let hint = Default::default();
                     let purpose = ImePurpose::Normal;
-                    let part = parts.get_mut(self.selection.cursor.part());
-                    let surrounding_text = part.ime_surrounding_text(self);
+                    let p = self.selection.cursor.part();
+                    let part = parts.get_mut(p);
+                    let surrounding_text = part.ime_surrounding_text(self, p);
                     cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
                     EventAction::FocusGained
                 } else {
@@ -1426,7 +1437,7 @@ impl Common {
                 match self.current {
                     CurrentAction::None if ime == Ime::Enabled => {
                         self.current = CurrentAction::ImeStart(p.cast());
-                        parts.get(p).set_ime_cursor_area(self, cx);
+                        parts.get(p).set_ime_cursor_area(self, cx, p);
 
                         return if !self.has_key_focus {
                             EventAction::FocusGained
@@ -1449,7 +1460,7 @@ impl Common {
                     self.save_undo_state(parts, opt_op);
                 }
 
-                return parts.get_mut(p).handle_ime(self, cx, ime);
+                return parts.get_mut(p).handle_ime(self, cx, p, ime);
             }
             Event::PressStart(press) if press.is_tertiary() => {
                 return match press.grab_click(self.id.clone()).complete(cx) {
@@ -1481,8 +1492,8 @@ impl Common {
                     clear,
                     repeats,
                 } => {
-                    if let Some(part) = self.ime_part(parts) {
-                        part.clear_ime(self);
+                    if let Some((p, part)) = self.ime_part(parts) {
+                        part.clear_ime(self, p);
                         cx.cancel_ime_focus(&self.id);
                     }
                     self.request_key_focus(cx, FocusSource::Pointer);
@@ -1535,8 +1546,8 @@ impl Common {
                     CursorRange::from(anchor..cursor)
                 }
                 TextInputAction::PressEnd { coord } => {
-                    if let Some(part) = self.ime_part(parts) {
-                        part.clear_ime(self);
+                    if let Some((p, part)) = self.ime_part(parts) {
+                        part.clear_ime(self, p);
                         cx.cancel_ime_focus(&self.id);
                     }
                     self.save_undo_state(parts, Some(EditOp::Cursor));
@@ -1572,8 +1583,8 @@ impl Common {
         if self.current == CurrentAction::Selection {
             self.input_handler.stop_selecting();
             self.current = CurrentAction::None;
-        } else if let Some(part) = self.ime_part(parts) {
-            part.clear_ime(self);
+        } else if let Some((p, part)) = self.ime_part(parts) {
+            part.clear_ime(self, p);
             cx.cancel_ime_focus(&self.id);
         }
     }
@@ -1965,9 +1976,9 @@ impl Common {
                 if let Some((p, old_num_parts, texts, cursor)) = self.undo_stack.undo_or_redo(redo)
                 {
                     let mut p = *p;
-                    let mut n = 0;
+                    let mut n: usize = 0;
                     if parts.len() < *old_num_parts {
-                        n = old_num_parts - parts.len();
+                        n = (old_num_parts - parts.len()).cast();
                         for text in &texts[..n] {
                             let part = Part {
                                 text: Rc::clone(text),

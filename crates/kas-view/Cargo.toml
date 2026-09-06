@@ -5,7 +5,6 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "KAS GUI / view widgets"
-readme = "README.md"
 documentation = "https://docs.rs/kas-view/"
 keywords = ["gui"]
 categories = ["gui"]
