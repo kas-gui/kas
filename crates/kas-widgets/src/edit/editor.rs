@@ -42,9 +42,9 @@ pub struct ActionResetStatus;
 /// Result type of [`Component::handle_event`]
 #[derive(Debug)]
 pub enum EventAction {
-    /// Key not used, no action
+    /// Input event was not used
     Unused,
-    /// Key used, no action
+    /// Input event was consumed without action
     Used,
     /// Focus has been gained
     FocusGained,
@@ -56,14 +56,28 @@ pub enum EventAction {
     Activate(Option<PhysicalKey>),
     /// Transient (uncommitted) edit by IME
     Preedit,
-    /// Text was edited by key command
-    Edit,
+    /// Text was edited
+    Edit {
+        /// This is true on key input (e.g. pressing <kbd>A</kbd> or
+        /// <kbd>Backspace</kbd>), false on edits from other causes (e.g. paste,
+        /// undo, input method editor).
+        is_key_input: bool,
+    },
 }
 
 impl EventAction {
     /// If true, text has been edited and must be re-prepared.
     pub fn requires_repreparation(&self) -> bool {
-        matches!(self, EventAction::Preedit | EventAction::Edit)
+        matches!(self, EventAction::Preedit | EventAction::Edit { .. })
+    }
+
+    /// If true, update the scroll position from the cursor
+    pub fn requires_set_view_offset(&self) -> bool {
+        match self {
+            EventAction::FocusGained | EventAction::Cursor => true,
+            EventAction::Edit { is_key_input } => !is_key_input,
+            _ => false,
+        }
     }
 }
 
@@ -591,6 +605,8 @@ impl<H: Highlighter> Component<H> {
         let action = self.0.common.handle_event(&mut self.0.part, cx, event);
         if action.requires_repreparation() {
             self.prepare_and_scroll(cx);
+        } else if action.requires_set_view_offset() {
+            self.0.common.set_view_offset_from_cursor(&self.0.part, cx);
         }
         action
     }
@@ -1179,7 +1195,9 @@ impl Part {
                     edit_range: edit_range.cast(),
                 };
                 common.edit_x_coord = None;
-                EventAction::Edit
+                EventAction::Edit {
+                    is_key_input: false,
+                }
             }
             Ime::DeleteSurrounding {
                 before_bytes,
@@ -1412,7 +1430,9 @@ impl Common {
     ///
     /// If [`EventAction::requires_repreparation`] then the caller **must**
     /// re-prepare and position each part (see e.g.
-    /// [`Component::prepare_and_scroll`]).
+    /// [`Component::prepare_and_scroll`]). If otherwise
+    /// [`EventAction::requires_set_view_offset`] then the caller should call
+    /// [`Common::set_view_offset_from_cursor`].
     //
     // TODO(opt): should we use dyn PartList to reduce code size?
     pub fn handle_event(
@@ -1421,7 +1441,7 @@ impl Common {
         cx: &mut EventCx,
         event: Event,
     ) -> EventAction {
-        let mut event_action = EventAction::Used;
+        let event_action;
         let range = match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
                 if !self.input_handler.is_selecting() {
@@ -1443,7 +1463,6 @@ impl Common {
             }
             Event::KeyFocus => {
                 self.has_key_focus = true;
-                self.set_view_offset_from_cursor(parts, cx);
 
                 return if self.current.is_none() {
                     let hint = Default::default();
@@ -1478,9 +1497,6 @@ impl Common {
             }
             Event::Command(cmd, code) => match self.cmd_action(parts, cx, cmd, code) {
                 Ok(action) => {
-                    if matches!(action, EventAction::Cursor) {
-                        self.set_view_offset_from_cursor(parts, cx);
-                    }
                     return action;
                 }
                 Err(NotReady) => return EventAction::Used,
@@ -1501,7 +1517,7 @@ impl Common {
                     self.set_cursor(parts, end);
                     self.edit_x_coord = None;
 
-                    EventAction::Edit
+                    EventAction::Edit { is_key_input: true }
                 } else {
                     let opt_cmd = cx
                         .config()
@@ -1509,12 +1525,7 @@ impl Common {
                         .try_match_event(cx.modifiers(), event);
                     if let Some(cmd) = opt_cmd {
                         match self.cmd_action(parts, cx, cmd, Some(event.physical_key)) {
-                            Ok(action) => {
-                                if matches!(action, EventAction::Cursor) {
-                                    self.set_view_offset_from_cursor(parts, cx);
-                                }
-                                action
-                            }
+                            Ok(action) => action,
                             Err(NotReady) => EventAction::Used,
                         }
                     } else {
@@ -1570,7 +1581,11 @@ impl Common {
                     let part = parts.get_mut(p);
                     let range = part.trim_paste(self.wrap, &content);
                     cursor = self.replace_range(parts, cursor..cursor, &content[range.clone()]);
-                    event_action = EventAction::Edit;
+                    event_action = EventAction::Edit {
+                        is_key_input: false,
+                    };
+                } else {
+                    event_action = EventAction::Cursor;
                 }
                 cursor.into()
             }
@@ -1608,6 +1623,7 @@ impl Common {
                             // TODO: anchor and cursor use different parts; expand separately then recombine
                         }
                     }
+                    event_action = EventAction::Cursor;
                     CursorRange::from(anchor..cursor)
                 }
                 TextInputAction::PressMove { coord, repeats } => {
@@ -1633,6 +1649,7 @@ impl Common {
                         // TODO
                         cursor = index;
                     }
+                    event_action = EventAction::Cursor;
                     CursorRange::from(anchor..cursor)
                 }
                 TextInputAction::PressEnd { coord } => {
@@ -1657,7 +1674,6 @@ impl Common {
 
         if range != self.selection {
             self.set_cursor(parts, range);
-            self.set_view_offset_from_cursor(parts, cx);
             self.edit_x_coord = None;
             cx.redraw();
         }
@@ -2045,19 +2061,19 @@ impl Common {
                 EventAction::Cursor
             }
             Action::Activate => EventAction::Activate(code),
-            Action::Insert(s, _) => {
+            Action::Insert(s, is_key_input) => {
                 let mut index = self.selection.cursor;
                 let range = if have_sel { selection.clone() } else { index..index };
                 index = self.replace_range(parts, range, s);
                 self.set_cursor(parts, index);
                 self.edit_x_coord = None;
-                EventAction::Edit
+                EventAction::Edit { is_key_input }
             }
-            Action::Delete(sel, _) => {
+            Action::Delete(sel, is_key_input) => {
                 self.replace_range(parts, sel.clone(), "");
                 self.set_cursor(parts, sel.start);
                 self.edit_x_coord = None;
-                EventAction::Edit
+                EventAction::Edit { is_key_input }
             }
             Action::Move(index, x_coord) => {
                 self.selection.cursor = index;
@@ -2102,7 +2118,9 @@ impl Common {
                     self.edit_x_coord = None;
                     let range = *cursor;
                     self.set_cursor(parts, range);
-                    EventAction::Edit
+                    EventAction::Edit {
+                        is_key_input: false,
+                    }
                 } else {
                     EventAction::Used
                 }

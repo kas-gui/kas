@@ -508,7 +508,7 @@ mod Inner {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
             let action = self.common.handle_event(&mut self.parts, cx, event);
-            if action.requires_repreparation() {
+            let set_view_offset = if action.requires_repreparation() {
                 // TODO(opt): skip updating unchanged parts
                 let mut any_resized = false;
                 let mut content_size = Size::ZERO;
@@ -536,8 +536,14 @@ mod Inner {
                 cx.redraw();
                 if any_resized {
                     cx.resize();
-                    self.common.set_view_offset_from_cursor(&self.parts, cx);
                 }
+                any_resized
+            } else {
+                action.requires_set_view_offset()
+            };
+            if set_view_offset {
+                cx.redraw();
+                self.common.set_view_offset_from_cursor(&self.parts, cx);
             }
 
             match action {
@@ -546,7 +552,7 @@ mod Inner {
                 | EventAction::FocusGained
                 | EventAction::FocusLost
                 | EventAction::Preedit => Used,
-                EventAction::Edit => {
+                EventAction::Edit { .. } => {
                     cx.push(CallOnEdit);
                     Used
                 }

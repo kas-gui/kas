@@ -194,7 +194,7 @@ mod EditBoxCore {
                     cx.depress_with_key(&self, code);
                     result = self.guard.activate(&mut self.editor.0, cx, data);
                 }
-                EventAction::Edit => {
+                EventAction::Edit { .. } => {
                     self.call_guard_edit(cx, data);
                     return Used;
                 }
