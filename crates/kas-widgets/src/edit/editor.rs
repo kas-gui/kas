@@ -81,6 +81,16 @@ impl EventAction {
     }
 }
 
+impl From<IsUsed> for EventAction {
+    #[inline]
+    fn from(is_used: IsUsed) -> Self {
+        match is_used {
+            IsUsed::Used => Self::Used,
+            IsUsed::Unused => Self::Unused,
+        }
+    }
+}
+
 /// Multi-part text index
 ///
 /// This type may also be used with single-part editors, using `part = 0`.
@@ -1441,16 +1451,15 @@ impl Common {
         cx: &mut EventCx,
         event: Event,
     ) -> EventAction {
-        let event_action;
-        let range = match event {
+        match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
                 if !self.input_handler.is_selecting() {
                     self.request_key_focus(cx, source);
                 }
-                return EventAction::Used;
+                EventAction::Used
             }
-            Event::NavFocus(_) => return EventAction::Used,
-            Event::LostNavFocus => return EventAction::Used,
+            Event::NavFocus(_) => EventAction::Used,
+            Event::LostNavFocus => EventAction::Used,
             Event::SelFocus(source) => {
                 // NOTE: sel focus implies key focus since we only request
                 // the latter. We must set before calling self.set_primary.
@@ -1459,12 +1468,12 @@ impl Common {
                     self.set_primary(parts, cx);
                 }
 
-                return EventAction::Used;
+                EventAction::Used
             }
             Event::KeyFocus => {
                 self.has_key_focus = true;
 
-                return if self.current.is_none() {
+                if self.current.is_none() {
                     let hint = Default::default();
                     let purpose = ImePurpose::Normal;
                     let p = self.selection.cursor.part();
@@ -1474,16 +1483,16 @@ impl Common {
                     EventAction::FocusGained
                 } else {
                     EventAction::Used
-                };
+                }
             }
             Event::LostKeyFocus => {
                 self.has_key_focus = false;
                 cx.redraw();
-                return if self.current.is_ime_enabled() {
+                if self.current.is_ime_enabled() {
                     EventAction::FocusLost
                 } else {
                     EventAction::Used
-                };
+                }
             }
             Event::LostSelFocus => {
                 // NOTE: we can assume that we will receive Ime::Disabled if IME is active
@@ -1493,16 +1502,13 @@ impl Common {
                 }
                 self.input_handler.stop_selecting();
                 cx.redraw();
-                return EventAction::Used;
+                EventAction::Used
             }
-            Event::Command(cmd, code) => match self.cmd_action(parts, cx, cmd, code) {
-                Ok(action) => {
-                    return action;
-                }
-                Err(NotReady) => return EventAction::Used,
-            },
+            Event::Command(cmd, code) => self
+                .cmd_action(parts, cx, cmd, code)
+                .unwrap_or(EventAction::Used),
             Event::Key(event, false) if event.state == ElementState::Pressed && !self.read_only => {
-                return if let Some(text) = &event.text {
+                if let Some(text) = &event.text {
                     let selection = self.selection.to_range();
                     self.save_undo_state(
                         parts,
@@ -1531,7 +1537,7 @@ impl Common {
                     } else {
                         EventAction::Unused
                     }
-                };
+                }
             }
             Event::Ime(ime) => {
                 let p = self.selection.cursor.part();
@@ -1561,16 +1567,13 @@ impl Common {
                     self.save_undo_state(parts, opt_op);
                 }
 
-                return parts.get_mut(p).handle_ime(self, cx, p, ime);
+                parts.get_mut(p).handle_ime(self, cx, p, ime)
             }
             Event::PressStart(press) if press.is_tertiary() => {
-                return match press.grab_click(self.id.clone()).complete(cx) {
-                    Unused => EventAction::Unused,
-                    Used => EventAction::Used,
-                };
+                press.grab_click(self.id.clone()).complete(cx).into()
             }
             Event::PressEnd { press, .. } if press.is_tertiary() => {
-                let mut cursor = self.text_index_nearest(parts, press.coord);
+                let cursor = self.text_index_nearest(parts, press.coord);
                 self.cancel_selection_and_ime(parts, cx);
                 self.request_key_focus(cx, FocusSource::Pointer);
 
@@ -1580,18 +1583,19 @@ impl Common {
 
                     let part = parts.get_mut(p);
                     let range = part.trim_paste(self.wrap, &content);
-                    cursor = self.replace_range(parts, cursor..cursor, &content[range.clone()]);
-                    event_action = EventAction::Edit {
+                    let cursor = self.replace_range(parts, cursor..cursor, &content[range.clone()]);
+                    self.set_cursor(parts, cursor);
+                    EventAction::Edit {
                         is_key_input: false,
-                    };
+                    }
                 } else {
-                    event_action = EventAction::Cursor;
+                    self.set_cursor(parts, cursor);
+                    EventAction::Cursor
                 }
-                cursor.into()
             }
             event => match self.input_handler.handle(cx, self.id.clone(), event) {
-                TextInputAction::Used => return EventAction::Used,
-                TextInputAction::Unused => return EventAction::Unused,
+                TextInputAction::Used => EventAction::Used,
+                TextInputAction::Unused => EventAction::Unused,
                 TextInputAction::PressStart {
                     coord,
                     clear,
@@ -1623,8 +1627,8 @@ impl Common {
                             // TODO: anchor and cursor use different parts; expand separately then recombine
                         }
                     }
-                    event_action = EventAction::Cursor;
-                    CursorRange::from(anchor..cursor)
+                    self.set_cursor(parts, CursorRange::from(anchor..cursor));
+                    EventAction::Cursor
                 }
                 TextInputAction::PressMove { coord, repeats } => {
                     if self.current != CurrentAction::Selection {
@@ -1649,8 +1653,8 @@ impl Common {
                         // TODO
                         cursor = index;
                     }
-                    event_action = EventAction::Cursor;
-                    CursorRange::from(anchor..cursor)
+                    self.set_cursor(parts, CursorRange::from(anchor..cursor));
+                    EventAction::Cursor
                 }
                 TextInputAction::PressEnd { coord } => {
                     if let Some((p, part)) = self.ime_part(parts) {
@@ -1667,17 +1671,10 @@ impl Common {
                     self.current = CurrentAction::None;
 
                     self.request_key_focus(cx, FocusSource::Pointer);
-                    return EventAction::Used;
+                    EventAction::Used
                 }
             },
-        };
-
-        if range != self.selection {
-            self.set_cursor(parts, range);
-            self.edit_x_coord = None;
-            cx.redraw();
         }
-        event_action
     }
 
     /// Cancel on-going selection and IME actions
