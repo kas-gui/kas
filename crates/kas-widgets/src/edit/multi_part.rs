@@ -428,10 +428,13 @@ mod Inner {
 
         #[inline]
         fn set_rect(&mut self, cx: &mut SizeCx, mut rect: Rect, _: AlignHints) {
+            let rewrap = rect.size.0 != self.rect().size.0;
             self.core.set_rect(rect);
 
             let mut content_size = Size::ZERO;
             for part in &mut self.parts {
+                part.prepare_wrap(&self.common, rect.size.0, rewrap);
+
                 let part_size = part.content_size();
                 rect.size.1 = part_size.1;
                 part.set_rect(&self.common, cx, rect);
@@ -519,7 +522,7 @@ mod Inner {
                         if part.status() < Status::Shaped {
                             part.prepare_runs(&self.common, &mut self.highlighter);
                         }
-                        any_resized |= part.prepare_wrap(&self.common, rect.size.0);
+                        any_resized |= part.prepare_wrap(&self.common, rect.size.0, false);
                     }
 
                     let part_size = part.content_size();

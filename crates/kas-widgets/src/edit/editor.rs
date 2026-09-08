@@ -442,6 +442,11 @@ impl<H: Highlighter> Layout for Component<H> {
 
     #[inline]
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
+        let rewrap = rect.size.0 != self.0.part.rect().size.0;
+        self.0
+            .part
+            .prepare_wrap(&self.0.common, rect.size.0, rewrap);
+
         self.0.part.set_rect(&self.0.common, cx, rect);
     }
 
@@ -565,7 +570,9 @@ impl<H: Highlighter> Component<H> {
         }
 
         self.prepare_runs();
-        self.0.part.prepare_wrap(&self.0.common, self.rect().size.0);
+        self.0
+            .part
+            .prepare_wrap(&self.0.common, self.rect().size.0, false);
     }
 
     /// Fully prepare text for display, ensuring the cursor is within view
@@ -581,7 +588,11 @@ impl<H: Highlighter> Component<H> {
                 self.0.common.update_direction(&self.0.part);
             }
 
-            if self.0.part.prepare_wrap(&self.0.common, self.rect().size.0) {
+            if self
+                .0
+                .part
+                .prepare_wrap(&self.0.common, self.rect().size.0, false)
+            {
                 cx.resize();
                 self.0.common.set_view_offset_from_cursor(&self.0.part, cx);
             }
@@ -774,17 +785,13 @@ impl Part {
     ///
     /// This `rect` is stored and available through [`Self::rect`].
     ///
-    /// Changing the width requires re-wrapping lines; other changes to `rect`
-    /// should be very cheap.
+    /// Note that this method does not perform line-wrapping; it is recommended
+    /// to call [`Self::prepare_wrap`] before this method.
     ///
     /// Note that editors always use default alignment of content.
     pub fn set_rect(&mut self, common: &Common, cx: &mut SizeCx, rect: Rect) {
-        if rect.size.0 != self.rect.size.0 {
-            self.status = self.status.min(Status::Shaped);
-        }
         self.rect = rect;
 
-        self.prepare_wrap(common, rect.size.0);
         if let Some(p) = common.current.ime_part() {
             self.set_ime_cursor_area(common, cx, p);
         }
@@ -807,18 +814,18 @@ impl Part {
     /// `width` is a required input (used for wrapping and alignment). If
     /// `width == 0` or [`Self::status`] is less than [`Status::Shaped`] then
     /// this method aborts (returns `false` without wrapping). Otherwise this
-    /// method performs line-wrapping (if required) and sets the status to
-    /// [`Status::Ready`].
+    /// method performs line-wrapping (if required by the existing status or if
+    /// `rewrap`) and sets the status to [`Status::Ready`].
     ///
     /// Returns `true` when the size of the bounding-box changes.
-    pub fn prepare_wrap(&mut self, common: &Common, width: i32) -> bool {
+    pub fn prepare_wrap(&mut self, common: &Common, width: i32, rewrap: bool) -> bool {
         if self.status < Status::Shaped || width == 0 {
             return false;
         };
 
         let bb = self.forme.bounding_box();
 
-        if self.status == Status::Shaped {
+        if rewrap || self.status == Status::Shaped {
             let align_width = width.cast();
             let wrap_width = if !common.wrap { f32::INFINITY } else { align_width };
             self.forme
