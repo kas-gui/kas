@@ -6,7 +6,7 @@
 //! The [`MultiPartEditor`] widget
 
 use super::editor::{Common, EventAction, Part};
-use crate::edit::editor::{ActionResetStatus, TextIndex};
+use crate::edit::editor::{ActionResetStatus, PartList, TextIndex};
 use crate::edit::highlight::{Highlighter, Plain};
 use crate::{ScrollBar, ScrollBarMsg};
 use kas::cast::Ceil;
@@ -15,7 +15,6 @@ use kas::event::{CursorIcon, Scroll};
 use kas::prelude::*;
 use kas::text::{Direction, Status};
 use kas::theme::{FrameStyle, TextClass};
-use std::rc::Rc;
 
 #[derive(Debug)]
 struct CallOnEdit;
@@ -77,7 +76,13 @@ mod MultiPartEditor {
             // Set bar position, dependent on text direction. TODO: move on text-dir-change.
             let bar_width = cx.scroll_bar_width();
             let (x0, x1);
-            if !self.inner.part.text_is_rtl() {
+            if !self
+                .inner
+                .parts
+                .first()
+                .map(|part| part.text_is_rtl())
+                .unwrap_or_default()
+            {
                 x1 = rect.pos.0 + rect.size.0;
                 x0 = x1 - bar_width;
             } else {
@@ -144,7 +149,7 @@ mod MultiPartEditor {
                 size: self.rect().size - self.frame_size,
             };
             let used = self.scroll.scroll_by_event(cx, event, self.id(), rect);
-            self.update_content_size(cx);
+            self.update_scroll_offset(cx);
             used
         }
 
@@ -251,16 +256,21 @@ mod MultiPartEditor {
 
         /// Read text contents from parts
         ///
-        /// The whole contents equals the concatenation of parts.
-        pub fn text_parts(&self) -> impl Iterator<Item = &Rc<String>> {
-            std::iter::once(self.inner.part.text())
+        /// The whole contents equals the concatenation of parts. FIXME
+        pub fn text_parts(&self) -> impl Iterator<Item = &Part> {
+            self.inner.parts.iter()
         }
 
         /// Copy text contents to a `String`
         pub fn text_to_string(&self) -> String {
             let mut s = String::new();
-            for part in self.text_parts() {
-                s.push_str(part);
+            let mut iter = self.text_parts();
+            if let Some(first) = iter.next() {
+                s.push_str(first.as_str());
+            }
+            for part in iter {
+                s.push('\n'); // TODO
+                s.push_str(part.as_str());
             }
             s
         }
@@ -325,9 +335,10 @@ mod Inner {
     pub struct Inner<H: Highlighter> {
         core: widget_core!(),
         width: (f32, f32),
+        content_size: Size,
         common: Common,
         highlighter: H,
-        part: Part,
+        parts: Vec<Part>,
     }
 
     impl Default for Self
@@ -338,9 +349,10 @@ mod Inner {
             Inner {
                 core: Default::default(),
                 width: (8.0, 16.0),
+                content_size: Size::ZERO,
                 common: Common::new(true),
                 highlighter: H::default(),
-                part: Part::default(),
+                parts: vec![Part::default()],
             }
         }
     }
@@ -349,12 +361,17 @@ mod Inner {
         /// Set the initial text (inline)
         ///
         /// This method should only be used on a new `Inner`.
-        #[inline]
         #[must_use]
         fn with_text(mut self, text: &str) -> Self {
             debug_assert!(self.common.is_unedited());
-            self.common.set_cursor(TextIndex::new(0, 0));
-            self.part = Part::from(text);
+
+            self.common.set_cursor(&self.parts, TextIndex::new(0, 0));
+
+            self.parts = kas::text::Lines::new(text)
+                .map(|(line, _)| Part::from(line))
+                .collect();
+            debug_assert!(!self.parts.is_empty());
+
             self
         }
 
@@ -366,69 +383,81 @@ mod Inner {
             Inner {
                 core: self.core,
                 width: self.width,
+                content_size: self.content_size,
                 common: self.common,
                 highlighter,
-                part: self.part,
-            }
-        }
-
-        fn prepare_runs(&mut self) {
-            if self.part.status() < Status::Shaped {
-                self.part
-                    .prepare_runs(&mut self.common, &mut self.highlighter);
-                self.common.update_direction(&self.part);
+                parts: self.parts,
             }
         }
     }
 
     impl Layout for Self {
-        #[inline]
-        fn rect(&self) -> Rect {
-            self.part.rect()
-        }
-
         fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
                 let dpem = cx.dpem(TextClass::Editor);
                 min = (self.width.0 * dpem).cast_to(Ceil);
                 ideal = (self.width.1 * dpem).cast_to(Ceil);
-            } else if let Some(width) = axis.other() {
-                let Ok(h) = self.part.measure_height(width.cast(), None) else {
-                    if cfg!(debug_assertions) {
-                        panic!("Part: expected prepare_runs() to be called");
-                    } else {
-                        return SizeRules::EMPTY;
-                    }
-                };
+            } else if let Some(width) = axis.other()
+                && let Some(first) = self.parts.first()
+                && let Ok(h) = first.measure_height(width.cast(), None)
+            {
                 min = h.cast_to(Ceil);
                 ideal = min;
             } else {
-                unreachable!()
+                debug_assert!(false);
+                return SizeRules::EMPTY;
             };
 
-            let rules = self.part.size_rules(&self.common, cx, axis);
+            let rules = if axis.is_horizontal() {
+                self.parts
+                    .iter_mut()
+                    .map(|part| part.size_rules(&self.common, cx, axis))
+                    .fold(SizeRules::default(), |rules, item| rules.max(item))
+            } else {
+                self.parts
+                    .iter_mut()
+                    .map(|part| part.size_rules(&self.common, cx, axis))
+                    .reduce(|a, b| a.appended(b))
+                    .unwrap_or_default()
+            };
             ideal = ideal.max(rules.ideal_size());
 
             SizeRules::new(min, ideal, Stretch::High).with_margins(cx.text_margins().extract(axis))
         }
 
         #[inline]
-        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
-            self.part.set_rect(&self.common, cx, rect);
+        fn set_rect(&mut self, cx: &mut SizeCx, mut rect: Rect, _: AlignHints) {
+            let rewrap = rect.size.0 != self.rect().size.0;
+            self.core.set_rect(rect);
+
+            let mut content_size = Size::ZERO;
+            for part in &mut self.parts {
+                part.prepare_wrap(&self.common, rect.size.0, rewrap);
+
+                let part_size = part.content_size();
+                rect.size.1 = part_size.1;
+                part.set_rect(&self.common, cx, rect);
+
+                content_size.0 = content_size.0.max(part_size.0);
+                content_size.1 += part_size.1;
+                rect.pos.1 += part_size.1;
+            }
+            self.content_size = content_size;
         }
     }
 
     impl Viewport for Self {
         #[inline]
         fn content_size(&self) -> Size {
-            self.part.content_size()
+            self.content_size
         }
 
         #[inline]
         fn draw_with_offset(&self, mut draw: DrawCx, rect: Rect, offset: Offset) {
-            self.part
-                .draw_with_offset(draw, &self.common, 0, rect, offset);
+            for (i, part) in self.parts.iter().enumerate() {
+                part.draw_with_offset(draw.re(), &self.common, i.cast(), rect, offset);
+            }
         }
     }
 
@@ -458,22 +487,66 @@ mod Inner {
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            if let Some(ActionResetStatus) = self.common.configure(&cx.size_cx(), self.core.id()) {
-                self.part.require_reprepare();
-            }
+            let mut opt_reset = self.common.configure(&cx.size_cx(), self.core.id());
+
             if let Some(_) = self.highlighter.configure(cx) {
                 self.common.set_colors(self.highlighter.scheme_colors());
-                self.part.require_reprepare();
+                opt_reset = Some(ActionResetStatus);
             }
 
-            self.prepare_runs();
+            for (i, part) in self.parts.iter_mut().enumerate() {
+                if opt_reset.is_some() {
+                    part.require_reprepare();
+                } else if part.status() >= Status::Shaped {
+                    continue;
+                }
+
+                part.prepare_runs(&self.common, &mut self.highlighter);
+
+                if i == 0 {
+                    self.common.update_direction(part);
+                }
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
-            let action = self.common.handle_event(&mut self.part, cx, event);
-            if action.requires_repreparation() {
-                self.common
-                    .prepare_and_scroll(&mut self.part, &mut self.highlighter, cx);
+            let action = self.common.handle_event(&mut self.parts, cx, event);
+            let set_view_offset = if action.requires_repreparation() {
+                // TODO(opt): skip updating unchanged parts
+                let mut any_resized = false;
+                let mut content_size = Size::ZERO;
+                let mut rect = self.rect();
+
+                for part in &mut self.parts {
+                    if !part.is_ready() {
+                        if part.status() < Status::Shaped {
+                            part.prepare_runs(&self.common, &mut self.highlighter);
+                        }
+                        any_resized |= part.prepare_wrap(&self.common, rect.size.0, false);
+                    }
+
+                    let part_size = part.content_size();
+                    rect.size.1 = part_size.1;
+                    part.set_rect(&self.common, &mut cx.size_cx(), rect);
+
+                    content_size.0 = content_size.0.max(part_size.0);
+                    content_size.1 += part_size.1;
+                    rect.pos.1 += part_size.1;
+                }
+
+                self.content_size = content_size;
+
+                cx.redraw();
+                if any_resized {
+                    cx.resize();
+                }
+                any_resized
+            } else {
+                action.requires_set_view_offset()
+            };
+            if set_view_offset {
+                cx.redraw();
+                self.common.set_view_offset_from_cursor(&self.parts, cx);
             }
 
             match action {
@@ -482,7 +555,7 @@ mod Inner {
                 | EventAction::FocusGained
                 | EventAction::FocusLost
                 | EventAction::Preedit => Used,
-                EventAction::Edit => {
+                EventAction::Edit { .. } => {
                     cx.push(CallOnEdit);
                     Used
                 }
