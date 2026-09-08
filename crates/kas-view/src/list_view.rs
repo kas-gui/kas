@@ -602,8 +602,8 @@ mod ListView {
                 } else if a > b {
                     b..a
                 } else {
-                    for i in 0..a {
-                        self.widgets[i].token = None;
+                    for w in &mut self.widgets[0..a] {
+                        w.token = None;
                     }
                     b..alloc_len
                 };
