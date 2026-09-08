@@ -149,7 +149,7 @@ mod MultiPartEditor {
                 size: self.rect().size - self.frame_size,
             };
             let used = self.scroll.scroll_by_event(cx, event, self.id(), rect);
-            self.update_content_size(cx);
+            self.update_scroll_offset(cx);
             used
         }
 

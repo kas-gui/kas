@@ -343,15 +343,17 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 _ => Direction::Up,
             };
         })
-        .on_message(|cx, data, UpdateContents(text)| {
-            match Markdown::new(&text) {
+        .on_message(
+            |cx, data, UpdateContents(text)| match Markdown::new(&text) {
                 Ok(text) => cx.send(data.label_id.clone(), text),
                 Err(err) => {
-                    // TODO: display the error in the GUI
-                    eprintln!("{err}");
+                    let msg = format!("{err}");
+                    if let Ok(text) = Markdown::new(&msg) {
+                        cx.send(data.label_id.clone(), text);
+                    }
                 }
-            }
-        })
+            },
+        )
         .on_message(|_, data, SetLabelId(id)| data.label_id = id);
 
     Page::new(ui)
