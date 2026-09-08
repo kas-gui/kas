@@ -1442,7 +1442,9 @@ impl Common {
     /// re-prepare and position each part (see e.g.
     /// [`Component::prepare_and_scroll`]). If otherwise
     /// [`EventAction::requires_set_view_offset`] then the caller should call
-    /// [`Common::set_view_offset_from_cursor`].
+    /// [`Common::set_view_offset_from_cursor`]. (In both cases, a redraw
+    /// should be requested; this may happen as a side-effect of calling one of
+    /// the methods mentioned here.)
     //
     // TODO(opt): should we use dyn PartList to reduce code size?
     pub fn handle_event(
@@ -2138,7 +2140,7 @@ impl Common {
     ///
     /// It is assumed that the text has not changed.
     ///
-    /// A redraw is assumed since the cursor moved.
+    /// This method additionally requests a redraw.
     pub fn set_view_offset_from_cursor(&self, parts: &impl PartList, cx: &mut EventCx) {
         let cursor = self.selection.cursor;
         let part = parts.get(cursor.part());
@@ -2150,6 +2152,7 @@ impl Common {
             let size = Size(0, i32::conv_to(Ceil, marker.pos.1 - marker.descent) - y0);
             cx.set_scroll(Scroll::Rect(Rect { pos, size }));
         }
+        cx.redraw();
     }
 }
 
