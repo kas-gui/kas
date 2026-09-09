@@ -123,8 +123,9 @@ struct SpinGuard<A, T: SpinValue> {
     start: T,
     end: T,
     step: T,
-    value: T,
-    parsed: Option<T>,
+    // During editing, this is the parse result following each key-stroke.
+    // Outside of editing, it should reflect the latest update.
+    value: Option<T>,
     state_fn: Box<dyn Fn(&ConfigCx, &A) -> T + Send>,
 }
 
@@ -135,22 +136,21 @@ impl<A, T: SpinValue> SpinGuard<A, T> {
             start,
             end,
             step: T::default_step(),
-            value: start,
-            parsed: None,
+            value: None,
             state_fn,
         }
     }
 
     /// Returns new value if different
     fn handle_btn(&mut self, btn: SpinBtn) -> Option<T> {
-        let old_value = self.value;
+        let old_value = self.value?;
         let value = match btn {
             SpinBtn::Down => old_value.sub_step(self.step),
             SpinBtn::Up => old_value.add_step(self.step),
         };
 
         let value = value.clamp(self.start, self.end);
-        self.value = value;
+        self.value = Some(value);
         (value != old_value).then_some(value)
     }
 }
@@ -159,14 +159,13 @@ impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
     type Data = A;
 
     fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
-        self.value = (self.state_fn)(cx, data);
-        let text = self.value.to_string();
-        edit.set_string(cx, text);
+        let value = (self.state_fn)(cx, data);
+        self.value = Some(value);
+        edit.set_string(cx, value.to_string());
     }
 
     fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
-        if let Some(value) = self.parsed.take() {
-            self.value = value;
+        if let Some(value) = self.value {
             cx.push(ValueMsg(value));
         } else {
             self.update(edit, cx, data);
@@ -174,16 +173,12 @@ impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
     }
 
     fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
-        let is_err;
-        if let Ok(value) = edit.as_str().parse::<T>() {
-            self.value = value.clamp(self.start, self.end);
-            self.parsed = Some(self.value);
-            is_err = false;
-        } else {
-            self.parsed = None;
-            is_err = true;
-        };
-        if is_err {
+        self.value = edit
+            .as_str()
+            .parse::<T>()
+            .map(|value| value.clamp(self.start, self.end))
+            .ok();
+        if self.value.is_none() {
             edit.set_error(cx, Some("parse failure".into()));
         }
     }
@@ -365,7 +360,7 @@ mod SpinBox {
                 min: self.edit.guard.start.cast(),
                 max: self.edit.guard.end.cast(),
                 step: self.edit.guard.step.cast(),
-                value: self.edit.guard.value.cast(),
+                value: self.edit.guard.value.map(|v| v.cast()),
             }
         }
     }
@@ -419,6 +414,8 @@ mod SpinBox {
             }
 
             if let Some(value) = value {
+                self.edit
+                    .edit(cx, data, |edit, cx| edit.set_string(cx, value.to_string()));
                 if let Some(ref f) = self.on_change {
                     f(cx, data, value);
                 }
@@ -427,36 +424,44 @@ mod SpinBox {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
-            let new_value = if let Some(ValueMsg(value)) = cx.try_pop() {
-                Some(value)
+            let (new_value, update_text) = if let Some(ValueMsg(value)) = cx.try_pop() {
+                (Some(value), false)
             } else if let Some(btn) = cx.try_pop::<SpinBtn>() {
-                self.edit.guard.handle_btn(btn)
+                (self.edit.guard.handle_btn(btn), true)
             } else if let Some(SetValueF64(v)) = cx.try_pop() {
                 match v.try_cast_approx() {
-                    Ok(value) => Some(value),
+                    Ok(value) => (Some(value), true),
                     Err(err) => {
                         log::warn!("SpinBox failed to handle SetValueF64: {err}");
-                        None
+                        return;
                     }
                 }
-            } else if let Some(IncrementStep) = cx.try_pop() {
-                Some(self.edit.guard.value.add_step(self.edit.guard.step))
-            } else if let Some(DecrementStep) = cx.try_pop() {
-                Some(self.edit.guard.value.sub_step(self.edit.guard.step))
+            } else if let Some(IncrementStep) = cx.try_pop()
+                && let Some(value) = self.edit.guard.value
+            {
+                (Some(value.add_step(self.edit.guard.step)), true)
+            } else if let Some(DecrementStep) = cx.try_pop()
+                && let Some(value) = self.edit.guard.value
+            {
+                (Some(value.sub_step(self.edit.guard.step)), true)
             } else if let Some(SetValueText(string)) = cx.try_pop() {
                 self.edit
                     .edit(cx, data, |edit, cx| edit.set_string(cx, string));
-                self.edit.guard.parsed
+                (self.edit.guard.value, false)
             } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
                 self.edit
                     .edit(cx, data, |edit, cx| edit.replace_selected_text(cx, &text));
-                self.edit.guard.parsed
+                (self.edit.guard.value, false)
             } else {
-                None
+                return;
             };
 
             if let Some(value) = new_value {
-                self.edit.guard.value = value;
+                self.edit.guard.value = Some(value);
+                if update_text {
+                    self.edit
+                        .edit(cx, data, |edit, cx| edit.set_string(cx, value.to_string()));
+                }
                 if let Some(ref f) = self.on_change {
                     f(cx, data, value);
                 }
