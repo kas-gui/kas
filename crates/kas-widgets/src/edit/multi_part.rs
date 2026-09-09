@@ -13,7 +13,7 @@ use kas::cast::Ceil;
 use kas::event::components::ScrollComponent;
 use kas::event::{CursorIcon, Scroll};
 use kas::prelude::*;
-use kas::text::{Direction, Status};
+use kas::text::{Direction, LineBreakBytes, Status};
 use kas::theme::{FrameStyle, TextClass};
 
 #[derive(Debug)]
@@ -256,7 +256,9 @@ mod MultiPartEditor {
 
         /// Read text contents from parts
         ///
-        /// The whole contents equals the concatenation of parts. FIXME
+        /// To reconstruct the whole text, for each `part`, concatenate its
+        /// text (`part.as_str()`) followed by its terminating line break
+        /// (`part.line_ending().as_str()`).
         pub fn text_parts(&self) -> impl Iterator<Item = &Part> {
             self.inner.parts.iter()
         }
@@ -264,13 +266,9 @@ mod MultiPartEditor {
         /// Copy text contents to a `String`
         pub fn text_to_string(&self) -> String {
             let mut s = String::new();
-            let mut iter = self.text_parts();
-            if let Some(first) = iter.next() {
-                s.push_str(first.as_str());
-            }
-            for part in iter {
-                s.push('\n'); // TODO
+            for part in self.text_parts() {
                 s.push_str(part.as_str());
+                s.push_str(part.line_ending().as_str());
             }
             s
         }
@@ -288,6 +286,16 @@ mod MultiPartEditor {
 
         fn update_scroll_offset(&mut self, cx: &mut EventState) {
             self.vert_bar.set_value(cx, self.scroll.offset().1);
+        }
+
+        /// Set the default line break encoding
+        ///
+        /// Where an initial text is provided ([`Self::new`],
+        /// [`Self::with_text`]) the default line-break is inferred from the
+        /// given text if possible. Otherwise [`LineBreakBytes::LF`] is used.
+        #[inline]
+        pub fn set_default_line_break(&mut self, lb: LineBreakBytes) {
+            self.inner.common.set_default_line_break(lb);
         }
 
         /// Set the base text direction (inline)
@@ -352,7 +360,7 @@ mod Inner {
                 content_size: Size::ZERO,
                 common: Common::new(true),
                 highlighter: H::default(),
-                parts: vec![Part::default()],
+                parts: vec![Part::empty()],
             }
         }
     }
@@ -367,8 +375,16 @@ mod Inner {
 
             self.common.set_cursor(&self.parts, TextIndex::new(0, 0));
 
+            let mut have_default_lb = false;
+
             self.parts = kas::text::Lines::new(text)
-                .map(|(line, _)| Part::from(line))
+                .map(|(line, lb)| {
+                    if !have_default_lb && lb.is_default_line_break() {
+                        self.common.set_default_line_break(lb);
+                        have_default_lb = true;
+                    }
+                    Part::new(line, lb)
+                })
                 .collect();
             debug_assert!(!self.parts.is_empty());
 

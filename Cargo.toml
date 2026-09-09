@@ -174,4 +174,4 @@ resolver = "2"
 
 [patch.crates-io.kas-text]
 git = "https://github.com/kas-gui/kas-text.git"
-rev = "575d0ac8bdbb56f8028c15ba1c05f07d2eb66f8d"
+rev = "9db5bad1d3a6c26203f6a2428a67e1cc6835412d"

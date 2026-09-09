@@ -25,7 +25,7 @@ use kas::geom::{Rect, Vec2};
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::text::fonts::FontSelector;
-use kas::text::{CursorRange, Direction, Forme, NotReady, Status, format};
+use kas::text::{CursorRange, Direction, Forme, LineBreakBytes, NotReady, Status, format};
 use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
 use kas::{Layout, autoimpl};
@@ -125,6 +125,15 @@ fn subrange_of(range: &Range<TextIndex>, part: u32) -> Range<usize> {
     range.start.byte()..range.end.byte()
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct StackItem {
+    first_part_num: u32,
+    num_parts: u32,
+    // saved texts from first_part_num
+    texts: Vec<(Rc<String>, LineBreakBytes)>,
+    cursor: CursorRange<TextIndex>,
+}
+
 /// Editor state common to all parts
 #[derive(Debug)]
 pub struct Common {
@@ -133,15 +142,15 @@ pub struct Common {
     colors: SchemeColors,
     font: FontSelector,
     dpem: f32,
+    default_line_break: LineBreakBytes,
     direction: Direction,
     wrap: bool,
     read_only: bool,
     has_key_focus: bool,
     edit_x_coord: Option<f32>,
-    selection: CursorRange<TextIndex>,
+    cursor: CursorRange<TextIndex>,
     last_edit: Option<EditOp>,
-    /// Stack items: (first_part_num, num_parts, Vec of saved texts from first_part_num, selection)
-    undo_stack: UndoStack<(u32, u32, Vec<Rc<String>>, CursorRange<TextIndex>)>,
+    undo_stack: UndoStack<StackItem>,
     current: CurrentAction,
     input_handler: TextInput,
 }
@@ -155,12 +164,13 @@ impl Common {
             colors: SchemeColors::default(),
             font: FontSelector::default(),
             dpem: 16.0,
+            default_line_break: LineBreakBytes::LF,
             direction: Direction::Auto,
             wrap,
             read_only: false,
             has_key_focus: false,
             edit_x_coord: None,
-            selection: CursorRange::default(),
+            cursor: CursorRange::default(),
             last_edit: Some(EditOp::Initial),
             undo_stack: UndoStack::new(),
             current: CurrentAction::None,
@@ -182,6 +192,12 @@ impl Common {
         } else {
             None
         }
+    }
+
+    /// Set the default line break encoding
+    #[inline]
+    pub fn set_default_line_break(&mut self, lb: LineBreakBytes) {
+        self.default_line_break = lb;
     }
 
     /// Get the base text direction
@@ -241,8 +257,8 @@ impl Common {
     #[inline]
     pub fn cursor_range(&self) -> CursorRange<TextIndex> {
         CursorRange {
-            anchor: self.selection.anchor,
-            cursor: self.selection.cursor,
+            anchor: self.cursor.anchor,
+            cursor: self.cursor.cursor,
         }
     }
 
@@ -252,9 +268,9 @@ impl Common {
     /// guard.
     pub fn set_cursor(&mut self, parts: &impl PartList, range: impl Into<CursorRange<TextIndex>>) {
         let range = range.into();
-        if range != self.selection {
+        if range != self.cursor {
             self.validate_range(parts, range.to_range());
-            self.selection = range;
+            self.cursor = range;
             self.edit_x_coord = None;
         }
     }
@@ -282,6 +298,8 @@ pub struct Part {
     forme: Forme,
     highlight: highlight::Cache,
     text: Rc<String>,
+    /// Line break terminating this part.
+    line_break: LineBreakBytes,
 }
 
 /// A list of parts
@@ -467,7 +485,7 @@ impl<H: Highlighter> Component<H> {
     {
         let editor = Editor {
             common: Common::new(wrap),
-            part: Part::default(),
+            part: Part::empty(),
             error_state: None,
         };
         Component(editor, H::default())
@@ -525,7 +543,7 @@ impl<H: Highlighter> Component<H> {
         self.0.part.text = Rc::new(text.to_string());
         let byte = if self.0.common.wrap { 0 } else { self.0.part.text.len() };
         let index = TextIndex::new(0, byte);
-        self.0.common.selection.set_position(index);
+        self.0.common.cursor.set_position(index);
         self
     }
 
@@ -639,33 +657,50 @@ impl<H: Highlighter> Component<H> {
     }
 }
 
-impl Default for Part {
+impl Part {
+    /// Construct an empty part
+    ///
+    /// This part has no text and no terminating line-break.
     #[inline]
-    fn default() -> Self {
+    pub fn empty() -> Self {
         Part {
             rect: Rect::ZERO,
             status: Status::Empty,
             forme: Forme::default(),
             highlight: Default::default(),
             text: Default::default(),
+            line_break: LineBreakBytes::NONE,
         }
     }
-}
 
-impl<S: ToString> From<S> for Part {
-    fn from(text: S) -> Self {
+    /// Construct a part with given text and terminating line-break
+    pub fn new(text: impl ToString, line_break: LineBreakBytes) -> Self {
         Part {
+            rect: Rect::ZERO,
+            status: Status::Empty,
+            forme: Forme::default(),
+            highlight: Default::default(),
             text: Rc::new(text.to_string()),
-            ..Default::default()
+            line_break,
         }
     }
-}
 
-impl Part {
     /// Get text contents
+    ///
+    /// Note that this excludes the terminating line-break: see
+    /// [`Self::line_ending`].
     #[inline]
     pub fn as_str(&self) -> &str {
         self.text.as_str()
+    }
+
+    /// Get the terminating line break, if any
+    ///
+    /// Note that this may be empty (usually the last `Part` will have no line
+    /// ending).
+    #[inline]
+    pub fn line_ending(&self) -> &LineBreakBytes {
+        &self.line_break
     }
 
     fn set_cursor(&self, common: &mut Common, p: u32, range: impl Into<CursorRange<usize>>) {
@@ -674,7 +709,7 @@ impl Part {
         debug_assert!(range.cursor <= self.as_str().len());
         let anchor = TextIndex::new(p, range.anchor);
         let cursor = TextIndex::new(p, range.cursor);
-        common.selection = CursorRange { anchor, cursor };
+        common.cursor = CursorRange { anchor, cursor };
     }
 
     /// Get text contents as a reference to the internal [`Rc`]
@@ -880,7 +915,7 @@ impl Part {
         }
 
         let pos = self.rect.pos - offset;
-        let range = common.selection.to_range();
+        let range = common.cursor.to_range();
         let range = if p < range.start.part || p > range.end.part {
             0..0
         } else {
@@ -1002,14 +1037,14 @@ impl Part {
         }
 
         if !common.read_only
-            && p == common.selection.cursor.part
+            && p == common.cursor.cursor.part
             && draw.ev_state().has_input_focus(&common.id) == Some(true)
         {
             draw.text_cursor(
                 pos,
                 rect,
                 &self.forme,
-                common.selection.cursor.byte(),
+                common.cursor.cursor.byte(),
                 Some(common.colors.cursor),
             );
         }
@@ -1056,7 +1091,7 @@ impl Part {
     fn ime_surrounding_text(&self, common: &Common, p: u32) -> Option<ImeSurroundingText> {
         const MAX_TEXT_BYTES: usize = ImeSurroundingText::MAX_TEXT_BYTES;
 
-        let sel_range = subrange_of(&common.selection.to_range(), p);
+        let sel_range = subrange_of(&common.cursor.to_range(), p);
         let edit_range = match common.current.clone() {
             CurrentAction::ImePreedit { edit_range, .. } => Some(edit_range.cast()),
             _ => None,
@@ -1097,8 +1132,8 @@ impl Part {
             text = self.as_str()[range].to_string();
         }
 
-        let cursor = common.selection.cursor.byte().saturating_sub(start);
-        let anchor = common.selection.anchor.byte().saturating_sub(start);
+        let cursor = common.cursor.cursor.byte().saturating_sub(start);
+        let anchor = common.cursor.anchor.byte().saturating_sub(start);
         ImeSurroundingText::new(text, cursor, anchor)
             .inspect_err(|err| {
                 // TODO: use Display for err not Debug
@@ -1114,7 +1149,7 @@ impl Part {
         }
 
         let range = match common.current.clone() {
-            CurrentAction::ImeStart(_) => subrange_of(&common.selection.to_range(), p),
+            CurrentAction::ImeStart(_) => subrange_of(&common.cursor.to_range(), p),
             CurrentAction::ImePreedit { edit_range, .. } => edit_range.cast(),
             _ => return,
         };
@@ -1169,7 +1204,7 @@ impl Part {
             Ime::Preedit { text, cursor } => {
                 let (part, mut edit_range) = match common.current.clone() {
                     CurrentAction::ImeStart(part) if cursor.is_some() => {
-                        (part, subrange_of(&common.selection.to_range(), part))
+                        (part, subrange_of(&common.cursor.to_range(), part))
                     }
                     CurrentAction::ImeStart(_) => return EventAction::Used,
                     CurrentAction::ImePreedit { part, edit_range } => (part, edit_range.cast()),
@@ -1198,7 +1233,7 @@ impl Part {
             Ime::Commit { text } => {
                 let (part, edit_range) = match common.current.clone() {
                     CurrentAction::ImeStart(part) => {
-                        (part, subrange_of(&common.selection.to_range(), part))
+                        (part, subrange_of(&common.cursor.to_range(), part))
                     }
                     CurrentAction::ImePreedit { part, edit_range } => (part, edit_range.cast()),
                     _ => return EventAction::Used,
@@ -1221,7 +1256,7 @@ impl Part {
                 after_bytes,
             } => {
                 let (p, edit_range) = match common.current.clone() {
-                    CurrentAction::ImeStart(p) => (p, subrange_of(&common.selection.to_range(), p)),
+                    CurrentAction::ImeStart(p) => (p, subrange_of(&common.cursor.to_range(), p)),
                     CurrentAction::ImePreedit { edit_range, part } => (part, edit_range.cast()),
                     _ => return EventAction::Used,
                 };
@@ -1239,7 +1274,7 @@ impl Part {
                                 *index = start;
                             }
                         };
-                        let mut sel = subrange_of(&common.selection.to_range(), p);
+                        let mut sel = subrange_of(&common.cursor.to_range(), p);
                         adjust(&mut sel.start);
                         adjust(&mut sel.end);
                         self.set_cursor(common, p, sel);
@@ -1286,90 +1321,106 @@ impl Common {
         range: Range<TextIndex>,
         replacement: &str,
     ) -> TextIndex {
-        self.validate_range(parts, range.clone());
-
         if !parts.variable_length() {
+            debug_assert!(range.start.part == 0 && range.end.part == 0);
             let range = subrange_of(&range, 0);
             parts.get_mut(0).replace_range(range.clone(), replacement);
             return TextIndex::new(0, range.start + replacement.len());
         }
 
+        let (mut p_end, b_end) = if range.end.part() < parts.len() {
+            (range.end.part(), range.end.byte())
+        } else {
+            debug_assert!(false);
+            let p_end = parts.len() - 1;
+            let b_end = parts.get(p_end).text.len();
+            (p_end, b_end)
+        };
+
         let mut p = range.start.part();
-        let p_end = range.end.part();
         let mut b_start = range.start.byte();
         debug_assert!(b_start <= parts.get(p).text.len());
+        if p > p_end || p == p_end && b_start > b_end {
+            debug_assert!(false);
+            p = p_end;
+            b_start = b_end;
+        }
 
         // Break the input text into lines.
-        let mut lines = kas::text::Lines::new(replacement).map(|(line, _)| line);
-        let mut line = lines.next().unwrap_or("");
-        let mut remainder = None;
+        let mut lines = kas::text::Lines::new(replacement);
+        let (mut line, mut lb) = lines.next().unwrap_or(("", LineBreakBytes::NONE));
 
+        // Iterate over all but the last line of the input text:
         for next_line in lines {
-            if p <= p_end {
+            if p < p_end {
                 let part = parts.get_mut(p);
                 let end = part.text.len();
-                if p == p_end {
-                    let b_end = range.end.byte();
-                    debug_assert!(b_end <= end);
-                    if b_end < end {
-                        remainder = Some(part.as_str()[b_end..].to_string());
-                    }
-                }
                 part.replace_range(b_start..end, line);
+                part.line_break = lb;
             } else {
-                parts.insert(p, Part::from(line));
+                // p == p_end: we preserve the last part for now
+                let mut part = Part::new(line, lb);
+                if b_start > 0 {
+                    let first_part = parts.get(p);
+                    debug_assert!(b_start <= first_part.text.len());
+                    let end = first_part.text.len().min(b_start);
+                    part.replace_range(0..0, &first_part.as_str()[..end]);
+                }
+                parts.insert(p, part);
+                p_end += 1;
             }
 
             p += 1;
             b_start = 0;
-            line = next_line;
+            (line, lb) = next_line;
         }
+
+        // The last line should never have a terminating line-break
+        debug_assert!(lb.is_none());
 
         // Handle the last input line slightly differently to the above loop
         let last_line_end = if b_start > 0 {
-            let part = parts.get_mut(p);
-            let mut end = part.text.len();
+            // Note that b_start > 0 implies p was not advanced yet
+            debug_assert_eq!(p, range.start.part());
+
             if p == p_end {
-                debug_assert!(range.end.byte() <= end);
-                end = end.min(range.end.byte());
+                let part = parts.get_mut(p);
+                debug_assert!(b_end <= part.text.len());
+                let end = b_end.min(part.text.len());
+
+                part.replace_range(b_start..end, line);
+                b_start + line.len()
+            } else {
+                let part = parts.get_mut(p);
+                debug_assert!(b_start <= part.text.len());
+                let p0_text = part.text.clone();
+                let p0_end = part.text.len().min(b_start);
+
+                parts.delete(p..p_end);
+
+                let part = parts.get_mut(p);
+                debug_assert!(b_end <= part.text.len());
+                let end = b_end.min(part.text.len());
+                part.replace_range(0..end, &p0_text[..p0_end]);
+                part.replace_range(p0_end..p0_end, line);
+                p0_end + line.len()
             }
-
-            part.replace_range(b_start..end, line);
-            end = b_start + line.len();
-
-            if p_end > p {
-                parts.delete(p + 1..p_end);
-                let part = parts.remove(p + 1);
-                let rest = &part.as_str()[range.end.byte()..];
-                parts.get_mut(p).replace_range(end..end, rest);
-            }
-
-            end
-        } else if p <= p_end {
-            // Remove excess lines
+        } else {
+            debug_assert!(p <= p_end && b_start == 0);
             parts.delete(p..p_end);
 
             let part = parts.get_mut(p);
-            debug_assert!(range.end.byte() <= part.text.len());
-            let end = range.end.byte().min(part.text.len());
-            part.replace_range(b_start..end, line);
-            b_start + line.len()
-        } else {
-            let mut part = Part::from(line);
-            let len = line.len();
-
-            if let Some(remainder) = remainder.take() {
-                part.replace_range(len..len, &remainder);
-            }
-            parts.insert(p, part);
-            len
+            debug_assert!(b_end <= part.text.len());
+            let end = b_end.min(part.text.len());
+            part.replace_range(0..end, line);
+            line.len()
         };
 
         TextIndex::new(p, last_line_end)
     }
 
     fn copy_selection_to_string(&self, parts: &impl PartList) -> String {
-        let range = self.selection.to_range();
+        let range = self.cursor.to_range();
         if range.start.part == range.end.part {
             return parts.get(range.start.part()).as_str()[range.start.byte()..range.end.byte()]
                 .to_string();
@@ -1398,7 +1449,7 @@ impl Common {
     fn text_index_nearest(&self, parts: &impl PartList, coord: Coord) -> TextIndex {
         let mut l_bound = 0;
         let mut u_bound = parts.len();
-        let mut p = self.selection.cursor.part();
+        let mut p = self.cursor.cursor.part();
         let mut best_dist = i32::MAX;
         let mut best_p = p;
         loop {
@@ -1485,7 +1536,7 @@ impl Common {
                 if self.current.is_none() {
                     let hint = Default::default();
                     let purpose = ImePurpose::Normal;
-                    let p = self.selection.cursor.part();
+                    let p = self.cursor.cursor.part();
                     let part = parts.get_mut(p);
                     let surrounding_text = part.ime_surrounding_text(self, p);
                     cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
@@ -1505,9 +1556,9 @@ impl Common {
             }
             Event::LostSelFocus => {
                 // NOTE: we can assume that we will receive Ime::Disabled if IME is active
-                if !self.selection.is_empty() {
+                if !self.cursor.is_empty() {
                     self.save_undo_state(parts, None);
-                    self.selection.clear_selection();
+                    self.cursor.clear_selection();
                 }
                 self.input_handler.stop_selecting();
                 cx.redraw();
@@ -1518,7 +1569,7 @@ impl Common {
                 .unwrap_or(EventAction::Used),
             Event::Key(event, false) if event.state == ElementState::Pressed && !self.read_only => {
                 if let Some(text) = &event.text {
-                    let selection = self.selection.to_range();
+                    let selection = self.cursor.to_range();
                     self.save_undo_state(
                         parts,
                         Some(EditOp::KeyInput(
@@ -1549,7 +1600,7 @@ impl Common {
                 }
             }
             Event::Ime(ime) => {
-                let p = self.selection.cursor.part();
+                let p = self.cursor.cursor.part();
                 match self.current {
                     CurrentAction::None if ime == Ime::Enabled => {
                         self.current = CurrentAction::ImeStart(p.cast());
@@ -1619,7 +1670,7 @@ impl Common {
                     self.current = CurrentAction::Selection;
 
                     let mut cursor = self.text_index_nearest(parts, coord);
-                    let mut anchor = if clear { cursor } else { self.selection.anchor };
+                    let mut anchor = if clear { cursor } else { self.cursor.anchor };
 
                     if repeats > 1 {
                         if anchor.part == cursor.part {
@@ -1644,8 +1695,8 @@ impl Common {
                         return EventAction::Used;
                     }
 
-                    let mut anchor = self.selection.anchor;
-                    let mut cursor = self.selection.cursor;
+                    let mut anchor = self.cursor.anchor;
+                    let mut cursor = self.cursor.cursor;
                     let index = self.text_index_nearest(parts, coord);
                     if index.part == anchor.part && index.part == cursor.part {
                         let part = parts.get(index.part());
@@ -1713,18 +1764,28 @@ impl Common {
         self.last_edit = edit;
         let (part, texts) = match edit {
             None | Some(EditOp::Initial) | Some(EditOp::Cursor) => (0, vec![]),
-            Some(EditOp::Ime(part)) => (part, vec![parts.get(part).clone_text()]),
+            Some(EditOp::Ime(p)) => {
+                let part = parts.get(p);
+                (p, vec![(part.clone_text(), part.line_break)])
+            }
             Some(EditOp::KeyInput(start, last))
             | Some(EditOp::KeyDelete(start, last))
             | Some(EditOp::Replace(start, last)) => {
                 let texts = (start..last + 1)
-                    .map(|part| parts.get(part).clone_text())
+                    .map(|p| {
+                        let part = parts.get(p);
+                        (part.clone_text(), part.line_break)
+                    })
                     .collect();
                 (start, texts)
             }
         };
-        self.undo_stack
-            .try_push((part, parts.len(), texts, self.selection));
+        self.undo_stack.try_push(StackItem {
+            first_part_num: part,
+            num_parts: parts.len(),
+            texts,
+            cursor: self.cursor,
+        });
     }
 
     /// Request key focus, if we don't have it or IME
@@ -1743,8 +1804,8 @@ impl Common {
     ) -> Result<EventAction, NotReady> {
         let editable = !self.read_only;
         let mut shift = cx.modifiers().shift_key();
-        let mut buf = [0u8; 4];
-        let cursor = self.selection.cursor;
+        let default_line_break = self.default_line_break;
+        let cursor = self.cursor.cursor;
         let c_byte = cursor.byte();
         let c_p = cursor.part();
         let c_part = parts.get(c_p);
@@ -1752,7 +1813,7 @@ impl Common {
         let c_part_len = c_part.as_str().len();
         let num_parts = parts.len();
         let multi_line = self.wrap;
-        let selection = self.selection.to_range();
+        let selection = self.cursor.to_range();
         let have_sel = selection.end > selection.start;
         let string;
 
@@ -1781,7 +1842,7 @@ impl Common {
             Command::Activate => Action::Activate,
             Command::Enter if shift || !multi_line => Action::Activate,
             Command::Enter if editable && multi_line => {
-                Action::Insert('\n'.encode_utf8(&mut buf), true)
+                Action::Insert(default_line_break.as_str(), true)
             }
             // NOTE: we might choose to optionally handle Tab in the future,
             // but without some workaround it prevents keyboard navigation.
@@ -1955,7 +2016,7 @@ impl Common {
                 } else {
                     return Ok(EventAction::Used);
                 };
-                Action::Delete(self.selection.cursor..end, true)
+                Action::Delete(self.cursor.cursor..end, true)
             }
             Command::DelBack if editable => {
                 let start = if c_byte > 0
@@ -1970,7 +2031,7 @@ impl Common {
                 } else {
                     return Ok(EventAction::Used);
                 };
-                Action::Delete(start..self.selection.cursor, true)
+                Action::Delete(start..self.cursor.cursor, true)
             }
             Command::DelWord if editable => {
                 let next = c_part.as_str()[c_byte..]
@@ -1985,7 +2046,7 @@ impl Common {
                 } else {
                     return Ok(EventAction::Used);
                 };
-                Action::Delete(self.selection.cursor..end, true)
+                Action::Delete(self.cursor.cursor..end, true)
             }
             Command::DelWordBack if editable => {
                 let start = if c_byte > 0 {
@@ -2002,10 +2063,10 @@ impl Common {
                 } else {
                     return Ok(EventAction::Used);
                 };
-                Action::Delete(start..self.selection.cursor, true)
+                Action::Delete(start..self.cursor.cursor, true)
             }
             Command::SelectAll => {
-                self.selection.anchor = TextIndex::new(0, 0);
+                self.cursor.anchor = TextIndex::new(0, 0);
                 shift = true; // hack
                 let p = parts.len() - 1;
                 let len = parts.get(p).as_str().len();
@@ -2062,13 +2123,13 @@ impl Common {
 
         let action = match action {
             Action::Deselect => {
-                self.selection.clear_selection();
+                self.cursor.clear_selection();
                 cx.redraw();
                 EventAction::Cursor
             }
             Action::Activate => EventAction::Activate(code),
             Action::Insert(s, is_key_input) => {
-                let mut index = self.selection.cursor;
+                let mut index = self.cursor.cursor;
                 let range = if have_sel { selection.clone() } else { index..index };
                 index = self.replace_range(parts, range, s);
                 self.set_cursor(parts, index);
@@ -2082,9 +2143,9 @@ impl Common {
                 EventAction::Edit { is_key_input }
             }
             Action::Move(index, x_coord) => {
-                self.selection.cursor = index;
+                self.cursor.cursor = index;
                 if !shift {
-                    self.selection.clear_selection();
+                    self.cursor.clear_selection();
                 } else {
                     self.set_primary(parts, cx);
                 }
@@ -2093,36 +2154,33 @@ impl Common {
                 EventAction::Cursor
             }
             Action::UndoRedo(redo) => {
-                if let Some((p, old_num_parts, texts, cursor)) = self.undo_stack.undo_or_redo(redo)
-                {
-                    let mut p = *p;
+                if let Some(item) = self.undo_stack.undo_or_redo(redo) {
+                    let mut p = item.first_part_num;
                     let mut n: usize = 0;
-                    if parts.len() < *old_num_parts {
-                        n = (old_num_parts - parts.len()).cast();
-                        for text in &texts[..n] {
-                            let part = Part {
-                                text: Rc::clone(text),
-                                ..Default::default()
-                            };
+                    if parts.len() < item.num_parts {
+                        n = (item.num_parts - parts.len()).cast();
+                        for (text, lb) in &item.texts[..n] {
+                            let part = Part::new(text, *lb);
                             parts.insert(p, part);
                             p += 1;
                         }
-                    } else if parts.len() > *old_num_parts {
-                        let n_delete = parts.len() - old_num_parts;
+                    } else if parts.len() > item.num_parts {
+                        let n_delete = parts.len() - item.num_parts;
                         parts.delete(p..p + n_delete);
                     }
 
-                    for text in &texts[n..] {
+                    for (text, lb) in &item.texts[n..] {
                         let part = parts.get_mut(p);
                         if !Rc::ptr_eq(&part.text, text) {
                             part.text = Rc::clone(text);
+                            part.line_break = *lb;
                             part.status = Status::Empty;
                         }
                         p += 1;
                     }
 
                     self.edit_x_coord = None;
-                    let range = *cursor;
+                    let range = item.cursor;
                     self.set_cursor(parts, range);
                     EventAction::Edit {
                         is_key_input: false,
@@ -2138,7 +2196,7 @@ impl Common {
 
     /// Set primary clipboard (mouse buffer) contents from selection
     fn set_primary(&self, parts: &impl PartList, cx: &mut EventCx) {
-        if self.has_key_focus && !self.selection.is_empty() && cx.has_primary() {
+        if self.has_key_focus && !self.cursor.is_empty() && cx.has_primary() {
             cx.set_primary(self.copy_selection_to_string(parts));
         }
     }
@@ -2149,7 +2207,7 @@ impl Common {
     ///
     /// This method additionally requests a redraw.
     pub fn set_view_offset_from_cursor(&self, parts: &impl PartList, cx: &mut EventCx) {
-        let cursor = self.selection.cursor;
+        let cursor = self.cursor.cursor;
         let part = parts.get(cursor.part());
         if part.is_ready()
             && let Some(marker) = part.forme.text_glyph_pos(cursor.byte()).next_back()
@@ -2216,7 +2274,7 @@ impl Editor {
         Rc::make_mut(&mut self.part.text).clear();
         self.part.require_reprepare();
 
-        self.common.selection.set_position(TextIndex::new(0, 0));
+        self.common.cursor.set_position(TextIndex::new(0, 0));
         self.common.edit_x_coord = None;
         self.error_state = None;
     }
@@ -2276,7 +2334,7 @@ impl Editor {
         self.part.require_reprepare();
 
         let len = TextIndex::new(0, self.as_str().len());
-        self.common.selection.set_max_len(len);
+        self.common.cursor.set_max_len(len);
         self.common.edit_x_coord = None;
         self.error_state = None;
     }
@@ -2291,7 +2349,7 @@ impl Editor {
 
         self.common.cancel_selection_and_ime(&mut self.part, cx);
 
-        let selection = self.common.selection.to_range();
+        let selection = self.common.cursor.to_range();
         let start = selection.start.byte();
         let end = selection.end.byte();
         self.part.replace_range(start..end, text);
@@ -2304,8 +2362,8 @@ impl Editor {
     #[inline]
     pub fn cursor_range(&self) -> CursorRange<usize> {
         CursorRange {
-            anchor: self.common.selection.anchor.byte(),
-            cursor: self.common.selection.cursor.byte(),
+            anchor: self.common.cursor.anchor.byte(),
+            cursor: self.common.cursor.cursor.byte(),
         }
     }
 
