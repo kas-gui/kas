@@ -256,7 +256,9 @@ mod MultiPartEditor {
 
         /// Read text contents from parts
         ///
-        /// The whole contents equals the concatenation of parts. FIXME
+        /// To reconstruct the whole text, for each `part`, concatenate its
+        /// text (`part.as_str()`) followed by its terminating line break
+        /// (`part.line_ending().as_str()`).
         pub fn text_parts(&self) -> impl Iterator<Item = &Part> {
             self.inner.parts.iter()
         }
@@ -264,13 +266,9 @@ mod MultiPartEditor {
         /// Copy text contents to a `String`
         pub fn text_to_string(&self) -> String {
             let mut s = String::new();
-            let mut iter = self.text_parts();
-            if let Some(first) = iter.next() {
-                s.push_str(first.as_str());
-            }
-            for part in iter {
-                s.push('\n'); // TODO
+            for part in self.text_parts() {
                 s.push_str(part.as_str());
+                s.push_str(part.line_ending().as_str());
             }
             s
         }

@@ -686,9 +686,21 @@ impl Part {
     }
 
     /// Get text contents
+    ///
+    /// Note that this excludes the terminating line-break: see
+    /// [`Self::line_ending`].
     #[inline]
     pub fn as_str(&self) -> &str {
         self.text.as_str()
+    }
+
+    /// Get the terminating line break, if any
+    ///
+    /// Note that this may be empty (usually the last `Part` will have no line
+    /// ending).
+    #[inline]
+    pub fn line_ending(&self) -> &LineBreakBytes {
+        &self.line_break
     }
 
     fn set_cursor(&self, common: &mut Common, p: u32, range: impl Into<CursorRange<usize>>) {
