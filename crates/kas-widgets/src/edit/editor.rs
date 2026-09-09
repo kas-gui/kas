@@ -25,7 +25,7 @@ use kas::geom::{Rect, Vec2};
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::text::fonts::FontSelector;
-use kas::text::{CursorRange, Direction, Forme, NotReady, Status, format};
+use kas::text::{CursorRange, Direction, Forme, LineBreakBytes, NotReady, Status, format};
 use kas::theme::{Background, DrawCx, SizeCx, TextClass};
 use kas::util::UndoStack;
 use kas::{Layout, autoimpl};
@@ -130,7 +130,7 @@ struct StackItem {
     first_part_num: u32,
     num_parts: u32,
     // saved texts from first_part_num
-    texts: Vec<Rc<String>>,
+    texts: Vec<(Rc<String>, LineBreakBytes)>,
     cursor: CursorRange<TextIndex>,
 }
 
@@ -142,6 +142,7 @@ pub struct Common {
     colors: SchemeColors,
     font: FontSelector,
     dpem: f32,
+    default_line_break: LineBreakBytes,
     direction: Direction,
     wrap: bool,
     read_only: bool,
@@ -163,6 +164,7 @@ impl Common {
             colors: SchemeColors::default(),
             font: FontSelector::default(),
             dpem: 16.0,
+            default_line_break: LineBreakBytes::LF,
             direction: Direction::Auto,
             wrap,
             read_only: false,
@@ -190,6 +192,12 @@ impl Common {
         } else {
             None
         }
+    }
+
+    /// Set the default line break encoding
+    #[inline]
+    pub fn set_default_line_break(&mut self, lb: LineBreakBytes) {
+        self.default_line_break = lb;
     }
 
     /// Get the base text direction
@@ -290,6 +298,8 @@ pub struct Part {
     forme: Forme,
     highlight: highlight::Cache,
     text: Rc<String>,
+    /// Line break terminating this part.
+    line_break: LineBreakBytes,
 }
 
 /// A list of parts
@@ -475,7 +485,7 @@ impl<H: Highlighter> Component<H> {
     {
         let editor = Editor {
             common: Common::new(wrap),
-            part: Part::default(),
+            part: Part::empty(),
             error_state: None,
         };
         Component(editor, H::default())
@@ -647,29 +657,34 @@ impl<H: Highlighter> Component<H> {
     }
 }
 
-impl Default for Part {
+impl Part {
+    /// Construct an empty part
+    ///
+    /// This part has no text and no terminating line-break.
     #[inline]
-    fn default() -> Self {
+    pub fn empty() -> Self {
         Part {
             rect: Rect::ZERO,
             status: Status::Empty,
             forme: Forme::default(),
             highlight: Default::default(),
             text: Default::default(),
+            line_break: LineBreakBytes::NONE,
         }
     }
-}
 
-impl<S: ToString> From<S> for Part {
-    fn from(text: S) -> Self {
+    /// Construct a part with given text and terminating line-break
+    pub fn new(text: impl ToString, line_break: LineBreakBytes) -> Self {
         Part {
+            rect: Rect::ZERO,
+            status: Status::Empty,
+            forme: Forme::default(),
+            highlight: Default::default(),
             text: Rc::new(text.to_string()),
-            ..Default::default()
+            line_break,
         }
     }
-}
 
-impl Part {
     /// Get text contents
     #[inline]
     pub fn as_str(&self) -> &str {
@@ -1320,8 +1335,8 @@ impl Common {
         }
 
         // Break the input text into lines.
-        let mut lines = kas::text::Lines::new(replacement).map(|(line, _)| line);
-        let mut line = lines.next().unwrap_or("");
+        let mut lines = kas::text::Lines::new(replacement);
+        let (mut line, mut lb) = lines.next().unwrap_or(("", LineBreakBytes::NONE));
 
         // Iterate over all but the last line of the input text:
         for next_line in lines {
@@ -1329,9 +1344,10 @@ impl Common {
                 let part = parts.get_mut(p);
                 let end = part.text.len();
                 part.replace_range(b_start..end, line);
+                part.line_break = lb;
             } else {
                 // p == p_end: we preserve the last part for now
-                let mut part = Part::from(line);
+                let mut part = Part::new(line, lb);
                 if b_start > 0 {
                     let first_part = parts.get(p);
                     debug_assert!(b_start <= first_part.text.len());
@@ -1344,8 +1360,11 @@ impl Common {
 
             p += 1;
             b_start = 0;
-            line = next_line;
+            (line, lb) = next_line;
         }
+
+        // The last line should never have a terminating line-break
+        debug_assert!(lb.is_none());
 
         // Handle the last input line slightly differently to the above loop
         let last_line_end = if b_start > 0 {
@@ -1733,12 +1752,18 @@ impl Common {
         self.last_edit = edit;
         let (part, texts) = match edit {
             None | Some(EditOp::Initial) | Some(EditOp::Cursor) => (0, vec![]),
-            Some(EditOp::Ime(part)) => (part, vec![parts.get(part).clone_text()]),
+            Some(EditOp::Ime(p)) => {
+                let part = parts.get(p);
+                (p, vec![(part.clone_text(), part.line_break)])
+            }
             Some(EditOp::KeyInput(start, last))
             | Some(EditOp::KeyDelete(start, last))
             | Some(EditOp::Replace(start, last)) => {
                 let texts = (start..last + 1)
-                    .map(|part| parts.get(part).clone_text())
+                    .map(|p| {
+                        let part = parts.get(p);
+                        (part.clone_text(), part.line_break)
+                    })
                     .collect();
                 (start, texts)
             }
@@ -1767,7 +1792,7 @@ impl Common {
     ) -> Result<EventAction, NotReady> {
         let editable = !self.read_only;
         let mut shift = cx.modifiers().shift_key();
-        let mut buf = [0u8; 4];
+        let default_line_break = self.default_line_break;
         let cursor = self.cursor.cursor;
         let c_byte = cursor.byte();
         let c_p = cursor.part();
@@ -1805,7 +1830,7 @@ impl Common {
             Command::Activate => Action::Activate,
             Command::Enter if shift || !multi_line => Action::Activate,
             Command::Enter if editable && multi_line => {
-                Action::Insert('\n'.encode_utf8(&mut buf), true)
+                Action::Insert(default_line_break.as_str(), true)
             }
             // NOTE: we might choose to optionally handle Tab in the future,
             // but without some workaround it prevents keyboard navigation.
@@ -2122,11 +2147,8 @@ impl Common {
                     let mut n: usize = 0;
                     if parts.len() < item.num_parts {
                         n = (item.num_parts - parts.len()).cast();
-                        for text in &item.texts[..n] {
-                            let part = Part {
-                                text: Rc::clone(text),
-                                ..Default::default()
-                            };
+                        for (text, lb) in &item.texts[..n] {
+                            let part = Part::new(text, *lb);
                             parts.insert(p, part);
                             p += 1;
                         }
@@ -2135,10 +2157,11 @@ impl Common {
                         parts.delete(p..p + n_delete);
                     }
 
-                    for text in &item.texts[n..] {
+                    for (text, lb) in &item.texts[n..] {
                         let part = parts.get_mut(p);
                         if !Rc::ptr_eq(&part.text, text) {
                             part.text = Rc::clone(text);
+                            part.line_break = *lb;
                             part.status = Status::Empty;
                         }
                         p += 1;
