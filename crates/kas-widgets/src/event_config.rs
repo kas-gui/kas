@@ -98,7 +98,7 @@ mod EventConfig {
             EventConfig {
                 core: Default::default(),
                 hover_delay: SpinBox::new(0..=10_000, |cx, _| {
-                    cx.config().base().event.menu_delay_ms
+                    cx.config().base().event.hover_delay_ms
                 })
                 .with_step(100)
                 .with_msg(EventConfigMsg::HoverDelay)
@@ -107,10 +107,10 @@ mod EventConfig {
                     .with_step(50)
                     .with_msg(EventConfigMsg::MenuDelay)
                     .with_unit("ms"),
-                touch_select_delay: SpinBox::new(0..=5_000, |cx: &ConfigCx, _| {
+                touch_select_delay: SpinBox::new(0..=10_000, |cx: &ConfigCx, _| {
                     cx.config().base().event.touch_select_delay_ms
                 })
-                .with_step(50)
+                .with_step(100)
                 .with_msg(EventConfigMsg::TouchSelectDelay)
                 .with_unit("ms"),
                 kinetic_timeout: SpinBox::new(0..=500, |cx: &ConfigCx, _| {
@@ -122,7 +122,7 @@ mod EventConfig {
                 kinetic_decay_mul: SpinBox::new(0.0..=1.0, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_decay_mul
                 })
-                .with_step(0.0625)
+                .with_step(0.03125)
                 .with_msg(EventConfigMsg::KineticDecayMul),
                 kinetic_decay_sub: SpinBox::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_decay_sub
@@ -132,12 +132,12 @@ mod EventConfig {
                 kinetic_grab_sub: SpinBox::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_grab_sub
                 })
-                .with_step(5.0)
+                .with_step(100.0)
                 .with_msg(EventConfigMsg::KineticGrabSub),
                 scroll_dist_em: SpinBox::new(0.125..=125.0, |cx: &ConfigCx, _| {
                     cx.config().base().event.scroll_dist_em
                 })
-                .with_step(0.125)
+                .with_step(0.25)
                 .with_msg(EventConfigMsg::ScrollDistEm)
                 .with_unit("em"),
                 pan_dist_thresh: SpinBox::new(0.25..=25.0, |cx: &ConfigCx, _| {

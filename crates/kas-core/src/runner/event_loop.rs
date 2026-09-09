@@ -61,8 +61,7 @@ where
 
                 self.resumes.drain(..first_future);
             }
-            StartCause::Poll => (),
-            StartCause::Init => (),
+            _ => (),
         }
     }
 

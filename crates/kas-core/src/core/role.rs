@@ -188,8 +188,8 @@ pub enum Role<'a> {
         max: f64,
         /// Step
         step: f64,
-        /// Current value
-        value: f64,
+        /// Current value, if available
+        value: Option<f64>,
     },
     /// A progress bar
     ProgressBar {
@@ -451,7 +451,9 @@ impl<'a> Role<'a> {
                 if step.is_finite() {
                     node.set_numeric_value_step(step);
                 }
-                node.set_numeric_value(value);
+                if let Some(value) = value {
+                    node.set_numeric_value(value);
+                }
                 if let Role::Slider { direction, .. } = self {
                     node.set_orientation((*direction).into());
                 }
