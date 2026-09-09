@@ -1286,38 +1286,52 @@ impl Common {
         range: Range<TextIndex>,
         replacement: &str,
     ) -> TextIndex {
-        self.validate_range(parts, range.clone());
-
         if !parts.variable_length() {
+            debug_assert!(range.start.part == 0 && range.end.part == 0);
             let range = subrange_of(&range, 0);
             parts.get_mut(0).replace_range(range.clone(), replacement);
             return TextIndex::new(0, range.start + replacement.len());
         }
 
+        let (mut p_end, b_end) = if range.end.part() < parts.len() {
+            (range.end.part(), range.end.byte())
+        } else {
+            debug_assert!(false);
+            let p_end = parts.len() - 1;
+            let b_end = parts.get(p_end).text.len();
+            (p_end, b_end)
+        };
+
         let mut p = range.start.part();
-        let p_end = range.end.part();
         let mut b_start = range.start.byte();
         debug_assert!(b_start <= parts.get(p).text.len());
+        if p > p_end || p == p_end && b_start > b_end {
+            debug_assert!(false);
+            p = p_end;
+            b_start = b_end;
+        }
 
         // Break the input text into lines.
         let mut lines = kas::text::Lines::new(replacement).map(|(line, _)| line);
         let mut line = lines.next().unwrap_or("");
-        let mut remainder = None;
 
+        // Iterate over all but the last line of the input text:
         for next_line in lines {
-            if p <= p_end {
+            if p < p_end {
                 let part = parts.get_mut(p);
                 let end = part.text.len();
-                if p == p_end {
-                    let b_end = range.end.byte();
-                    debug_assert!(b_end <= end);
-                    if b_end < end {
-                        remainder = Some(part.as_str()[b_end..].to_string());
-                    }
-                }
                 part.replace_range(b_start..end, line);
             } else {
-                parts.insert(p, Part::from(line));
+                // p == p_end: we preserve the last part for now
+                let mut part = Part::from(line);
+                if b_start > 0 {
+                    let first_part = parts.get(p);
+                    debug_assert!(b_start <= first_part.text.len());
+                    let end = first_part.text.len().min(b_start);
+                    part.replace_range(0..0, &first_part.as_str()[..end]);
+                }
+                parts.insert(p, part);
+                p_end += 1;
             }
 
             p += 1;
@@ -1327,42 +1341,40 @@ impl Common {
 
         // Handle the last input line slightly differently to the above loop
         let last_line_end = if b_start > 0 {
-            let part = parts.get_mut(p);
-            let mut end = part.text.len();
+            // Note that b_start > 0 implies p was not advanced yet
+            debug_assert_eq!(p, range.start.part());
+
             if p == p_end {
-                debug_assert!(range.end.byte() <= end);
-                end = end.min(range.end.byte());
+                let part = parts.get_mut(p);
+                debug_assert!(b_end <= part.text.len());
+                let end = b_end.min(part.text.len());
+
+                part.replace_range(b_start..end, line);
+                b_start + line.len()
+            } else {
+                let part = parts.get_mut(p);
+                debug_assert!(b_start <= part.text.len());
+                let p0_text = part.text.clone();
+                let p0_end = part.text.len().min(b_start);
+
+                parts.delete(p..p_end);
+
+                let part = parts.get_mut(p);
+                debug_assert!(b_end <= part.text.len());
+                let end = b_end.min(part.text.len());
+                part.replace_range(0..end, &p0_text[..p0_end]);
+                part.replace_range(p0_end..p0_end, line);
+                p0_end + line.len()
             }
-
-            part.replace_range(b_start..end, line);
-            end = b_start + line.len();
-
-            if p_end > p {
-                parts.delete(p + 1..p_end);
-                let part = parts.remove(p + 1);
-                let rest = &part.as_str()[range.end.byte()..];
-                parts.get_mut(p).replace_range(end..end, rest);
-            }
-
-            end
-        } else if p <= p_end {
-            // Remove excess lines
+        } else {
+            debug_assert!(p <= p_end && b_start == 0);
             parts.delete(p..p_end);
 
             let part = parts.get_mut(p);
-            debug_assert!(range.end.byte() <= part.text.len());
-            let end = range.end.byte().min(part.text.len());
-            part.replace_range(b_start..end, line);
-            b_start + line.len()
-        } else {
-            let mut part = Part::from(line);
-            let len = line.len();
-
-            if let Some(remainder) = remainder.take() {
-                part.replace_range(len..len, &remainder);
-            }
-            parts.insert(p, part);
-            len
+            debug_assert!(b_end <= part.text.len());
+            let end = b_end.min(part.text.len());
+            part.replace_range(0..end, line);
+            line.len()
         };
 
         TextIndex::new(p, last_line_end)
