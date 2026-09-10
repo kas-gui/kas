@@ -75,10 +75,8 @@ pub trait EditGuard: Sized {
 /// This guard should probably not be used for a functional user-interface but
 /// may be useful in mock UIs.
 #[autoimpl(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct DefaultGuard<A>(PhantomData<fn(A)>);
-impl<A: 'static> EditGuard for DefaultGuard<A> {
-    type Data = A;
-}
+pub struct DefaultGuard;
+impl AutoEditGuard for DefaultGuard {}
 
 #[impl_self]
 mod StringGuard {
