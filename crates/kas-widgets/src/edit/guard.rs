@@ -23,13 +23,6 @@ pub trait EditGuard: Sized {
     /// Data type
     type Data;
 
-    /// Configure guard
-    ///
-    /// This function is called when the attached widget is configured.
-    fn configure(&mut self, edit: &mut Editor, cx: &mut ConfigCx) {
-        let _ = (edit, cx);
-    }
-
     /// Update guard
     ///
     /// This function is called when input data is updated **and** the editor
@@ -51,13 +44,6 @@ pub trait EditGuard: Sized {
     fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) -> IsUsed {
         self.focus_lost(edit, cx, data);
         Used
-    }
-
-    /// Focus-gained guard
-    ///
-    /// This function is called when the widget gains keyboard or IME focus.
-    fn focus_gained(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Self::Data) {
-        let _ = (edit, cx, data);
     }
 
     /// Focus-lost guard

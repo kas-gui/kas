@@ -168,7 +168,6 @@ mod EditBoxCore {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.editor.configure(cx, self.id());
-            self.guard.configure(&mut self.editor.0, cx);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
@@ -183,10 +182,10 @@ mod EditBoxCore {
             let mut result = Used;
             match self.editor.handle_event(cx, event) {
                 EventAction::Unused => return Unused,
-                EventAction::Used | EventAction::Cursor | EventAction::Preedit => return Used,
-                EventAction::FocusGained => {
-                    self.guard.focus_gained(&mut self.editor.0, cx, data);
-                }
+                EventAction::Used
+                | EventAction::FocusGained
+                | EventAction::Cursor
+                | EventAction::Preedit => return Used,
                 EventAction::FocusLost => {
                     self.guard.focus_lost(&mut self.editor.0, cx, data);
                 }
