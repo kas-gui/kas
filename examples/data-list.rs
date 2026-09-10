@@ -34,6 +34,10 @@ enum Control {
     DecrLen,
     IncrLen,
     Reverse,
+}
+
+#[derive(Clone, Debug)]
+enum Update {
     Select(usize, String),
     UpdateCurrent(String),
 }
@@ -56,15 +60,6 @@ impl Data {
                 self.dir = self.dir.reversed();
                 return;
             }
-            Control::Select(index, text) => {
-                self.active = index;
-                self.active_string = text;
-                return;
-            }
-            Control::UpdateCurrent(text) => {
-                self.active_string = text;
-                return;
-            }
         };
 
         self.len = len;
@@ -72,6 +67,18 @@ impl Data {
             self.active = len - 1;
             // NOTE: We should update self.active_string here but we cannot
             // access the newly active widget's data from here.
+        }
+    }
+
+    fn update(&mut self, update: Update) {
+        match update {
+            Update::Select(index, text) => {
+                self.active = index;
+                self.active_string = text;
+            }
+            Update::UpdateCurrent(text) => {
+                self.active_string = text;
+            }
         }
     }
 }
@@ -88,7 +95,7 @@ impl EditGuard for ListEntryGuard {
 
     fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
         if data.active == self.0 {
-            cx.push(Control::UpdateCurrent(edit.as_str().to_string()));
+            cx.push(Update::UpdateCurrent(edit.as_str().to_string()));
         }
     }
 }
@@ -117,7 +124,7 @@ mod ListEntry {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.active != n {
-                    cx.push(Control::Select(n, self.edit.as_str().to_string()));
+                    cx.push(Update::Select(n, self.edit.as_str().to_string()));
                 }
             }
         }
@@ -180,7 +187,8 @@ fn main() -> kas::runner::Result<()> {
 
     let ui = tree
         .with_state(data)
-        .on_message(|_, data, control| data.handle(control));
+        .on_message(|_, data, control| data.handle(control))
+        .on_message(|_, data, update| data.update(update));
 
     let window = Window::new(ui, "Dynamic widget demo");
 
