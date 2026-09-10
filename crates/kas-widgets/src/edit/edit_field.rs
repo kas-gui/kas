@@ -231,7 +231,11 @@ mod EditBoxCore {
     }
 
     impl<G: EditGuard> EditBoxCore<G, Plain> {
-        /// Construct an `EditBoxCore` with an [`EditGuard`]
+        /// Construct an `EditBoxCore`
+        ///
+        /// If the editor is *autonomous* (is not affected by input data) then
+        /// pass a `guard` implementing [`AutoEditGuard`], otherwise the `guard`
+        /// should implement [`EditGuard`].
         #[inline]
         pub fn new(guard: G) -> EditBoxCore<G> {
             EditBoxCore {

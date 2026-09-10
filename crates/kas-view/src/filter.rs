@@ -6,7 +6,7 @@
 //! Filters over data
 
 use kas::event::EventCx;
-use kas_widgets::edit::{EditGuard, Editor};
+use kas_widgets::edit::{AutoEditGuard, Editor};
 use std::fmt::Debug;
 
 /// Ability to set filter
@@ -90,27 +90,23 @@ impl Filter<String> for ContainsCaseInsensitive {
 #[derive(Debug, Default)]
 pub struct SetFilter<T: Debug>(pub T);
 
-/// An [`EditGuard`] which sends a [`SetFilter`] message on every change
+/// An [`AutoEditGuard`] which sends a [`SetFilter`] message on every change
 ///
 /// This may be used for search-as-you-type.
 pub struct KeystrokeGuard;
-impl EditGuard for KeystrokeGuard {
-    type Data = ();
-
-    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Self::Data) {
+impl AutoEditGuard for KeystrokeGuard {
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx) {
         cx.push(SetFilter(edit.as_str().to_string()));
     }
 }
 
-/// An [`EditGuard`] which sends a [`SetFilter`] message on activate and focus loss
+/// An [`AutoEditGuard`] which sends a [`SetFilter`] message on activate and focus loss
 ///
 /// This may be used for search-as-you-type.
 pub struct AflGuard;
-impl EditGuard for AflGuard {
-    type Data = ();
-
+impl AutoEditGuard for AflGuard {
     #[inline]
-    fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Self::Data) {
+    fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx) {
         cx.push(SetFilter(edit.as_str().to_string()));
     }
 }

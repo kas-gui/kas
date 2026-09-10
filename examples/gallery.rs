@@ -17,7 +17,7 @@ use kas::dir::{Down, Right};
 use kas::image::Svg;
 use kas::prelude::*;
 use kas::theme::{MarginStyle, TextClass};
-use kas::widgets::edit::{EditGuard, Editor, highlight::SyntectHighlighter};
+use kas::widgets::edit::{AutoEditGuard, Editor, highlight::SyntectHighlighter};
 use kas::widgets::{column, *};
 use kas::window::Popup;
 use std::ops::Range;
@@ -88,15 +88,13 @@ fn widgets() -> Page<AppData> {
     };
 
     struct Guard;
-    impl EditGuard for Guard {
-        type Data = ();
-
-        fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &()) -> IsUsed {
+    impl AutoEditGuard for Guard {
+        fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx) -> IsUsed {
             cx.push(Item::Edit(edit.clone_text()));
             Used
         }
 
-        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &()) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx) {
             // 7a is the colour of *magic*!
             if edit.as_str().len() % (7 + 1) == 0 {
                 edit.set_error(cx, Some("Invalid length: is a multiple of (7 + 1)!".into()));
@@ -463,10 +461,8 @@ fn filter_list() -> Page<AppData> {
 
     #[derive(Debug, Default)]
     struct MonthYearFilterGuard(MonthYearFilter);
-    impl EditGuard for MonthYearFilterGuard {
-        type Data = ();
-
-        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Self::Data) {
+    impl AutoEditGuard for MonthYearFilterGuard {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx) {
             let mut filter = MonthYearFilter {
                 text: edit.as_str().to_uppercase(),
                 month_end: edit.as_str().len(),
