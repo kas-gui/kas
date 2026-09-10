@@ -23,6 +23,7 @@ use kas::prelude::*;
 use kas::widgets::edit::{EditBox, EditGuard, Editor};
 use kas::widgets::{Button, Label, List, RadioButton, ScrollRegion, Separator, Text};
 use kas::widgets::{column, row};
+use std::rc::Rc;
 
 #[derive(Debug)]
 struct SelectEntry(usize);
@@ -38,8 +39,8 @@ enum Control {
 
 #[derive(Clone, Debug)]
 enum Update {
-    Select(usize, String),
-    UpdateCurrent(String),
+    Select(usize, Rc<String>),
+    Update(usize, Rc<String>),
 }
 
 #[derive(Debug)]
@@ -47,7 +48,7 @@ struct Data {
     len: usize,
     active: usize,
     dir: Direction,
-    active_string: String,
+    active_string: Rc<String>,
 }
 impl Data {
     fn handle(&mut self, control: Control) {
@@ -76,8 +77,10 @@ impl Data {
                 self.active = index;
                 self.active_string = text;
             }
-            Update::UpdateCurrent(text) => {
-                self.active_string = text;
+            Update::Update(index, text) => {
+                if self.active == index {
+                    self.active_string = text;
+                }
             }
         }
     }
@@ -86,17 +89,15 @@ impl Data {
 #[derive(Debug)]
 struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
-    type Data = Data;
+    type Data = ();
 
-    fn activate(&mut self, _: &mut Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
+    fn activate(&mut self, _: &mut Editor, cx: &mut EventCx, _: &()) -> IsUsed {
         cx.push(SelectEntry(self.0));
         Used
     }
 
-    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
-        if data.active == self.0 {
-            cx.push(Update::UpdateCurrent(edit.as_str().to_string()));
-        }
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &()) {
+        cx.push(Update::Update(self.0, edit.text().clone()));
     }
 }
 
@@ -114,7 +115,7 @@ mod ListEntry {
         label: Label<String>,
         #[widget(&data.active)]
         radio: RadioButton<usize>,
-        #[widget]
+        #[widget(&())]
         edit: EditBox<ListEntryGuard>,
     }
 
@@ -124,7 +125,7 @@ mod ListEntry {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.active != n {
-                    cx.push(Update::Select(n, self.edit.as_str().to_string()));
+                    cx.push(Update::Select(n, self.edit.text().clone()));
                 }
             }
         }
@@ -166,7 +167,7 @@ fn main() -> kas::runner::Result<()> {
         len: 5,
         active: 0,
         dir: Direction::Down,
-        active_string: ListEntry::new(0).label.as_str().to_string(),
+        active_string: Rc::new(ListEntry::new(0).label.as_str().to_string()),
     };
 
     let list = List::new(vec![]).on_update(|cx, list, data: &Data| {

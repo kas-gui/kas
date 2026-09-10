@@ -89,14 +89,14 @@ fn widgets() -> Page<AppData> {
 
     struct Guard;
     impl EditGuard for Guard {
-        type Data = Data;
+        type Data = ();
 
-        fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
+        fn activate(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &()) -> IsUsed {
             cx.push(Item::Edit(edit.clone_text()));
             Used
         }
 
-        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &Data) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &()) {
             // 7a is the colour of *magic*!
             if edit.as_str().len() % (7 + 1) == 0 {
                 edit.set_error(cx, Some("Invalid length: is a multiple of (7 + 1)!".into()));
@@ -151,7 +151,7 @@ fn widgets() -> Page<AppData> {
         row!["ScrollLabel", ScrollLabel::new(text).map_any()],
         row![
             "EditBox",
-            EditBox::new(Guard).with_text("length must not be a multiple of 8!"),
+            EditBox::new(Guard).with_text("length must not be a multiple of 8!").map_any(),
         ],
         row![
             "Button",
