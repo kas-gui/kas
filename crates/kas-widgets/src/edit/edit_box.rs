@@ -395,6 +395,18 @@ impl<A: 'static> EditBox<StringGuard<A>> {
     }
 }
 
+impl<G: AutoEditGuard, H: Highlighter> EditBox<G, H> {
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `EditBox`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        self.inner = self.inner.with_text(text);
+        self
+    }
+}
+
 impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
     /// Set the base text direction (inline)
     ///
@@ -404,16 +416,6 @@ impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
     #[inline]
     pub fn with_direction(mut self, direction: Direction) -> Self {
         self.inner.set_direction(direction);
-        self
-    }
-
-    /// Set the initial text (inline)
-    ///
-    /// This method should only be used on a new `EditBox`.
-    #[inline]
-    #[must_use]
-    pub fn with_text(mut self, text: impl ToString) -> Self {
-        self.inner = self.inner.with_text(text);
         self
     }
 

@@ -305,6 +305,18 @@ impl EditBoxCore<DefaultGuard> {
     }
 }
 
+impl<G: AutoEditGuard, H: Highlighter> EditBoxCore<G, H> {
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `EditBoxCore`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        self.editor = self.editor.with_text(text);
+        self
+    }
+}
+
 impl<G: EditGuard, H: Highlighter> EditBoxCore<G, H> {
     /// Set the base text direction
     ///
@@ -314,16 +326,6 @@ impl<G: EditGuard, H: Highlighter> EditBoxCore<G, H> {
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
         self.editor.set_direction(direction);
-    }
-
-    /// Set the initial text (inline)
-    ///
-    /// This method should only be used on a new `EditBoxCore`.
-    #[inline]
-    #[must_use]
-    pub fn with_text(mut self, text: impl ToString) -> Self {
-        self.editor = self.editor.with_text(text);
-        self
     }
 
     /// Set whether this `EditBoxCore` is read-only (inline)
