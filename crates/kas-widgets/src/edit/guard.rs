@@ -8,7 +8,6 @@
 use super::Editor;
 use kas::prelude::*;
 use std::fmt::{Debug, Display};
-use std::marker::PhantomData;
 use std::str::FromStr;
 
 /// Event-handling *guard* for an [`Editor`]
@@ -76,7 +75,9 @@ pub trait EditGuard: Sized {
 /// may be useful in mock UIs.
 #[autoimpl(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DefaultGuard;
-impl AutoEditGuard for DefaultGuard {}
+impl EditGuard for DefaultGuard {
+    type Data = ();
+}
 
 #[impl_self]
 mod StringGuard {

@@ -32,6 +32,7 @@ fn main() -> kas::runner::Result<()> {
             EditBox::text(format!("Pane {}", n + 1))
                 .with_frame_style(kas::theme::FrameStyle::None)
                 .with_multi_line(true)
+                .map_any()
         })),
     ];
 

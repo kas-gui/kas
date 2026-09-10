@@ -65,7 +65,7 @@ mod EditBoxCore {
     #[autoimpl(Debug where G: trait, H: trait)]
     #[widget]
     #[layout(self.editor)]
-    pub struct EditBoxCore<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
+    pub struct EditBoxCore<G: EditGuard = DefaultGuard, H: Highlighter = Plain> {
         core: widget_core!(),
         width: (f32, f32),
         lines: (f32, f32),
@@ -290,7 +290,7 @@ mod EditBoxCore {
     }
 }
 
-impl<A: 'static> EditBoxCore<DefaultGuard<A>> {
+impl EditBoxCore<DefaultGuard> {
     /// Construct an `EditBoxCore` with the given initial `text` (no event handling)
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
