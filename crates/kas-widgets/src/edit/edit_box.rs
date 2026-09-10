@@ -63,7 +63,7 @@ mod EditBox {
     #[autoimpl(Debug where G: trait, H: trait)]
     #[autoimpl(Deref<Target = Editor> using self.inner)]
     #[widget]
-    pub struct EditBox<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
+    pub struct EditBox<G: EditGuard = DefaultGuard, H: Highlighter = Plain> {
         core: widget_core!(),
         scroll: ScrollComponent,
         // NOTE: inner is a Viewport which doesn't use update methods, therefore we don't call them.
@@ -238,7 +238,11 @@ mod EditBox {
     }
 
     impl<G: EditGuard> EditBox<G, Plain> {
-        /// Construct an `EditBox` with an [`EditGuard`]
+        /// Construct an `EditBox`
+        ///
+        /// If the editor is *autonomous* (is not affected by input data) then
+        /// pass a `guard` implementing [`AutoEditGuard`], otherwise the `guard`
+        /// should implement [`EditGuard`].
         #[inline]
         pub fn new(guard: G) -> Self {
             EditBox {
@@ -319,7 +323,7 @@ mod EditBox {
     }
 }
 
-impl<A: 'static> EditBox<DefaultGuard<A>> {
+impl EditBox<DefaultGuard> {
     /// Construct an `EditBox` with the given initial `text` (no event handling)
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
@@ -331,7 +335,7 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
 
     /// Construct a read-only `EditBox` displaying some `String` value
     #[inline]
-    pub fn string(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditBox<StringGuard<A>> {
+    pub fn string<A>(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditBox<StringGuard<A>> {
         EditBox::new(StringGuard::new(value_fn)).with_read_only(true)
     }
 
@@ -349,7 +353,7 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
     /// emitted via [`EventCx::push`]. The cached value is then cleared to
     /// avoid sending duplicate messages.
     #[inline]
-    pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
+    pub fn parser<A, T: Debug + Display + FromStr, M: Debug + 'static>(
         value_fn: impl Fn(&A) -> T + Send + 'static,
         msg_fn: impl Fn(T) -> M + Send + 'static,
     ) -> EditBox<ParseGuard<A, T>> {
@@ -365,7 +369,7 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
     /// On every edit, the guard attempts to parse the field's input as type
     /// `T` via [`FromStr`]. On success, the result is converted to a
     /// message via `on_afl` then emitted via [`EventCx::push`].
-    pub fn instant_parser<T: Debug + Display + FromStr, M: Debug + 'static>(
+    pub fn instant_parser<A, T: Debug + Display + FromStr, M: Debug + 'static>(
         value_fn: impl Fn(&A) -> T + Send + 'static,
         msg_fn: impl Fn(T) -> M + Send + 'static,
     ) -> EditBox<InstantParseGuard<A, T>> {
@@ -391,6 +395,18 @@ impl<A: 'static> EditBox<StringGuard<A>> {
     }
 }
 
+impl<G: AutoEditGuard, H: Highlighter> EditBox<G, H> {
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `EditBox`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        self.inner = self.inner.with_text(text);
+        self
+    }
+}
+
 impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
     /// Set the base text direction (inline)
     ///
@@ -400,16 +416,6 @@ impl<G: EditGuard, H: Highlighter> EditBox<G, H> {
     #[inline]
     pub fn with_direction(mut self, direction: Direction) -> Self {
         self.inner.set_direction(direction);
-        self
-    }
-
-    /// Set the initial text (inline)
-    ///
-    /// This method should only be used on a new `EditBox`.
-    #[inline]
-    #[must_use]
-    pub fn with_text(mut self, text: impl ToString) -> Self {
-        self.inner = self.inner.with_text(text);
         self
     }
 

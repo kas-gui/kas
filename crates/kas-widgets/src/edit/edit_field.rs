@@ -65,7 +65,7 @@ mod EditBoxCore {
     #[autoimpl(Debug where G: trait, H: trait)]
     #[widget]
     #[layout(self.editor)]
-    pub struct EditBoxCore<G: EditGuard = DefaultGuard<()>, H: Highlighter = Plain> {
+    pub struct EditBoxCore<G: EditGuard = DefaultGuard, H: Highlighter = Plain> {
         core: widget_core!(),
         width: (f32, f32),
         lines: (f32, f32),
@@ -168,7 +168,6 @@ mod EditBoxCore {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.editor.configure(cx, self.id());
-            self.guard.configure(&mut self.editor.0, cx);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
@@ -183,10 +182,10 @@ mod EditBoxCore {
             let mut result = Used;
             match self.editor.handle_event(cx, event) {
                 EventAction::Unused => return Unused,
-                EventAction::Used | EventAction::Cursor | EventAction::Preedit => return Used,
-                EventAction::FocusGained => {
-                    self.guard.focus_gained(&mut self.editor.0, cx, data);
-                }
+                EventAction::Used
+                | EventAction::FocusGained
+                | EventAction::Cursor
+                | EventAction::Preedit => return Used,
                 EventAction::FocusLost => {
                     self.guard.focus_lost(&mut self.editor.0, cx, data);
                 }
@@ -232,7 +231,11 @@ mod EditBoxCore {
     }
 
     impl<G: EditGuard> EditBoxCore<G, Plain> {
-        /// Construct an `EditBoxCore` with an [`EditGuard`]
+        /// Construct an `EditBoxCore`
+        ///
+        /// If the editor is *autonomous* (is not affected by input data) then
+        /// pass a `guard` implementing [`AutoEditGuard`], otherwise the `guard`
+        /// should implement [`EditGuard`].
         #[inline]
         pub fn new(guard: G) -> EditBoxCore<G> {
             EditBoxCore {
@@ -291,7 +294,7 @@ mod EditBoxCore {
     }
 }
 
-impl<A: 'static> EditBoxCore<DefaultGuard<A>> {
+impl EditBoxCore<DefaultGuard> {
     /// Construct an `EditBoxCore` with the given initial `text` (no event handling)
     #[inline]
     pub fn text<S: ToString>(text: S) -> Self {
@@ -299,6 +302,18 @@ impl<A: 'static> EditBoxCore<DefaultGuard<A>> {
             editor: Component::new(false).with_text(text),
             ..Default::default()
         }
+    }
+}
+
+impl<G: AutoEditGuard, H: Highlighter> EditBoxCore<G, H> {
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `EditBoxCore`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        self.editor = self.editor.with_text(text);
+        self
     }
 }
 
@@ -311,16 +326,6 @@ impl<G: EditGuard, H: Highlighter> EditBoxCore<G, H> {
     #[inline]
     pub fn set_direction(&mut self, direction: Direction) {
         self.editor.set_direction(direction);
-    }
-
-    /// Set the initial text (inline)
-    ///
-    /// This method should only be used on a new `EditBoxCore`.
-    #[inline]
-    #[must_use]
-    pub fn with_text(mut self, text: impl ToString) -> Self {
-        self.editor = self.editor.with_text(text);
-        self
     }
 
     /// Set whether this `EditBoxCore` is read-only (inline)

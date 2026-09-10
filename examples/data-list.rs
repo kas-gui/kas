@@ -20,9 +20,10 @@
 //! is still fast.
 
 use kas::prelude::*;
-use kas::widgets::edit::{EditBox, EditGuard, Editor};
+use kas::widgets::edit::{AutoEditGuard, EditBox, Editor};
 use kas::widgets::{Button, Label, List, RadioButton, ScrollRegion, Separator, Text};
 use kas::widgets::{column, row};
+use std::rc::Rc;
 
 #[derive(Debug)]
 struct SelectEntry(usize);
@@ -34,8 +35,12 @@ enum Control {
     DecrLen,
     IncrLen,
     Reverse,
-    Select(usize, String),
-    UpdateCurrent(String),
+}
+
+#[derive(Clone, Debug)]
+enum Update {
+    Select(usize, Rc<String>),
+    Update(usize, Rc<String>),
 }
 
 #[derive(Debug)]
@@ -43,7 +48,7 @@ struct Data {
     len: usize,
     active: usize,
     dir: Direction,
-    active_string: String,
+    active_string: Rc<String>,
 }
 impl Data {
     fn handle(&mut self, control: Control) {
@@ -56,15 +61,6 @@ impl Data {
                 self.dir = self.dir.reversed();
                 return;
             }
-            Control::Select(index, text) => {
-                self.active = index;
-                self.active_string = text;
-                return;
-            }
-            Control::UpdateCurrent(text) => {
-                self.active_string = text;
-                return;
-            }
         };
 
         self.len = len;
@@ -74,22 +70,32 @@ impl Data {
             // access the newly active widget's data from here.
         }
     }
+
+    fn update(&mut self, update: Update) {
+        match update {
+            Update::Select(index, text) => {
+                self.active = index;
+                self.active_string = text;
+            }
+            Update::Update(index, text) => {
+                if self.active == index {
+                    self.active_string = text;
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
 struct ListEntryGuard(usize);
-impl EditGuard for ListEntryGuard {
-    type Data = Data;
-
-    fn activate(&mut self, _: &mut Editor, cx: &mut EventCx, _: &Data) -> IsUsed {
+impl AutoEditGuard for ListEntryGuard {
+    fn activate(&mut self, _: &mut Editor, cx: &mut EventCx) -> IsUsed {
         cx.push(SelectEntry(self.0));
         Used
     }
 
-    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &Data) {
-        if data.active == self.0 {
-            cx.push(Control::UpdateCurrent(edit.as_str().to_string()));
-        }
+    fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx) {
+        cx.push(Update::Update(self.0, edit.text().clone()));
     }
 }
 
@@ -107,7 +113,7 @@ mod ListEntry {
         label: Label<String>,
         #[widget(&data.active)]
         radio: RadioButton<usize>,
-        #[widget]
+        #[widget(&())]
         edit: EditBox<ListEntryGuard>,
     }
 
@@ -117,7 +123,7 @@ mod ListEntry {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.active != n {
-                    cx.push(Control::Select(n, self.edit.as_str().to_string()));
+                    cx.push(Update::Select(n, self.edit.text().clone()));
                 }
             }
         }
@@ -159,7 +165,7 @@ fn main() -> kas::runner::Result<()> {
         len: 5,
         active: 0,
         dir: Direction::Down,
-        active_string: ListEntry::new(0).label.as_str().to_string(),
+        active_string: Rc::new(ListEntry::new(0).label.as_str().to_string()),
     };
 
     let list = List::new(vec![]).on_update(|cx, list, data: &Data| {
@@ -180,7 +186,8 @@ fn main() -> kas::runner::Result<()> {
 
     let ui = tree
         .with_state(data)
-        .on_message(|_, data, control| data.handle(control));
+        .on_message(|_, data, control| data.handle(control))
+        .on_message(|_, data, update| data.update(update));
 
     let window = Window::new(ui, "Dynamic widget demo");
 
