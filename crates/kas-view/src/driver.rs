@@ -49,7 +49,7 @@ use std::default::Default;
 ///     type Widget = Text<f32>;
 ///
 ///     fn make(&mut self, _: &Key) -> Self::Widget {
-///         Text::new_gen(|_, data: &f32| data.to_string())
+///         Text::new_gen(|data: &f32| data.to_string())
 ///     }
 ///     fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
 ///         // Text has no metadata that needs to be reset
@@ -119,7 +119,7 @@ macro_rules! impl_via_to_string {
             type Widget = Text<$t>;
 
             fn make(&mut self, _: &Key) -> Self::Widget {
-                Text::new_gen(|_, data: &$t| data.to_string())
+                Text::new_gen(|data: &$t| data.to_string())
             }
             fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
                 // Text has no metadata that needs to be reset

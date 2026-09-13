@@ -217,7 +217,7 @@ fn main() -> kas::runner::Result<()> {
             .map(|data: &MyData| &data.len)
             .on_update(|cx, _, data: &MyData| cx.set_disabled(!data.row_limit)),
         "Contents of selected entry:",
-        Text::new_gen(|_, data: &MyData| data.get_string(data.active)),
+        Text::new_gen(|data: &MyData| data.get_string(data.active)),
         Separator::new(),
         ScrollRegion::new_viewport(list).with_fixed_bars(false, true),
     ];
