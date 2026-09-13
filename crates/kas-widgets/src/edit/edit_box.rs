@@ -332,11 +332,13 @@ impl EditBox<DefaultGuard> {
             ..Default::default()
         }
     }
+}
 
+impl<A> EditBox<ReadGuard<A>> {
     /// Construct a read-only `EditBox` displaying some `String` value
     #[inline]
-    pub fn string<A>(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditBox<StringGuard<A>> {
-        EditBox::new(StringGuard::new(value_fn)).with_read_only(true)
+    pub fn read_only(value_fn: impl Fn(&A) -> String + Send + 'static) -> Self {
+        EditBox::new(ReadGuard::new(value_fn)).with_read_only(true)
     }
 
     /// Construct an `EditBox` for a parsable value (e.g. a number)
@@ -353,7 +355,7 @@ impl EditBox<DefaultGuard> {
     /// emitted via [`EventCx::push`]. The cached value is then cleared to
     /// avoid sending duplicate messages.
     #[inline]
-    pub fn parser<A, T: Debug + Display + FromStr, M: Debug + 'static>(
+    pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
         value_fn: impl Fn(&A) -> T + Send + 'static,
         msg_fn: impl Fn(T) -> M + Send + 'static,
     ) -> EditBox<ParseGuard<A, T>> {
@@ -369,29 +371,11 @@ impl EditBox<DefaultGuard> {
     /// On every edit, the guard attempts to parse the field's input as type
     /// `T` via [`FromStr`]. On success, the result is converted to a
     /// message via `on_afl` then emitted via [`EventCx::push`].
-    pub fn instant_parser<A, T: Debug + Display + FromStr, M: Debug + 'static>(
+    pub fn instant_parser<T: Debug + Display + FromStr, M: Debug + 'static>(
         value_fn: impl Fn(&A) -> T + Send + 'static,
         msg_fn: impl Fn(T) -> M + Send + 'static,
     ) -> EditBox<InstantParseGuard<A, T>> {
         EditBox::new(InstantParseGuard::new(value_fn, msg_fn))
-    }
-}
-
-impl<A: 'static> EditBox<StringGuard<A>> {
-    /// Assign a message function for a `String` value
-    ///
-    /// The `msg_fn` is called when the field is activated (<kbd>Enter</kbd>)
-    /// and when it loses focus after content is changed.
-    ///
-    /// This method sets self as editable (see [`Self::with_read_only`]).
-    #[must_use]
-    pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + Send + 'static) -> Self
-    where
-        M: Debug + 'static,
-    {
-        self.inner.guard = self.inner.guard.with_msg(msg_fn);
-        self.inner = self.inner.with_read_only(false);
-        self
     }
 }
 
