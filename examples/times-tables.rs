@@ -58,7 +58,7 @@ fn main() -> kas::runner::Result<()> {
     struct SetLen(u32);
 
     let ui = column![
-        row!["From 1 to", EditBox::parser(|dim: &u32| *dim, SetLen)],
+        row!["From 1 to", EditBox::parser(SetLen)],
         table.align(AlignHints::RIGHT),
     ];
     let ui = ui

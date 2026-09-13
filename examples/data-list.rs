@@ -150,7 +150,7 @@ fn main() -> kas::runner::Result<()> {
 
     let controls = row![
         "Number of rows:",
-        EditBox::parser(|n| *n, Control::SetLen),
+        EditBox::parser(Control::SetLen),
         row![
             // This button is just a click target; it doesn't do anything!
             Button::label_msg("Set", Control::None),

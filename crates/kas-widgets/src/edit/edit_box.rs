@@ -340,42 +340,44 @@ impl<A> EditBox<ReadGuard<A>> {
     pub fn read_only(value_fn: impl Fn(&A) -> String + Send + 'static) -> Self {
         EditBox::new(ReadGuard::new(value_fn)).with_read_only(true)
     }
+}
 
+impl<T: Debug + Display + FromStr> EditBox<ParseGuard<T>> {
     /// Construct an `EditBox` for a parsable value (e.g. a number)
     ///
-    /// On update, `value_fn` is used to extract a value from input data
-    /// which is then formatted as a string via [`Display`].
+    /// On update, input data is formatted as a string via [`Display`].
     /// If, however, the input field has focus, the update is ignored.
     ///
     /// On every edit, the guard attempts to parse the field's input as type
     /// `T` via [`FromStr`], caching the result and setting the error state.
     ///
     /// On field activation and focus loss when a `T` value is cached (see
-    /// previous paragraph), `on_afl` is used to construct a message to be
+    /// previous paragraph), `msg_fn` is used to construct a message to be
     /// emitted via [`EventCx::push`]. The cached value is then cleared to
     /// avoid sending duplicate messages.
     #[inline]
-    pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + Send + 'static,
-        msg_fn: impl Fn(T) -> M + Send + 'static,
-    ) -> EditBox<ParseGuard<A, T>> {
-        EditBox::new(ParseGuard::new(value_fn, msg_fn))
+    pub fn parser<M>(msg_fn: impl Fn(T) -> M + Send + 'static) -> Self
+    where
+        M: Debug + 'static,
+    {
+        EditBox::new(ParseGuard::new(msg_fn))
     }
+}
 
+impl<T: Debug + Display + FromStr> EditBox<InstantParseGuard<T>> {
     /// Construct an `EditBox` for a parsable value (e.g. a number)
     ///
-    /// On update, `value_fn` is used to extract a value from input data
-    /// which is then formatted as a string via [`Display`].
+    /// On update, input data is formatted as a string via [`Display`].
     /// If, however, the input field has focus, the update is ignored.
     ///
     /// On every edit, the guard attempts to parse the field's input as type
     /// `T` via [`FromStr`]. On success, the result is converted to a
-    /// message via `on_afl` then emitted via [`EventCx::push`].
-    pub fn instant_parser<T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + Send + 'static,
-        msg_fn: impl Fn(T) -> M + Send + 'static,
-    ) -> EditBox<InstantParseGuard<A, T>> {
-        EditBox::new(InstantParseGuard::new(value_fn, msg_fn))
+    /// message via `msg_fn` then emitted via [`EventCx::push`].
+    pub fn instant_parser<M>(msg_fn: impl Fn(T) -> M + Send + 'static) -> Self
+    where
+        M: Debug + 'static,
+    {
+        EditBox::new(InstantParseGuard::new(msg_fn))
     }
 }
 

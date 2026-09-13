@@ -191,18 +191,16 @@ mod ParseGuard {
     /// This guard displays a value formatted from input data, updates the error
     /// state according to parse success on each keystroke, and sends a message
     /// on focus loss (where successful parsing occurred).
-    #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
-    pub struct ParseGuard<A, T: Debug + Display + FromStr> {
+    #[autoimpl(Debug ignore self.on_afl)]
+    pub struct ParseGuard<T: Debug + Display + FromStr> {
         parsed: Option<T>,
-        value_fn: Box<dyn Fn(&A) -> T + Send>,
         on_afl: Box<dyn Fn(&mut EventCx, T) + Send>,
     }
 
     impl Self {
         /// Construct
         ///
-        /// On update, `value_fn` is used to extract a value from input data
-        /// which is then formatted as a string via [`Display`].
+        /// On update, input data is formatted as a string via [`Display`].
         /// If, however, the input field has focus, the update is ignored.
         ///
         /// On every edit, the guard attempts to parse the field's input as type
@@ -212,28 +210,23 @@ mod ParseGuard {
         /// previous paragraph), `on_afl` is used to construct a message to be
         /// emitted via [`EventCx::push`]. The cached value is then cleared to
         /// avoid sending duplicate messages.
-        pub fn new<M: Debug + 'static>(
-            value_fn: impl Fn(&A) -> T + Send + 'static,
-            on_afl: impl Fn(T) -> M + Send + 'static,
-        ) -> Self {
+        pub fn new<M: Debug + 'static>(on_afl: impl Fn(T) -> M + Send + 'static) -> Self {
             ParseGuard {
                 parsed: None,
-                value_fn: Box::new(value_fn),
                 on_afl: Box::new(move |cx, value| cx.push(on_afl(value))),
             }
         }
     }
 
     impl EditGuard for Self {
-        type Data = A;
+        type Data = T;
 
-        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
-            let value = (self.value_fn)(data);
-            edit.set_string(cx, format!("{value}"));
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &T) {
+            edit.set_string(cx, format!("{data}"));
             self.parsed = None;
         }
 
-        fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
+        fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &T) {
             if let Some(value) = self.parsed.take() {
                 (self.on_afl)(cx, value);
             } else {
@@ -242,7 +235,7 @@ mod ParseGuard {
             }
         }
 
-        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &T) {
             self.parsed = edit.as_str().parse().ok();
             if self.parsed.is_none() {
                 edit.set_error(cx, Some("parse failure".into()));
@@ -258,47 +251,40 @@ mod InstantParseGuard {
     /// This guard displays a value formatted from input data, updates the error
     /// state according to parse success on each keystroke, and sends a message
     /// immediately (where successful parsing occurred).
-    #[autoimpl(Debug ignore self.value_fn, self.on_edit)]
-    pub struct InstantParseGuard<A, T: Debug + Display + FromStr> {
-        value_fn: Box<dyn Fn(&A) -> T + Send>,
+    #[autoimpl(Debug ignore self.on_edit)]
+    pub struct InstantParseGuard<T: Debug + Display + FromStr> {
         on_edit: Box<dyn Fn(&mut EventCx, T) + Send>,
     }
 
     impl Self {
         /// Construct
         ///
-        /// On update, `value_fn` is used to extract a value from input data
-        /// which is then formatted as a string via [`Display`].
+        /// On update, input data is formatted as a string via [`Display`].
         /// If, however, the input field has focus, the update is ignored.
         ///
         /// On every edit, the guard attempts to parse the field's input as type
         /// `T` via [`FromStr`]. On success, the result is converted to a
         /// message via `on_edit` then emitted via [`EventCx::push`].
-        pub fn new<M: Debug + 'static>(
-            value_fn: impl Fn(&A) -> T + Send + 'static,
-            on_edit: impl Fn(T) -> M + Send + 'static,
-        ) -> Self {
+        pub fn new<M: Debug + 'static>(on_edit: impl Fn(T) -> M + Send + 'static) -> Self {
             InstantParseGuard {
-                value_fn: Box::new(value_fn),
                 on_edit: Box::new(move |cx, value| cx.push(on_edit(value))),
             }
         }
     }
 
     impl EditGuard for Self {
-        type Data = A;
+        type Data = T;
 
-        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &A) {
-            let value = (self.value_fn)(data);
-            edit.set_string(cx, format!("{value}"));
+        fn update(&mut self, edit: &mut Editor, cx: &mut ConfigCx, data: &T) {
+            edit.set_string(cx, format!("{data}"));
         }
 
-        fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &A) {
+        fn focus_lost(&mut self, edit: &mut Editor, cx: &mut EventCx, data: &T) {
             // Always reset data on focus loss
             self.update(edit, cx, data);
         }
 
-        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &A) {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &T) {
             let result = edit.as_str().parse();
             if result.is_err() {
                 edit.set_error(cx, Some("parse failure".into()));
