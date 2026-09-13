@@ -381,6 +381,20 @@ impl<T: Debug + Display + FromStr<Err: Display>> EditBox<InstantParseGuard<T>> {
     }
 }
 
+impl<T: Debug + FromStr<Err: Display>> EditBox<AutoInstantParseGuard<T>> {
+    /// Construct an `EditBox` for a parsable value (e.g. a number)
+    ///
+    /// On every edit, the guard attempts to parse the field's input as type
+    /// `T` via [`FromStr`]. On success, the result is converted to a
+    /// message via `msg_fn` then emitted via [`EventCx::push`].
+    pub fn auto_instant_parser<M>(msg_fn: impl Fn(T) -> M + Send + 'static) -> Self
+    where
+        M: Debug + 'static,
+    {
+        EditBox::new(AutoInstantParseGuard::new(msg_fn))
+    }
+}
+
 impl<G: AutoEditGuard, H: Highlighter> EditBox<G, H> {
     /// Set the initial text (inline)
     ///

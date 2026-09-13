@@ -20,8 +20,12 @@ use kas::theme::{MarginStyle, TextClass};
 use kas::widgets::edit::{AutoEditGuard, Editor, highlight::SyntectHighlighter};
 use kas::widgets::{column, *};
 use kas::window::Popup;
+use kas_widgets::edit::AutoInstantParseGuard;
+use std::num::ParseIntError;
 use std::ops::Range;
 use std::rc::Rc;
+use std::str::FromStr;
+use thiserror::Error;
 
 #[derive(Debug, Default)]
 struct AppData {
@@ -389,7 +393,7 @@ fn filter_list() -> Page<AppData> {
     };
 
     #[derive(Debug)]
-    struct FilterUpdate;
+    struct FilterUpdate(MonthYearFilter);
 
     struct FilteredRange {
         start: u32,
@@ -459,13 +463,21 @@ fn filter_list() -> Page<AppData> {
         }
     }
 
-    #[derive(Debug, Default)]
-    struct MonthYearFilterGuard(MonthYearFilter);
-    impl AutoEditGuard for MonthYearFilterGuard {
-        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx) {
+    #[derive(Error, Debug)]
+    pub enum ParseMonthYearFilterError {
+        #[error("bad separator (expected space)")]
+        BadSeparator,
+        #[error(transparent)]
+        ParseIntError(#[from] ParseIntError),
+    }
+
+    impl FromStr for MonthYearFilter {
+        type Err = ParseMonthYearFilterError;
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
             let mut filter = MonthYearFilter {
-                text: edit.as_str().to_uppercase(),
-                month_end: edit.as_str().len(),
+                text: s.to_uppercase(),
+                month_end: s.len(),
                 year_tail: 0,
                 year_denom: 1,
             };
@@ -474,27 +486,17 @@ fn filter_list() -> Page<AppData> {
                     filter.month_end = 0;
                 } else {
                     if filter.text.as_bytes()[i - 1] != b' ' {
-                        edit.set_error(cx, None);
-                        return;
+                        return Err(ParseMonthYearFilterError::BadSeparator);
                     }
                     filter.month_end = i - 1;
                 }
 
                 let text = filter.text.split_at(i).1;
-                filter.year_tail = match text.parse() {
-                    Ok(y) => y,
-                    Err(_) => {
-                        edit.set_error(cx, None);
-                        return;
-                    }
-                };
+                filter.year_tail = text.parse()?;
                 filter.year_denom = 10u32.pow((filter.text.len() - i).cast());
             }
 
-            if filter != self.0 {
-                self.0 = filter;
-                cx.push(FilterUpdate);
-            }
+            Ok(filter)
         }
     }
 
@@ -584,12 +586,13 @@ fn filter_list() -> Page<AppData> {
 
     let list_view = impl_anon! {
         #[widget]
-        #[layout(column! [self.filter, self.list])]
+        #[layout(column! [self.filter_field, self.list])]
         struct {
             core: widget_core!(),
-            #[widget(&())] filter: EditBox<MonthYearFilterGuard> =
-                EditBox::default().with_multi_line(false),
-            #[widget(&self.filter.guard().0)] list: ScrollRegion<ListView<Generator, driver::View, Down>>
+            filter: MonthYearFilter,
+            #[widget(&())] filter_field: EditBox<AutoInstantParseGuard<MonthYearFilter>> =
+                EditBox::auto_instant_parser(FilterUpdate),
+            #[widget(&self.filter)] list: ScrollRegion<ListView<Generator, driver::View, Down>>
                 =
                 ScrollRegion::new_viewport(ListView::new(clerk, driver::View).with_num_visible(24)),
         }
@@ -604,7 +607,8 @@ fn filter_list() -> Page<AppData> {
             }
 
             fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
-                if let Some(FilterUpdate) = cx.try_pop() {
+                if let Some(FilterUpdate(filter)) = cx.try_pop() {
+                    self.filter = filter;
                     cx.update(self.as_node(data));
                 } else if let Some(SelectionMsg::Select(key)) = cx.try_pop() {
                     println!("Selected: {}", &self.list.inner().clerk().text(key))

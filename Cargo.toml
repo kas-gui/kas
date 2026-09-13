@@ -155,6 +155,7 @@ kas = { path = ".", default-features = false, features = ["view", "markdown", "s
 chrono = "0.4"
 env_logger = "0.11"
 log = "0.4"
+thiserror = "2.0.3"
 
 [workspace]
 members = [

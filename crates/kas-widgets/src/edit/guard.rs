@@ -273,6 +273,17 @@ mod InstantParseGuard {
                 on_edit: Box::new(move |cx, value| cx.push(on_edit(value))),
             }
         }
+
+        /// Convert to an [`AutoInstantParseGuard`]
+        ///
+        /// (This method won't always be usable since, unlike
+        /// [`AutoInstantParseGuard`], this type requires `T: Display`.)
+        #[inline]
+        pub fn as_auto(self) -> AutoInstantParseGuard<T> {
+            AutoInstantParseGuard {
+                on_edit: self.on_edit,
+            }
+        }
     }
 
     impl EditGuard for Self {
@@ -288,6 +299,43 @@ mod InstantParseGuard {
         }
 
         fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &T) {
+            match edit.as_str().parse() {
+                Ok(result) => (self.on_edit)(cx, result),
+                Err(err) => {
+                    edit.set_error(cx, Some(format!("parse failure: {err}").into()));
+                }
+            }
+        }
+    }
+}
+
+#[impl_self]
+mod AutoInstantParseGuard {
+    /// An as-you-type [`EditGuard`] for parsable types
+    ///
+    /// This guard is autonomous (is not affected by widget updates).
+    /// Content is parsed on each keystroke; on success, a message is sent
+    /// immediately.
+    #[autoimpl(Debug ignore self.on_edit)]
+    pub struct AutoInstantParseGuard<T: Debug + FromStr<Err: Display>> {
+        on_edit: Box<dyn Fn(&mut EventCx, T) + Send>,
+    }
+
+    impl Self {
+        /// Construct
+        ///
+        /// On every edit, the guard attempts to parse the field's input as type
+        /// `T` via [`FromStr`]. On success, the result is converted to a
+        /// message via `on_edit` then emitted via [`EventCx::push`].
+        pub fn new<M: Debug + 'static>(on_edit: impl Fn(T) -> M + Send + 'static) -> Self {
+            AutoInstantParseGuard {
+                on_edit: Box::new(move |cx, value| cx.push(on_edit(value))),
+            }
+        }
+    }
+
+    impl AutoEditGuard for Self {
+        fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx) {
             match edit.as_str().parse() {
                 Ok(result) => (self.on_edit)(cx, result),
                 Err(err) => {
