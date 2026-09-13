@@ -1548,7 +1548,7 @@ impl Common {
             Event::LostKeyFocus => {
                 self.has_key_focus = false;
                 cx.redraw();
-                if self.current.is_ime_enabled() {
+                if !self.current.is_ime_enabled() {
                     EventAction::FocusLost
                 } else {
                     EventAction::Used
