@@ -503,10 +503,12 @@ impl<'a> EventCx<'a> {
                     self.mouse.last_pin = None;
                 }
 
-                if self.config.event().mouse_nav_focus()
-                    && let Some(id) = self.nav_next(window.as_tile(), Some(&id), NavAdvance::None)
-                {
-                    self.set_nav_focus(id, FocusSource::Pointer);
+                if self.config.event().mouse_nav_focus() {
+                    if let Some(id) = self.nav_next(window.as_tile(), Some(&id), NavAdvance::None) {
+                        self.set_nav_focus(id, FocusSource::Pointer);
+                    } else {
+                        self.clear_nav_focus();
+                    }
                 }
 
                 let source = PressSource::mouse(Some(button), self.mouse.last_click_repetitions);
