@@ -342,7 +342,7 @@ impl<A> EditBox<ReadGuard<A>> {
     }
 }
 
-impl<T: Debug + Display + FromStr> EditBox<ParseGuard<T>> {
+impl<T: Debug + Display + FromStr<Err: Display>> EditBox<ParseGuard<T>> {
     /// Construct an `EditBox` for a parsable value (e.g. a number)
     ///
     /// On update, input data is formatted as a string via [`Display`].
@@ -364,7 +364,7 @@ impl<T: Debug + Display + FromStr> EditBox<ParseGuard<T>> {
     }
 }
 
-impl<T: Debug + Display + FromStr> EditBox<InstantParseGuard<T>> {
+impl<T: Debug + Display + FromStr<Err: Display>> EditBox<InstantParseGuard<T>> {
     /// Construct an `EditBox` for a parsable value (e.g. a number)
     ///
     /// On update, input data is formatted as a string via [`Display`].

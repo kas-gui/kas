@@ -192,7 +192,7 @@ mod ParseGuard {
     /// state according to parse success on each keystroke, and sends a message
     /// on focus loss (where successful parsing occurred).
     #[autoimpl(Debug ignore self.on_afl)]
-    pub struct ParseGuard<T: Debug + Display + FromStr> {
+    pub struct ParseGuard<T: Debug + Display + FromStr<Err: Display>> {
         parsed: Option<T>,
         on_afl: Box<dyn Fn(&mut EventCx, T) + Send>,
     }
@@ -236,9 +236,12 @@ mod ParseGuard {
         }
 
         fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &T) {
-            self.parsed = edit.as_str().parse().ok();
-            if self.parsed.is_none() {
-                edit.set_error(cx, Some("parse failure".into()));
+            match edit.as_str().parse() {
+                Ok(result) => self.parsed = Some(result),
+                Err(err) => {
+                    edit.set_error(cx, Some(format!("parse failure: {err}").into()));
+                    self.parsed = None;
+                }
             }
         }
     }
@@ -252,7 +255,7 @@ mod InstantParseGuard {
     /// state according to parse success on each keystroke, and sends a message
     /// immediately (where successful parsing occurred).
     #[autoimpl(Debug ignore self.on_edit)]
-    pub struct InstantParseGuard<T: Debug + Display + FromStr> {
+    pub struct InstantParseGuard<T: Debug + Display + FromStr<Err: Display>> {
         on_edit: Box<dyn Fn(&mut EventCx, T) + Send>,
     }
 
@@ -285,12 +288,11 @@ mod InstantParseGuard {
         }
 
         fn edit(&mut self, edit: &mut Editor, cx: &mut EventCx, _: &T) {
-            let result = edit.as_str().parse();
-            if result.is_err() {
-                edit.set_error(cx, Some("parse failure".into()));
-            }
-            if let Ok(value) = result {
-                (self.on_edit)(cx, value);
+            match edit.as_str().parse() {
+                Ok(result) => (self.on_edit)(cx, result),
+                Err(err) => {
+                    edit.set_error(cx, Some(format!("parse failure: {err}").into()));
+                }
             }
         }
     }
