@@ -31,7 +31,7 @@ fn key_button_with(label: &str, key: Key) -> Button<AccessLabel> {
 
 fn calc_ui() -> Window<()> {
     // We could use kas::widget::Text, but EditBox looks better.
-    let display = EditBox::string(|calc: &Calculator| calc.display())
+    let display = EditBox::read_only(|calc: &Calculator| calc.display())
         .with_multi_line(true)
         .with_lines(3.0, 3.0)
         .with_width_em(5.0, 10.0)

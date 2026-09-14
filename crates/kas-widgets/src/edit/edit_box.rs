@@ -332,66 +332,66 @@ impl EditBox<DefaultGuard> {
             ..Default::default()
         }
     }
+}
 
+impl<A> EditBox<ReadGuard<A>> {
     /// Construct a read-only `EditBox` displaying some `String` value
     #[inline]
-    pub fn string<A>(value_fn: impl Fn(&A) -> String + Send + 'static) -> EditBox<StringGuard<A>> {
-        EditBox::new(StringGuard::new(value_fn)).with_read_only(true)
+    pub fn read_only(value_fn: impl Fn(&A) -> String + Send + 'static) -> Self {
+        EditBox::new(ReadGuard::new(value_fn)).with_read_only(true)
     }
+}
 
+impl<T: Debug + Display + FromStr<Err: Display>> EditBox<ParseGuard<T>> {
     /// Construct an `EditBox` for a parsable value (e.g. a number)
     ///
-    /// On update, `value_fn` is used to extract a value from input data
-    /// which is then formatted as a string via [`Display`].
+    /// On update, input data is formatted as a string via [`Display`].
     /// If, however, the input field has focus, the update is ignored.
     ///
     /// On every edit, the guard attempts to parse the field's input as type
     /// `T` via [`FromStr`], caching the result and setting the error state.
     ///
     /// On field activation and focus loss when a `T` value is cached (see
-    /// previous paragraph), `on_afl` is used to construct a message to be
+    /// previous paragraph), `msg_fn` is used to construct a message to be
     /// emitted via [`EventCx::push`]. The cached value is then cleared to
     /// avoid sending duplicate messages.
     #[inline]
-    pub fn parser<A, T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + Send + 'static,
-        msg_fn: impl Fn(T) -> M + Send + 'static,
-    ) -> EditBox<ParseGuard<A, T>> {
-        EditBox::new(ParseGuard::new(value_fn, msg_fn))
+    pub fn parser<M>(msg_fn: impl Fn(T) -> M + Send + 'static) -> Self
+    where
+        M: Debug + 'static,
+    {
+        EditBox::new(ParseGuard::new(msg_fn))
     }
+}
 
+impl<T: Debug + Display + FromStr<Err: Display>> EditBox<InstantParseGuard<T>> {
     /// Construct an `EditBox` for a parsable value (e.g. a number)
     ///
-    /// On update, `value_fn` is used to extract a value from input data
-    /// which is then formatted as a string via [`Display`].
+    /// On update, input data is formatted as a string via [`Display`].
     /// If, however, the input field has focus, the update is ignored.
     ///
     /// On every edit, the guard attempts to parse the field's input as type
     /// `T` via [`FromStr`]. On success, the result is converted to a
-    /// message via `on_afl` then emitted via [`EventCx::push`].
-    pub fn instant_parser<A, T: Debug + Display + FromStr, M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> T + Send + 'static,
-        msg_fn: impl Fn(T) -> M + Send + 'static,
-    ) -> EditBox<InstantParseGuard<A, T>> {
-        EditBox::new(InstantParseGuard::new(value_fn, msg_fn))
-    }
-}
-
-impl<A: 'static> EditBox<StringGuard<A>> {
-    /// Assign a message function for a `String` value
-    ///
-    /// The `msg_fn` is called when the field is activated (<kbd>Enter</kbd>)
-    /// and when it loses focus after content is changed.
-    ///
-    /// This method sets self as editable (see [`Self::with_read_only`]).
-    #[must_use]
-    pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + Send + 'static) -> Self
+    /// message via `msg_fn` then emitted via [`EventCx::push`].
+    pub fn instant_parser<M>(msg_fn: impl Fn(T) -> M + Send + 'static) -> Self
     where
         M: Debug + 'static,
     {
-        self.inner.guard = self.inner.guard.with_msg(msg_fn);
-        self.inner = self.inner.with_read_only(false);
-        self
+        EditBox::new(InstantParseGuard::new(msg_fn))
+    }
+}
+
+impl<T: Debug + FromStr<Err: Display>> EditBox<AutoInstantParseGuard<T>> {
+    /// Construct an `EditBox` for a parsable value (e.g. a number)
+    ///
+    /// On every edit, the guard attempts to parse the field's input as type
+    /// `T` via [`FromStr`]. On success, the result is converted to a
+    /// message via `msg_fn` then emitted via [`EventCx::push`].
+    pub fn auto_instant_parser<M>(msg_fn: impl Fn(T) -> M + Send + 'static) -> Self
+    where
+        M: Debug + 'static,
+    {
+        EditBox::new(AutoInstantParseGuard::new(msg_fn))
     }
 }
 

@@ -34,7 +34,7 @@ mod Text {
     pub struct Text<A, T: Default + FormattableText + 'static = String> {
         core: widget_core!(),
         text: text::Text<T>,
-        text_fn: Box<dyn Fn(&ConfigCx, &A, &mut T) -> bool + Send>,
+        text_fn: Box<dyn Fn(&A, &mut T) -> bool + Send>,
     }
 
     impl Default for Self
@@ -45,7 +45,7 @@ mod Text {
             Text {
                 core: Default::default(),
                 text: text::Text::new(T::default(), TextClass::Standard, true),
-                text_fn: Box::new(|_, data, text| {
+                text_fn: Box::new(|data, text| {
                     let new_text = data.into();
                     let changed = new_text != *text;
                     if changed {
@@ -63,7 +63,7 @@ mod Text {
             Text {
                 core: Default::default(),
                 text: text::Text::new(String::new(), TextClass::Standard, true),
-                text_fn: Box::new(move |_, data, text| {
+                text_fn: Box::new(move |data, text| {
                     let s = as_str(data);
                     let changed = *text != *s;
                     if changed {
@@ -80,12 +80,12 @@ mod Text {
         ///
         /// `gen_text` is called on each widget update to generate text from
         /// input data.
-        pub fn new_gen(gen_text: impl Fn(&ConfigCx, &A) -> T + Send + 'static) -> Self {
+        pub fn new_gen(gen_text: impl Fn(&A) -> T + Send + 'static) -> Self {
             Text {
                 core: Default::default(),
                 text: text::Text::new(T::default(), TextClass::Standard, true),
-                text_fn: Box::new(move |cx, data, text| {
-                    let new_text = gen_text(cx, data);
+                text_fn: Box::new(move |data, text| {
+                    let new_text = gen_text(data);
                     let changed = new_text != *text;
                     if changed {
                         *text = new_text;
@@ -104,7 +104,7 @@ mod Text {
         /// expensive).
         pub fn new_update<U>(update_text: U) -> Self
         where
-            U: Fn(&ConfigCx, &A, &mut T) -> bool + Send + 'static,
+            U: Fn(&A, &mut T) -> bool + Send + 'static,
         {
             Text {
                 core: Default::default(),
@@ -191,7 +191,7 @@ mod Text {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            if (self.text_fn)(cx, data, self.text.text_mut()) {
+            if (self.text_fn)(data, self.text.text_mut()) {
                 self.text.require_reprepare();
                 self.text.reprepare_action(cx);
             }
@@ -199,9 +199,14 @@ mod Text {
     }
 }
 
-/// Construct a [`Text`] widget which updates text using the [`format!`] macro
+/// Construct a [`Text`] widget using [`TextClass::Standard`] which updates text
+/// using the [`format!`] macro
 ///
-/// This uses [`TextClass::Standard`]. See also [`format_label`](crate::format_label).
+/// This macro is syntactic sugar over [`Text::new_gen`], using [`format!`] to
+/// generate [`String`] content each time the widget is updated.
+///
+/// This uses [`TextClass::Standard`]. See also [`format_label`](crate::format_label)
+/// which is identical aside from the [`TextClass`].
 ///
 /// Examples:
 /// ```
@@ -213,33 +218,36 @@ mod Text {
 #[macro_export]
 macro_rules! format_text {
     ($data:ident, $($arg:tt)*) => {
-        $crate::Text::new_gen(move |_, $data| format!($($arg)*))
+        $crate::Text::new_gen(move |$data| format!($($arg)*))
     };
     ($data:ident : $data_ty:ty , $($arg:tt)*) => {
-        $crate::Text::new_gen(move |_, $data : $data_ty| format!($($arg)*))
+        $crate::Text::new_gen(move |$data : $data_ty| format!($($arg)*))
     };
     ($lit:literal $(, $arg:tt)*) => {
-        $crate::Text::new_gen(move |_, data| format!($lit $(, $arg)*, data))
+        $crate::Text::new_gen(move |data| format!($lit $(, $arg)*, data))
     };
 }
 
 /// Construct a [`Text`] widget using [`TextClass::Label`] which updates text
 /// using the [`format!`] macro
 ///
-/// This is identical to [`format_text`](crate::format_text) aside from the
-/// [`TextClass`].
+/// This macro is syntactic sugar over [`Text::new_gen`], using [`format!`] to
+/// generate [`String`] content each time the widget is updated.
+///
+/// This uses [`TextClass::Label`]. See also [`format_text`](crate::format_text)
+/// which is identical aside from the [`TextClass`].
 #[macro_export]
 macro_rules! format_label {
     ($data:ident, $($arg:tt)*) => {
-        $crate::Text::new_gen(move |_, $data| format!($($arg)*))
+        $crate::Text::new_gen(move |$data| format!($($arg)*))
             .with_class(::kas::theme::TextClass::Label)
     };
     ($data:ident : $data_ty:ty , $($arg:tt)*) => {
-        $crate::Text::new_gen(move |_, $data : $data_ty| format!($($arg)*))
+        $crate::Text::new_gen(move |$data : $data_ty| format!($($arg)*))
             .with_class(::kas::theme::TextClass::Label)
     };
     ($lit:literal $(, $arg:tt)*) => {
-        $crate::Text::new_gen(move |_, data| format!($lit $(, $arg)*, data))
+        $crate::Text::new_gen(move |data| format!($lit $(, $arg)*, data))
             .with_class(::kas::theme::TextClass::Label)
     };
 }
