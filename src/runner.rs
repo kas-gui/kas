@@ -9,7 +9,6 @@
 //! type-def (requires a backend be enabled, e.g. "wgpu").
 
 use crate::config::{AutoFactory, Config, ConfigFactory};
-use crate::draw::DrawSharedImpl;
 use crate::theme::Theme;
 use crate::window::{Window, WindowId};
 pub use kas_core::runner::{AppData, ClosedError, Error, Platform, Proxy, ReadMessage, Result};
@@ -188,21 +187,6 @@ pub struct Runner<
     state: PreLaunchState,
     theme: T,
     windows: Vec<Box<kas_core::runner::Window<Data, G, T>>>,
-}
-
-/// Inherenet associated types of [`Runner`]
-///
-/// Note: these could be inherent associated types of [`Runner`] when Rust#8995 is stable.
-pub trait RunnerInherent {
-    /// Shared draw state type
-    type DrawShared: DrawSharedImpl;
-}
-
-impl<A: AppData, G: GraphicsInstance, T> RunnerInherent for Runner<A, T, G>
-where
-    T: Theme<G::Shared> + 'static,
-{
-    type DrawShared = G::Shared;
 }
 
 impl<Data: AppData> Runner<Data> {
