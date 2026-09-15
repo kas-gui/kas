@@ -8,11 +8,6 @@
 use kas::prelude::*;
 use kas::widgets::{Adapt, Button, EditBox, Splitter, column, row};
 
-#[cfg(feature = "wgpu")]
-type Theme = kas_wgpu::ShadedTheme;
-#[cfg(not(feature = "wgpu"))]
-type Theme = kas::theme::SimpleTheme;
-
 #[derive(Clone, Debug)]
 enum Message {
     Decr,
@@ -45,9 +40,5 @@ fn main() -> kas::runner::Result<()> {
 
     let window = Window::new(adapt, "Slitter panes").escapable();
 
-    let theme = Theme::new();
-    kas::runner::Runner::with_theme(theme)
-        .build(())?
-        .with(window)
-        .run()
+    kas::runner::Runner::new(())?.with(window).run()
 }
