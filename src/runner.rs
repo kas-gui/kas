@@ -15,7 +15,7 @@ pub use kas_core::runner::{AppData, ClosedError, Error, Platform, Proxy, ReadMes
 use kas_core::runner::{GraphicsInstance, PreLaunchState};
 #[allow(unused)]
 use kas_core::theme::{FlatTheme, SimpleTheme};
-use kas_core::winit::event_loop::EventLoop;
+use kas_core::winit::event_loop::{EventLoop, OwnedDisplayHandle};
 #[cfg(feature = "wgpu")]
 use kas_wgpu::draw::CustomPipeBuilder;
 use std::cell::{Ref, RefMut};
@@ -29,7 +29,7 @@ pub trait GraphicsBackend {
     type DefaultTheme: Theme<<Self::Instance as GraphicsInstance>::Shared> + Default;
 
     #[doc(hidden)]
-    fn into_instance(self) -> Self::Instance;
+    fn into_instance(self, display: OwnedDisplayHandle) -> Result<Self::Instance>;
 }
 
 #[cfg(feature = "wgpu")]
@@ -45,12 +45,16 @@ impl<CB: CustomPipeBuilder> GraphicsBackend for WgpuBackend<CB> {
 
     type DefaultTheme = FlatTheme;
 
-    fn into_instance(mut self) -> Self::Instance {
+    fn into_instance(mut self, display: OwnedDisplayHandle) -> Result<Self::Instance> {
         if self.read_env_vars {
             self.options.load_from_env();
         }
 
-        kas_wgpu::Instance::new(self.options, self.custom)
+        Ok(kas_wgpu::Instance::new(
+            self.options,
+            self.custom,
+            Box::new(display),
+        ))
     }
 }
 
@@ -63,8 +67,8 @@ impl GraphicsBackend for SoftBackend {
 
     type DefaultTheme = SimpleTheme;
 
-    fn into_instance(self) -> Self::Instance {
-        kas_soft::Instance::new()
+    fn into_instance(self, display: OwnedDisplayHandle) -> Result<Self::Instance> {
+        kas_soft::Instance::new(display).map_err(|err| err.into())
     }
 }
 
@@ -128,22 +132,22 @@ impl<CB: CustomPipeBuilder> BackendBuilder<WgpuBackend<CB>> {
 impl<B: GraphicsBackend> BackendBuilder<B> {
     /// Use a selected theme
     #[inline]
-    pub fn with_default_theme(self) -> Builder<B, B::DefaultTheme> {
+    pub fn with_default_theme(self) -> Result<Builder<B, B::DefaultTheme>> {
         self.with_theme(B::DefaultTheme::default())
     }
 
     /// Use a specified theme
     #[inline]
-    pub fn with_theme<T>(self, theme: T) -> Builder<B, T>
+    pub fn with_theme<T>(self, theme: T) -> Result<Builder<B, T>>
     where
         T: Theme<<B::Instance as GraphicsInstance>::Shared>,
     {
-        Builder {
-            graphics: self.0.into_instance(),
+        Ok(Builder {
+            graphics: self.0.into_instance(self.1.owned_display_handle())?,
             el: self.1,
             theme,
             config: AutoFactory::default(),
-        }
+        })
     }
 }
 
@@ -196,8 +200,8 @@ impl<B: GraphicsBackend, T: Theme<<B::Instance as GraphicsInstance>::Shared>, C:
 ///
 /// -   <code>kas::runner::[Runner](type@Runner)::[new](Runner::new)(data)?</code>
 /// -   <code>kas::runner::[Runner](type@Runner)::[with_theme](Runner::with_theme)(theme)?.[build](Builder::build)(data)?</code>
-/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)()?.[with_default_theme](BackendBuilder::with_default_theme)().[build](Builder::build)(data)?</code>
-/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)()?.[with_theme](BackendBuilder::with_theme)(theme).[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)()?.[with_default_theme](BackendBuilder::with_default_theme)()?.[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)()?.[with_theme](BackendBuilder::with_theme)(theme)?.[build](Builder::build)(data)?</code>
 ///
 /// Where:
 ///
@@ -227,7 +231,7 @@ impl<Data: AppData> Runner<Data> {
     /// To use non-default options instead use [`Self::builder`] or [`Self::with_theme`].
     #[inline]
     pub fn new(data: Data) -> Result<Self> {
-        BackendBuilder::new()?.with_default_theme().build(data)
+        BackendBuilder::new()?.with_default_theme()?.build(data)
     }
 }
 
@@ -244,7 +248,7 @@ impl Runner<()> {
     where
         T: Theme<<<DefaultBackend as GraphicsBackend>::Instance as GraphicsInstance>::Shared>,
     {
-        BackendBuilder::new().map(|b| b.with_theme(theme))
+        BackendBuilder::new()?.with_theme(theme)
     }
 }
 

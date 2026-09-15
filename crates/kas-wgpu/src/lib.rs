@@ -44,13 +44,17 @@ impl<CB: CustomPipeBuilder> Instance<CB> {
     ///
     /// [`Options`] are typically default-constructed then
     /// [loaded from environment variables](Options::load_from_env).
-    pub fn new(options: Options, custom: CB) -> Self {
+    pub fn new(
+        options: Options,
+        custom: CB,
+        display: Box<dyn wgpu::wgt::WgpuHasDisplayHandle>,
+    ) -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: options.backend(),
             flags: Default::default(),
             memory_budget_thresholds: Default::default(),
             backend_options: Default::default(),
-            display: None,
+            display: Some(display),
         });
 
         Instance {

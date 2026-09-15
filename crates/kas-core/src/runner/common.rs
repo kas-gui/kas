@@ -23,6 +23,10 @@ pub enum Error {
     /// Event loop error
     #[error("event loop")]
     EventLoop(#[from] winit::error::EventLoopError),
+
+    /// Failure from the graphics sub-system
+    #[error("error from graphics sub-system")]
+    Graphics(Box<dyn std::error::Error + 'static>),
 }
 
 /// A `Result` type representing `T` or [`enum@Error`]

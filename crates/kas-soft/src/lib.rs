@@ -23,26 +23,32 @@ pub use draw::{Draw, Shared};
 use kas::cast::Cast;
 use kas::draw::{SharedState, WindowCommon, color};
 use kas::geom::Size;
-use kas::runner::raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+use kas::runner::raw_window_handle::HasWindowHandle;
 use kas::runner::{
-    GraphicsFeatures, GraphicsInstance, HasDisplayAndWindowHandle, PresentResult, RunError,
+    Error, GraphicsFeatures, GraphicsInstance, HasDisplayAndWindowHandle, PresentResult, RunError,
     WindowSurface,
 };
+use kas::winit::event_loop::OwnedDisplayHandle;
+use softbuffer::Context;
 
 /// Graphics context
-pub struct Instance {}
+pub struct Instance {
+    context: Context<OwnedDisplayHandle>,
+}
 
 impl Instance {
     /// Construct a new `Instance`
     #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Instance {}
+    pub fn new(display: OwnedDisplayHandle) -> Result<Self, Error> {
+        Ok(Instance {
+            context: Context::new(display).map_err(|err| Error::Graphics(Box::new(err)))?,
+        })
     }
 }
 
 pub struct Surface {
     size: Size,
-    surface: softbuffer::Surface<Arc<dyn HasDisplayHandle>, Arc<dyn HasWindowHandle>>,
+    surface: softbuffer::Surface<OwnedDisplayHandle, Arc<dyn HasWindowHandle>>,
     draw: Draw,
 }
 
@@ -127,15 +133,12 @@ impl GraphicsInstance for Instance {
         &mut self,
         window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
         _: bool,
-    ) -> std::result::Result<Self::Surface, RunError>
+    ) -> Result<Self::Surface, RunError>
     where
         Self: Sized,
     {
-        let display = window.clone() as Arc<dyn HasDisplayHandle>;
         let window = window as Arc<dyn HasWindowHandle>;
-        let context =
-            softbuffer::Context::new(display).map_err(|err| RunError::Graphics(Box::new(err)))?;
-        let surface = softbuffer::Surface::new(&context, window)
+        let surface = softbuffer::Surface::new(&self.context, window)
             .map_err(|err| RunError::Graphics(Box::new(err)))?;
 
         Ok(Surface {
