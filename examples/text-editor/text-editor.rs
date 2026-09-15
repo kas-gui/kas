@@ -198,7 +198,7 @@ fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::FlatTheme::new();
-    let app = kas::runner::Runner::with_theme(theme).build(())?;
+    let app = kas::runner::Runner::with_theme(theme)?.build(())?;
 
     let ui = column![menus(), Editor::new()];
     let window = Window::new(ui, "Editor");

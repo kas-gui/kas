@@ -496,7 +496,7 @@ fn main() -> kas::runner::Result<()> {
 
     let window =
         Window::new(MandlebrotUI::new(), "Mandlebrot").with_decorations(Decorations::Border);
-    let mut runner = kas::runner::Runner::builder()
+    let mut runner = kas::runner::Runner::builder()?
         .with_custom_pipe(PipeBuilder)
         .with_theme(kas::theme::FlatTheme::new())
         .build(())?;

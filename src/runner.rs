@@ -15,6 +15,7 @@ pub use kas_core::runner::{AppData, ClosedError, Error, Platform, Proxy, ReadMes
 use kas_core::runner::{GraphicsInstance, PreLaunchState};
 #[allow(unused)]
 use kas_core::theme::{FlatTheme, SimpleTheme};
+use kas_core::winit::event_loop::EventLoop;
 #[cfg(feature = "wgpu")]
 use kas_wgpu::draw::CustomPipeBuilder;
 use std::cell::{Ref, RefMut};
@@ -73,8 +74,17 @@ pub type DefaultBackend = WgpuBackend<()>;
 pub type DefaultBackend = SoftBackend;
 
 /// First-stage builder for a [`Runner`]
-#[derive(Debug, Default)]
-pub struct BackendBuilder<B: GraphicsBackend>(B);
+#[derive(Debug)]
+pub struct BackendBuilder<B: GraphicsBackend>(B, EventLoop);
+
+impl<B: GraphicsBackend + Default> BackendBuilder<B> {
+    /// Try constructing an instance
+    #[inline]
+    pub fn new() -> Result<Self> {
+        let el = EventLoop::new()?;
+        Ok(BackendBuilder(B::default(), el))
+    }
+}
 
 #[cfg(feature = "wgpu")]
 impl<CB: CustomPipeBuilder> BackendBuilder<WgpuBackend<CB>> {
@@ -84,11 +94,14 @@ impl<CB: CustomPipeBuilder> BackendBuilder<WgpuBackend<CB>> {
         self,
         custom: CB2,
     ) -> BackendBuilder<WgpuBackend<CB2>> {
-        BackendBuilder(WgpuBackend {
-            custom,
-            options: self.0.options,
-            read_env_vars: self.0.read_env_vars,
-        })
+        BackendBuilder(
+            WgpuBackend {
+                custom,
+                options: self.0.options,
+                read_env_vars: self.0.read_env_vars,
+            },
+            self.1,
+        )
     }
 
     /// Specify the default WGPU options
@@ -127,6 +140,7 @@ impl<B: GraphicsBackend> BackendBuilder<B> {
     {
         Builder {
             graphics: self.0.into_instance(),
+            el: self.1,
             theme,
             config: AutoFactory::default(),
         }
@@ -134,7 +148,6 @@ impl<B: GraphicsBackend> BackendBuilder<B> {
 }
 
 /// Second-stage builder for a [`Runner`]
-#[derive(Default)]
 pub struct Builder<B, T, C = AutoFactory>
 where
     B: GraphicsBackend,
@@ -142,6 +155,7 @@ where
     C: ConfigFactory,
 {
     graphics: B::Instance,
+    el: EventLoop,
     theme: T,
     config: C,
 }
@@ -154,6 +168,7 @@ impl<B: GraphicsBackend, T: Theme<<B::Instance as GraphicsInstance>::Shared>, C:
     pub fn with_config<CF: ConfigFactory>(self, config: CF) -> Builder<B, T, CF> {
         Builder {
             graphics: self.graphics,
+            el: self.el,
             theme: self.theme,
             config,
         }
@@ -161,7 +176,7 @@ impl<B: GraphicsBackend, T: Theme<<B::Instance as GraphicsInstance>::Shared>, C:
 
     /// Build with `data`
     pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, B, T>> {
-        let state = PreLaunchState::new(self.config)?;
+        let state = PreLaunchState::new(self.config, self.el)?;
 
         self.theme.init(state.config());
 
@@ -180,9 +195,9 @@ impl<B: GraphicsBackend, T: Theme<<B::Instance as GraphicsInstance>::Shared>, C:
 /// Suggested construction patterns:
 ///
 /// -   <code>kas::runner::[Runner](type@Runner)::[new](Runner::new)(data)?</code>
-/// -   <code>kas::runner::[Runner](type@Runner)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
-/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)().[with_default_theme](BackendBuilder::with_default_theme)().[build](Builder::build)(data)?</code>
-/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)().[with_theme](BackendBuilder::with_theme)(theme).[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[with_theme](Runner::with_theme)(theme)?.[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)()?.[with_default_theme](BackendBuilder::with_default_theme)().[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)()?.[with_theme](BackendBuilder::with_theme)(theme).[build](Builder::build)(data)?</code>
 ///
 /// Where:
 ///
@@ -212,24 +227,24 @@ impl<Data: AppData> Runner<Data> {
     /// To use non-default options instead use [`Self::builder`] or [`Self::with_theme`].
     #[inline]
     pub fn new(data: Data) -> Result<Self> {
-        BackendBuilder::default().with_default_theme().build(data)
+        BackendBuilder::new()?.with_default_theme().build(data)
     }
 }
 
 impl Runner<()> {
     /// Construct a first-stage builder
     #[inline]
-    pub fn builder() -> BackendBuilder<DefaultBackend> {
-        BackendBuilder::<DefaultBackend>::default()
+    pub fn builder() -> Result<BackendBuilder<DefaultBackend>> {
+        BackendBuilder::<DefaultBackend>::new()
     }
 
     /// Construct a second-stage builder with the given `theme`
     #[inline]
-    pub fn with_theme<T>(theme: T) -> Builder<DefaultBackend, T>
+    pub fn with_theme<T>(theme: T) -> Result<Builder<DefaultBackend, T>>
     where
         T: Theme<<<DefaultBackend as GraphicsBackend>::Instance as GraphicsInstance>::Shared>,
     {
-        BackendBuilder::default().with_theme(theme)
+        BackendBuilder::new().map(|b| b.with_theme(theme))
     }
 }
 

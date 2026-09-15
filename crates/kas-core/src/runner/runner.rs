@@ -33,12 +33,11 @@ pub struct PreLaunchState {
 
 impl PreLaunchState {
     /// Construct
-    pub fn new<C: ConfigFactory>(config: C) -> Result<Self> {
+    pub fn new<C: ConfigFactory>(config: C, el: EventLoop) -> Result<Self> {
         let mut cf = config;
         let config = cf.read_config()?;
         config.borrow_mut().init();
 
-        let el = EventLoop::new()?;
         let platform = Platform::new(&el);
 
         let (proxy_tx, proxy_rx) = mpsc::sync_channel(16);
