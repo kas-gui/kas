@@ -27,7 +27,6 @@ use raw_window_handle::HasWindowHandle;
 use std::cell::RefCell;
 use std::mem::take;
 use std::rc::Rc;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
@@ -35,9 +34,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::window::{ImeRequest, ImeRequestError, WindowAttributes};
 
 /// Window fields requiring a frame or surface
-#[crate::autoimpl(Deref, DerefMut using self.window)]
 struct WindowData<G: GraphicsInstance> {
-    window: Arc<Box<dyn winit::window::Window>>,
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
     surface: G::Surface,
@@ -50,6 +47,13 @@ struct WindowData<G: GraphicsInstance> {
     window_id: WindowId,
     solve_cache: SolveCache,
     need_redraw: bool,
+}
+
+impl<G: GraphicsInstance> WindowData<G> {
+    #[inline]
+    fn window(&self) -> &dyn winit::window::Window {
+        self.surface.winit_window()
+    }
 }
 
 /// Per-window data
@@ -86,7 +90,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
     #[inline]
     pub(super) fn winit_window(&self) -> Option<&dyn winit::window::Window> {
-        self.theme_and_window.as_ref().map(|d| &**d.1.window)
+        self.theme_and_window.as_ref().map(|d| d.1.window())
     }
 
     /// Open the window and create render surfaces
@@ -230,19 +234,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             _ => None,
         };
 
-        // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
-        let window = Arc::new(window);
-        let mut surface = shared.instance.new_surface(window.clone(), transparent)?;
-        shared.create_draw_shared(&surface)?;
-        surface.configure(&mut shared.draw.as_mut().unwrap().draw, size);
-
         let winit_id = window.id();
 
         #[cfg(feature = "accesskit")]
         let accesskit = todo!(); // FIXME: accesskit_winit::Adapter::with_event_loop_proxy(el, &window, el.create_proxy());
 
+        let mut surface = shared.instance.new_surface(window, transparent)?;
+        shared.create_draw_shared(&surface)?;
+        surface.configure(&mut shared.draw.as_mut().unwrap().draw, size);
+
         let window = WindowData {
-            window,
             #[cfg(all(wayland_platform, feature = "clipboard"))]
             wayland_clipboard,
             surface,
@@ -416,7 +417,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         // NOTE: need_frame_update() does not imply a need to redraw, but other
         // approaches do not yield good frame timing for e.g. kinetic scrolling.
         if window.need_redraw || self.ev_state.need_frame_update() {
-            window.request_redraw();
+            window.window().request_redraw();
         }
 
         (actions, resume)
@@ -439,7 +440,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         if action.contains(ConfigAction::EVENT) {
-            self.ev_state.update_config(window.scale_factor() as f32);
+            self.ev_state
+                .update_config(window.window().scale_factor() as f32);
         }
 
         let resize = if action.contains(ConfigAction::THEME_SWITCH) {
@@ -501,7 +503,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         if window.surface.common_mut().immediate_redraw() {
             window.need_redraw = true;
-            window.request_redraw();
+            window.window().request_redraw();
         }
 
         let widget = self.widget.as_node(data);
@@ -570,7 +572,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if cx.needs_resize() {
             self.apply_size(data, false, true);
         } else if cx.needs_redraw() {
-            window.request_redraw();
+            window.window().request_redraw();
         }
 
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
@@ -604,13 +606,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         } else {
             PhysicalSize::new(1, 1)
         };
-        window.set_min_surface_size(Some(min_size.into()));
-        window.set_max_surface_size(
+        let ww = window.window();
+        ww.set_min_surface_size(Some(min_size.into()));
+        ww.set_max_surface_size(
             restrict_max.then(|| window.solve_cache.ideal(true).as_physical().into()),
         );
 
-        window.set_visible(true);
-        window.request_redraw();
+        ww.set_visible(true);
+        ww.request_redraw();
         log::trace!(
             target: "kas_perf::wgpu::window",
             "apply_size: {}µs", time.elapsed().as_micros(),
@@ -707,7 +710,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             }
             PresentResult::Dropped => (),
             PresentResult::ReconfigureSurface => {
-                let size: Size = window.surface_size().cast();
+                let size: Size = window.window().surface_size().cast();
                 window
                     .surface
                     .configure(&mut shared.draw.as_mut().unwrap().draw, size);
@@ -737,12 +740,12 @@ pub(crate) trait WindowDataErased {
     /// Set the mouse pointer icon
     #[inline]
     fn set_pointer_icon(&self, icon: CursorIcon) {
-        self.window.set_cursor(icon.into());
+        self.window().set_cursor(icon.into());
     }
 
     /// Enable / update / disable the Input Method Editor
     fn ime_request(&self, request: ImeRequest) -> Result<(), ImeRequestError> {
-        self.window.request_ime_update(request)
+        self.window().request_ime_update(request)
     }
 
     /// Directly access Winit Window
@@ -750,6 +753,6 @@ pub(crate) trait WindowDataErased {
     /// This is a temporary API, allowing e.g. to minimize the window.
     #[inline]
     fn winit_window(&self) -> Option<&dyn winit::window::Window> {
-        Some(&**self.window)
+        Some(self.window())
     }
 }

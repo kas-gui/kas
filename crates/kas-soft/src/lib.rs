@@ -16,19 +16,17 @@ mod basic;
 mod draw;
 
 use std::num::NonZeroU32;
-use std::sync::Arc;
 use std::time::Instant;
 
 pub use draw::{Draw, Shared};
 use kas::cast::Cast;
 use kas::draw::{SharedState, WindowCommon, color};
 use kas::geom::Size;
-use kas::runner::raw_window_handle::HasWindowHandle;
 use kas::runner::{
-    Error, GraphicsFeatures, GraphicsInstance, HasDisplayAndWindowHandle, PresentResult, RunError,
-    WindowSurface,
+    Error, GraphicsFeatures, GraphicsInstance, PresentResult, RunError, WindowSurface,
 };
 use kas::winit::event_loop::OwnedDisplayHandle;
+use kas::winit::window::Window;
 use softbuffer::Context;
 
 /// Graphics context
@@ -48,7 +46,7 @@ impl Instance {
 
 pub struct Surface {
     size: Size,
-    surface: softbuffer::Surface<OwnedDisplayHandle, Arc<dyn HasWindowHandle>>,
+    surface: softbuffer::Surface<OwnedDisplayHandle, Box<dyn Window>>,
     draw: Draw,
 }
 
@@ -118,6 +116,11 @@ impl WindowSurface for Surface {
             }
         }
     }
+
+    #[inline]
+    fn winit_window(&self) -> &dyn Window {
+        &**self.surface.window()
+    }
 }
 
 impl GraphicsInstance for Instance {
@@ -129,15 +132,10 @@ impl GraphicsInstance for Instance {
         Ok(Shared::default())
     }
 
-    fn new_surface(
-        &mut self,
-        window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
-        _: bool,
-    ) -> Result<Self::Surface, RunError>
+    fn new_surface(&mut self, window: Box<dyn Window>, _: bool) -> Result<Self::Surface, RunError>
     where
         Self: Sized,
     {
-        let window = window as Arc<dyn HasWindowHandle>;
         let surface = softbuffer::Surface::new(&self.context, window)
             .map_err(|err| RunError::Graphics(Box::new(err)))?;
 

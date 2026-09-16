@@ -5,7 +5,6 @@
 
 //! Public items common to all backends
 
-use super::HasDisplayAndWindowHandle;
 use crate::draw::color::Rgba;
 use crate::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use crate::geom::Size;
@@ -217,12 +216,12 @@ pub trait GraphicsInstance {
         features: GraphicsFeatures,
     ) -> std::result::Result<Self::Shared, RunError>;
 
-    /// Construct a window surface
+    /// Consume the window and construct a drawable surface
     ///
     /// It is required to call [`WindowSurface::configure`] after this.
     fn new_surface(
         &mut self,
-        window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
+        window: Box<dyn winit::window::Window>,
         transparent: bool,
     ) -> std::result::Result<Self::Surface, RunError>
     where
@@ -255,4 +254,7 @@ pub trait WindowSurface {
     ///
     /// Return time at which render finishes
     fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> PresentResult;
+
+    /// Access the owned winit window (if available)
+    fn winit_window(&self) -> &dyn winit::window::Window;
 }
