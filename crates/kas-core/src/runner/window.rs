@@ -12,7 +12,7 @@ use crate::cast::{Cast, CastApprox};
 use crate::config::{Config, WindowConfig};
 use crate::draw::PassType;
 use crate::draw::color::Rgba;
-use crate::event::{ConfigCx, CursorIcon, EventState};
+use crate::event::{ConfigCx, CursorIcon, EventState, InputEvent};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::Erased;
@@ -29,7 +29,7 @@ use std::mem::take;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 use winit::dpi::PhysicalSize;
-use winit::event::WindowEvent;
+use winit::event::{ButtonSource, ElementState, PointerKind, PointerSource, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{ImeRequest, ImeRequestError, WindowAttributes};
 
@@ -308,7 +308,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         #[cfg(feature = "accesskit")]
         todo!(); // FIXME: window.accesskit.process_event(&window.window, &event);
 
-        let resize = match event {
+        let event = match event {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => return false,
             WindowEvent::SurfaceResized(size) => {
                 if window
@@ -367,10 +367,69 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 self.ev_state.close_own_window();
                 return false;
             }
-            event => self.ev_state.with(shared, theme.size(), window, |cx| {
-                cx.handle_winit(&mut self.widget, data, event);
-            }),
+            WindowEvent::Focused(state) => InputEvent::Focused(state),
+            WindowEvent::KeyboardInput {
+                event,
+                is_synthetic,
+                ..
+            } => InputEvent::KeyboardInput {
+                event,
+                is_synthetic,
+            },
+            WindowEvent::ModifiersChanged(modifiers) => {
+                InputEvent::ModifiersChanged(modifiers.state())
+            }
+            WindowEvent::Ime(ime) => InputEvent::Ime(ime),
+            WindowEvent::PointerMoved {
+                position,
+                source: PointerSource::Mouse,
+                ..
+            } => InputEvent::MouseMoved {
+                position: position.into(),
+            },
+            WindowEvent::PointerMoved {
+                position,
+                source: PointerSource::Touch { finger_id, .. },
+                ..
+            } => InputEvent::TouchMoved {
+                finger_id,
+                position: position.into(),
+            },
+            WindowEvent::PointerEntered {
+                kind: PointerKind::Mouse,
+                ..
+            } => InputEvent::MouseEntered,
+            WindowEvent::PointerLeft {
+                kind: PointerKind::Mouse,
+                ..
+            } => InputEvent::MouseLeft,
+            WindowEvent::MouseWheel { delta, .. } => InputEvent::MouseWheel { delta },
+            WindowEvent::PointerButton {
+                state,
+                button: ButtonSource::Mouse(button),
+                ..
+            } => InputEvent::MouseButton { button, state },
+            WindowEvent::PointerButton {
+                state,
+                position,
+                button: ButtonSource::Touch { finger_id, .. },
+                ..
+            } => match state {
+                ElementState::Pressed => InputEvent::TouchStart {
+                    finger_id,
+                    position: position.into(),
+                },
+                ElementState::Released => InputEvent::TouchEnd {
+                    finger_id,
+                    position: position.into(),
+                },
+            },
+            _ => return false,
         };
+
+        let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
+            cx.input_event(&mut self.widget, data, event)
+        });
         self.apply_size(data, false, resize.is_some());
         false
     }

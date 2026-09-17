@@ -8,14 +8,50 @@
 use super::{EventCx, EventState, PopupState};
 use crate::cast::Cast;
 use crate::event::{Event, FocusSource};
+use crate::geom::DVec2;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
 use crate::{ActionRedraw, Id, Node, WindowActions};
-use winit::event::{ButtonSource, ElementState, PointerKind, PointerSource};
+use winit::event::{ElementState, FingerId, Ime, KeyEvent, MouseButton, MouseScrollDelta};
+use winit::keyboard::ModifiersState;
 use winit::window::ResizeDirection;
+
+pub(crate) enum InputEvent {
+    Focused(bool),
+    KeyboardInput {
+        event: KeyEvent,
+        is_synthetic: bool,
+    },
+    ModifiersChanged(ModifiersState),
+    Ime(Ime),
+    MouseMoved {
+        position: DVec2,
+    },
+    MouseEntered,
+    MouseLeft,
+    MouseWheel {
+        delta: MouseScrollDelta,
+    },
+    MouseButton {
+        button: MouseButton,
+        state: ElementState,
+    },
+    TouchStart {
+        finger_id: FingerId,
+        position: DVec2,
+    },
+    TouchMoved {
+        finger_id: FingerId,
+        position: DVec2,
+    },
+    TouchEnd {
+        finger_id: FingerId,
+        position: DVec2,
+    },
+}
 
 impl EventState {
     /// Get the platform
@@ -372,26 +408,15 @@ impl<'a> EventCx<'a> {
         self.window.winit_window()
     }
 
-    /// Handle a winit `WindowEvent`.
-    ///
-    /// Note that some event types are not handled, since for these
-    /// events the graphics backend must take direct action anyway:
-    /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
-    pub(crate) fn handle_winit<A>(
+    /// Handle an input event
+    pub(crate) fn input_event<A>(
         &mut self,
         win: &mut dyn WindowWidget<Data = A>,
         data: &A,
-        event: winit::event::WindowEvent,
+        event: InputEvent,
     ) {
-        use winit::event::WindowEvent::*;
-
         match event {
-            /* Not yet supported: see #98
-            DroppedFile(path) => ,
-            HoveredFile(path) => ,
-            HoveredFileCancelled => ,
-            */
-            Focused(state) => {
+            InputEvent::Focused(state) => {
                 self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
@@ -403,51 +428,33 @@ impl<'a> EventCx<'a> {
                     }
                 }
             }
-            KeyboardInput {
+            InputEvent::KeyboardInput {
                 event,
                 is_synthetic,
-                ..
             } => self.keyboard_input(win.as_node(data), event, is_synthetic),
-            ModifiersChanged(modifiers) => self.modifiers_changed(modifiers.state()),
-            Ime(event) => self.ime_event(win.as_node(data), event),
-            PointerMoved {
-                position, source, ..
-            } => match source {
-                PointerSource::Mouse => self.handle_pointer_moved(win, data, position.into()),
-                PointerSource::Touch { finger_id, .. } => {
-                    self.handle_touch_moved(win.as_node(data), finger_id, position.into())
-                }
-                _ => (),
-            },
-            PointerEntered {
-                kind: PointerKind::Mouse,
-                ..
-            } => self.handle_pointer_entered(),
-            PointerLeft {
-                kind: PointerKind::Mouse,
-                ..
-            } => self.handle_pointer_left(win.as_node(data)),
-            MouseWheel { delta, .. } => self.handle_mouse_wheel(win.as_node(data), delta),
-            PointerButton {
-                state,
+            InputEvent::ModifiersChanged(state) => self.modifiers_changed(state),
+            InputEvent::Ime(event) => self.ime_event(win.as_node(data), event),
+            InputEvent::MouseMoved { position } => {
+                self.handle_pointer_moved(win, data, position.into())
+            }
+            InputEvent::MouseEntered => self.handle_pointer_entered(),
+            InputEvent::MouseLeft => self.handle_pointer_left(win.as_node(data)),
+            InputEvent::MouseWheel { delta } => self.handle_mouse_wheel(win.as_node(data), delta),
+            InputEvent::MouseButton { button, state } => {
+                self.handle_mouse_input(win.as_node(data), state, button)
+            }
+            InputEvent::TouchStart {
+                finger_id,
                 position,
-                button,
-                ..
-            } => match button {
-                ButtonSource::Mouse(button) => {
-                    self.handle_mouse_input(win.as_node(data), state, button)
-                }
-                ButtonSource::Touch { finger_id, .. } => match state {
-                    ElementState::Pressed => {
-                        self.handle_touch_start(win.as_node(data), finger_id, position.into())
-                    }
-                    ElementState::Released => {
-                        self.handle_touch_end(win.as_node(data), finger_id, position.into())
-                    }
-                },
-                _ => (),
-            },
-            _ => (),
+            } => self.handle_touch_start(win.as_node(data), finger_id, position.into()),
+            InputEvent::TouchMoved {
+                finger_id,
+                position,
+            } => self.handle_touch_moved(win.as_node(data), finger_id, position.into()),
+            InputEvent::TouchEnd {
+                finger_id,
+                position,
+            } => self.handle_touch_end(win.as_node(data), finger_id, position.into()),
         }
     }
 }
