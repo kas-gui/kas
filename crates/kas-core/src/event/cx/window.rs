@@ -386,7 +386,6 @@ impl<'a> EventCx<'a> {
         use winit::event::WindowEvent::*;
 
         match event {
-            CloseRequested => self.close_own_window(),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,

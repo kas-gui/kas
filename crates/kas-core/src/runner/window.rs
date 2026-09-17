@@ -308,7 +308,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         #[cfg(feature = "accesskit")]
         todo!(); // FIXME: window.accesskit.process_event(&window.window, &event);
 
-        let (apply_size, resize, poll) = match event {
+        let resize = match event {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => return false,
             WindowEvent::SurfaceResized(size) => {
                 if window
@@ -317,7 +317,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 {
                     self.apply_size(data, false, false);
                 }
-                (true, false, false)
+                return false;
             }
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
@@ -356,24 +356,23 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                         .request_surface_size(size.as_physical())
                         .is_err()
                 };
-
-                (apply, false, false)
+                if apply {
+                    self.apply_size(data, false, false);
+                }
+                return false;
             }
             WindowEvent::RedrawRequested => return self.do_draw(shared, data).is_err(),
-            event => {
-                let resize = self
-                    .ev_state
-                    .with(shared, theme.size(), window, |cx| {
-                        cx.handle_winit(&mut self.widget, data, event);
-                    })
-                    .is_some();
-                (resize, resize, false)
+
+            WindowEvent::CloseRequested => {
+                self.ev_state.close_own_window();
+                return false;
             }
+            event => self.ev_state.with(shared, theme.size(), window, |cx| {
+                cx.handle_winit(&mut self.widget, data, event);
+            }),
         };
-        if apply_size {
-            self.apply_size(data, false, resize);
-        }
-        poll
+        self.apply_size(data, false, resize.is_some());
+        false
     }
 
     /// Handle all pending items before event loop sleeps
