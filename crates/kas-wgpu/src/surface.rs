@@ -10,13 +10,17 @@ use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use kas::geom::Size;
-use kas::runner::{HasDisplayAndWindowHandle, PresentResult, RunError, WindowSurface};
+use kas::runner::{PresentResult, RunError, WindowSurface};
+use kas::winit::window::Window;
 use std::time::Instant;
+use wgpu::rwh::HasWindowHandle;
 use wgpu::{CurrentSurfaceTexture, PresentMode};
 
 /// Per-window data
 pub struct Surface<C: CustomPipe> {
+    // SAFETY: field surface must come before field window
     pub(super) surface: wgpu::Surface<'static>,
+    window: Box<dyn Window>,
     size: Size,
     transparent: bool,
     draw: DrawWindow<C::Window>,
@@ -25,18 +29,30 @@ pub struct Surface<C: CustomPipe> {
 impl<C: CustomPipe> Surface<C> {
     pub fn new(
         instance: &wgpu::Instance,
-        window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
+        window: Box<dyn Window>,
         transparent: bool,
     ) -> Result<Self, RunError>
     where
         Self: Sized,
     {
-        let surface = instance
-            .create_surface(window)
+        let handle = window
+            .window_handle()
             .map_err(|e| RunError::Graphics(Box::new(e)))?;
+        let handle = wgpu::SurfaceTargetUnsafe::RawHandle {
+            raw_display_handle: None,
+            raw_window_handle: handle.as_raw(),
+        };
 
+        // SAFETY: surface is dropped before window ensuring that
+        // raw_window_handle is valid for the lifetime of the surface.
+        // Note that the reference guarantees destruction order:
+        // > The fields of a struct are dropped in declaration order.
+        let result = unsafe { instance.create_surface_unsafe(handle) };
+
+        let surface = result.map_err(|e| RunError::Graphics(Box::new(e)))?;
         Ok(Surface {
             surface,
+            window,
             size: Size::ZERO,
             transparent,
             draw: Default::default(),
@@ -143,6 +159,11 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         } else {
             PresentResult::ReconfigureSurface
         }
+    }
+
+    #[inline]
+    fn winit_window(&self) -> &dyn Window {
+        &*self.window
     }
 }
 

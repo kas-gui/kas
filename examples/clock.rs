@@ -164,10 +164,7 @@ fn main() -> kas::runner::Result<()> {
         .with_decorations(kas::window::Decorations::None)
         .with_transparent(true);
 
-    kas::runner::Runner::with_theme(kas::theme::FlatTheme::default())
-        .build(())?
-        .with(window)
-        .run()
+    kas::runner::Runner::new(())?.with(window).run()
 }
 
 #[cfg(not(feature = "wgpu"))]

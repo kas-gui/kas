@@ -9,13 +9,13 @@
 //! type-def (requires a backend be enabled, e.g. "wgpu").
 
 use crate::config::{AutoFactory, Config, ConfigFactory};
-use crate::draw::DrawSharedImpl;
 use crate::theme::Theme;
 use crate::window::{Window, WindowId};
 pub use kas_core::runner::{AppData, ClosedError, Error, Platform, Proxy, ReadMessage, Result};
 use kas_core::runner::{GraphicsInstance, PreLaunchState};
 #[allow(unused)]
 use kas_core::theme::{FlatTheme, SimpleTheme};
+use kas_core::winit::event_loop::{EventLoop, OwnedDisplayHandle};
 #[cfg(feature = "wgpu")]
 use kas_wgpu::draw::CustomPipeBuilder;
 use std::cell::{Ref, RefMut};
@@ -23,31 +23,89 @@ use std::cell::{Ref, RefMut};
 #[cfg(not(any(feature = "wgpu", feature = "soft")))]
 compile_error!("At least one of the following features must be enabled: wgpu, soft");
 
-#[cfg(feature = "wgpu")]
-type DefaultTheme = FlatTheme;
-#[cfg(all(not(feature = "wgpu"), feature = "soft"))]
-type DefaultTheme = SimpleTheme;
+pub trait GraphicsBackend {
+    type Instance: GraphicsInstance + 'static;
 
-/// Builder for a WGPU [`Runner`]'s graphics instance
+    type DefaultTheme: Theme<<Self::Instance as GraphicsInstance>::Shared> + Default;
+
+    #[doc(hidden)]
+    fn into_instance(self, display: OwnedDisplayHandle) -> Result<Self::Instance>;
+}
+
 #[cfg(feature = "wgpu")]
-pub struct WgpuBuilder<CB: CustomPipeBuilder> {
+#[derive(Debug, Default)]
+pub struct WgpuBackend<CB: CustomPipeBuilder> {
     custom: CB,
     options: kas_wgpu::Options,
     read_env_vars: bool,
 }
+#[cfg(feature = "wgpu")]
+impl<CB: CustomPipeBuilder> GraphicsBackend for WgpuBackend<CB> {
+    type Instance = kas_wgpu::Instance<CB>;
+
+    type DefaultTheme = FlatTheme;
+
+    fn into_instance(mut self, display: OwnedDisplayHandle) -> Result<Self::Instance> {
+        if self.read_env_vars {
+            self.options.load_from_env();
+        }
+
+        Ok(kas_wgpu::Instance::new(
+            self.options,
+            self.custom,
+            Box::new(display),
+        ))
+    }
+}
+
+#[cfg(feature = "soft")]
+#[derive(Debug, Default)]
+pub struct SoftBackend;
+#[cfg(feature = "soft")]
+impl GraphicsBackend for SoftBackend {
+    type Instance = kas_soft::Instance;
+
+    type DefaultTheme = SimpleTheme;
+
+    fn into_instance(self, display: OwnedDisplayHandle) -> Result<Self::Instance> {
+        kas_soft::Instance::new(display).map_err(|err| err.into())
+    }
+}
 
 #[cfg(feature = "wgpu")]
-impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
-    /// Construct with the given pipe builder
-    ///
-    /// Pass `()` or use [`Self::default`] when not using a custom pipe.
+pub type DefaultBackend = WgpuBackend<()>;
+#[cfg(all(not(feature = "wgpu"), feature = "soft"))]
+pub type DefaultBackend = SoftBackend;
+
+/// First-stage builder for a [`Runner`]
+#[derive(Debug)]
+pub struct BackendBuilder<B: GraphicsBackend>(B, EventLoop);
+
+impl<B: GraphicsBackend + Default> BackendBuilder<B> {
+    /// Try constructing an instance
     #[inline]
-    fn new(cb: CB) -> Self {
-        WgpuBuilder {
-            custom: cb,
-            options: kas_wgpu::Options::default(),
-            read_env_vars: true,
-        }
+    pub fn new() -> Result<Self> {
+        let el = EventLoop::new()?;
+        Ok(BackendBuilder(B::default(), el))
+    }
+}
+
+#[cfg(feature = "wgpu")]
+impl<CB: CustomPipeBuilder> BackendBuilder<WgpuBackend<CB>> {
+    /// Use a `custom` pipe builder
+    #[inline]
+    pub fn with_custom_pipe<CB2: CustomPipeBuilder>(
+        self,
+        custom: CB2,
+    ) -> BackendBuilder<WgpuBackend<CB2>> {
+        BackendBuilder(
+            WgpuBackend {
+                custom,
+                options: self.0.options,
+                read_env_vars: self.0.read_env_vars,
+            },
+            self.1,
+        )
     }
 
     /// Specify the default WGPU options
@@ -56,7 +114,7 @@ impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
     /// read from env vars unless disabled via [`Self::read_env_vars`].
     #[inline]
     pub fn with_wgpu_options(mut self, options: kas_wgpu::Options) -> Self {
-        self.options = options;
+        self.0.options = options;
         self
     }
 
@@ -66,91 +124,63 @@ impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
     /// present (see [`kas_wgpu::Options::load_from_env`]).
     #[inline]
     pub fn read_env_vars(mut self, read_env_vars: bool) -> Self {
-        self.read_env_vars = read_env_vars;
+        self.0.read_env_vars = read_env_vars;
         self
     }
+}
 
+impl<B: GraphicsBackend> BackendBuilder<B> {
     /// Use a selected theme
     #[inline]
-    pub fn with_default_theme(self) -> Builder<FlatTheme, kas_wgpu::Instance<CB>> {
-        self.with_theme(FlatTheme::new())
+    pub fn with_default_theme(self) -> Result<Builder<B, B::DefaultTheme>> {
+        self.with_theme(B::DefaultTheme::default())
     }
 
     /// Use a specified theme
     #[inline]
-    pub fn with_theme<T>(mut self, theme: T) -> Builder<T, kas_wgpu::Instance<CB>>
+    pub fn with_theme<T>(self, theme: T) -> Result<Builder<B, T>>
     where
-        T: Theme<<kas_wgpu::Instance<CB> as GraphicsInstance>::Shared>,
+        T: Theme<<B::Instance as GraphicsInstance>::Shared>,
     {
-        if self.read_env_vars {
-            self.options.load_from_env();
-        }
-
-        Builder {
-            graphics: kas_wgpu::Instance::new(self.options, self.custom),
+        Ok(Builder {
+            graphics: self.0.into_instance(self.1.owned_display_handle())?,
+            el: self.1,
             theme,
             config: AutoFactory::default(),
-        }
+        })
     }
 }
 
-/// Builder for a softbuffer [`Runner`]'s graphics instance
-#[cfg(feature = "soft")]
-pub struct SoftBuilder;
-
-#[cfg(feature = "soft")]
-impl SoftBuilder {
-    /// Use a selected theme
-    #[inline]
-    pub fn with_default_theme(self) -> Builder<SimpleTheme, kas_soft::Instance> {
-        self.with_theme(SimpleTheme::new())
-    }
-
-    /// Use a specified theme
-    #[inline]
-    pub fn with_theme<T>(self, theme: T) -> Builder<T, kas_soft::Instance>
-    where
-        T: Theme<<kas_soft::Instance as GraphicsInstance>::Shared>,
-    {
-        Builder {
-            graphics: kas_soft::Instance::new(),
-            theme,
-            config: AutoFactory::default(),
-        }
-    }
-}
-
-/// Builder for a [`Runner`]
-#[derive(Default)]
-pub struct Builder<
-    T = DefaultTheme,
-    #[cfg(feature = "wgpu")] G = kas_wgpu::Instance<()>,
-    #[cfg(all(not(feature = "wgpu"), feature = "soft"))] G = kas_soft::Instance,
-    C = AutoFactory,
-> where
-    T: Theme<G::Shared> + 'static,
-    G: GraphicsInstance,
+/// Second-stage builder for a [`Runner`]
+pub struct Builder<B, T, C = AutoFactory>
+where
+    B: GraphicsBackend,
+    T: Theme<<B::Instance as GraphicsInstance>::Shared> + 'static,
     C: ConfigFactory,
 {
-    graphics: G,
+    graphics: B::Instance,
+    el: EventLoop,
     theme: T,
     config: C,
 }
 
-impl<T: Theme<G::Shared>, G: GraphicsInstance, C: ConfigFactory> Builder<T, G, C> {
+impl<B: GraphicsBackend, T: Theme<<B::Instance as GraphicsInstance>::Shared>, C: ConfigFactory>
+    Builder<B, T, C>
+{
     /// Use the specified [`ConfigFactory`]
     #[inline]
-    pub fn with_config<CF: ConfigFactory>(self, config: CF) -> Builder<T, G, CF> {
+    pub fn with_config<CF: ConfigFactory>(self, config: CF) -> Builder<B, T, CF> {
         Builder {
             graphics: self.graphics,
+            el: self.el,
             theme: self.theme,
             config,
         }
     }
 
     /// Build with `data`
-    pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, T, G>> {
-        let state = PreLaunchState::new(self.config)?;
+    pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, B, T>> {
+        let state = PreLaunchState::new(self.config, self.el)?;
 
         self.theme.init(state.config());
 
@@ -169,8 +199,9 @@ impl<T: Theme<G::Shared>, G: GraphicsInstance, C: ConfigFactory> Builder<T, G, C
 /// Suggested construction patterns:
 ///
 /// -   <code>kas::runner::[Runner](type@Runner)::[new](Runner::new)(data)?</code>
-/// -   <code>kas::runner::[Runner](type@Runner)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
-/// -   <code>kas::runner::[Runner](type@Runner)::[with_wgpu_pipe](Runner::with_wgpu_pipe)(custom_wgpu_pipe).[with_theme](WgpuBuilder::with_theme)(theme).[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[with_theme](Runner::with_theme)(theme)?.[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)()?.[with_default_theme](BackendBuilder::with_default_theme)()?.[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[builder](Runner::builder)()?.[with_theme](BackendBuilder::with_theme)(theme)?.[build](Builder::build)(data)?</code>
 ///
 /// Where:
 ///
@@ -179,30 +210,14 @@ impl<T: Theme<G::Shared>, G: GraphicsInstance, C: ConfigFactory> Builder<T, G, C
 /// -   `custom_wgpu_pipe` is a custom WGPU graphics pipeline
 pub struct Runner<
     Data: AppData,
-    T: Theme<G::Shared> = DefaultTheme,
-    #[cfg(feature = "wgpu")] G: GraphicsInstance = kas_wgpu::Instance<()>,
-    #[cfg(all(not(feature = "wgpu"), feature = "soft"))] G: GraphicsInstance = kas_soft::Instance,
+    B: GraphicsBackend = DefaultBackend,
+    T: Theme<<B::Instance as GraphicsInstance>::Shared> = <B as GraphicsBackend>::DefaultTheme,
 > {
     data: Data,
-    graphics: G,
+    graphics: B::Instance,
     state: PreLaunchState,
     theme: T,
-    windows: Vec<Box<kas_core::runner::Window<Data, G, T>>>,
-}
-
-/// Inherenet associated types of [`Runner`]
-///
-/// Note: these could be inherent associated types of [`Runner`] when Rust#8995 is stable.
-pub trait RunnerInherent {
-    /// Shared draw state type
-    type DrawShared: DrawSharedImpl;
-}
-
-impl<A: AppData, G: GraphicsInstance, T> RunnerInherent for Runner<A, T, G>
-where
-    T: Theme<G::Shared> + 'static,
-{
-    type DrawShared = G::Shared;
+    windows: Vec<Box<kas_core::runner::Window<Data, B::Instance, T>>>,
 }
 
 impl<Data: AppData> Runner<Data> {
@@ -212,65 +227,34 @@ impl<Data: AppData> Runner<Data> {
     /// shared across all windows. If not required this may be `()`.
     ///
     /// Configuration is supplied by [`AutoFactory`].
+    ///
+    /// To use non-default options instead use [`Self::builder`] or [`Self::with_theme`].
     #[inline]
     pub fn new(data: Data) -> Result<Self> {
-        #[cfg(feature = "wgpu")]
-        {
-            WgpuBuilder::new(())
-                .with_theme(Default::default())
-                .build(data)
-        }
-
-        #[cfg(all(not(feature = "wgpu"), feature = "soft"))]
-        {
-            SoftBuilder.with_theme(Default::default()).build(data)
-        }
-    }
-}
-
-#[cfg(feature = "wgpu")]
-impl<T: Theme<kas_wgpu::draw::DrawPipe<()>>> Runner<(), T> {
-    /// Construct a builder with the given `theme`
-    #[inline]
-    pub fn with_theme(theme: T) -> Builder<T> {
-        WgpuBuilder::new(()).with_theme(theme)
-    }
-}
-
-#[cfg(all(not(feature = "wgpu"), feature = "soft"))]
-impl<T: Theme<kas_soft::Shared>> Runner<(), T> {
-    /// Construct a builder with the given `theme`
-    #[inline]
-    pub fn with_theme(theme: T) -> Builder<T> {
-        SoftBuilder.with_theme(theme)
+        BackendBuilder::new()?.with_default_theme()?.build(data)
     }
 }
 
 impl Runner<()> {
-    /// Construct a builder with the default theme
+    /// Construct a first-stage builder
     #[inline]
-    pub fn with_default_theme() -> Builder {
-        #[cfg(feature = "wgpu")]
-        {
-            WgpuBuilder::new(()).with_theme(Default::default())
-        }
-
-        #[cfg(all(not(feature = "wgpu"), feature = "soft"))]
-        {
-            SoftBuilder.with_theme(Default::default())
-        }
+    pub fn builder() -> Result<BackendBuilder<DefaultBackend>> {
+        BackendBuilder::<DefaultBackend>::new()
     }
 
-    /// Build with a custom WGPU pipe
-    #[cfg(feature = "wgpu")]
-    pub fn with_wgpu_pipe<CB: CustomPipeBuilder>(cb: CB) -> WgpuBuilder<CB> {
-        WgpuBuilder::new(cb)
+    /// Construct a second-stage builder with the given `theme`
+    #[inline]
+    pub fn with_theme<T>(theme: T) -> Result<Builder<DefaultBackend, T>>
+    where
+        T: Theme<<<DefaultBackend as GraphicsBackend>::Instance as GraphicsInstance>::Shared>,
+    {
+        BackendBuilder::new()?.with_theme(theme)
     }
 }
 
-impl<Data: AppData, G: GraphicsInstance + 'static, T> Runner<Data, T, G>
+impl<Data: AppData, B: GraphicsBackend, T> Runner<Data, B, T>
 where
-    T: Theme<G::Shared> + 'static,
+    T: Theme<<B::Instance as GraphicsInstance>::Shared> + 'static,
 {
     /// Access config
     #[inline]

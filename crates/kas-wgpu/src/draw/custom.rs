@@ -19,7 +19,7 @@ pub trait DrawCustom<CW: CustomWindow> {
 }
 
 /// Builder for a [`CustomPipe`]
-pub trait CustomPipeBuilder {
+pub trait CustomPipeBuilder: 'static {
     type Pipe: CustomPipe;
 
     /// Graphics device request descriptor

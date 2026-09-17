@@ -754,7 +754,7 @@ fn main() -> kas::runner::Result<()> {
         theme.add("shaded", kas_wgpu::ShadedTheme::new());
         theme.set_active(index);
     }
-    let mut runner = kas::runner::Runner::with_theme(theme).build(())?;
+    let mut runner = kas::runner::Runner::with_theme(theme)?.build(())?;
 
     // TODO: use as logo of tab
     // let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));

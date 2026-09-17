@@ -25,7 +25,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::runner::{self, HasDisplayAndWindowHandle, RunError};
+use kas::runner::{self, RunError};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
@@ -44,13 +44,17 @@ impl<CB: CustomPipeBuilder> Instance<CB> {
     ///
     /// [`Options`] are typically default-constructed then
     /// [loaded from environment variables](Options::load_from_env).
-    pub fn new(options: Options, custom: CB) -> Self {
+    pub fn new(
+        options: Options,
+        custom: CB,
+        display: Box<dyn wgpu::wgt::WgpuHasDisplayHandle>,
+    ) -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: options.backend(),
             flags: Default::default(),
             memory_budget_thresholds: Default::default(),
             backend_options: Default::default(),
-            display: None,
+            display: Some(display),
         });
 
         Instance {
@@ -82,7 +86,7 @@ impl<CB: CustomPipeBuilder> runner::GraphicsInstance for Instance<CB> {
 
     fn new_surface(
         &mut self,
-        window: std::sync::Arc<dyn HasDisplayAndWindowHandle + Send + Sync>,
+        window: Box<dyn kas::winit::window::Window>,
         transparent: bool,
     ) -> std::result::Result<Self::Surface, RunError>
     where

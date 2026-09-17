@@ -68,7 +68,7 @@ fn main() -> kas::runner::Result<()> {
         .with_restrictions(true, true);
 
     let theme = Theme::new();
-    let mut app = kas::runner::Runner::with_theme(theme).build(())?;
+    let mut app = kas::runner::Runner::with_theme(theme)?.build(())?;
     let _ = app.config_mut().font.set_size(24.0);
     let _ = app.config_mut().theme.set_active_scheme("dark");
     app.with(window).run()

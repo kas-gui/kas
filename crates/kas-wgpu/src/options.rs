@@ -10,7 +10,7 @@ use std::path::PathBuf;
 pub use wgpu::{Backends, PowerPreference};
 
 /// Graphics backend options
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Options {
     /// Adapter power preference. Default value: low power.
     pub power_preference: PowerPreference,
