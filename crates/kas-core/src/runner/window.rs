@@ -121,6 +121,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 scale_factor = monitor.scale_factor();
             }
         }
+        if shared.platform.is_wayland() && scale_factor > 1.0 {
+            // The scale factor reported above is restricted to integer values
+            // on Wayland, rounding up (thus 1.05 is reported as 2.0).
+            // Constructing a window lets us get the actual scale factor.
+            if let Ok(win) = el.create_window(WindowAttributes::default()) {
+                scale_factor = win.scale_factor();
+            }
+        }
         let max_size = max_physical_size.to_logical::<f64>(scale_factor);
 
         self.ev_state.update_config(scale_factor.cast_approx());
