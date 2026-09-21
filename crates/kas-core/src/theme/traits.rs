@@ -13,8 +13,6 @@ use crate::event::EventState;
 use std::any::Any;
 use std::cell::RefCell;
 
-#[allow(unused)] use crate::event::EventCx;
-
 /// A *theme* provides widget sizing and drawing implementations.
 ///
 /// The theme is generic over some `DrawIface`.

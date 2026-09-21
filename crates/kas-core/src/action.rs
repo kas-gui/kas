@@ -5,9 +5,6 @@
 
 //! Action types
 
-#[allow(unused)]
-use crate::event::{ConfigCx, EventCx, EventState};
-
 /// Action: widget has moved/opened/closed
 ///
 /// This action indicates that the following should happen:

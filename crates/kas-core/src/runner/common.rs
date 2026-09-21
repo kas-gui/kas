@@ -306,6 +306,6 @@ pub trait WindowSurface {
     /// Return time at which render finishes
     fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> PresentResult;
 
-    /// Access the owned winit window (if available)
+    /// Access the owned winit window
     fn winit_window(&self) -> &dyn winit::window::Window;
 }
