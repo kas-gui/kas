@@ -8,7 +8,7 @@
 use super::common::{RunError, WindowSurface};
 use super::shared::Shared;
 use super::{AppData, GraphicsInstance, Platform};
-use crate::cast::{Cast, CastApprox};
+use crate::cast::Cast;
 use crate::config::{Config, WindowConfig};
 use crate::draw::PassType;
 use crate::draw::color::Rgba;
@@ -103,72 +103,27 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         #[allow(unused)] modal_parent: Option<&dyn winit::window::Window>,
     ) -> Result<winit::window::WindowId, RunError> {
         debug_assert!(self.surface.is_none());
-
         let time = Instant::now();
 
-        // We use the physical size and scale factor of the largest monitor as
-        // an upper bound on window size and guessed scale factor.
-        let mut max_physical_size = PhysicalSize::new(800, 600);
-        let mut scale_factor = 1.0;
-        let mut product = 0;
-        for monitor in el.available_monitors() {
-            let Some(size) = monitor.current_video_mode().map(|mode| mode.size()) else {
-                continue;
-            };
-            let p = size.width * size.height;
-            if p > product {
-                product = p;
-                max_physical_size = size;
-                scale_factor = monitor.scale_factor();
-            }
-        }
-        if shared.platform.is_wayland() && scale_factor > 1.0 {
-            // The scale factor reported above is restricted to integer values
-            // on Wayland, rounding up (thus 1.05 is reported as 2.0).
-            // Constructing a window lets us get the actual scale factor.
-            if let Ok(win) = el.create_window(WindowAttributes::default()) {
-                scale_factor = win.scale_factor();
-            }
-        }
-
-        self.ev_state.update_config(scale_factor.cast_approx());
+        self.ev_state.update_config(1.0);
         let config = self.ev_state.config();
         let mut theme = shared.theme.new_window(config);
 
-        let mut node = self.widget.as_node(data);
-        let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node.re());
-
-        let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
-        let mut solve_cache = SolveCache::default();
-        solve_cache.find_constraints(node, &mut cx);
-
-        // Opening a zero-size window causes a crash, so force at least 1x1:
-        let min_size = Size(1, 1);
-        let mut ideal = solve_cache.ideal(true).max(min_size).as_physical();
-        ideal.width = ideal.width.min(max_physical_size.width);
-        ideal.height = ideal.height.min(max_physical_size.height);
+        let node = self.widget.as_node(data);
+        let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node);
 
         let props = self.widget.properties();
+        let transparent = props.transparent();
+        let (restrict_min, restrict_max) = props.restrictions();
+
+        // Construct a window without a size (on Wayland the precise scale
+        // factor is not known before constructing the window):
         let mut attrs = WindowAttributes::default();
-        attrs.surface_size = Some(ideal.into());
         attrs.title = self.widget.title().to_string();
         attrs.visible = false;
-        let transparent = props.transparent();
         attrs.transparent = transparent;
         attrs.decorations = props.decorations() == Decorations::Server;
         attrs.window_icon = props.icon();
-        let (restrict_min, restrict_max) = props.restrictions();
-        if restrict_min {
-            let mut min = solve_cache.min(true).as_physical();
-            min.width = min.width.min(max_physical_size.width);
-            min.height = min.height.min(max_physical_size.height);
-            attrs.min_surface_size = Some(min.into());
-        } else {
-            attrs.min_surface_size = Some(PhysicalSize::new(1, 1).into());
-        }
-        if restrict_max {
-            attrs.max_surface_size = Some(ideal.into());
-        }
         let window = el.create_window(attrs)?;
         // TODO: handle modal windows on all platforms: skip taskbar and set owner (not parent) window.
         #[cfg(windows_platform)]
@@ -177,44 +132,67 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             window.set_skip_taskbar(true);
         }
 
-        // Now that we have a scale factor, we may need to resize:
-        let new_factor = window.scale_factor();
-        if new_factor != scale_factor {
-            scale_factor = new_factor;
+        // Reconfigure if necessary (this is cheap):
+        let scale_factor = window.scale_factor();
+        if scale_factor != 1.0 {
             self.ev_state.update_config(scale_factor as f32);
 
             let config = self.ev_state.config();
             shared.theme.update_window(&mut theme, config);
 
             // Update text size which is assigned during configure
-            let mut node = self.widget.as_node(data);
-            let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node.re());
+            let node = self.widget.as_node(data);
+            let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node);
+        }
 
-            let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
-            solve_cache.find_constraints(node, &mut cx);
+        let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
+        let mut solve_cache = SolveCache::default();
+        solve_cache.find_constraints(self.widget.as_node(data), &mut cx);
 
-            if let Some(mode) = window
-                .current_monitor()
-                .and_then(|mon| mon.current_video_mode())
-            {
-                max_physical_size = mode.size();
+        let mut ideal = solve_cache.ideal(true).as_physical();
+
+        let mut restrict_min = restrict_min.then(|| solve_cache.min(true).as_physical());
+        let mut restrict_max = restrict_max.then_some(ideal);
+
+        if let Some(mode) = window
+            .current_monitor()
+            .and_then(|mon| mon.current_video_mode())
+        {
+            let max_physical_size = mode.size();
+            ideal.width = ideal.width.min(max_physical_size.width);
+            ideal.height = ideal.height.min(max_physical_size.height);
+
+            if let Some(size) = restrict_min.as_mut() {
+                size.width = size.width.min(max_physical_size.width);
+                size.height = size.height.min(max_physical_size.height);
             }
 
-            let mut ideal = solve_cache.ideal(true).max(min_size).as_physical();
-            if ideal.width > max_physical_size.width {
-                ideal.width = max_physical_size.width;
+            if let Some(size) = restrict_max.as_mut() {
+                size.width = size.width.min(max_physical_size.width);
+                size.height = size.height.min(max_physical_size.height);
             }
-            if ideal.height > max_physical_size.height {
-                ideal.height = max_physical_size.height;
-            }
+        }
 
-            if let Some(size) = window.request_surface_size(ideal.into()) {
-                debug_assert_eq!(size, window.surface_size());
-            } else {
-                // We will receive WindowEvent::Resized and resize then.
-                // Unfortunately we can't rely on this since some platforms (X11)
-                // don't always behave as expected, thus we must resize now.
-            }
+        const ZERO: PhysicalSize<u32> = PhysicalSize::new(0, 0);
+        if ideal != ZERO
+            && let Some(size) = window.request_surface_size(ideal.into())
+        {
+            debug_assert_eq!(size, window.surface_size());
+        } else {
+            // We will receive WindowEvent::Resized and resize then.
+            // Unfortunately we can't rely on this since some platforms (X11)
+            // don't always behave as expected, thus we must resize now.
+        }
+
+        if let Some(size) = restrict_min
+            && size != ZERO
+        {
+            window.set_min_surface_size(Some(size.into()));
+        }
+        if let Some(size) = restrict_max
+            && size != ZERO
+        {
+            window.set_max_surface_size(Some(size.into()));
         }
 
         let size: Size = window.surface_size().cast();
