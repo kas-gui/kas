@@ -183,7 +183,7 @@ impl Common {
     #[must_use]
     pub fn configure(&mut self, cx: &SizeCx, id: Id) -> Option<ActionResetStatus> {
         self.id = id;
-        let font = cx.font(TextClass::Editor);
+        let font = cx.config().font().get_font_selector(TextClass::Editor);
         let dpem = cx.dpem(TextClass::Editor);
         if font != self.font || dpem != self.dpem {
             self.font = font;

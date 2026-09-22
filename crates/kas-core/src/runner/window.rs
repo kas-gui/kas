@@ -8,7 +8,7 @@
 use super::common::{RunError, WindowSurface};
 use super::shared::Shared;
 use super::{AppData, GraphicsInstance, Platform};
-use crate::cast::{Cast, CastApprox};
+use crate::cast::Cast;
 use crate::config::{Config, WindowConfig};
 use crate::draw::PassType;
 use crate::draw::color::Rgba;
@@ -37,7 +37,8 @@ use winit::window::{ImeRequest, ImeRequestError, WindowAttributes};
 struct WindowData<G: GraphicsInstance> {
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
-    surface: G::Surface,
+    /// Graphical surface
+    graphical: G::Surface,
     /// Frame rate counter
     frame_count: (Instant, u32),
     #[cfg(feature = "accesskit")]
@@ -52,18 +53,18 @@ struct WindowData<G: GraphicsInstance> {
 impl<G: GraphicsInstance> WindowData<G> {
     #[inline]
     fn window(&self) -> &dyn winit::window::Window {
-        self.surface.winit_window()
+        self.graphical.winit_window()
     }
 }
 
 /// Per-window data
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-#[autoimpl(Debug ignore self.widget, self.ev_state, self.theme_and_window)]
+#[autoimpl(Debug ignore self.widget, self.ev_state, self.surface)]
 pub struct Window<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     pub(super) widget: Box<dyn WindowWidget<Data = A>>,
     ev_state: EventState,
-    theme_and_window: Option<(T::Window, WindowData<G>)>,
+    surface: Option<(T::Window, WindowData<G>)>,
 }
 
 // Public functions, for use by the toolkit
@@ -79,7 +80,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         Window {
             widget: widget.0,
             ev_state: EventState::new(window_id, config, platform),
-            theme_and_window: None,
+            surface: None,
         }
     }
 
@@ -90,7 +91,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
     #[inline]
     pub(super) fn winit_window(&self) -> Option<&dyn winit::window::Window> {
-        self.theme_and_window.as_ref().map(|d| d.1.window())
+        self.surface.as_ref().map(|d| d.1.window())
     }
 
     /// Open the window and create render surfaces
@@ -101,81 +102,28 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         el: &dyn ActiveEventLoop,
         #[allow(unused)] modal_parent: Option<&dyn winit::window::Window>,
     ) -> Result<winit::window::WindowId, RunError> {
-        debug_assert!(self.theme_and_window.is_none());
-
+        debug_assert!(self.surface.is_none());
         let time = Instant::now();
 
-        // We use the logical size and scale factor of the largest monitor as
-        // an upper bound on window size and guessed scale factor.
-        let mut max_physical_size = PhysicalSize::new(800, 600);
-        let mut scale_factor = 1.0;
-        let mut product = 0;
-        for monitor in el.available_monitors() {
-            let Some(size) = monitor.current_video_mode().map(|mode| mode.size()) else {
-                continue;
-            };
-            let p = size.width * size.height;
-            if p > product {
-                product = p;
-                max_physical_size = size;
-                scale_factor = monitor.scale_factor();
-            }
-        }
-        if shared.platform.is_wayland() && scale_factor > 1.0 {
-            // The scale factor reported above is restricted to integer values
-            // on Wayland, rounding up (thus 1.05 is reported as 2.0).
-            // Constructing a window lets us get the actual scale factor.
-            if let Ok(win) = el.create_window(WindowAttributes::default()) {
-                scale_factor = win.scale_factor();
-            }
-        }
-        let max_size = max_physical_size.to_logical::<f64>(scale_factor);
-
-        self.ev_state.update_config(scale_factor.cast_approx());
+        self.ev_state.update_config(1.0);
         let config = self.ev_state.config();
         let mut theme = shared.theme.new_window(config);
 
-        let mut node = self.widget.as_node(data);
-        let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node.re());
-
-        let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
-        let mut solve_cache = SolveCache::default();
-        solve_cache.find_constraints(node, &mut cx);
-
-        // Opening a zero-size window causes a crash, so force at least 1x1:
-        let min_size = Size(1, 1);
-        let mut ideal = solve_cache
-            .ideal(true)
-            .max(min_size)
-            .as_physical()
-            .to_logical::<f64>(scale_factor);
-        ideal.width = ideal.width.min(max_size.width);
-        ideal.height = ideal.height.min(max_size.height);
+        let node = self.widget.as_node(data);
+        let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node);
 
         let props = self.widget.properties();
+        let transparent = props.transparent();
+        let (restrict_min, restrict_max) = props.restrictions();
+
+        // Construct a window without a size (on Wayland the precise scale
+        // factor is not known before constructing the window):
         let mut attrs = WindowAttributes::default();
-        attrs.surface_size = Some(ideal.into());
         attrs.title = self.widget.title().to_string();
         attrs.visible = false;
-        let transparent = props.transparent();
         attrs.transparent = transparent;
         attrs.decorations = props.decorations() == Decorations::Server;
         attrs.window_icon = props.icon();
-        let (restrict_min, restrict_max) = props.restrictions();
-        if restrict_min {
-            let mut min = solve_cache
-                .min(true)
-                .as_physical()
-                .to_logical::<f64>(scale_factor);
-            min.width = min.width.min(max_size.width);
-            min.height = min.height.min(max_size.height);
-            attrs.min_surface_size = Some(min.into());
-        } else {
-            attrs.min_surface_size = Some(PhysicalSize::new(1, 1).into());
-        }
-        if restrict_max {
-            attrs.max_surface_size = Some(ideal.into());
-        }
         let window = el.create_window(attrs)?;
         // TODO: handle modal windows on all platforms: skip taskbar and set owner (not parent) window.
         #[cfg(windows_platform)]
@@ -184,43 +132,68 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             window.set_skip_taskbar(true);
         }
 
-        // Now that we have a scale factor, we may need to resize:
-        let new_factor = window.scale_factor();
-        if new_factor != scale_factor {
-            scale_factor = new_factor;
+        // Reconfigure if necessary (this is cheap):
+        let scale_factor = window.scale_factor();
+        if scale_factor != 1.0 {
             self.ev_state.update_config(scale_factor as f32);
 
             let config = self.ev_state.config();
             shared.theme.update_window(&mut theme, config);
 
             // Update text size which is assigned during configure
-            let mut node = self.widget.as_node(data);
-            let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node.re());
+            let node = self.widget.as_node(data);
+            let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node);
+        }
 
-            let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
-            solve_cache.find_constraints(node, &mut cx);
+        let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
+        let mut solve_cache = SolveCache::default();
+        solve_cache.find_constraints(self.widget.as_node(data), &mut cx);
+
+        if self.ev_state.platform().is_desktop() {
+            let mut ideal = solve_cache.ideal(true).as_physical();
+
+            let mut restrict_min = restrict_min.then(|| solve_cache.min(true).as_physical());
+            let mut restrict_max = restrict_max.then_some(ideal);
 
             if let Some(mode) = window
                 .current_monitor()
                 .and_then(|mon| mon.current_video_mode())
             {
-                max_physical_size = mode.size();
+                let max_physical_size = mode.size();
+                ideal.width = ideal.width.min(max_physical_size.width);
+                ideal.height = ideal.height.min(max_physical_size.height);
+
+                if let Some(size) = restrict_min.as_mut() {
+                    size.width = size.width.min(max_physical_size.width);
+                    size.height = size.height.min(max_physical_size.height);
+                }
+
+                if let Some(size) = restrict_max.as_mut() {
+                    size.width = size.width.min(max_physical_size.width);
+                    size.height = size.height.min(max_physical_size.height);
+                }
             }
 
-            let mut ideal = solve_cache.ideal(true).max(min_size).as_physical();
-            if ideal.width > max_physical_size.width {
-                ideal.width = max_physical_size.width;
-            }
-            if ideal.height > max_physical_size.height {
-                ideal.height = max_physical_size.height;
-            }
-
-            if let Some(size) = window.request_surface_size(ideal.into()) {
+            const ZERO: PhysicalSize<u32> = PhysicalSize::new(0, 0);
+            if ideal != ZERO
+                && let Some(size) = window.request_surface_size(ideal.into())
+            {
                 debug_assert_eq!(size, window.surface_size());
             } else {
                 // We will receive WindowEvent::Resized and resize then.
                 // Unfortunately we can't rely on this since some platforms (X11)
                 // don't always behave as expected, thus we must resize now.
+            }
+
+            if let Some(size) = restrict_min
+                && size != ZERO
+            {
+                window.set_min_surface_size(Some(size.into()));
+            }
+            if let Some(size) = restrict_max
+                && size != ZERO
+            {
+                window.set_max_surface_size(Some(size.into()));
             }
         }
 
@@ -254,7 +227,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let window = WindowData {
             #[cfg(all(wayland_platform, feature = "clipboard"))]
             wayland_clipboard,
-            surface,
+            graphical: surface,
             frame_count: (Instant::now(), 0),
 
             #[cfg(feature = "accesskit")]
@@ -264,7 +237,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             solve_cache,
             need_redraw: true,
         };
-        self.theme_and_window = Some((theme, window));
+        self.surface = Some((theme, window));
 
         self.apply_size(data, true, false);
 
@@ -278,7 +251,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         shared: &mut Shared<A, G, T>,
         data: &A,
     ) -> Option<ActionClose> {
-        if let Some((ref theme, ref mut window)) = self.theme_and_window {
+        if let Some((ref theme, ref mut window)) = self.surface {
             self.ev_state.suspended(shared);
 
             let actions = self.ev_state.flush_pending(
@@ -297,7 +270,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
     /// Destroy render surface(s)
     pub(super) fn destroy_surfaces(&mut self) {
-        self.theme_and_window = None;
+        self.surface = None;
     }
 
     /// Handle an event
@@ -309,7 +282,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         data: &A,
         event: WindowEvent,
     ) -> bool {
-        let Some((ref mut theme, ref mut window)) = self.theme_and_window else {
+        let Some((ref mut theme, ref mut window)) = self.surface else {
             return false;
         };
 
@@ -320,7 +293,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => return false,
             WindowEvent::SurfaceResized(size) => {
                 if window
-                    .surface
+                    .graphical
                     .configure(&mut shared.draw.as_mut().unwrap().draw, size.cast())
                 {
                     self.apply_size(data, false, false);
@@ -345,7 +318,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 // Force a reconfigure to update text objects:
                 self.reconfigure(data);
 
-                let Some((ref theme, ref mut window)) = self.theme_and_window else {
+                let Some((ref theme, ref mut window)) = self.surface else {
                     unreachable!()
                 };
                 let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
@@ -354,15 +327,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                     .find_constraints(self.widget.as_node(data), &mut cx);
                 let min = window.solve_cache.min(true);
 
-                let size = window.surface.size();
+                let is_desktop = self.ev_state.platform().is_desktop();
+                let size = window.graphical.size();
                 let (restrict_min, _) = self.widget.properties().restrictions();
-                let apply = if !restrict_min || size >= min {
-                    true
-                } else {
+                let mut apply = true;
+                if is_desktop && restrict_min && size < min {
                     let size = size.max(min);
-                    surface_size_writer
+                    apply = surface_size_writer
                         .request_surface_size(size.as_physical())
-                        .is_err()
+                        .is_err();
                 };
                 if apply {
                     self.apply_size(data, false, false);
@@ -448,7 +421,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         shared: &mut Shared<A, G, T>,
         data: &A,
     ) -> (WindowActions, Option<Instant>) {
-        let Some((ref theme, ref mut window)) = self.theme_and_window else {
+        let Some((ref theme, ref mut window)) = self.surface else {
             return (WindowActions::default(), None);
         };
 
@@ -463,7 +436,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return (actions, None);
         }
 
-        let Some((_, ref mut window)) = self.theme_and_window else {
+        let Some((_, ref mut window)) = self.surface else {
             unreachable!();
         };
         if actions != WindowActions::default() {
@@ -472,7 +445,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let resume = match (
             self.ev_state.next_resume(),
-            window.surface.common_mut().next_resume(),
+            window.graphical.common_mut().next_resume(),
         ) {
             (None, None) => None,
             (Some(a), None) => Some(a),
@@ -501,7 +474,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         data: &A,
         action: ConfigAction,
     ) {
-        let Some((ref mut theme, ref mut window)) = self.theme_and_window else {
+        let Some((ref mut theme, ref mut window)) = self.surface else {
             return;
         };
 
@@ -563,11 +536,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         data: &A,
         requested_resume: Instant,
     ) {
-        let Some((ref theme, ref mut window)) = self.theme_and_window else {
+        let Some((ref theme, ref mut window)) = self.surface else {
             return;
         };
 
-        if window.surface.common_mut().immediate_redraw() {
+        if window.graphical.common_mut().immediate_redraw() {
             window.need_redraw = true;
             window.window().request_redraw();
         }
@@ -589,7 +562,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
     /// Add or reposition a pop-up
     pub(super) fn add_popup(&mut self, data: &A, id: WindowId, popup: PopupDescriptor) {
-        let Some((ref theme, _)) = self.theme_and_window else {
+        let Some((ref theme, _)) = self.surface else {
             return;
         };
 
@@ -600,7 +573,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     pub(super) fn send_close(&mut self, id: WindowId) {
         if id == self.ev_state.window_id {
             self.ev_state.close_own_window();
-        } else if let Some((ref theme, _)) = self.theme_and_window {
+        } else if let Some((ref theme, _)) = self.surface {
             let widget = &mut self.widget;
             let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
             widget.remove_popup(&mut cx, id);
@@ -612,7 +585,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     fn reconfigure(&mut self, data: &A) {
         let time = Instant::now();
-        let Some((ref theme, _)) = self.theme_and_window else {
+        let Some((ref theme, _)) = self.surface else {
             return;
         };
 
@@ -628,7 +601,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
     pub(super) fn update(&mut self, data: &A) {
         let time = Instant::now();
-        let Some((ref theme, ref mut window)) = self.theme_and_window else {
+        let Some((ref theme, ref mut window)) = self.surface else {
             return;
         };
 
@@ -647,10 +620,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Solve for size requirements, apply, then update window size bounds
     fn apply_size(&mut self, data: &A, first: bool, resize: bool) {
         let time = Instant::now();
-        let Some((ref theme, ref mut window)) = self.theme_and_window else {
+        let Some((ref theme, ref mut window)) = self.surface else {
             return;
         };
-        let rect = Rect::new(Coord::ZERO, window.surface.size());
+        let rect = Rect::new(Coord::ZERO, window.graphical.size());
         log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut window.solve_cache;
@@ -673,10 +646,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             PhysicalSize::new(1, 1)
         };
         let ww = window.window();
-        ww.set_min_surface_size(Some(min_size.into()));
-        ww.set_max_surface_size(
-            restrict_max.then(|| window.solve_cache.ideal(true).as_physical().into()),
-        );
+        if self.ev_state.platform().is_desktop() {
+            ww.set_min_surface_size(Some(min_size.into()));
+            ww.set_max_surface_size(
+                restrict_max.then(|| window.solve_cache.ideal(true).as_physical().into()),
+            );
+        }
 
         ww.set_visible(true);
         ww.request_redraw();
@@ -692,7 +667,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// be needed before a redraw.
     pub(super) fn do_draw(&mut self, shared: &mut Shared<A, G, T>, data: &A) -> Result<(), ()> {
         let start = Instant::now();
-        let Some((ref theme, ref window)) = self.theme_and_window else {
+        let Some((ref theme, ref window)) = self.surface else {
             return Ok(());
         };
 
@@ -703,7 +678,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if resize.is_some() {
             self.apply_size(data, false, true);
         }
-        let Some((ref mut theme, ref mut window)) = self.theme_and_window else {
+        let Some((ref mut theme, ref mut window)) = self.surface else {
             unreachable!();
         };
 
@@ -717,8 +692,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         self.ev_state.clear_access_key_bindings();
 
         {
-            let rect = Rect::new(Coord::ZERO, window.surface.size());
-            let draw = window.surface.draw_iface(shared.draw.as_mut().unwrap());
+            let rect = Rect::new(Coord::ZERO, window.graphical.size());
+            let draw = window.graphical.draw_iface(shared.draw.as_mut().unwrap());
 
             let mut draw = shared.theme.draw(draw, &mut self.ev_state, theme);
             let draw_cx = DrawCx::new(&mut draw, self.widget.id());
@@ -733,7 +708,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
         let time2 = Instant::now();
 
-        window.need_redraw = window.surface.common_mut().immediate_redraw();
+        window.need_redraw = window.graphical.common_mut().immediate_redraw();
         self.ev_state.action_redraw = None;
         // NOTE: we used to return Err(()) if !action.is_empty() here, e.g. if a
         // widget requested a resize during draw. Likely it's better not to do
@@ -745,12 +720,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             shared.theme.clear_color()
         };
         let result = window
-            .surface
+            .graphical
             .present(&mut shared.draw.as_mut().unwrap().draw, clear_color);
 
         match result {
             PresentResult::Success(time3) => {
-                let text_dur_micros = take(&mut window.surface.common_mut().dur_text);
+                let text_dur_micros = take(&mut window.graphical.common_mut().dur_text);
                 let end = Instant::now();
                 log::trace!(
                     target: "kas_perf::wgpu::window",
@@ -778,7 +753,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             PresentResult::ReconfigureSurface => {
                 let size: Size = window.window().surface_size().cast();
                 window
-                    .surface
+                    .graphical
                     .configure(&mut shared.draw.as_mut().unwrap().draw, size);
             }
             PresentResult::Fatal => {

@@ -151,7 +151,7 @@ impl ConfiguredForme {
     ///
     /// [theme configuration]: crate::config::ThemeConfig
     pub fn configure(&mut self, cx: &mut SizeCx) {
-        let font = cx.font(self.class);
+        let font = cx.config().font().get_font_selector(self.class);
         let dpem = cx.dpem(self.class);
         if font != self.font || dpem != self.dpem {
             self.font = font;

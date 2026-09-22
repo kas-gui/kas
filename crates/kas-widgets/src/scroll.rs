@@ -86,7 +86,7 @@ mod ClipRegion {
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             self.core.set_rect(rect);
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
-            let child_rect = Rect::new(rect.pos, child_size);
+            let child_rect = Rect::new(rect.pos + self.offset, child_size);
             self.inner.set_rect(cx, child_rect, hints);
         }
     }

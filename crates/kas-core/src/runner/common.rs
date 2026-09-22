@@ -100,7 +100,52 @@ pub enum Platform {
 }
 
 impl Platform {
+    /// True if this is a desktop platform
+    ///
+    /// Resizable windows are a standard feature of desktop platforms.
+    #[inline]
+    pub fn is_desktop(&self) -> bool {
+        #[allow(unreachable_patterns)]
+        match self {
+            #[cfg(target_os = "macos")]
+            Platform::MacOS => true,
+            #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))]
+            Platform::Wayland => true,
+            #[cfg(target_os = "windows")]
+            Platform::Windows => true,
+            #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))]
+            Platform::X11 => true,
+            _ => false,
+        }
+    }
+
+    /// True if this is a mobile platform
+    #[inline]
+    pub fn is_mobile(&self) -> bool {
+        #[allow(unreachable_patterns)]
+        match self {
+            #[cfg(target_os = "android")]
+            Platform::Android => true,
+            #[cfg(target_os = "ios")]
+            Platform::IOS => true,
+            _ => false,
+        }
+    }
+
     /// True if the platform is Android
+    #[inline]
     pub fn is_android(&self) -> bool {
         cfg_if::cfg_if! {
             if #[cfg(target_os = "android")] {
@@ -112,6 +157,7 @@ impl Platform {
     }
 
     /// True if the platform is IOS
+    #[inline]
     pub fn is_ios(&self) -> bool {
         cfg_if::cfg_if! {
             if #[cfg(target_os = "ios")] {
@@ -123,6 +169,7 @@ impl Platform {
     }
 
     /// True if the platform is MacOS
+    #[inline]
     pub fn is_macos(&self) -> bool {
         cfg_if::cfg_if! {
             if #[cfg(target_os = "macos")] {
@@ -134,6 +181,7 @@ impl Platform {
     }
 
     /// True if the platform is Wayland
+    #[inline]
     pub fn is_wayland(&self) -> bool {
         cfg_if::cfg_if! {
             if #[cfg(any(
@@ -151,6 +199,7 @@ impl Platform {
     }
 
     /// True if the platform is Web
+    #[inline]
     pub fn is_web(&self) -> bool {
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -162,6 +211,7 @@ impl Platform {
     }
 
     /// True if the platform is Windows
+    #[inline]
     pub fn is_windows(&self) -> bool {
         cfg_if::cfg_if! {
             if #[cfg(target_os = "windows")] {
@@ -173,6 +223,7 @@ impl Platform {
     }
 
     /// True if the platform is X11
+    #[inline]
     pub fn is_x11(&self) -> bool {
         cfg_if::cfg_if! {
             if #[cfg(any(

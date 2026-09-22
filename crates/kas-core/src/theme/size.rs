@@ -11,7 +11,6 @@ use crate::dir::Directional;
 use crate::event::EventState;
 use crate::geom::Rect;
 use crate::layout::{AlignPair, FrameRules, LogicalBuilder, Margins, SizeRules};
-use crate::text::fonts::FontSelector;
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)]
@@ -80,12 +79,6 @@ impl<'a> SizeCx<'a> {
     #[inline]
     pub fn logical(&self, width: f32, height: f32) -> LogicalBuilder {
         LogicalBuilder::new((width, height), self.scale_factor())
-    }
-
-    /// Get the configured font selector for `class`
-    #[inline]
-    pub fn font(&self, class: TextClass) -> FontSelector {
-        self.w.font(class)
     }
 
     /// Get the default font size for `class`
@@ -204,9 +197,6 @@ impl<'a> SizeCx<'a> {
 pub trait ThemeSize {
     /// Get the scale factor
     fn scale_factor(&self) -> f32;
-
-    /// Get the configured font selector for `class`
-    fn font(&self, class: TextClass) -> FontSelector;
 
     /// Get the default font size for `class`
     ///

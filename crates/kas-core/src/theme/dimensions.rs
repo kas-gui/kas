@@ -7,18 +7,15 @@
 
 use linearize::StaticMap;
 use std::any::Any;
-use std::cell::RefCell;
 use std::f32;
-use std::rc::Rc;
 
 use super::anim::AnimState;
 use super::{Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
 use crate::cast::{Ceil, Nearest, traits::*};
-use crate::config::{Config, WindowConfig};
+use crate::config::WindowConfig;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, FrameRules, Margins, SizeRules, Stretch};
-use crate::text::fonts::FontSelector;
 
 crate::impl_scope! {
     /// Parameterisation of [`Dimensions`]
@@ -162,7 +159,6 @@ impl Dimensions {
 
 /// A convenient implementation of [`crate::theme::Window`]
 pub struct Window {
-    pub config: Rc<RefCell<Config>>,
     pub dims: Dimensions,
     pub anim: AnimState,
 }
@@ -170,7 +166,6 @@ pub struct Window {
 impl Window {
     pub fn new(dims: &Parameters, config: &WindowConfig) -> Self {
         Window {
-            config: config.clone_base(),
             dims: Dimensions::new(dims, config),
             anim: AnimState::new(&config.theme()),
         }
@@ -200,10 +195,6 @@ impl super::Window for Window {
 impl ThemeSize for Window {
     fn scale_factor(&self) -> f32 {
         self.dims.scale
-    }
-
-    fn font(&self, class: TextClass) -> FontSelector {
-        self.config.borrow().font.get_font_selector(class)
     }
 
     fn dpem(&self, class: TextClass) -> f32 {
