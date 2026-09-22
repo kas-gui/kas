@@ -106,7 +106,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let time = Instant::now();
 
-        // We use the logical size and scale factor of the largest monitor as
+        // We use the physical size and scale factor of the largest monitor as
         // an upper bound on window size and guessed scale factor.
         let mut max_physical_size = PhysicalSize::new(800, 600);
         let mut scale_factor = 1.0;
@@ -130,7 +130,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 scale_factor = win.scale_factor();
             }
         }
-        let max_size = max_physical_size.to_logical::<f64>(scale_factor);
 
         self.ev_state.update_config(scale_factor.cast_approx());
         let config = self.ev_state.config();
@@ -145,13 +144,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let min_size = Size(1, 1);
-        let mut ideal = solve_cache
-            .ideal(true)
-            .max(min_size)
-            .as_physical()
-            .to_logical::<f64>(scale_factor);
-        ideal.width = ideal.width.min(max_size.width);
-        ideal.height = ideal.height.min(max_size.height);
+        let mut ideal = solve_cache.ideal(true).max(min_size).as_physical();
+        ideal.width = ideal.width.min(max_physical_size.width);
+        ideal.height = ideal.height.min(max_physical_size.height);
 
         let props = self.widget.properties();
         let mut attrs = WindowAttributes::default();
@@ -164,12 +159,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         attrs.window_icon = props.icon();
         let (restrict_min, restrict_max) = props.restrictions();
         if restrict_min {
-            let mut min = solve_cache
-                .min(true)
-                .as_physical()
-                .to_logical::<f64>(scale_factor);
-            min.width = min.width.min(max_size.width);
-            min.height = min.height.min(max_size.height);
+            let mut min = solve_cache.min(true).as_physical();
+            min.width = min.width.min(max_physical_size.width);
+            min.height = min.height.min(max_physical_size.height);
             attrs.min_surface_size = Some(min.into());
         } else {
             attrs.min_surface_size = Some(PhysicalSize::new(1, 1).into());
