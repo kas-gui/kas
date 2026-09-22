@@ -149,50 +149,52 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut solve_cache = SolveCache::default();
         solve_cache.find_constraints(self.widget.as_node(data), &mut cx);
 
-        let mut ideal = solve_cache.ideal(true).as_physical();
+        if self.ev_state.platform().is_desktop() {
+            let mut ideal = solve_cache.ideal(true).as_physical();
 
-        let mut restrict_min = restrict_min.then(|| solve_cache.min(true).as_physical());
-        let mut restrict_max = restrict_max.then_some(ideal);
+            let mut restrict_min = restrict_min.then(|| solve_cache.min(true).as_physical());
+            let mut restrict_max = restrict_max.then_some(ideal);
 
-        if let Some(mode) = window
-            .current_monitor()
-            .and_then(|mon| mon.current_video_mode())
-        {
-            let max_physical_size = mode.size();
-            ideal.width = ideal.width.min(max_physical_size.width);
-            ideal.height = ideal.height.min(max_physical_size.height);
+            if let Some(mode) = window
+                .current_monitor()
+                .and_then(|mon| mon.current_video_mode())
+            {
+                let max_physical_size = mode.size();
+                ideal.width = ideal.width.min(max_physical_size.width);
+                ideal.height = ideal.height.min(max_physical_size.height);
 
-            if let Some(size) = restrict_min.as_mut() {
-                size.width = size.width.min(max_physical_size.width);
-                size.height = size.height.min(max_physical_size.height);
+                if let Some(size) = restrict_min.as_mut() {
+                    size.width = size.width.min(max_physical_size.width);
+                    size.height = size.height.min(max_physical_size.height);
+                }
+
+                if let Some(size) = restrict_max.as_mut() {
+                    size.width = size.width.min(max_physical_size.width);
+                    size.height = size.height.min(max_physical_size.height);
+                }
             }
 
-            if let Some(size) = restrict_max.as_mut() {
-                size.width = size.width.min(max_physical_size.width);
-                size.height = size.height.min(max_physical_size.height);
+            const ZERO: PhysicalSize<u32> = PhysicalSize::new(0, 0);
+            if ideal != ZERO
+                && let Some(size) = window.request_surface_size(ideal.into())
+            {
+                debug_assert_eq!(size, window.surface_size());
+            } else {
+                // We will receive WindowEvent::Resized and resize then.
+                // Unfortunately we can't rely on this since some platforms (X11)
+                // don't always behave as expected, thus we must resize now.
             }
-        }
 
-        const ZERO: PhysicalSize<u32> = PhysicalSize::new(0, 0);
-        if ideal != ZERO
-            && let Some(size) = window.request_surface_size(ideal.into())
-        {
-            debug_assert_eq!(size, window.surface_size());
-        } else {
-            // We will receive WindowEvent::Resized and resize then.
-            // Unfortunately we can't rely on this since some platforms (X11)
-            // don't always behave as expected, thus we must resize now.
-        }
-
-        if let Some(size) = restrict_min
-            && size != ZERO
-        {
-            window.set_min_surface_size(Some(size.into()));
-        }
-        if let Some(size) = restrict_max
-            && size != ZERO
-        {
-            window.set_max_surface_size(Some(size.into()));
+            if let Some(size) = restrict_min
+                && size != ZERO
+            {
+                window.set_min_surface_size(Some(size.into()));
+            }
+            if let Some(size) = restrict_max
+                && size != ZERO
+            {
+                window.set_max_surface_size(Some(size.into()));
+            }
         }
 
         let size: Size = window.surface_size().cast();
@@ -325,15 +327,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                     .find_constraints(self.widget.as_node(data), &mut cx);
                 let min = window.solve_cache.min(true);
 
+                let is_desktop = self.ev_state.platform().is_desktop();
                 let size = window.graphical.size();
                 let (restrict_min, _) = self.widget.properties().restrictions();
-                let apply = if !restrict_min || size >= min {
-                    true
-                } else {
+                let mut apply = true;
+                if is_desktop && restrict_min && size < min {
                     let size = size.max(min);
-                    surface_size_writer
+                    apply = surface_size_writer
                         .request_surface_size(size.as_physical())
-                        .is_err()
+                        .is_err();
                 };
                 if apply {
                     self.apply_size(data, false, false);
@@ -644,10 +646,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             PhysicalSize::new(1, 1)
         };
         let ww = window.window();
-        ww.set_min_surface_size(Some(min_size.into()));
-        ww.set_max_surface_size(
-            restrict_max.then(|| window.solve_cache.ideal(true).as_physical().into()),
-        );
+        if self.ev_state.platform().is_desktop() {
+            ww.set_min_surface_size(Some(min_size.into()));
+            ww.set_max_surface_size(
+                restrict_max.then(|| window.solve_cache.ideal(true).as_physical().into()),
+            );
+        }
 
         ww.set_visible(true);
         ww.request_redraw();
