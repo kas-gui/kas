@@ -284,7 +284,7 @@ impl EventState {
 
     /// Request that the window be closed
     #[inline]
-    pub fn close_own_window(&mut self) {
+    pub(crate) fn close_own_window(&mut self) {
         self.action_close = Some(ActionClose);
     }
 

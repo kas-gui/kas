@@ -154,12 +154,16 @@ impl EventState {
         }
     }
 
-    /// Application suspended. Clean up temporary state.
-    pub(crate) fn suspended(&mut self, runner: &mut dyn RunnerT) {
+    pub(super) fn close_all_popups(&mut self, runner: &mut dyn RunnerT) {
         while !self.popups.is_empty() {
             let id = self.close_popup(self.popups.len() - 1);
             runner.close_window(id);
         }
+    }
+
+    /// Application suspended. Clean up temporary state.
+    pub(crate) fn suspended(&mut self, runner: &mut dyn RunnerT) {
+        self.close_all_popups(runner);
     }
 }
 
@@ -415,9 +419,11 @@ impl<'a> EventCx<'a> {
     /// and popups) windows each have a parent window (which may also be a child
     /// window); in all cases there should be a top (root ancestor) window.
     #[inline]
-    pub fn top_window(&self) -> TopWindow<'_> {
+    pub fn top_window(&mut self) -> TopWindow<'_> {
         TopWindow {
+            runner: self.runner,
             window: self.window.top_window(),
+            state: self.cx.state,
         }
     }
 
