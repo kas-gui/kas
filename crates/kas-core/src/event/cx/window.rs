@@ -5,7 +5,7 @@
 
 //! Event state: window management
 
-use super::{EventCx, EventState, PopupState};
+use super::{EventCx, EventState, PopupState, TopWindow};
 use crate::cast::Cast;
 use crate::event::{Event, FocusSource};
 use crate::geom::DVec2;
@@ -406,6 +406,19 @@ impl<'a> EventCx<'a> {
     /// This is a temporary API, allowing e.g. to minimize the window.
     pub fn winit_window(&self) -> Option<&dyn winit::window::Window> {
         self.window.winit_window()
+    }
+
+    /// Get a handle to the top (root) window
+    ///
+    /// A top (root) window is one which does not have a parent. An application
+    /// may have multiple top (root) windows. Child windows (e.g. modal windows
+    /// and popups) windows each have a parent window (which may also be a child
+    /// window); in all cases there should be a top (root ancestor) window.
+    #[inline]
+    pub fn top_window(&self) -> TopWindow<'_> {
+        TopWindow {
+            window: self.window.top_window(),
+        }
     }
 
     /// Handle an input event

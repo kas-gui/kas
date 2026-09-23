@@ -30,6 +30,7 @@ use key::Input;
 use nav::NavFocus;
 
 #[cfg(feature = "accesskit")] mod accessibility;
+mod handle;
 mod key;
 mod nav;
 mod press;
@@ -37,6 +38,7 @@ mod send;
 mod timer;
 mod window;
 
+pub use handle::TopWindow;
 pub use nav::NavAdvance;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource, PressStart};
 pub(crate) use press::{Mouse, Touch};

@@ -167,9 +167,7 @@ mod Editor {
                 }
                 EditorAction::Open => {
                     let mut picker = rfd::AsyncFileDialog::new().set_title("Open file");
-                    if let Some(window) = cx.winit_window() {
-                        picker = picker.set_parent(window);
-                    }
+                    picker = picker.set_parent(&cx.top_window());
                     cx.send_async(self.id(), async { OpenFile(picker.pick_file().await) });
                 }
                 EditorAction::Save | EditorAction::SaveAs => {
@@ -183,9 +181,7 @@ mod Editor {
                         });
                     } else {
                         let mut picker = rfd::AsyncFileDialog::new().set_title("Save file");
-                        if let Some(window) = cx.winit_window() {
-                            picker = picker.set_parent(window);
-                        }
+                        picker = picker.set_parent(&cx.top_window());
                         cx.send_async(self.id(), async { SaveFile(picker.save_file().await) });
                     }
                 }

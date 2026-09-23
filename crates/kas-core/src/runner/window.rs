@@ -22,8 +22,6 @@ use crate::window::{BoxedWindow, Decorations, PopupDescriptor, WindowId, WindowW
 use crate::{
     ActionClose, ActionResize, ConfigAction, Id, Layout, Tile, Widget, WindowActions, autoimpl,
 };
-#[cfg(windows_platform)]
-use raw_window_handle::HasWindowHandle;
 use std::cell::RefCell;
 use std::mem::take;
 use std::rc::Rc;
@@ -795,5 +793,14 @@ pub(crate) trait WindowDataErased {
     #[inline]
     fn winit_window(&self) -> Option<&dyn winit::window::Window> {
         Some(self.window())
+    }
+
+    /// Get a handle to the top-level window
+    ///
+    /// Note that this returns a handle to a top-level window. In the case of a
+    /// popup, this method returns the handle of the popup's top-level parent
+    /// window. An application may have multiple top-level windows.
+    fn top_window(&self) -> &dyn winit::window::Window {
+        self.window()
     }
 }
