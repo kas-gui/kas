@@ -19,6 +19,7 @@ use crate::geom::{Coord, DVec2, Offset, Vec2};
 pub(crate) use mouse::Mouse;
 pub(crate) use touch::Touch;
 use winit::event::FingerId;
+use winit::window::ResizeDirection;
 
 /// Controls the types of events delivered by [`PressStart::grab`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -236,6 +237,32 @@ impl PressStart {
     #[inline]
     pub fn grab_move(&self, id: Id) -> GrabBuilder {
         self.grab(id, GrabMode::Grab)
+    }
+
+    /// Enable dragging the window with the pointer until the press ends
+    ///
+    /// This functionality is specific to desktop platforms and likely only
+    /// works with mouse (and mouse emulator) pointers.
+    ///
+    /// Incompatible with [`Self::grab`].
+    pub fn drag_window(&self, cx: &mut EventCx) -> IsUsed {
+        if let Err(e) = cx.current_window().drag_window() {
+            log::warn!("PressStart::drag_window: {e}");
+        }
+        Used
+    }
+
+    /// Enable resizing the window with the pointer until the press ends
+    ///
+    /// This functionality is specific to desktop platforms and likely only
+    /// works with mouse (and mouse emulator) pointers.
+    ///
+    /// Incompatible with [`Self::grab`].
+    pub fn drag_resize_window(&self, cx: &mut EventCx, direction: ResizeDirection) -> IsUsed {
+        if let Err(e) = cx.current_window().drag_resize_window(direction) {
+            log::warn!("PressStart::drag_resize_window: {e}");
+        }
+        Used
     }
 }
 

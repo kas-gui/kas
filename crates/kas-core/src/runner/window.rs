@@ -789,12 +789,12 @@ pub(crate) trait WindowDataErased {
         self.window().request_ime_update(request)
     }
 
-    /// Directly access Winit Window
+    /// Get a handle to the current window
     ///
-    /// This is a temporary API, allowing e.g. to minimize the window.
+    /// This returns a handle to the current popup or top-level window.
     #[inline]
-    fn winit_window(&self) -> Option<&dyn winit::window::Window> {
-        Some(self.window())
+    fn current_window(&self) -> &dyn winit::window::Window {
+        self.window()
     }
 
     /// Get a handle to the top-level window

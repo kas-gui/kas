@@ -68,10 +68,7 @@ mod Border {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::PressStart(_) => {
-                    cx.drag_resize_window(self.direction);
-                    Used
-                }
+                Event::PressStart(press) => press.drag_resize_window(cx, self.direction),
                 _ => Unused,
             }
         }
@@ -185,10 +182,7 @@ mod TitleBar {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::PressStart(_) => {
-                    cx.drag_window();
-                    Used
-                }
+                Event::PressStart(press) => press.drag_window(cx),
                 _ => Unused,
             }
         }

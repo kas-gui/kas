@@ -346,10 +346,7 @@ mod Window {
                     }
                     Used
                 }
-                Event::PressStart(_) if self.props.drag_anywhere => {
-                    cx.drag_window();
-                    Used
-                }
+                Event::PressStart(press) if self.props.drag_anywhere => press.drag_window(cx),
                 Event::Timer(handle) if handle == crate::event::Mouse::TIMER_TOOLTIP => {
                     cx.timer_expiry_tooltip(self);
                     Used
