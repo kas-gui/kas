@@ -24,7 +24,7 @@ use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
-use crate::window::{PopupDescriptor, WindowId};
+use crate::window::{Decorations, PopupDescriptor, WindowId};
 use crate::{ActionClose, ActionMoved, ActionRedraw, ActionResize, ConfigAction, HasId, Id, Node};
 use key::Input;
 use nav::NavFocus;
@@ -72,6 +72,7 @@ struct PopupState {
 pub struct EventState {
     pub(crate) window_id: WindowId,
     pub(crate) config: WindowConfig,
+    pub(crate) decorations: Decorations,
     platform: Platform,
     disabled: Vec<Id>,
     window_has_focus: bool,
@@ -106,6 +107,7 @@ impl EventState {
         EventState {
             window_id,
             config,
+            decorations: Decorations::None,
             platform,
             disabled: vec![],
             window_has_focus: false,
@@ -309,8 +311,8 @@ impl EventState {
 /// and to [`SizeCx`] via [`Self::size_cx`].
 #[must_use]
 pub struct ConfigCx<'a> {
-    theme: &'a dyn ThemeSize,
     state: &'a mut EventState,
+    theme: &'a dyn ThemeSize,
     resize: Option<ActionResize>,
     redraw: Option<ActionRedraw>,
 }
@@ -459,9 +461,9 @@ impl<'a> ConfigCx<'a> {
 /// [`Deref`] / [`DerefMut`] and to [`SizeCx`] via [`ConfigCx::size_cx`].
 #[must_use]
 pub struct EventCx<'a> {
+    cx: ConfigCx<'a>,
     runner: &'a mut dyn RunnerT,
     window: &'a dyn WindowDataErased,
-    cx: ConfigCx<'a>,
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,

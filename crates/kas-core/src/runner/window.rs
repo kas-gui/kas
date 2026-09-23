@@ -120,7 +120,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         attrs.title = self.widget.title().to_string();
         attrs.visible = false;
         attrs.transparent = transparent;
-        attrs.decorations = props.decorations() == Decorations::Server;
+        attrs.decorations = self.ev_state.decorations == Decorations::Server;
         attrs.window_icon = props.icon();
         let window = el.create_window(attrs)?;
         // TODO: handle modal windows on all platforms: skip taskbar and set owner (not parent) window.
