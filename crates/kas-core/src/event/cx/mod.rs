@@ -71,6 +71,7 @@ struct PopupState {
 // `SmallVec` is used to keep contents in local memory.
 pub struct EventState {
     pub(crate) window_id: WindowId,
+    pub(crate) window_title: String,
     pub(crate) config: WindowConfig,
     pub(crate) decorations: Decorations,
     platform: Platform,
@@ -106,6 +107,7 @@ impl EventState {
     pub(crate) fn new(window_id: WindowId, config: WindowConfig, platform: Platform) -> Self {
         EventState {
             window_id,
+            window_title: String::new(),
             config,
             decorations: Decorations::None,
             platform,

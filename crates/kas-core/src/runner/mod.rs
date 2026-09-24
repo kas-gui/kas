@@ -207,7 +207,8 @@ impl AppData for () {
 }
 
 enum Pending<A: AppData> {
-    Update,
+    UpdateAll,
+    UpdateWindow(WindowId),
     ConfigUpdate(ConfigAction),
     AddPopup(WindowId, WindowId, PopupDescriptor),
     RepositionPopup(WindowId, PopupDescriptor),

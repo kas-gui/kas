@@ -85,9 +85,6 @@ pub struct Select;
 #[derive(Clone, Debug)]
 pub struct SetScrollOffset(pub Offset);
 
-/// Change the window's title
-#[derive(Clone, Debug)]
-pub struct SetWindowTitle(pub String);
 /// Change the window's icon
 #[derive(Clone, Debug)]
 pub struct SetWindowIcon(pub Option<Icon>);

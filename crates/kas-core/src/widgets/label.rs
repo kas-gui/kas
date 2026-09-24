@@ -159,3 +159,17 @@ impl<'a> From<&'a str> for Label<String> {
         Label::new(text.to_string())
     }
 }
+
+impl Label<String> {
+    /// Set text in an existing `Label` from a [`ConfigCx`]
+    pub(crate) fn set_str_from_cx(
+        &mut self,
+        cx: &mut ConfigCx,
+        f: impl for<'a> Fn(&'a ConfigCx) -> &'a str,
+    ) {
+        let s = f(cx);
+        if self.text.as_str() != s && self.text.set_text(s.to_string()) {
+            self.text.reprepare_action(cx);
+        }
+    }
+}

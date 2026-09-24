@@ -5,8 +5,10 @@
 
 //! Window handle interface
 
-use crate::event::EventState;
+use std::borrow::Cow;
+
 use crate::runner::RunnerT;
+use crate::{event::EventState, window::Decorations};
 use raw_window_handle::{self as rwh, HandleError, HasDisplayHandle, HasWindowHandle};
 
 /// A handle to a top-level window
@@ -17,6 +19,17 @@ pub struct TopWindow<'a> {
 }
 
 impl<'a> TopWindow<'a> {
+    /// Set the window title
+    pub fn set_title<'s>(&'s mut self, title: impl Into<Cow<'s, str>>) {
+        let title = title.into();
+        if self.state.decorations == Decorations::Server {
+            self.window.set_title(title.as_ref());
+        } else if self.state.decorations == Decorations::Toolkit {
+            self.state.window_title = title.into_owned();
+            self.runner.update(self.state.window_id);
+        }
+    }
+
     /// Test whether the window is minimized
     ///
     /// Returns `None` when it was not possible to determine this.

@@ -40,7 +40,7 @@ impl<'a> Iterator for PopupIterator<'a> {
 
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub(crate) trait WindowErased: Tile {
-    /// Get the window's title
+    /// Get the cached window title
     fn title(&self) -> &str;
     fn properties(&self) -> &Properties;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
@@ -133,8 +133,6 @@ mod Window {
     /// window decorations.
     ///
     /// # Messages
-    ///
-    /// [`kas::messages::SetWindowTitle`] may be used to set the title.
     ///
     /// [`kas::messages::SetWindowIcon`] may be used to set the icon.
     #[widget]
@@ -365,14 +363,7 @@ mod Window {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(kas::messages::SetWindowTitle(title)) = cx.try_pop() {
-                self.title_bar.set_title(cx, title);
-                if cx.decorations == Decorations::Server
-                    && let Some(w) = cx.winit_window()
-                {
-                    w.set_title(self.title());
-                }
-            } else if let Some(kas::messages::SetWindowIcon(icon)) = cx.try_pop() {
+            if let Some(kas::messages::SetWindowIcon(icon)) = cx.try_pop() {
                 if cx.decorations == Decorations::Server
                     && let Some(w) = cx.winit_window()
                 {
@@ -415,10 +406,7 @@ mod Window {
 
     impl std::fmt::Debug for Self {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_struct("Window")
-                .field("core", &self.core)
-                .field("title", &self.title_bar.title())
-                .finish()
+            f.debug_struct("Window").field("core", &self.core).finish()
         }
     }
 }
@@ -486,11 +474,6 @@ impl<Data: AppData> Window<Data> {
     #[inline]
     pub fn boxed(self) -> BoxedWindow<Data> {
         BoxedWindow(Box::new(self))
-    }
-
-    /// Get the window's title
-    pub fn title(&self) -> &str {
-        self.title_bar.title()
     }
 
     /// Set the window's icon (inline)

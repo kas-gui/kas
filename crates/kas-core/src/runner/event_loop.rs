@@ -221,8 +221,17 @@ where
         let mut close_all = false;
         while let Some(pending) = self.shared.pending.pop_front() {
             match pending {
-                Pending::Update => {
+                Pending::UpdateAll => {
                     for window in self.windows.values_mut() {
+                        window.update(&self.data);
+                    }
+                }
+                Pending::UpdateWindow(id) => {
+                    let mut parent = id;
+                    if let Some(p) = self.popups.get(&id) {
+                        parent = *p;
+                    }
+                    if let Some(window) = self.windows.get_mut(&parent) {
                         window.update(&self.data);
                     }
                 }
@@ -256,7 +265,7 @@ where
                         window,
                     ));
 
-                    log::debug!("Pending: adding window {}", window.widget.title());
+                    log::debug!("Pending: adding {}", window.widget.identify());
                     if !self.suspended {
                         let mut modal_parent = None;
                         if let Some(id) = window.widget.properties().modal_parent
