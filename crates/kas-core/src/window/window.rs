@@ -42,7 +42,7 @@ impl<'a> Iterator for PopupIterator<'a> {
 pub(crate) trait WindowErased: Tile {
     /// Get the cached window title
     fn title(&self) -> &str;
-    fn properties(&self) -> &Properties;
+    fn properties(&mut self) -> &mut Properties;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
     fn close_tooltip(&mut self, cx: &mut EventCx);
 
@@ -107,8 +107,8 @@ impl Default for Properties {
 
 impl Properties {
     /// Get the window's icon, if any
-    pub(crate) fn icon(&self) -> Option<Icon> {
-        self.icon.clone()
+    pub(crate) fn take_icon(&mut self) -> Option<Icon> {
+        self.icon.take()
     }
 
     /// Get window resizing restrictions: `(restrict_min, restrict_max)`
@@ -131,10 +131,6 @@ mod Window {
     ///
     /// This widget is the root of any UI tree used as a window. It manages
     /// window decorations.
-    ///
-    /// # Messages
-    ///
-    /// [`kas::messages::SetWindowIcon`] may be used to set the icon.
     #[widget]
     pub struct Window<Data: AppData> {
         core: widget_core!(),
@@ -362,18 +358,6 @@ mod Window {
             }
         }
 
-        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(kas::messages::SetWindowIcon(icon)) = cx.try_pop() {
-                if cx.decorations == Decorations::Server
-                    && let Some(w) = cx.winit_window()
-                {
-                    w.set_window_icon(icon);
-                    return; // do not set self.icon
-                }
-                self.props.icon = icon;
-            }
-        }
-
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &Data, _: Scroll) {
             // Something was scrolled; update pop-up translations
             self.resize_popups(&mut cx.size_cx(), data);
@@ -385,8 +369,8 @@ mod Window {
             self.title_bar.title()
         }
 
-        fn properties(&self) -> &Properties {
-            &self.props
+        fn properties(&mut self) -> &mut Properties {
+            &mut self.props
         }
 
         fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String) {

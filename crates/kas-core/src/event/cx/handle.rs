@@ -10,6 +10,7 @@ use std::borrow::Cow;
 use crate::runner::RunnerT;
 use crate::{event::EventState, window::Decorations};
 use raw_window_handle::{self as rwh, HandleError, HasDisplayHandle, HasWindowHandle};
+use winit::icon::Icon;
 
 /// A handle to a top-level window
 pub struct TopWindow<'a> {
@@ -27,6 +28,16 @@ impl<'a> TopWindow<'a> {
         } else if self.state.decorations == Decorations::Toolkit {
             self.state.window_title = title.into_owned();
             self.runner.update(self.state.window_id);
+        }
+    }
+
+    /// Set the window icon
+    pub fn set_icon<'s>(&'s mut self, icon: impl Into<Icon>) {
+        let icon = icon.into();
+        if self.state.decorations == Decorations::Server {
+            self.window.set_window_icon(Some(icon));
+        } else if self.state.decorations == Decorations::Toolkit {
+            // TODO: set icon in toolkit titlebar
         }
     }
 
