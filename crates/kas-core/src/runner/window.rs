@@ -126,11 +126,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
         let window = el.create_window(attrs)?;
         // TODO: handle modal windows on all platforms: skip taskbar and set owner (not parent) window.
-        #[cfg(windows_platform)]
+        /* #[cfg(windows_platform)]
         if let Some(_handle) = modal_parent.and_then(|p| p.window_handle().ok()) {
             use winit::platform::windows::WindowExtWindows;
             window.set_skip_taskbar(true);
-        }
+        } */
 
         // Reconfigure if necessary (this is cheap):
         let scale_factor = window.scale_factor();
