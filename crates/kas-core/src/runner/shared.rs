@@ -123,7 +123,7 @@ where
                 }
             }
             if self.messages.get_op_count() != start_count {
-                self.pending.push_back(Pending::Update);
+                self.pending.push_back(Pending::UpdateAll);
             }
         }
 
@@ -167,6 +167,16 @@ pub(crate) trait RunnerT {
     /// Require configuration updates
     fn config_update(&mut self, action: ConfigAction) {
         self.pending.push_back(Pending::ConfigUpdate(action));
+    }
+
+    /// Force update a window
+    fn update(&mut self, id: WindowId) {
+        self.pending.push_back(Pending::UpdateWindow(id));
+    }
+
+    /// Force update all windows
+    fn update_all(&mut self) {
+        self.pending.push_back(Pending::UpdateAll);
     }
 
     /// Add a pop-up

@@ -40,9 +40,9 @@ impl<'a> Iterator for PopupIterator<'a> {
 
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub(crate) trait WindowErased: Tile {
-    /// Get the window's title
+    /// Get the cached window title
     fn title(&self) -> &str;
-    fn properties(&self) -> &Properties;
+    fn properties(&mut self) -> &mut Properties;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
     fn close_tooltip(&mut self, cx: &mut EventCx);
 
@@ -78,8 +78,8 @@ pub(crate) trait WindowWidget: WindowErased + Widget {
 
 /// Window properties
 pub(crate) struct Properties {
-    icon: Option<Icon>, // initial icon, if any
-    decorations: Decorations,
+    icon: Option<Icon>,               // initial icon, if any
+    decorations: Option<Decorations>, // decoration mode, if specified
     restrictions: (bool, bool),
     drag_anywhere: bool,
     transparent: bool,
@@ -93,7 +93,7 @@ impl Default for Properties {
     fn default() -> Self {
         Properties {
             icon: None,
-            decorations: Decorations::Server,
+            decorations: None,
             restrictions: (true, false),
             drag_anywhere: true,
             transparent: false,
@@ -107,13 +107,8 @@ impl Default for Properties {
 
 impl Properties {
     /// Get the window's icon, if any
-    pub(crate) fn icon(&self) -> Option<Icon> {
-        self.icon.clone()
-    }
-
-    /// Get the preference for window decorations
-    pub fn decorations(&self) -> Decorations {
-        self.decorations
+    pub(crate) fn take_icon(&mut self) -> Option<Icon> {
+        self.icon.take()
     }
 
     /// Get window resizing restrictions: `(restrict_min, restrict_max)`
@@ -136,12 +131,6 @@ mod Window {
     ///
     /// This widget is the root of any UI tree used as a window. It manages
     /// window decorations.
-    ///
-    /// # Messages
-    ///
-    /// [`kas::messages::SetWindowTitle`] may be used to set the title.
-    ///
-    /// [`kas::messages::SetWindowIcon`] may be used to set the icon.
     #[widget]
     pub struct Window<Data: AppData> {
         core: widget_core!(),
@@ -182,7 +171,7 @@ mod Window {
             let mut inner = self.inner.size_rules(cx, axis);
 
             self.bar_h = 0;
-            if matches!(self.props.decorations, Decorations::Toolkit) {
+            if matches!(cx.decorations, Decorations::Toolkit) {
                 let bar = self.title_bar.size_rules(cx, axis);
                 if axis.is_horizontal() {
                     inner.max_with(bar);
@@ -203,10 +192,7 @@ mod Window {
             let _ = self.b_se.size_rules(cx, axis);
             let _ = self.b_sw.size_rules(cx, axis);
 
-            if matches!(
-                self.props.decorations,
-                Decorations::Border | Decorations::Toolkit
-            ) {
+            if matches!(cx.decorations, Decorations::Border | Decorations::Toolkit) {
                 let frame = cx.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
@@ -328,12 +314,18 @@ mod Window {
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            if cx.platform().is_wayland() && self.props.decorations == Decorations::Server {
+            cx.decorations = if let Some(mode) = self.props.decorations {
+                mode
+            } else if cx.platform().is_wayland() {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
                 // usually preferred where supported (e.g. KDE).
-                self.props.decorations = Decorations::Toolkit;
-            }
+                Decorations::Toolkit
+            } else if cx.platform().is_desktop() {
+                Decorations::Server
+            } else {
+                Decorations::None
+            };
 
             if self.props.alt_bypass {
                 cx.config.alt_bypass = true;
@@ -350,38 +342,16 @@ mod Window {
                     if let Some(id) = self.popups.last().map(|desc| desc.0) {
                         cx.close_window(id);
                     } else if self.props.escapable {
-                        cx.close_own_window();
+                        cx.top_window().close();
                     }
                     Used
                 }
-                Event::PressStart(_) if self.props.drag_anywhere => {
-                    cx.drag_window();
-                    Used
-                }
+                Event::PressStart(press) if self.props.drag_anywhere => press.drag_window(cx),
                 Event::Timer(handle) if handle == crate::event::Mouse::TIMER_TOOLTIP => {
                     cx.timer_expiry_tooltip(self);
                     Used
                 }
                 _ => Unused,
-            }
-        }
-
-        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(kas::messages::SetWindowTitle(title)) = cx.try_pop() {
-                self.title_bar.set_title(cx, title);
-                if self.props.decorations == Decorations::Server
-                    && let Some(w) = cx.winit_window()
-                {
-                    w.set_title(self.title());
-                }
-            } else if let Some(kas::messages::SetWindowIcon(icon)) = cx.try_pop() {
-                if self.props.decorations == Decorations::Server
-                    && let Some(w) = cx.winit_window()
-                {
-                    w.set_window_icon(icon);
-                    return; // do not set self.icon
-                }
-                self.props.icon = icon;
             }
         }
 
@@ -396,8 +366,8 @@ mod Window {
             self.title_bar.title()
         }
 
-        fn properties(&self) -> &Properties {
-            &self.props
+        fn properties(&mut self) -> &mut Properties {
+            &mut self.props
         }
 
         fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String) {
@@ -417,10 +387,7 @@ mod Window {
 
     impl std::fmt::Debug for Self {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_struct("Window")
-                .field("core", &self.core)
-                .field("title", &self.title_bar.title())
-                .finish()
+            f.debug_struct("Window").field("core", &self.core).finish()
         }
     }
 }
@@ -490,11 +457,6 @@ impl<Data: AppData> Window<Data> {
         BoxedWindow(Box::new(self))
     }
 
-    /// Get the window's title
-    pub fn title(&self) -> &str {
-        self.title_bar.title()
-    }
-
     /// Set the window's icon (inline)
     ///
     /// Default: `None`
@@ -503,23 +465,20 @@ impl<Data: AppData> Window<Data> {
         self
     }
 
-    /// Get the preference for window decorations
-    pub fn decorations(&self) -> Decorations {
-        self.props.decorations
-    }
-
     /// Set the preference for window decorations
     ///
-    /// "Windowing" platforms (i.e. not mobile or web) usually include a
+    /// Desktop platforms (i.e. not mobile or web) usually include a
     /// title-bar, icons and potentially side borders. These are known as
     /// **decorations**.
     ///
-    /// This controls the *preferred* type of decorations. The resulting
-    /// behaviour is platform-dependent.
+    /// The default mode is platform dependent:
     ///
-    /// Default: [`Decorations::Server`].
+    /// -   [`Decorations::Toolkit`] on Wayland (TODO: support detection of
+    ///     whether the compositor can provide decorations)
+    /// -   [`Decorations::Server`] on other desktop platforms
+    /// -   [`Decorations::None`] on mobile and web
     pub fn with_decorations(mut self, decorations: Decorations) -> Self {
-        self.props.decorations = decorations;
+        self.props.decorations = Some(decorations);
         self
     }
 

@@ -22,8 +22,6 @@ use crate::window::{BoxedWindow, Decorations, PopupDescriptor, WindowId, WindowW
 use crate::{
     ActionClose, ActionResize, ConfigAction, Id, Layout, Tile, Widget, WindowActions, autoimpl,
 };
-#[cfg(windows_platform)]
-use raw_window_handle::HasWindowHandle;
 use std::cell::RefCell;
 use std::mem::take;
 use std::rc::Rc;
@@ -119,18 +117,20 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         // Construct a window without a size (on Wayland the precise scale
         // factor is not known before constructing the window):
         let mut attrs = WindowAttributes::default();
-        attrs.title = self.widget.title().to_string();
         attrs.visible = false;
+        attrs.window_icon = props.take_icon();
         attrs.transparent = transparent;
-        attrs.decorations = props.decorations() == Decorations::Server;
-        attrs.window_icon = props.icon();
+        attrs.decorations = self.ev_state.decorations == Decorations::Server;
+        if attrs.decorations {
+            attrs.title = self.widget.title().to_string();
+        }
         let window = el.create_window(attrs)?;
         // TODO: handle modal windows on all platforms: skip taskbar and set owner (not parent) window.
-        #[cfg(windows_platform)]
+        /* #[cfg(windows_platform)]
         if let Some(_handle) = modal_parent.and_then(|p| p.window_handle().ok()) {
             use winit::platform::windows::WindowExtWindows;
             window.set_skip_taskbar(true);
-        }
+        } */
 
         // Reconfigure if necessary (this is cheap):
         let scale_factor = window.scale_factor();
@@ -789,11 +789,20 @@ pub(crate) trait WindowDataErased {
         self.window().request_ime_update(request)
     }
 
-    /// Directly access Winit Window
+    /// Get a handle to the current window
     ///
-    /// This is a temporary API, allowing e.g. to minimize the window.
+    /// This returns a handle to the current popup or top-level window.
     #[inline]
-    fn winit_window(&self) -> Option<&dyn winit::window::Window> {
-        Some(self.window())
+    fn current_window(&self) -> &dyn winit::window::Window {
+        self.window()
+    }
+
+    /// Get a handle to the top-level window
+    ///
+    /// Note that this returns a handle to a top-level window. In the case of a
+    /// popup, this method returns the handle of the popup's top-level parent
+    /// window. An application may have multiple top-level windows.
+    fn top_window(&self) -> &dyn winit::window::Window {
+        self.window()
     }
 }

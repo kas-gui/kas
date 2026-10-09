@@ -822,7 +822,7 @@ fn main() -> kas::runner::Result<()> {
             ("Can&vas", canvas()),
             ("Confi&g", config()),
         ])
-        .with_msg(|_, title| kas::messages::SetWindowTitle(format!("Gallery — {}", title))),
+        .with(|cx, _, _, title| cx.top_window().set_title(format!("Gallery — {}", title))),
     ];
 
     let ui = ui

@@ -21,7 +21,7 @@ use std::num::NonZeroU32;
 
 /// Available decoration modes
 ///
-/// See [`Window::decorations`].
+/// See [`Window::with_decorations`].
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Decorations {
     /// No decorations

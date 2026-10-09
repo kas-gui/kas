@@ -118,7 +118,7 @@ fn main() -> kas::runner::Result<()> {
         })
         .on_message(|cx, state, ChangeDir(path)| {
             let title = window_title(&path);
-            cx.push(kas::messages::SetWindowTitle(title));
+            cx.top_window().set_title(title);
             state.path = path;
         })
         .on_message(|cx, _, TileSize(size)| {

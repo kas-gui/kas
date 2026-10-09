@@ -68,10 +68,7 @@ mod Border {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::PressStart(_) => {
-                    cx.drag_resize_window(self.direction);
-                    Used
-                }
+                Event::PressStart(press) => press.drag_resize_window(cx, self.direction),
                 _ => Unused,
             }
         }
@@ -116,18 +113,14 @@ mod TitleBarButtons {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(msg) = cx.try_pop() {
+                let mut window = cx.top_window();
                 match msg {
-                    TitleBarButton::Minimize => {
-                        if let Some(w) = cx.winit_window() {
-                            w.set_minimized(true);
-                        }
-                    }
+                    TitleBarButton::Minimize => window.set_minimized(true),
                     TitleBarButton::Maximize => {
-                        if let Some(w) = cx.winit_window() {
-                            w.set_maximized(!w.is_maximized());
-                        }
+                        let maximize = !window.is_maximized();
+                        window.set_maximized(maximize)
                     }
-                    TitleBarButton::Close => cx.close_own_window(),
+                    TitleBarButton::Close => window.close(),
                 }
             }
         }
@@ -163,14 +156,9 @@ mod TitleBar {
             }
         }
 
-        /// Get the title
-        pub fn title(&self) -> &str {
+        /// Get the cached title
+        pub(crate) fn title(&self) -> &str {
             self.title.as_str()
-        }
-
-        /// Set the title
-        pub fn set_title(&mut self, cx: &mut ConfigCx, title: String) {
-            self.title.set_text(cx, title)
         }
     }
 
@@ -184,12 +172,17 @@ mod TitleBar {
     impl Events for Self {
         type Data = ();
 
+        fn update(&mut self, cx: &mut ConfigCx, _: &Self::Data) {
+            // NOTE: this if is used to avoid overwriting the title passed to
+            // new() when a title has not been set through set_title().
+            if !cx.window_title.is_empty() {
+                self.title.set_str_from_cx(cx, |cx| &cx.window_title)
+            }
+        }
+
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::PressStart(_) => {
-                    cx.drag_window();
-                    Used
-                }
+                Event::PressStart(press) => press.drag_window(cx),
                 _ => Unused,
             }
         }

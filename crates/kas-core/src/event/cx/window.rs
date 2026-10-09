@@ -5,7 +5,7 @@
 
 //! Event state: window management
 
-use super::{EventCx, EventState, PopupState};
+use super::{EventCx, EventState, PopupState, TopWindow};
 use crate::cast::Cast;
 use crate::event::{Event, FocusSource};
 use crate::geom::DVec2;
@@ -17,7 +17,6 @@ use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
 use crate::{ActionRedraw, Id, Node, WindowActions};
 use winit::event::{ElementState, FingerId, Ime, KeyEvent, MouseButton, MouseScrollDelta};
 use winit::keyboard::ModifiersState;
-use winit::window::ResizeDirection;
 
 pub(crate) enum InputEvent {
     Focused(bool),
@@ -154,12 +153,16 @@ impl EventState {
         }
     }
 
-    /// Application suspended. Clean up temporary state.
-    pub(crate) fn suspended(&mut self, runner: &mut dyn RunnerT) {
+    pub(super) fn close_all_popups(&mut self, runner: &mut dyn RunnerT) {
         while !self.popups.is_empty() {
             let id = self.close_popup(self.popups.len() - 1);
             runner.close_window(id);
         }
+    }
+
+    /// Application suspended. Clean up temporary state.
+    pub(crate) fn suspended(&mut self, runner: &mut dyn RunnerT) {
+        self.close_all_popups(runner);
     }
 }
 
@@ -304,28 +307,6 @@ impl<'a> EventCx<'a> {
         self.runner.close_window(id);
     }
 
-    /// Enable window dragging for current click
-    ///
-    /// This calls [`winit::window::Window::drag_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_window). Errors are ignored.
-    pub fn drag_window(&self) {
-        if let Some(ww) = self.window.winit_window()
-            && let Err(e) = ww.drag_window()
-        {
-            log::warn!("EventCx::drag_window: {e}");
-        }
-    }
-
-    /// Enable window resizing for the current click
-    ///
-    /// This calls [`winit::window::Window::drag_resize_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_resize_window). Errors are ignored.
-    pub fn drag_resize_window(&self, direction: ResizeDirection) {
-        if let Some(ww) = self.window.winit_window()
-            && let Err(e) = ww.drag_resize_window(direction)
-        {
-            log::warn!("EventCx::drag_resize_window: {e}");
-        }
-    }
-
     /// Attempt to get clipboard contents
     ///
     /// In case of failure, paste actions will simply fail. The implementation
@@ -401,11 +382,27 @@ impl<'a> EventCx<'a> {
         self.runner.set_primary(content)
     }
 
-    /// Directly access Winit Window
+    /// Get a handle to the current window
     ///
-    /// This is a temporary API, allowing e.g. to minimize the window.
-    pub fn winit_window(&self) -> Option<&dyn winit::window::Window> {
-        self.window.winit_window()
+    /// This returns a handle to the current popup or top-level window.
+    #[inline]
+    pub(crate) fn current_window(&self) -> &dyn winit::window::Window {
+        self.window.current_window()
+    }
+
+    /// Get a handle to the top (root) window
+    ///
+    /// A top (root) window is one which does not have a parent. An application
+    /// may have multiple top (root) windows. Child windows (e.g. modal windows
+    /// and popups) windows each have a parent window (which may also be a child
+    /// window); in all cases there should be a top (root ancestor) window.
+    #[inline]
+    pub fn top_window(&mut self) -> TopWindow<'_> {
+        TopWindow {
+            runner: self.runner,
+            window: self.window.top_window(),
+            state: self.cx.state,
+        }
     }
 
     /// Handle an input event
