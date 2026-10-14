@@ -365,9 +365,12 @@ impl<'a> EventCx<'a> {
     }
 
     pub(super) fn clear_ime_focus(&mut self, id: Id) {
-        // NOTE: we assume that winit will send us Ime::Disabled
-        self.input.old_ime_target = Some(id);
-        self.window.ime_request(ImeRequest::Disable).unwrap();
+        // NOTE: we assume that winit will send us Ime::Disabled. Until then,
+        // other IME events (e.g. a final Commit) are routed to `old_ime_target`.
+        match self.window.ime_request(ImeRequest::Disable) {
+            Ok(()) => self.input.old_ime_target = Some(id),
+            Err(e) => log::error!("Unexpected IME error: {e}"),
+        }
         self.input.ime_focus = false;
         self.input.ime_cursor_area = Rect::ZERO;
     }
@@ -503,39 +506,80 @@ impl<'a> EventCx<'a> {
         self.modifiers = state;
     }
 
-    pub(super) fn ime_event(&mut self, widget: Node<'_>, ime: Ime) {
-        if ime == Ime::Disabled
-            && let Some(target) = self.input.old_ime_target.take()
-        {
-            // Assume that we disabled IME when old_ime_target is set
-            self.send_event(widget, target, Event::Ime(super::Ime::Disabled));
-            return;
-        }
-
-        if let Some(id) = self.input.ime_focus().cloned() {
-            let event = match ime {
-                Ime::Enabled => super::Ime::Enabled,
-                Ime::Preedit(ref text, cursor) => super::Ime::Preedit { text, cursor },
-                Ime::Commit(ref text) => super::Ime::Commit { text },
+    pub(super) fn ime_event(&mut self, mut widget: Node<'_>, ime: Ime) {
+        if let Some(target) = self.input.old_ime_target.clone() {
+            match ime {
+                Ime::Disabled => {
+                    // The session we disabled has ended
+                    self.input.old_ime_target = None;
+                    self.send_event(widget, target, Event::Ime(super::Ime::Disabled));
+                    return;
+                }
+                Ime::Enabled => {
+                    // A new session has begun without Disabled being received
+                    // for the old one: synthesise it so that none is left dangling.
+                    self.input.old_ime_target = None;
+                    self.send_event(widget.re(), target, Event::Ime(super::Ime::Disabled));
+                }
+                Ime::Preedit(ref text, cursor) => {
+                    let event = super::Ime::Preedit { text, cursor };
+                    self.send_event(widget, target, Event::Ime(event));
+                    return;
+                }
+                Ime::Commit(ref text) => {
+                    // Late commit (e.g. of a pending pre-edit on focus loss)
+                    let event = super::Ime::Commit { text };
+                    self.send_event(widget, target, Event::Ime(event));
+                    return;
+                }
                 Ime::DeleteSurrounding {
                     before_bytes,
                     after_bytes,
-                } => super::Ime::DeleteSurrounding {
-                    before_bytes,
-                    after_bytes,
-                },
-                Ime::Disabled => {
-                    // IME disabled by external cause
-                    self.input.ime_focus = false;
-                    self.input.ime_cursor_area = Rect::ZERO;
-
-                    super::Ime::Disabled
+                } => {
+                    let event = super::Ime::DeleteSurrounding {
+                        before_bytes,
+                        after_bytes,
+                    };
+                    self.send_event(widget, target, Event::Ime(event));
+                    return;
                 }
-                _ => unreachable!(),
-            };
-
-            self.send_event(widget, id, Event::Ime(event));
+                _ => {
+                    log::warn!("ime_event: unexpected event while disabling IME");
+                    return;
+                }
+            }
         }
+
+        let Some(id) = self.input.ime_focus().cloned() else {
+            log::debug!("ime_event: no target; event dropped");
+            return;
+        };
+
+        let event = match ime {
+            Ime::Enabled => super::Ime::Enabled,
+            Ime::Preedit(ref text, cursor) => super::Ime::Preedit { text, cursor },
+            Ime::Commit(ref text) => super::Ime::Commit { text },
+            Ime::DeleteSurrounding {
+                before_bytes,
+                after_bytes,
+            } => super::Ime::DeleteSurrounding {
+                before_bytes,
+                after_bytes,
+            },
+            Ime::Disabled => {
+                // IME disabled by external cause
+                self.input.ime_focus = false;
+                self.input.ime_cursor_area = Rect::ZERO;
+
+                super::Ime::Disabled
+            }
+            _ => {
+                log::warn!("ime_event: unsupported event");
+                return;
+            }
+        };
+
+        self.send_event(widget, id, Event::Ime(event));
     }
 
     pub(super) fn flush_pending_input_focus(&mut self, mut widget: Node<'_>) {
