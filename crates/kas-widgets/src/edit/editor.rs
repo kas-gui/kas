@@ -1023,7 +1023,9 @@ impl Part {
             draw.decorate_text(pos, rect, &self.forme, decorations);
         }
 
-        if let CurrentAction::ImePreedit { edit_range, .. } = common.current.clone() {
+        if let CurrentAction::ImePreedit { edit_range, .. } = common.current.clone()
+            && !edit_range.is_empty()
+        {
             let tokens = [
                 Default::default(),
                 (edit_range.start, format::Decoration {
