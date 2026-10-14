@@ -543,10 +543,6 @@ impl<'a> EventCx<'a> {
                     self.send_event(widget, target, Event::Ime(event));
                     return;
                 }
-                _ => {
-                    log::warn!("ime_event: unexpected event while disabling IME");
-                    return;
-                }
             }
         }
 
@@ -572,10 +568,6 @@ impl<'a> EventCx<'a> {
                 self.input.ime_cursor_area = Rect::ZERO;
 
                 super::Ime::Disabled
-            }
-            _ => {
-                log::warn!("ime_event: unsupported event");
-                return;
             }
         };
 

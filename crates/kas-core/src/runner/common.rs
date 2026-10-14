@@ -39,6 +39,9 @@ pub enum RunError {
     #[error("error from graphics sub-system")]
     Graphics(Box<dyn std::error::Error + 'static>),
 
+    #[error("window creation failed")]
+    CreateWindow(#[from] winit::error::CreateWindowError),
+
     /// A general error that may occur during a request to the windowing system.
     #[error("operation failed")]
     RequestError(#[from] winit::error::RequestError),
