@@ -1084,8 +1084,14 @@ impl Part {
     fn clear_ime(&mut self, common: &mut Common, p: u32) {
         if common.current.is_ime_enabled() {
             let action = std::mem::replace(&mut common.current, CurrentAction::None);
-            if let CurrentAction::ImePreedit { edit_range, .. } = action {
-                self.set_cursor(common, p, usize::conv(edit_range.start));
+            if let CurrentAction::ImePreedit { part, edit_range } = action {
+                debug_assert_eq!(part, p);
+
+                if !edit_range.is_empty() {
+                    let range = edit_range.clone();
+                    self.set_cursor(common, p, usize::conv(range.start));
+                    self.replace_range(range.cast(), "");
+                }
             }
         }
     }
@@ -1242,11 +1248,10 @@ impl Part {
                 };
 
                 self.replace_range(edit_range.clone(), text);
-                self.set_cursor(common, part, edit_range.start + text.len());
+                let cursor = edit_range.start + text.len();
+                self.set_cursor(common, part, cursor);
 
-                let cursor = common.cursor.to_range();
-                let edit_range = cursor.start.byte..cursor.end.byte;
-                common.current = CurrentAction::ImePreedit { part, edit_range };
+                common.current = CurrentAction::ImeStart(part);
                 common.edit_x_coord = None;
                 EventAction::Edit {
                     is_key_input: false,
@@ -1564,11 +1569,26 @@ impl Common {
                             selection.end.part(),
                         )),
                     );
-                    self.cancel_selection_and_ime(parts, cx);
+
+                    // Virtual keyboards may hit this case so we should handle it:
+                    let update_ime = matches!(&self.current, CurrentAction::ImeStart(_));
+                    if !update_ime {
+                        // Do not attempt to handle other keyboard/IME interactions
+                        self.cancel_selection_and_ime(parts, cx);
+                    }
 
                     let end = self.replace_range(parts, selection.clone(), text);
                     self.set_cursor(parts, end);
                     self.edit_x_coord = None;
+
+                    if update_ime {
+                        let p = self.cursor.cursor.part();
+                        self.current = CurrentAction::ImeStart(p);
+                        let part = parts.get_mut(p);
+                        if let Some(text) = part.ime_surrounding_text(self, p) {
+                            cx.update_ime_surrounding_text(&self.id, text);
+                        }
+                    }
 
                     EventAction::Edit { is_key_input: true }
                 } else {
@@ -1721,8 +1741,7 @@ impl Common {
 
     /// Cancel on-going selection and IME actions
     ///
-    /// This should be called if e.g. key-input interrupts the current
-    /// action.
+    /// This should be called to abort the current action.
     fn cancel_selection_and_ime(&mut self, parts: &mut impl PartList, cx: &mut EventState) {
         if self.current == CurrentAction::Selection {
             self.input_handler.stop_selecting();
@@ -2091,7 +2110,13 @@ impl Common {
         if !matches!(action, Action::Deselect) {
             self.request_input_focus(parts, cx, FocusSource::Synthetic);
         }
-        self.cancel_selection_and_ime(parts, cx);
+
+        // Virtual keyboards may hit this case so we should handle it:
+        let update_ime = matches!(&self.current, CurrentAction::ImeStart(_));
+        if !update_ime {
+            // Do not attempt to handle other keyboard/IME interactions
+            self.cancel_selection_and_ime(parts, cx);
+        }
 
         let edit_op = match action {
             Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
@@ -2182,6 +2207,15 @@ impl Common {
                 }
             }
         };
+
+        if update_ime {
+            let p = self.cursor.cursor.part();
+            self.current = CurrentAction::ImeStart(p);
+            let part = parts.get_mut(p);
+            if let Some(text) = part.ime_surrounding_text(self, p) {
+                cx.update_ime_surrounding_text(&self.id, text);
+            }
+        }
 
         Ok(action)
     }
