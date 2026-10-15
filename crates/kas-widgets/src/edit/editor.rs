@@ -1244,10 +1244,9 @@ impl Part {
                 self.replace_range(edit_range.clone(), text);
                 self.set_cursor(common, part, edit_range.start + text.len());
 
-                common.current = CurrentAction::ImePreedit {
-                    part,
-                    edit_range: edit_range.cast(),
-                };
+                let cursor = common.cursor.to_range();
+                let edit_range = cursor.start.byte..cursor.end.byte;
+                common.current = CurrentAction::ImePreedit { part, edit_range };
                 common.edit_x_coord = None;
                 EventAction::Edit {
                     is_key_input: false,
