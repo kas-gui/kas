@@ -59,23 +59,25 @@ impl Input {
     }
 
     /// Clear sel, key and ime focus on target
-    pub(super) fn clear_sel_socus_on(&mut self, target: &Id) {
+    ///
+    /// Returns `true` on success.
+    pub(super) fn clear_sel_socus_on(&mut self, target: &Id) -> bool {
         if *target != self.sel_focus() {
-            return; // nothing to do
+            return true; // nothing to do
+        } else if let Some(ref focus) = self.lost_focus
+            && focus.id != target
+        {
+            return false; // conflicting focus request
         }
+
         let old_focus = self.focus.take().unwrap();
         let key = std::mem::take(&mut self.key_focus);
         let ime = std::mem::take(&mut self.ime_focus);
 
         if let Some(ref mut focus) = self.lost_focus {
-            if focus.id == target {
-                // Upgrade partial-loss to full-loss
-                focus.key |= key;
-                focus.ime |= ime;
-            } else {
-                // Loss of focus on another target implies old_focus changed
-                // recently without sending Event::SelFocus yet. Do nothing.
-            }
+            // Upgrade partial-loss to full-loss
+            focus.key |= key;
+            focus.ime |= ime;
         } else {
             self.lost_focus = Some(LostFocus {
                 id: old_focus,
@@ -83,6 +85,8 @@ impl Input {
                 ime,
             });
         }
+
+        true
     }
 
     #[inline]
@@ -204,12 +208,14 @@ impl EventState {
 }
 
 impl<'a> EventCx<'a> {
-    /// Request keyboard input focus
+    /// Request keyboard (input) focus
     ///
-    /// When granted, the widget will receive [`Event::KeyFocus`] followed by
-    /// [`Event::Key`] for each key press / release. Note that this disables
-    /// translation of key events to [`Event::Command`] while key focus is
-    /// active.
+    /// This method requests [selection focus](Self::request_sel_focus) and
+    /// keyboard input focus. On success, the `target` widget will receive
+    /// [`Event::KeyFocus`] then [`Event::Key`] for each key press and release.
+    ///
+    /// Note: automatic translation of key events to [`Event::Command`] is
+    /// disabled while key focus is active.
     ///
     /// Since key focus requires [selection focus](Self::request_sel_focus),
     /// this method requests that too.
@@ -217,7 +223,10 @@ impl<'a> EventCx<'a> {
     /// The `source` parameter is used by [`Event::SelFocus`].
     #[inline]
     pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
-        self.request_sel_focus(target, source);
+        if !self.request_sel_focus(target, source) {
+            return;
+        }
+
         if !self.input.key_focus {
             self.input.key_focus = true;
             self.input.new_key_focus = true;
@@ -235,24 +244,26 @@ impl<'a> EventCx<'a> {
     /// Selection focus is a pre-requisite for
     /// [key focus](Self::request_key_focus) and
     /// [IME focus](Self::replace_ime_focus).
-    ///
-    /// The `source` parameter is used by [`Event::SelFocus`].
-    ///
     /// Selection focus implies navigation focus.
     ///
-    /// When key focus is lost, [`Event::LostSelFocus`] is sent.
+    /// Returns `true` if and only if the request succeeds. On success, the
+    /// `target` will receive event [`Event::SelFocus`] with the input `source`
+    /// parameter.
     #[inline]
-    pub fn request_sel_focus(&mut self, target: Id, source: FocusSource) {
+    pub fn request_sel_focus(&mut self, target: Id, source: FocusSource) -> bool {
         if target == self.input.sel_focus() {
-            return;
+            return true;
         } else if let Some(id) = self.input.sel_focus().cloned() {
-            self.input.clear_sel_socus_on(&id);
+            if !self.input.clear_sel_socus_on(&id) {
+                return false;
+            }
         }
 
         self.set_nav_focus(target.clone(), source);
 
         self.input.focus = Some(target);
         self.input.new_sel_focus = Some(source);
+        true
     }
 
     /// Request Input Method Editor (IME) focus
@@ -589,16 +600,19 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        if let Some(source) = self.input.new_sel_focus.take()
-            && let Some(id) = self.input.sel_focus().cloned()
-        {
-            self.send_event(widget.re(), id, Event::SelFocus(source));
+        if let Some(source) = self.input.new_sel_focus.take() {
+            if let Some(id) = self.input.focus.clone() {
+                self.send_event(widget.re(), id.clone(), Event::SelFocus(source));
+            } else {
+                debug_assert!(false);
+            }
         }
-        if self.input.new_key_focus
-            && let Some(id) = self.input.key_focus().cloned()
-        {
-            self.input.new_key_focus = false;
-            self.send_event(widget.re(), id, Event::KeyFocus);
+        if std::mem::take(&mut self.input.new_key_focus) {
+            if let Some(id) = self.input.focus.clone() {
+                self.send_event(widget.re(), id.clone(), Event::KeyFocus);
+            } else {
+                debug_assert!(false);
+            }
         }
     }
 }
