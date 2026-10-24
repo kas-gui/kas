@@ -233,6 +233,12 @@ impl<'a> EventCx<'a> {
         }
     }
 
+    /// Test whether `target` has selection focus
+    #[inline]
+    pub fn has_sel_focus(&self, target: &Id) -> bool {
+        self.input.focus.as_ref() == Some(target)
+    }
+
     /// Request selection focus
     ///
     /// To prevent multiple simultaneous selections (e.g. of text) in the UI,

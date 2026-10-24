@@ -1522,9 +1522,6 @@ impl Common {
             Event::NavFocus(_) => EventAction::Used,
             Event::LostNavFocus => EventAction::Used,
             Event::SelFocus(source) => {
-                // NOTE: sel focus implies key focus since we only request
-                // the latter. We must set before calling self.set_primary.
-                self.has_key_focus = true;
                 if source == FocusSource::Pointer {
                     self.set_primary(parts, cx);
                 }
@@ -2197,7 +2194,7 @@ impl Common {
 
     /// Set primary clipboard (mouse buffer) contents from selection
     fn set_primary(&self, parts: &impl PartList, cx: &mut EventCx) {
-        if self.has_key_focus && !self.cursor.is_empty() && cx.has_primary() {
+        if !self.cursor.is_empty() && cx.has_primary() && cx.has_sel_focus(&self.id) {
             cx.set_primary(self.copy_selection_to_string(parts));
         }
     }
