@@ -96,26 +96,35 @@ impl Input {
     }
 
     pub(super) fn frame_update(&mut self, window: &dyn WindowDataErased, widget: &dyn Tile) {
+        let Some(target) = self.ime_focus() else {
+            return;
+        };
+        let mut rect = self.last_ime_rect;
+
         // Set IME cursor area, if moved.
-        if let Some(target) = self.ime_focus()
-            && let Some((mut rect, translation)) = widget.find_tile_rect(target)
-        {
+        if let Some((widget_rect, translation)) = widget.find_tile_rect(target) {
             if self.ime_cursor_area.size != Size::ZERO {
                 rect = self.ime_cursor_area;
+            } else {
+                rect = widget_rect;
             }
             rect += translation;
-            if rect != self.last_ime_rect {
-                let data = ImeRequestData::default().with_cursor_area(
-                    rect.pos.as_physical().into(),
-                    rect.size.as_physical().into(),
-                );
-                let req = winit::window::ImeRequest::Update(data);
-                match window.ime_request(req) {
-                    Ok(()) => (),
-                    Err(e) => log::warn!("Unexpected IME error: {e}"),
-                }
-                self.last_ime_rect = rect;
+        }
+
+        if rect != self.last_ime_rect || self.ime_surrounding_text.is_some() {
+            let mut data = ImeRequestData::default();
+            data.cursor_area = Some((
+                rect.pos.as_physical().into(),
+                rect.size.as_physical().into(),
+            ));
+            data.surrounding_text = self.ime_surrounding_text.take();
+
+            let req = winit::window::ImeRequest::Update(data);
+            match window.ime_request(req) {
+                Ok(()) => (),
+                Err(e) => log::warn!("Unexpected IME error: {e}"),
             }
+            self.last_ime_rect = rect;
         }
     }
 }
@@ -340,17 +349,16 @@ impl<'a> EventCx<'a> {
     }
 
     /// Update surrounding text used by Input Method Editor
-    pub fn update_ime_surrounding_text(&self, target: &Id, surrounding_text: ImeSurroundingText) {
+    pub fn update_ime_surrounding_text(
+        &mut self,
+        target: &Id,
+        surrounding_text: ImeSurroundingText,
+    ) {
         if *target != self.input.ime_focus() {
             return;
         }
 
-        let data = ImeRequestData::default().with_surrounding_text(surrounding_text);
-        let req = ImeRequest::Update(data);
-        match self.window.ime_request(req) {
-            Ok(()) => (),
-            Err(e) => log::error!("Unexpected IME error: {e}"),
-        }
+        self.input.ime_surrounding_text = Some(surrounding_text);
     }
 
     pub(super) fn clear_ime_focus(&mut self, id: Id) {
