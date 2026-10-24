@@ -12,7 +12,6 @@ use crate::event::{Command, Event, FocusSource};
 use crate::geom::{Rect, Size};
 use crate::util::WidgetHierarchy;
 use crate::{Id, Node, Tile, TileExt};
-use winit::dpi::{LogicalPosition, LogicalSize};
 use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, ModifiersState, PhysicalKey};
 use winit::window::{
@@ -35,6 +34,8 @@ pub(super) struct Input {
     lost_focus: Option<LostFocus>,
     new_sel_focus: Option<FocusSource>,
     new_key_focus: bool,
+    new_ime_focus: Option<(ImeHint, ImePurpose)>,
+    ime_surrounding_text: Option<ImeSurroundingText>,
     old_ime_target: Option<Id>,
     /// Rect is cursor area in sel_focus's coordinate space if size != ZERO
     ime_cursor_area: Rect,
@@ -208,6 +209,40 @@ impl EventState {
 }
 
 impl<'a> EventCx<'a> {
+    /// Request Input Method Editor (IME) focus
+    ///
+    /// This method requests [selection focus](Self::request_sel_focus),
+    /// [keyboard input focus](Self::request_key_focus) (required since some
+    /// Input Method Editors send synthesized key events) and IME focus.
+    ///
+    /// Does nothing if this focus has already been obtained.
+    /// To change the `hint` or `purpose` call [`EventState::cancel_ime_focus`] first.
+    ///
+    /// Once enabled, `target` should receive [`Event::Ime`] events.
+    pub fn request_ime_focus(
+        &mut self,
+        target: Id,
+        source: FocusSource,
+        hint: ImeHint,
+        purpose: ImePurpose,
+        surrounding_text: impl Fn() -> Option<ImeSurroundingText>,
+    ) {
+        if self.input.new_ime_focus.is_some() {
+            return; // conflicting request
+        }
+
+        if !self.request_sel_focus(target.clone(), source) {
+            return;
+        }
+
+        self.request_key_focus(target, source);
+
+        if !self.input.ime_focus {
+            self.input.new_ime_focus = Some((hint, purpose));
+            self.input.ime_surrounding_text = surrounding_text();
+        }
+    }
+
     /// Request keyboard (input) focus
     ///
     /// This method requests [selection focus](Self::request_sel_focus) and
@@ -249,7 +284,7 @@ impl<'a> EventCx<'a> {
     ///
     /// Selection focus is a pre-requisite for
     /// [key focus](Self::request_key_focus) and
-    /// [IME focus](Self::replace_ime_focus).
+    /// [IME focus](Self::request_ime_focus).
     /// Selection focus implies navigation focus.
     ///
     /// Returns `true` if and only if the request succeeds. On success, the
@@ -270,69 +305,6 @@ impl<'a> EventCx<'a> {
         self.input.focus = Some(target);
         self.input.new_sel_focus = Some(source);
         true
-    }
-
-    /// Request Input Method Editor (IME) focus
-    ///
-    /// IME focus requires selection focus (see
-    /// [`EventCx::request_key_focus`], [`EventCx::request_sel_focus`]).
-    /// The request fails if this has not already been obtained (wait for
-    /// [`Event::SelFocus`] or [`Event::KeyFocus`] before calling this method).
-    ///
-    /// This method enables IME focus, replacing the existing focus. This should
-    /// be used both to initially enable IME input and to replace the `hint`,
-    /// `purpose` or `surrounding_text`.
-    ///
-    /// Once enabled, `target` should receive [`Event::Ime`] events.
-    pub fn replace_ime_focus(
-        &mut self,
-        target: Id,
-        hint: ImeHint,
-        purpose: ImePurpose,
-        mut surrounding_text: Option<ImeSurroundingText>,
-    ) {
-        if target != self.input.focus {
-            return;
-        }
-
-        if let Some(id) = self.input.ime_focus().cloned() {
-            self.clear_ime_focus(id);
-        }
-
-        let mut capabilities = ImeCapabilities::new()
-            .with_hint_and_purpose()
-            .with_cursor_area();
-        if surrounding_text.is_some() {
-            capabilities = capabilities.with_surrounding_text();
-        }
-
-        // NOTE: we provide bogus cursor area and update in `frame_update`;
-        // the API does not allow to only provide this later.
-        let position = LogicalPosition::new(0, 0);
-        let size = LogicalSize::new(0, 0);
-
-        let mut data = ImeRequestData::default()
-            .with_hint_and_purpose(hint, purpose)
-            .with_cursor_area(position.into(), size.into());
-        if let Some(surrounding) = surrounding_text.take() {
-            data = data.with_surrounding_text(surrounding);
-        }
-
-        let req = ImeEnableRequest::new(capabilities, data).unwrap();
-        match self.window.ime_request(ImeRequest::Enable(req)) {
-            Ok(()) => {
-                // NOTE: we could store (a clone of) data here, but we don't
-                // need to: we only need to pass changed properties on update.
-                self.input.ime_focus = true;
-            }
-            Err(ImeRequestError::NotSupported) => {
-                if !self.input.has_reported_ime_not_supported {
-                    log::warn!("Failed to start Input Method Editor: not supported");
-                    self.input.has_reported_ime_not_supported = true;
-                }
-            }
-            Err(e) => log::error!("Unexpected IME error: {e}"),
-        }
     }
 
     /// Visually depress a widget via a key code
@@ -618,6 +590,55 @@ impl<'a> EventCx<'a> {
                 self.send_event(widget.re(), id.clone(), Event::KeyFocus);
             } else {
                 debug_assert!(false);
+            }
+        }
+
+        if let Some(hint_and_purpose) = self.input.new_ime_focus.take() {
+            let Some(id) = self.input.focus.as_ref() else {
+                debug_assert!(false);
+                return;
+            };
+
+            let mut capabilities = ImeCapabilities::new().with_hint_and_purpose();
+            if self.input.ime_surrounding_text.is_some() {
+                capabilities = capabilities.with_surrounding_text();
+            }
+
+            let mut rect = Rect::ZERO;
+            if let Some((widget_rect, translation)) = widget.as_tile().find_tile_rect(id) {
+                capabilities = capabilities.with_cursor_area();
+
+                if self.input.ime_cursor_area.size != Size::ZERO {
+                    rect = self.input.ime_cursor_area;
+                } else {
+                    rect = widget_rect;
+                };
+                rect += translation;
+            }
+            self.input.last_ime_rect = rect;
+
+            let mut data = ImeRequestData::default();
+            data.hint_and_purpose = Some(hint_and_purpose);
+            data.cursor_area = Some((
+                rect.pos.as_physical().into(),
+                rect.size.as_physical().into(),
+            ));
+            data.surrounding_text = self.input.ime_surrounding_text.take();
+
+            let req = ImeEnableRequest::new(capabilities, data).unwrap();
+            match self.window.ime_request(ImeRequest::Enable(req)) {
+                Ok(()) => {
+                    // NOTE: we could store (a clone of) data here, but we don't
+                    // need to: we only need to pass changed properties on update.
+                    self.input.ime_focus = true;
+                }
+                Err(ImeRequestError::NotSupported) => {
+                    if !self.input.has_reported_ime_not_supported {
+                        log::warn!("Failed to start Input Method Editor: not supported");
+                        self.input.has_reported_ime_not_supported = true;
+                    }
+                }
+                Err(e) => log::error!("Unexpected IME error: {e}"),
             }
         }
     }

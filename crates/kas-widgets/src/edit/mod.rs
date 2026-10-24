@@ -77,11 +77,6 @@ enum CurrentAction {
 }
 
 impl CurrentAction {
-    #[inline]
-    fn is_none(&self) -> bool {
-        *self == CurrentAction::None
-    }
-
     /// Returns `Some(part)` when IME is enabled using the given `part`.
     ///
     /// This does not imply a pre-edit (or any IME input).

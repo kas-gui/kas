@@ -1515,7 +1515,7 @@ impl Common {
         match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
                 if !self.input_handler.is_selecting() {
-                    self.request_key_focus(cx, source);
+                    self.request_input_focus(parts, cx, source);
                 }
                 EventAction::Used
             }
@@ -1530,18 +1530,7 @@ impl Common {
             }
             Event::KeyFocus => {
                 self.has_key_focus = true;
-
-                if self.current.is_none() {
-                    let hint = Default::default();
-                    let purpose = ImePurpose::Normal;
-                    let p = self.cursor.cursor.part();
-                    let part = parts.get_mut(p);
-                    let surrounding_text = part.ime_surrounding_text(self, p);
-                    cx.replace_ime_focus(self.id.clone(), hint, purpose, surrounding_text);
-                    EventAction::FocusGained
-                } else {
-                    EventAction::Used
-                }
+                EventAction::FocusGained
             }
             Event::LostKeyFocus => {
                 self.has_key_focus = false;
@@ -1603,12 +1592,7 @@ impl Common {
                     CurrentAction::None if ime == Ime::Enabled => {
                         self.current = CurrentAction::ImeStart(p.cast());
                         parts.get(p).set_ime_cursor_area(self, cx, p);
-
-                        return if !self.has_key_focus {
-                            EventAction::FocusGained
-                        } else {
-                            EventAction::Used
-                        };
+                        return EventAction::Used;
                     }
                     CurrentAction::Selection => {
                         cx.cancel_ime_focus(&self.id);
@@ -1633,7 +1617,7 @@ impl Common {
             Event::PressEnd { press, .. } if press.is_tertiary() => {
                 let cursor = self.text_index_nearest(parts, press.coord);
                 self.cancel_selection_and_ime(parts, cx);
-                self.request_key_focus(cx, FocusSource::Pointer);
+                self.request_input_focus(parts, cx, FocusSource::Pointer);
 
                 if let Some(content) = cx.get_primary() {
                     let p = cursor.part();
@@ -1663,7 +1647,7 @@ impl Common {
                         part.clear_ime(self, p);
                         cx.cancel_ime_focus(&self.id);
                     }
-                    self.request_key_focus(cx, FocusSource::Pointer);
+                    self.request_input_focus(parts, cx, FocusSource::Pointer);
                     self.save_undo_state(parts, Some(EditOp::Cursor));
                     self.current = CurrentAction::Selection;
 
@@ -1728,7 +1712,7 @@ impl Common {
                     }
                     self.current = CurrentAction::None;
 
-                    self.request_key_focus(cx, FocusSource::Pointer);
+                    self.request_input_focus(parts, cx, FocusSource::Pointer);
                     EventAction::Used
                 }
             },
@@ -1786,12 +1770,22 @@ impl Common {
         });
     }
 
-    /// Request key focus, if we don't have it or IME
-    fn request_key_focus(&self, cx: &mut EventCx, source: FocusSource) {
-        if !self.has_key_focus && !self.current.is_ime_enabled() {
-            cx.request_key_focus(self.id.clone(), source);
-        }
+    /// Request key and IME focus
+    fn request_input_focus(
+        &self,
+        parts: &mut impl PartList,
+        cx: &mut EventCx,
+        source: FocusSource,
+    ) {
+        let hint = Default::default();
+        let purpose = ImePurpose::Normal;
+        let p = self.cursor.cursor.part();
+        let part = parts.get_mut(p);
+        cx.request_ime_focus(self.id.clone(), source, hint, purpose, || {
+            part.ime_surrounding_text(self, p)
+        });
     }
+
     /// Drive action of a [`Command`]
     fn cmd_action(
         &mut self,
@@ -2095,7 +2089,7 @@ impl Common {
         // We can receive some commands without key focus as a result of
         // selection focus. Request focus on edit actions (like Command::Cut).
         if !matches!(action, Action::Deselect) {
-            self.request_key_focus(cx, FocusSource::Synthetic);
+            self.request_input_focus(parts, cx, FocusSource::Synthetic);
         }
         self.cancel_selection_and_ime(parts, cx);
 
