@@ -213,7 +213,7 @@ impl EventState {
 
         if let Some(ref mut focus) = self.input.lost_focus {
             if focus.id == target {
-                focus.ime = ime;
+                focus.ime |= ime;
             } else {
                 // Loss of focus on another target implies sel focus changed
                 // recently without sending Event::SelFocus yet. Do nothing.
@@ -370,6 +370,7 @@ impl<'a> EventCx<'a> {
         }
 
         self.input.ime_surrounding_text = Some(surrounding_text);
+        self.need_frame_update = true;
     }
 
     pub(super) fn clear_ime_focus(&mut self, id: Id) {
