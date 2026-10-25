@@ -1115,58 +1115,35 @@ impl Part {
         None
     }
 
-    fn ime_surrounding_text(&self, common: &Common, p: u32) -> Option<ImeSurroundingText> {
+    /// Get surrounding text
+    ///
+    /// There should be no pre-edit when calling this.
+    fn ime_surrounding_text(&self, mut sel: CursorRange<usize>) -> Option<ImeSurroundingText> {
         const MAX_TEXT_BYTES: usize = ImeSurroundingText::MAX_TEXT_BYTES;
+        let text = self.as_str();
 
-        let sel_range = subrange_of(&common.cursor.to_range(), p);
-        let edit_range = match common.current.clone() {
-            CurrentAction::ImePreedit { edit_range, .. } => Some(edit_range.cast()),
-            _ => None,
-        };
-        let mut range = edit_range.clone().unwrap_or(sel_range);
-        let initial_range = range.clone();
-        let edit_len = edit_range.clone().map(|r| r.len()).unwrap_or(0);
-
-        if self.is_ready() {
-            if let Some((_, line_range)) = self.forme.find_line(range.start) {
-                range.start = line_range.start;
+        let mut start = 0;
+        let mut end = text.len();
+        if text.len() > MAX_TEXT_BYTES {
+            if sel.cursor.min(sel.anchor) > MAX_TEXT_BYTES / 2 {
+                start = text.floor_char_boundary(MAX_TEXT_BYTES / 2);
+                sel.cursor -= start;
+                sel.anchor -= start;
             }
-            if let Some((_, line_range)) = self.forme.find_line(range.end) {
-                range.end = line_range.end;
+
+            if end - start > MAX_TEXT_BYTES {
+                end = text.floor_char_boundary(start + MAX_TEXT_BYTES);
             }
         }
 
-        if range.len() - edit_len > MAX_TEXT_BYTES {
-            range.end = range.end.min(initial_range.end + MAX_TEXT_BYTES / 2);
-            while !self.as_str().is_char_boundary(range.end) {
-                range.end -= 1;
-            }
-
-            if range.len() - edit_len > MAX_TEXT_BYTES {
-                range.start = range.start.max(initial_range.start - MAX_TEXT_BYTES / 2);
-                while !self.as_str().is_char_boundary(range.start) {
-                    range.start += 1;
-                }
+        let text = text[start..end].to_string();
+        match ImeSurroundingText::new(text, sel.cursor, sel.anchor) {
+            Ok(result) => Some(result),
+            Err(err) => {
+                debug_assert!(false, "ImeSurroundingText error: {err:?}");
+                None
             }
         }
-
-        let start = range.start;
-        let mut text = String::with_capacity(range.len() - edit_len);
-        if let Some(er) = edit_range {
-            text.push_str(&self.as_str()[range.start..er.start]);
-            text.push_str(&self.as_str()[er.end..range.end]);
-        } else {
-            text = self.as_str()[range].to_string();
-        }
-
-        let cursor = common.cursor.cursor.byte().saturating_sub(start);
-        let anchor = common.cursor.anchor.byte().saturating_sub(start);
-        ImeSurroundingText::new(text, cursor, anchor)
-            .inspect_err(|err| {
-                // TODO: use Display for err not Debug
-                log::warn!("Editor::ime_surrounding_text failed: {err:?}")
-            })
-            .ok()
     }
 
     /// Call to set IME position only while IME is active
@@ -1300,7 +1277,7 @@ impl Part {
                 common.current = CurrentAction::ImeStart(p);
                 common.edit_x_coord = None;
 
-                if let Some(text) = self.ime_surrounding_text(common, p) {
+                if let Some(text) = self.ime_surrounding_text((start..start).into()) {
                     cx.update_ime_surrounding_text(&common.id, text);
                 }
 
@@ -1454,6 +1431,22 @@ impl Common {
         s
     }
 
+    /// The restriction of the selection to a single part at the cursor
+    ///
+    /// Returns the `part` index and cursor range within that part.
+    fn part_subset_of_selection(&self, parts: &impl PartList) -> (u32, CursorRange<usize>) {
+        let p = self.cursor.cursor.part();
+        let cursor = self.cursor.cursor.byte();
+        let anchor = if self.cursor.cursor.part == self.cursor.anchor.part {
+            self.cursor.anchor.byte()
+        } else if self.cursor.cursor.part < self.cursor.anchor.part {
+            parts.get(p).as_str().len()
+        } else {
+            0
+        };
+        (p, CursorRange { cursor, anchor })
+    }
+
     /// Get the [`TextIndex`] nearest to `coord` within `parts`
     fn text_index_nearest(&self, parts: &impl PartList, coord: Coord) -> TextIndex {
         let mut l_bound = 0;
@@ -1600,8 +1593,8 @@ impl Common {
                     if update_ime {
                         let p = self.cursor.cursor.part();
                         self.current = CurrentAction::ImeStart(p);
-                        let part = parts.get_mut(p);
-                        if let Some(text) = part.ime_surrounding_text(self, p) {
+                        let b = end.byte();
+                        if let Some(text) = parts.get(p).ime_surrounding_text((b..b).into()) {
                             cx.update_ime_surrounding_text(&self.id, text);
                         }
                     }
@@ -1853,12 +1846,15 @@ impl Common {
         cx: &mut EventCx,
         source: FocusSource,
     ) {
+        if self.current.is_ime_enabled() {
+            return; // nothing to do
+        }
+
         let hint = Default::default();
         let purpose = ImePurpose::Normal;
-        let p = self.cursor.cursor.part();
-        let part = parts.get_mut(p);
         cx.request_ime_focus(self.id.clone(), source, hint, purpose, || {
-            part.ime_surrounding_text(self, p)
+            let (p, sel) = self.part_subset_of_selection(parts);
+            parts.get(p).ime_surrounding_text(sel)
         });
     }
 
@@ -2270,10 +2266,9 @@ impl Common {
         };
 
         if update_ime {
-            let p = self.cursor.cursor.part();
+            let (p, sel) = self.part_subset_of_selection(parts);
             self.current = CurrentAction::ImeStart(p);
-            let part = parts.get_mut(p);
-            if let Some(text) = part.ime_surrounding_text(self, p) {
+            if let Some(text) = parts.get(p).ime_surrounding_text(sel) {
                 cx.update_ime_surrounding_text(&self.id, text);
             }
         }
