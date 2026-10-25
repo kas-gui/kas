@@ -75,6 +75,10 @@ impl Input {
         let key = std::mem::take(&mut self.key_focus);
         let ime = std::mem::take(&mut self.ime_focus);
 
+        self.new_sel_focus = None;
+        self.new_key_focus = false;
+        self.new_ime_focus = None;
+
         if let Some(ref mut focus) = self.lost_focus {
             // Upgrade partial-loss to full-loss
             focus.key |= key;
@@ -92,7 +96,10 @@ impl Input {
 
     #[inline]
     pub(super) fn has_pending_changes(&self) -> bool {
-        self.lost_focus.is_some() || self.new_sel_focus.is_some() || self.new_key_focus
+        self.lost_focus.is_some()
+            || self.new_sel_focus.is_some()
+            || self.new_key_focus
+            || self.new_ime_focus.is_some()
     }
 
     pub(super) fn frame_update(&mut self, window: &dyn WindowDataErased, widget: &dyn Tile) {
@@ -195,14 +202,18 @@ impl EventState {
     /// focus. IME focus is lost automatically when selection focus is lost.
     #[inline]
     pub fn cancel_ime_focus(&mut self, target: &Id) {
-        if *target != self.input.ime_focus() {
+        if self.input.focus.as_ref() != Some(target)
+            || (!self.input.ime_focus && self.input.new_ime_focus.is_none())
+        {
             return;
         }
-        self.input.ime_focus = false;
+
+        let ime = std::mem::take(&mut self.input.ime_focus);
+        self.input.new_ime_focus = None;
 
         if let Some(ref mut focus) = self.input.lost_focus {
             if focus.id == target {
-                focus.ime = true;
+                focus.ime = ime;
             } else {
                 // Loss of focus on another target implies sel focus changed
                 // recently without sending Event::SelFocus yet. Do nothing.
@@ -211,7 +222,7 @@ impl EventState {
             self.input.lost_focus = Some(LostFocus {
                 id: target.clone(),
                 key: false,
-                ime: true,
+                ime,
             });
         }
     }
