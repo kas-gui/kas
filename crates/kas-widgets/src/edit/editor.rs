@@ -1697,9 +1697,8 @@ impl Common {
             Event::PressEnd { press, .. } if press.is_tertiary() => {
                 let cursor = self.text_index_nearest(parts, press.coord);
                 let preedit = self.cancel_selection_and_ime(parts, cx).is_some();
-                self.request_input_focus(parts, cx, FocusSource::Pointer);
 
-                if let Some(content) = cx.get_primary() {
+                let action = if let Some(content) = cx.get_primary() {
                     let p = cursor.part();
                     self.save_undo_state(parts, Some(EditOp::Replace(p, p)));
 
@@ -1713,7 +1712,10 @@ impl Common {
                 } else {
                     self.set_cursor(parts, cursor);
                     EventAction::Cursor { preedit }
-                }
+                };
+
+                self.request_input_focus(parts, cx, FocusSource::Pointer);
+                action
             }
             event => match self.input_handler.handle(cx, self.id.clone(), event) {
                 TextInputAction::Used => EventAction::Used,
@@ -1729,7 +1731,6 @@ impl Common {
                     } else {
                         None
                     };
-                    self.request_input_focus(parts, cx, FocusSource::Pointer);
                     self.save_undo_state(parts, Some(EditOp::Cursor));
                     self.current = CurrentAction::Selection;
 
@@ -1752,6 +1753,8 @@ impl Common {
                         }
                     }
                     self.set_cursor(parts, CursorRange::from(anchor..cursor));
+
+                    self.request_input_focus(parts, cx, FocusSource::Pointer);
                     EventAction::Cursor {
                         preedit: action.is_some(),
                     }
@@ -2179,11 +2182,7 @@ impl Common {
             _ => return Ok(EventAction::Unused),
         };
 
-        // We can receive some commands without key focus as a result of
-        // selection focus. Request focus on edit actions (like Command::Cut).
-        if !matches!(action, Action::Deselect) {
-            self.request_input_focus(parts, cx, FocusSource::Synthetic);
-        }
+        let is_deselect = matches!(action, Action::Deselect);
 
         // Virtual keyboards may hit this case so we should handle it:
         let update_ime = matches!(&self.current, CurrentAction::ImeStart(_));
@@ -2295,6 +2294,10 @@ impl Common {
             }
             let b = sel.cursor;
             part.set_ime_cursor_area(self, cx, b..b);
+        } else if !is_deselect {
+            // We can receive some commands without key focus as a result of
+            // selection focus. Request focus on edit actions (like Command::Cut).
+            self.request_input_focus(parts, cx, FocusSource::Synthetic);
         }
 
         Ok(action)
