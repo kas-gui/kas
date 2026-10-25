@@ -1570,20 +1570,40 @@ impl Common {
                 }
             }
             Event::LostSelFocus => {
-                // NOTE: we can assume that we will receive Ime::Disabled if IME is active
+                // Ime::Disabled should be received before LostSelFocus
+                let action = if let Some(p) = self.current.ime_part() {
+                    debug_assert!(false);
+                    cx.cancel_ime_focus(&self.id);
+                    parts.get_mut(p).clear_ime(self, p)
+                } else {
+                    None
+                };
+
                 if !self.cursor.is_empty() {
                     self.save_undo_state(parts, None);
                     self.cursor.clear_selection();
                 }
                 self.input_handler.stop_selecting();
                 cx.redraw();
-                EventAction::Used
+
+                if action.is_some() {
+                    EventAction::Preedit
+                } else {
+                    EventAction::Used
+                }
             }
             Event::Command(cmd, code) => self
                 .cmd_action(parts, cx, cmd, code)
                 .unwrap_or(EventAction::Used),
             Event::Key(event, false) if event.state == ElementState::Pressed && !self.read_only => {
                 if let Some(text) = &event.text {
+                    // Virtual keyboards may hit this case so we should handle it:
+                    let update_ime = matches!(&self.current, CurrentAction::ImeStart(_));
+                    if !update_ime {
+                        // Do not attempt to handle other keyboard/IME interactions
+                        let _ = self.cancel_selection_and_ime(parts, cx);
+                    }
+
                     let selection = self.cursor.to_range();
                     self.save_undo_state(
                         parts,
@@ -1592,13 +1612,6 @@ impl Common {
                             selection.end.part(),
                         )),
                     );
-
-                    // Virtual keyboards may hit this case so we should handle it:
-                    let update_ime = matches!(&self.current, CurrentAction::ImeStart(_));
-                    if !update_ime {
-                        // Do not attempt to handle other keyboard/IME interactions
-                        let _ = self.cancel_selection_and_ime(parts, cx);
-                    }
 
                     let end = self.replace_range(parts, selection.clone(), text);
                     self.set_cursor(parts, end);
@@ -1649,6 +1662,16 @@ impl Common {
                     Ime::Preedit { .. } | Ime::DeleteSurrounding { .. } => Some(None),
                     Ime::Commit { .. } => Some(Some(EditOp::Ime(p))),
                 } {
+                    if let CurrentAction::ImePreedit { part, edit_range } = &mut self.current {
+                        debug_assert_eq!(p, *part);
+                        // Clear pre-edit before saving undo state.
+                        parts
+                            .get_mut(p)
+                            .replace_range(edit_range.clone().cast(), "");
+                        let b = edit_range.start;
+                        *edit_range = b..b;
+                    }
+
                     self.save_undo_state(parts, opt_op);
                 }
 
@@ -1785,6 +1808,8 @@ impl Common {
     }
 
     /// Call before an edit to (potentially) commit current state based on last_edit
+    ///
+    /// The IME pre-edit should be cleared before calling this method.
     ///
     /// Call with [`None`] to force commit of any uncommitted changes.
     fn save_undo_state(&mut self, parts: &mut impl PartList, edit: Option<EditOp>) {
@@ -2387,10 +2412,10 @@ impl Editor {
     }
 
     fn set_text_unchecked(&mut self, cx: &mut EventState, text: Rc<String>) {
+        let _ = self.common.cancel_selection_and_ime(&mut self.part, cx);
+
         self.common
             .save_undo_state(&mut self.part, Some(EditOp::Replace(0, 0)));
-
-        let _ = self.common.cancel_selection_and_ime(&mut self.part, cx);
 
         self.part.text = text;
         self.part.require_reprepare();
@@ -2406,10 +2431,10 @@ impl Editor {
     /// This method does not call action handlers on the guard.
     #[inline]
     pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
+        let _ = self.common.cancel_selection_and_ime(&mut self.part, cx);
+
         self.common
             .save_undo_state(&mut self.part, Some(EditOp::Replace(0, 0)));
-
-        let _ = self.common.cancel_selection_and_ime(&mut self.part, cx);
 
         let selection = self.common.cursor.to_range();
         let start = selection.start.byte();
