@@ -184,9 +184,9 @@ mod EditBoxCore {
                 EventAction::Unused => return Unused,
                 EventAction::Used
                 | EventAction::FocusGained
-                | EventAction::Cursor
+                | EventAction::Cursor { .. }
                 | EventAction::Preedit => return Used,
-                EventAction::FocusLost => {
+                EventAction::FocusLost { .. } => {
                     self.guard.focus_lost(&mut self.editor.0, cx, data);
                 }
                 EventAction::Activate(code) => {

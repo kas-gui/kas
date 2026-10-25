@@ -567,9 +567,9 @@ mod Inner {
 
             match action {
                 EventAction::Used
-                | EventAction::Cursor
+                | EventAction::Cursor { .. }
                 | EventAction::FocusGained
-                | EventAction::FocusLost
+                | EventAction::FocusLost { .. }
                 | EventAction::Preedit => Used,
                 EventAction::Edit { .. } => {
                     cx.push(CallOnEdit);
