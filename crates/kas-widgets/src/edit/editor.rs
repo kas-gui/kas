@@ -1219,10 +1219,10 @@ impl Part {
         event: Ime,
     ) -> EventAction {
         match event {
-            Ime::Enabled => EventAction::Unused,
+            Ime::Enabled => return EventAction::Unused,
             Ime::Disabled => {
                 let action = self.clear_ime(common, p);
-                if !common.has_key_focus {
+                return if !common.has_key_focus {
                     EventAction::FocusLost {
                         preedit: action.is_some(),
                     }
@@ -1230,18 +1230,27 @@ impl Part {
                     EventAction::Preedit
                 } else {
                     EventAction::Used
-                }
-            }
-            Ime::Preedit { text, cursor } => {
-                let (part, mut edit_range) = match common.current.clone() {
-                    CurrentAction::ImeStart(part) if cursor.is_some() => {
-                        (part, subrange_of(&common.cursor.to_range(), part))
-                    }
-                    CurrentAction::ImeStart(_) => return EventAction::Used,
-                    CurrentAction::ImePreedit { part, edit_range } => (part, edit_range.cast()),
-                    _ => return EventAction::Used,
                 };
+            }
+            _ => (),
+        }
 
+        let mut edit_range: Range<usize> = match common.current.clone() {
+            CurrentAction::ImePreedit { part, edit_range } => {
+                debug_assert_eq!(part, p);
+                edit_range.cast()
+            }
+            _ => {
+                log::warn!("Received {event:?} without CurrentAction::ImePreedit");
+                return EventAction::Used;
+            }
+        };
+        debug_assert!(common.cursor.is_empty());
+        debug_assert_eq!(TextIndex::new(p, edit_range.start), common.cursor.cursor);
+
+        match event {
+            Ime::Enabled | Ime::Disabled => unreachable!(),
+            Ime::Preedit { text, cursor } => {
                 self.replace_range(edit_range.clone(), text);
                 edit_range.end = edit_range.start + text.len();
                 let sel = if let Some((start, end)) = cursor {
@@ -1252,29 +1261,21 @@ impl Part {
                 } else {
                     CursorRange::from(edit_range.start + text.len())
                 };
-                self.set_cursor(common, part, sel);
+                self.set_cursor(common, p, sel);
 
                 common.current = CurrentAction::ImePreedit {
-                    part,
+                    part: p,
                     edit_range: edit_range.cast(),
                 };
                 common.edit_x_coord = None;
                 EventAction::Preedit
             }
             Ime::Commit { text } => {
-                let (part, edit_range) = match common.current.clone() {
-                    CurrentAction::ImeStart(part) => {
-                        (part, subrange_of(&common.cursor.to_range(), part))
-                    }
-                    CurrentAction::ImePreedit { part, edit_range } => (part, edit_range.cast()),
-                    _ => return EventAction::Used,
-                };
-
                 self.replace_range(edit_range.clone(), text);
                 let cursor = edit_range.start + text.len();
-                self.set_cursor(common, part, cursor);
+                self.set_cursor(common, p, cursor);
 
-                common.current = CurrentAction::ImeStart(part);
+                common.current = CurrentAction::ImeStart(p);
                 common.edit_x_coord = None;
                 EventAction::Edit {
                     is_key_input: false,
@@ -1284,49 +1285,28 @@ impl Part {
                 before_bytes,
                 after_bytes,
             } => {
-                let (p, edit_range) = match common.current.clone() {
-                    CurrentAction::ImeStart(p) => (p, subrange_of(&common.cursor.to_range(), p)),
-                    CurrentAction::ImePreedit { edit_range, part } => (part, edit_range.cast()),
-                    _ => return EventAction::Used,
-                };
+                // Note that the pre-edit is cleared and selection is empty.
+                // We assume that an IME calling Ime::DeleteSurrounding which
+                // has a pre-edit will call Ime::Preedit afterwards.
+                debug_assert!(edit_range.is_empty());
 
-                if before_bytes > 0 {
-                    let end = edit_range.start;
-                    let start = end - before_bytes;
-                    if self.as_str().is_char_boundary(start) {
-                        self.replace_range(start..end, "");
-                        let len = end - start;
-                        let adjust = |index: &mut usize| {
-                            if *index >= end {
-                                *index -= len;
-                            } else if *index > start {
-                                *index = start;
-                            }
-                        };
-                        let mut sel = subrange_of(&common.cursor.to_range(), p);
-                        adjust(&mut sel.start);
-                        adjust(&mut sel.end);
-                        self.set_cursor(common, p, sel);
-                    } else {
-                        log::warn!("buggy IME tried to delete range not at char boundary");
-                    }
-                }
+                let start = edit_range.start.saturating_sub(before_bytes);
+                let start = self.as_str().floor_char_boundary(start);
+                let end = edit_range.end.saturating_add(after_bytes);
+                let end = self.as_str().ceil_char_boundary(end);
 
-                if after_bytes > 0 {
-                    let start = edit_range.end;
-                    let end = start + after_bytes;
-                    if self.as_str().is_char_boundary(end) {
-                        self.replace_range(start..end, "");
-                    } else {
-                        log::warn!("buggy IME tried to delete range not at char boundary");
-                    }
-                }
+                self.replace_range(start..end, "");
+                self.set_cursor(common, p, start..start);
+                common.current = CurrentAction::ImeStart(p);
+                common.edit_x_coord = None;
 
                 if let Some(text) = self.ime_surrounding_text(common, p) {
                     cx.update_ime_surrounding_text(&common.id, text);
                 }
 
-                EventAction::Used
+                EventAction::Edit {
+                    is_key_input: false,
+                }
             }
         }
     }
@@ -1643,7 +1623,7 @@ impl Common {
                 }
             }
             Event::Ime(ime) => {
-                let p = self.cursor.cursor.part();
+                let mut p = self.cursor.cursor.part();
                 match self.current {
                     CurrentAction::None if ime == Ime::Enabled => {
                         self.current = CurrentAction::ImeStart(p.cast());
@@ -1673,6 +1653,26 @@ impl Common {
                     }
 
                     self.save_undo_state(parts, opt_op);
+
+                    if let CurrentAction::ImeStart(part) = &self.current {
+                        debug_assert_eq!(p, *part);
+
+                        if !self.cursor.is_empty() {
+                            // Remove selection contents before starting IME edit.
+                            let cursor = self.replace_range(parts, self.cursor.to_range(), "");
+                            p = cursor.part();
+                            self.set_cursor(parts, cursor);
+                        }
+
+                        let b = self.cursor.cursor.byte;
+                        self.current = CurrentAction::ImePreedit {
+                            part: p,
+                            edit_range: b..b,
+                        };
+                    }
+
+                    // This is an active IME event: the result of handle_ime
+                    // will have EventAction::requires_repreparation() -> true.
                 }
 
                 parts.get_mut(p).handle_ime(self, cx, p, ime)
