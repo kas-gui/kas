@@ -1045,7 +1045,8 @@ impl Part {
             draw.decorate_text(pos, rect, &self.forme, decorations);
         }
 
-        if let CurrentAction::ImePreedit { edit_range, .. } = common.current.clone()
+        if let CurrentAction::ImePreedit { part, edit_range } = common.current.clone()
+            && part == p
             && !edit_range.is_empty()
         {
             let tokens = [
@@ -1223,8 +1224,7 @@ impl Part {
                 return EventAction::Used;
             }
         };
-        debug_assert!(common.cursor.is_empty());
-        debug_assert_eq!(TextIndex::new(p, edit_range.start), common.cursor.cursor);
+        debug_assert_eq!(p, common.cursor.cursor.part);
 
         match event {
             Ime::Enabled | Ime::Disabled => unreachable!(),
@@ -1563,9 +1563,7 @@ impl Common {
                 }
             }
             Event::LostSelFocus => {
-                // Ime::Disabled should be received before LostSelFocus
                 let action = if let Some(p) = self.current.ime_part() {
-                    debug_assert!(false);
                     cx.cancel_ime_focus(&self.id);
                     parts.get_mut(p).clear_ime(self, p)
                 } else {
@@ -1653,6 +1651,15 @@ impl Common {
 
                 if let Some(opt_op) = match ime {
                     Ime::Enabled | Ime::Disabled => None,
+                    Ime::Preedit { text, .. }
+                        if text.is_empty()
+                            && matches!(&self.current, CurrentAction::ImeStart(_)) =>
+                    {
+                        // We may receive an empty pre-edit immediately after
+                        // activating an IME; in this case the only effect would
+                        // be to clear an existing selection.
+                        return EventAction::Used;
+                    }
                     Ime::Preedit { .. } | Ime::DeleteSurrounding { .. } => Some(None),
                     Ime::Commit { .. } => Some(Some(EditOp::Ime(p))),
                 } {
@@ -1725,8 +1732,22 @@ impl Common {
                     clear,
                     repeats,
                 } => {
+                    // Get the cursor position now, before clearing the pre-edit:
+                    let mut cursor = self.text_index_nearest(parts, coord);
+
                     let action = if let Some((p, part)) = self.ime_part(parts) {
                         cx.cancel_ime_focus(&self.id);
+                        if cursor.part == p
+                            && let CurrentAction::ImePreedit { edit_range, .. } =
+                                self.current.clone()
+                        {
+                            // Adjust the cursor now if in/after the pre-edit:
+                            if cursor.byte >= edit_range.end {
+                                cursor.byte -= edit_range.end.saturating_sub(edit_range.start);
+                            } else if cursor.byte > edit_range.start {
+                                cursor.byte = edit_range.start;
+                            }
+                        }
                         part.clear_ime(self, p)
                     } else {
                         None
@@ -1734,7 +1755,6 @@ impl Common {
                     self.save_undo_state(parts, Some(EditOp::Cursor));
                     self.current = CurrentAction::Selection;
 
-                    let mut cursor = self.text_index_nearest(parts, coord);
                     let mut anchor = if clear { cursor } else { self.cursor.anchor };
 
                     if repeats > 1 {
