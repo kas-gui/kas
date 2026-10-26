@@ -1535,9 +1535,7 @@ impl Common {
     ) -> EventAction {
         match event {
             Event::NavFocus(source) if source == FocusSource::Key => {
-                if !self.input_handler.is_selecting() {
-                    self.request_input_focus(parts, cx, source);
-                }
+                self.request_input_focus(parts, cx, source);
                 EventAction::Used
             }
             Event::NavFocus(_) => EventAction::Used,
@@ -1615,6 +1613,8 @@ impl Common {
                         if let Some(text) = parts.get(p).ime_surrounding_text((b..b).into()) {
                             cx.update_ime_surrounding_text(&self.id, text);
                         }
+                    } else {
+                        self.request_input_focus(parts, cx, FocusSource::Key);
                     }
 
                     EventAction::Edit { is_key_input: true }
@@ -1825,7 +1825,8 @@ impl Common {
 
     /// Cancel on-going selection and IME actions
     ///
-    /// This should be called to abort the current action.
+    /// This should be called to abort the current action. When handling an
+    /// event [`Self::request_input_focus`] should be called afterwards.
     #[must_use]
     fn cancel_selection_and_ime(
         &mut self,
@@ -1890,16 +1891,16 @@ impl Common {
         cx: &mut EventCx,
         source: FocusSource,
     ) {
-        if self.current.is_ime_enabled() {
-            return; // nothing to do
+        if self.current.is_none() {
+            let hint = Default::default();
+            let purpose = ImePurpose::Normal;
+            cx.request_ime_focus(self.id.clone(), source, hint, purpose, || {
+                let (p, sel) = self.part_subset_of_selection(parts);
+                parts.get(p).ime_surrounding_text(sel)
+            });
+        } else {
+            cx.request_key_focus(self.id.clone(), source);
         }
-
-        let hint = Default::default();
-        let purpose = ImePurpose::Normal;
-        cx.request_ime_focus(self.id.clone(), source, hint, purpose, || {
-            let (p, sel) = self.part_subset_of_selection(parts);
-            parts.get(p).ime_surrounding_text(sel)
-        });
     }
 
     /// Drive action of a [`Command`]
