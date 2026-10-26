@@ -453,13 +453,15 @@ mod Inner {
 
                 let part_size = part.content_size();
                 rect.size.1 = part_size.1;
-                part.set_rect(&self.common, cx, rect);
+                part.set_rect(rect);
 
                 content_size.0 = content_size.0.max(part_size.0);
                 content_size.1 += part_size.1;
                 rect.pos.1 += part_size.1;
             }
             self.content_size = content_size;
+
+            self.common.post_set_rect(&self.parts, cx);
         }
     }
 
@@ -543,7 +545,7 @@ mod Inner {
 
                     let part_size = part.content_size();
                     rect.size.1 = part_size.1;
-                    part.set_rect(&self.common, &mut cx.size_cx(), rect);
+                    part.set_rect(rect);
 
                     content_size.0 = content_size.0.max(part_size.0);
                     content_size.1 += part_size.1;
@@ -551,6 +553,7 @@ mod Inner {
                 }
 
                 self.content_size = content_size;
+                self.common.post_set_rect(&self.parts, cx);
 
                 cx.redraw();
                 if any_resized {

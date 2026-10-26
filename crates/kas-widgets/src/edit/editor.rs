@@ -135,11 +135,6 @@ impl TextIndex {
     }
 }
 
-fn subrange_of(range: &Range<TextIndex>, part: u32) -> Range<usize> {
-    debug_assert!(range.start.part == part && range.end.part == part);
-    range.start.byte()..range.end.byte()
-}
-
 #[derive(Debug, PartialEq, Eq)]
 struct StackItem {
     first_part_num: u32,
@@ -480,7 +475,20 @@ impl<H: Highlighter> Layout for Component<H> {
             .part
             .prepare_wrap(&self.0.common, rect.size.0, rewrap);
 
-        self.0.part.set_rect(&self.0.common, cx, rect);
+        self.0.part.set_rect(rect);
+
+        match self.0.common.current.clone() {
+            CurrentAction::ImeStart(_) => {
+                let b = self.0.common.cursor.cursor.byte();
+                self.0.part.set_ime_cursor_area(&self.0.common, cx, b..b);
+            }
+            CurrentAction::ImePreedit { edit_range, .. } => {
+                self.0
+                    .part
+                    .set_ime_cursor_area(&self.0.common, cx, edit_range.cast());
+            }
+            _ => (),
+        }
     }
 
     #[inline]
@@ -839,12 +847,11 @@ impl Part {
     /// to call [`Self::prepare_wrap`] before this method.
     ///
     /// Note that editors always use default alignment of content.
-    pub fn set_rect(&mut self, common: &Common, cx: &mut SizeCx, rect: Rect) {
+    ///
+    /// Call [`Common::post_set_rect`] after calling `set_rect` on each part.
+    #[inline]
+    pub fn set_rect(&mut self, rect: Rect) {
         self.rect = rect;
-
-        if let Some(p) = common.current.ime_part() {
-            self.set_ime_cursor_area(common, cx, p);
-        }
     }
 
     /// Directly set the position
@@ -1147,16 +1154,10 @@ impl Part {
     }
 
     /// Call to set IME position only while IME is active
-    fn set_ime_cursor_area(&self, common: &Common, cx: &mut EventState, p: u32) {
+    fn set_ime_cursor_area(&self, common: &Common, cx: &mut EventState, range: Range<usize>) {
         if !self.is_ready() {
             return;
         }
-
-        let range = match common.current.clone() {
-            CurrentAction::ImeStart(_) => subrange_of(&common.cursor.to_range(), p),
-            CurrentAction::ImePreedit { edit_range, .. } => edit_range.cast(),
-            _ => return,
-        };
 
         let (m1, m2);
         if range.is_empty() {
@@ -1309,8 +1310,9 @@ impl Common {
     ) -> TextIndex {
         if !parts.variable_length() {
             debug_assert!(range.start.part == 0 && range.end.part == 0);
-            let range = subrange_of(&range, 0);
-            parts.get_mut(0).replace_range(range.clone(), replacement);
+            let part = parts.get_mut(0);
+            let range = range.start.byte()..range.end.byte();
+            part.replace_range(range.clone(), replacement);
             return TextIndex::new(0, range.start + replacement.len());
         }
 
@@ -1496,6 +1498,24 @@ impl Common {
         }
     }
 
+    /// Call after `set_rect` to update the IME cursor rect
+    pub fn post_set_rect(&self, parts: &impl PartList, cx: &mut EventState) {
+        match self.current.clone() {
+            CurrentAction::ImeStart(part) => {
+                let p = self.cursor.cursor.part();
+                debug_assert_eq!(part, p);
+                let b = self.cursor.cursor.byte();
+                parts.get(p).set_ime_cursor_area(self, cx, b..b);
+            }
+            CurrentAction::ImePreedit { part, edit_range } => {
+                parts
+                    .get(part)
+                    .set_ime_cursor_area(self, cx, edit_range.cast());
+            }
+            _ => (),
+        }
+    }
+
     /// Handle an event
     ///
     /// If [`EventAction::requires_repreparation`] then the caller **must**
@@ -1619,8 +1639,9 @@ impl Common {
                 let mut p = self.cursor.cursor.part();
                 match self.current {
                     CurrentAction::None if ime == Ime::Enabled => {
-                        self.current = CurrentAction::ImeStart(p.cast());
-                        parts.get(p).set_ime_cursor_area(self, cx, p);
+                        let (p, sel) = self.part_subset_of_selection(parts);
+                        self.current = CurrentAction::ImeStart(p);
+                        parts.get(p).set_ime_cursor_area(self, cx, sel.to_range());
                         return EventAction::Used;
                     }
                     CurrentAction::Selection => {
@@ -2268,9 +2289,12 @@ impl Common {
         if update_ime {
             let (p, sel) = self.part_subset_of_selection(parts);
             self.current = CurrentAction::ImeStart(p);
-            if let Some(text) = parts.get(p).ime_surrounding_text(sel) {
+            let part = parts.get(p);
+            if let Some(text) = part.ime_surrounding_text(sel) {
                 cx.update_ime_surrounding_text(&self.id, text);
             }
+            let b = sel.cursor;
+            part.set_ime_cursor_area(self, cx, b..b);
         }
 
         Ok(action)
