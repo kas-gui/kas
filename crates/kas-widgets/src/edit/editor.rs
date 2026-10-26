@@ -1910,6 +1910,26 @@ impl Common {
         mut cmd: Command,
         code: Option<PhysicalKey>,
     ) -> Result<EventAction, NotReady> {
+        // Virtual keyboards may hit this case so we should handle it:
+        let mut update_ime = false;
+        match &self.current {
+            CurrentAction::None => (),
+            CurrentAction::ImeStart(_) => update_ime = true,
+            CurrentAction::ImePreedit { .. } => {
+                return match cmd {
+                    Command::Escape | Command::Deselect => {
+                        let _ = self.cancel_selection_and_ime(parts, cx);
+                        Ok(EventAction::Preedit)
+                    }
+                    _ => Ok(EventAction::Unused),
+                };
+            }
+            CurrentAction::Selection => {
+                self.input_handler.stop_selecting();
+                self.current = CurrentAction::None;
+            }
+        }
+
         let editable = !self.read_only;
         let mut shift = cx.modifiers().shift_key();
         let default_line_break = self.default_line_break;
@@ -2204,15 +2224,6 @@ impl Common {
 
         let is_deselect = matches!(action, Action::Deselect);
 
-        // Virtual keyboards may hit this case so we should handle it:
-        let update_ime = matches!(&self.current, CurrentAction::ImeStart(_));
-        let preedit = if update_ime {
-            false
-        } else {
-            // Do not attempt to handle other keyboard/IME interactions
-            self.cancel_selection_and_ime(parts, cx).is_some()
-        };
-
         let edit_op = match action {
             Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
             Action::Activate | Action::UndoRedo(_) => None,
@@ -2237,7 +2248,7 @@ impl Common {
             Action::Deselect => {
                 self.cursor.clear_selection();
                 cx.redraw();
-                EventAction::Cursor { preedit }
+                EventAction::Cursor { preedit: false }
             }
             Action::Activate => EventAction::Activate(code),
             Action::Insert(s, is_key_input) => {
@@ -2263,7 +2274,7 @@ impl Common {
                 }
                 self.edit_x_coord = x_coord;
                 cx.redraw();
-                EventAction::Cursor { preedit }
+                EventAction::Cursor { preedit: false }
             }
             Action::UndoRedo(redo) => {
                 if let Some(item) = self.undo_stack.undo_or_redo(redo) {
@@ -2297,8 +2308,6 @@ impl Common {
                     EventAction::Edit {
                         is_key_input: false,
                     }
-                } else if preedit {
-                    EventAction::Preedit
                 } else {
                     EventAction::Used
                 }
