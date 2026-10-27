@@ -103,4 +103,10 @@ impl CurrentAction {
     fn is_ime_enabled(&self) -> bool {
         self.ime_part().is_some()
     }
+
+    /// True on `Selection`
+    #[inline]
+    fn is_selecting(&self) -> bool {
+        matches!(self, CurrentAction::Selection)
+    }
 }

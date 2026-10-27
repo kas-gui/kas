@@ -1806,18 +1806,57 @@ impl Common {
                     EventAction::Cursor { preedit: false }
                 }
                 TextInputAction::PressEnd { coord } => {
-                    debug_assert!(!self.current.is_ime_enabled());
-                    self.save_undo_state(parts, Some(EditOp::Cursor));
-                    if self.current == CurrentAction::Selection {
-                        self.set_primary(parts, cx);
+                    let mut opt_index = if !self.current.is_selecting() {
+                        Some(self.text_index_nearest(parts, coord))
                     } else {
-                        let index = self.text_index_nearest(parts, coord);
+                        None
+                    };
+
+                    // Virtual keyboards may hit this case so we should handle it:
+                    let update_ime = matches!(&self.current, CurrentAction::ImeStart(_));
+                    let action = if !update_ime && let Some((p, part_struct)) = self.ime_part(parts)
+                    {
+                        cx.cancel_ime_focus(&self.id);
+                        if let Some(index) = opt_index.as_mut()
+                            && let CurrentAction::ImePreedit { part, edit_range } = &self.current
+                            && *part == p
+                        {
+                            if index.byte >= edit_range.end {
+                                index.byte -= edit_range.end - edit_range.start;
+                            } else if index.byte > edit_range.start {
+                                index.byte = edit_range.start;
+                            }
+                        }
+                        part_struct.clear_ime(self, p)
+                    } else {
+                        None
+                    };
+
+                    self.save_undo_state(parts, Some(EditOp::Cursor));
+                    if let Some(index) = opt_index {
                         self.set_cursor(parts, index);
+                    } else {
+                        self.set_primary(parts, cx);
                     }
                     self.current = CurrentAction::None;
 
-                    self.request_input_focus(parts, cx, FocusSource::Pointer);
-                    EventAction::Used
+                    if update_ime && let Some(index) = opt_index {
+                        self.current = CurrentAction::ImeStart(index.part);
+                        let b = index.byte();
+                        if let Some(text) =
+                            parts.get(index.part).ime_surrounding_text((b..b).into())
+                        {
+                            cx.update_ime_surrounding_text(&self.id, text);
+                        }
+                    } else {
+                        self.request_input_focus(parts, cx, FocusSource::Pointer);
+                    }
+
+                    if action.is_some() {
+                        EventAction::Preedit
+                    } else {
+                        EventAction::Used
+                    }
                 }
             },
         }
@@ -1898,7 +1937,7 @@ impl Common {
                 let (p, sel) = self.part_subset_of_selection(parts);
                 parts.get(p).ime_surrounding_text(sel)
             });
-        } else {
+        } else if !self.current.is_selecting() {
             cx.request_key_focus(self.id.clone(), source);
         }
     }
