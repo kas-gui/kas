@@ -373,11 +373,11 @@ impl<'a> EventCx<'a> {
         self.need_frame_update = true;
     }
 
-    pub(super) fn clear_ime_focus(&mut self, id: Id) {
+    pub(super) fn clear_ime_focus(&mut self, old_target: Option<Id>) {
         // NOTE: we assume that winit will send us Ime::Disabled. Until then,
         // other IME events (e.g. a final Commit) are routed to `old_ime_target`.
         match self.window.ime_request(ImeRequest::Disable) {
-            Ok(()) => self.input.old_ime_target = Some(id),
+            Ok(()) => self.input.old_ime_target = old_target,
             Err(e) => log::error!("Unexpected IME error: {e}"),
         }
         self.input.ime_focus = false;
@@ -573,8 +573,10 @@ impl<'a> EventCx<'a> {
             },
             Ime::Disabled => {
                 // IME disabled by external cause
-                self.input.ime_focus = false;
-                self.input.ime_cursor_area = Rect::ZERO;
+                if self.input.ime_focus {
+                    // Avoid re-enablement by external cause:
+                    self.clear_ime_focus(None);
+                }
 
                 super::Ime::Disabled
             }
@@ -586,7 +588,7 @@ impl<'a> EventCx<'a> {
     pub(super) fn flush_pending_input_focus(&mut self, mut widget: Node<'_>) {
         if let Some(focus) = self.input.lost_focus.take() {
             if focus.ime {
-                self.clear_ime_focus(focus.id.clone());
+                self.clear_ime_focus(Some(focus.id.clone()));
             }
 
             if focus.key {
