@@ -1191,6 +1191,9 @@ impl Part {
     }
 
     /// Handle IME methods on a given `Part`.
+    ///
+    /// Note: this method never reads the cursor and all variants other than
+    /// `Enabled` or `Disabled` set the cursor.
     fn handle_ime(
         &mut self,
         common: &mut Common,
@@ -1225,7 +1228,6 @@ impl Part {
                 return EventAction::Used;
             }
         };
-        debug_assert_eq!(p, common.cursor.cursor.part);
 
         match event {
             Ime::Enabled | Ime::Disabled => unreachable!(),
@@ -1707,7 +1709,16 @@ impl Common {
                 press.grab_click(self.id.clone()).complete(cx).into()
             }
             Event::PressEnd { press, .. } if press.is_tertiary() => {
-                let cursor = self.text_index_nearest(parts, press.coord);
+                let mut cursor = self.text_index_nearest(parts, press.coord);
+                if let CurrentAction::ImePreedit { part, edit_range } = &self.current
+                    && *part == cursor.part
+                {
+                    if cursor.byte >= edit_range.end {
+                        cursor.byte -= edit_range.end - edit_range.start;
+                    } else if cursor.byte > edit_range.start {
+                        cursor.byte = edit_range.start;
+                    }
+                }
                 let preedit = self.cancel_selection_and_ime(parts, cx).is_some();
 
                 let action = if let Some(content) = cx.get_primary() {
@@ -1819,12 +1830,11 @@ impl Common {
 
                     // Virtual keyboards may hit this case so we should handle it:
                     let update_ime = matches!(&self.current, CurrentAction::ImeStart(_));
-                    let action = if !update_ime && let Some((p, part_struct)) = self.ime_part(parts)
-                    {
+                    let action = if !update_ime && let Some((p, part)) = self.ime_part(parts) {
                         cx.cancel_ime_focus(&self.id);
                         if let Some(index) = opt_index.as_mut()
-                            && let CurrentAction::ImePreedit { part, edit_range } = &self.current
-                            && *part == p
+                            && let CurrentAction::ImePreedit { edit_range, .. } = &self.current
+                            && index.part == p
                         {
                             if index.byte >= edit_range.end {
                                 index.byte -= edit_range.end - edit_range.start;
@@ -1832,7 +1842,7 @@ impl Common {
                                 index.byte = edit_range.start;
                             }
                         }
-                        part_struct.clear_ime(self, p)
+                        part.clear_ime(self, p)
                     } else {
                         None
                     };
