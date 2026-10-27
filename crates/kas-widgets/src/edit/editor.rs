@@ -1660,6 +1660,10 @@ impl Common {
                         // be to clear an existing selection.
                         return EventAction::Used;
                     }
+                    _ if !self.cursor.is_empty() => {
+                        let range = self.cursor.to_range();
+                        Some(Some(EditOp::Replace(range.start.part, range.end.part)))
+                    }
                     Ime::Preedit { .. } | Ime::DeleteSurrounding { .. } => Some(None),
                     Ime::Commit { .. } => Some(Some(EditOp::Ime(p))),
                 } {
