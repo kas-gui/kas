@@ -336,15 +336,20 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    /// True if the primary buffer is enabled
+    /// True if there is primary selection buffer (Linux)
     #[inline]
     pub fn has_primary(&self) -> bool {
-        cfg_if::cfg_if! {
-            if #[cfg(unix)] {
-                true
-            } else {
-                false
-            }
+        #[cfg(all(
+            unix,
+            not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+        ))]
+        {
+            return self.window.has_primary_selection();
+        }
+
+        #[allow(unused)]
+        {
+            false
         }
     }
 

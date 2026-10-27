@@ -46,6 +46,11 @@ struct WindowData<G: GraphicsInstance> {
     window_id: WindowId,
     solve_cache: SolveCache,
     need_redraw: bool,
+    #[cfg(all(
+        unix,
+        not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+    ))]
+    has_primary_selection: bool,
 }
 
 impl<G: GraphicsInstance> WindowData<G> {
@@ -236,6 +241,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             window_id: self.ev_state.window_id,
             solve_cache,
             need_redraw: true,
+            #[cfg(all(
+                unix,
+                not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+            ))]
+            has_primary_selection: el.primary_selection_ext().is_some(),
         };
         self.surface = Some((theme, window));
 
@@ -826,5 +836,14 @@ pub(crate) trait WindowDataErased {
     /// window. An application may have multiple top-level windows.
     fn top_window(&self) -> &dyn winit::window::Window {
         self.window()
+    }
+
+    /// True if there is primary selection buffer (Linux)
+    #[cfg(all(
+        unix,
+        not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+    ))]
+    fn has_primary_selection(&self) -> bool {
+        self.has_primary_selection
     }
 }
