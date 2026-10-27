@@ -291,24 +291,6 @@ pub(crate) trait RunnerT {
         None
     }
 
-    /// Attempt to set clipboard contents
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
-    fn set_clipboard(&mut self, content: String) {
-        #[cfg(not(feature = "clipboard"))]
-        let _ = content;
-
-        #[cfg(feature = "clipboard")]
-        if let Some(cb) = self.clipboard.as_mut() {
-            match cb.set_text(content) {
-                Ok(()) => (),
-                Err(e) => warn_about_error("Failed to set clipboard contents", &e),
-            }
-        }
-    }
-
     /// Get contents of primary buffer
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
@@ -334,40 +316,6 @@ pub(crate) trait RunnerT {
         }
 
         None
-    }
-
-    /// Set contents of primary buffer
-    ///
-    /// Linux has a "primary buffer" with implicit copy on text selection and
-    /// paste on middle-click. This method does nothing on other platforms.
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
-    fn set_primary(&mut self, content: String) {
-        #[cfg(any(
-            not(unix),
-            any(target_os = "macos", target_os = "android", target_os = "emscripten"),
-            not(feature = "clipboard"),
-        ))]
-        let _ = content;
-
-        #[cfg(all(
-            unix,
-            not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
-            feature = "clipboard",
-        ))]
-        if let Some(cb) = self.clipboard.as_mut() {
-            use arboard::{LinuxClipboardKind, SetExtLinux};
-            match cb
-                .set()
-                .clipboard(LinuxClipboardKind::Primary)
-                .text(content)
-            {
-                Ok(()) => (),
-                Err(e) => warn_about_error("Failed to set clipboard contents", &e),
-            }
-        }
     }
 
     /// Access the [`DrawShared`] object

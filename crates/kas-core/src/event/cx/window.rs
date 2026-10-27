@@ -7,6 +7,7 @@
 
 use super::{EventCx, EventState, PopupState, TopWindow};
 use crate::cast::Cast;
+use crate::data_transfer::PlainUtf8Transfer;
 use crate::event::{Event, FocusSource};
 use crate::geom::DVec2;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
@@ -328,13 +329,11 @@ impl<'a> EventCx<'a> {
 
     /// Attempt to set clipboard contents
     pub fn set_clipboard(&mut self, content: String) {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard() {
-            cb.store(content);
-            return;
+        let boxed = Box::new(PlainUtf8Transfer::from(content));
+        match self.window.event_loop().set_clipboard(boxed) {
+            Ok(()) => (),
+            Err(e) => log::warn!("set_clipboard failed: {e}"),
         }
-
-        self.runner.set_clipboard(content)
     }
 
     /// True if the primary buffer is enabled
@@ -373,13 +372,13 @@ impl<'a> EventCx<'a> {
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
     pub fn set_primary(&mut self, content: String) {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard() {
-            cb.store_primary(content);
-            return;
+        if let Some(pri) = self.window.event_loop().primary_selection_ext() {
+            let boxed = Box::new(PlainUtf8Transfer::from(content));
+            match pri.set_primary_selection(boxed) {
+                Ok(()) => (),
+                Err(e) => log::warn!("set_primary failed: {e}"),
+            }
         }
-
-        self.runner.set_primary(content)
     }
 
     /// Get a handle to the current window
