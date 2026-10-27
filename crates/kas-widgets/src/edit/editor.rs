@@ -1133,8 +1133,9 @@ impl Part {
         let mut start = 0;
         let mut end = text.len();
         if text.len() > MAX_TEXT_BYTES {
-            if sel.cursor.min(sel.anchor) > MAX_TEXT_BYTES / 2 {
-                start = text.floor_char_boundary(MAX_TEXT_BYTES / 2);
+            let range_start = sel.cursor.min(sel.anchor);
+            if range_start > MAX_TEXT_BYTES / 2 {
+                start = text.floor_char_boundary(range_start - MAX_TEXT_BYTES / 4);
                 sel.cursor -= start;
                 sel.anchor -= start;
             }
