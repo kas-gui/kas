@@ -31,7 +31,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # Basic support for common platforms (uses kas-soft)
 minimal = ["wayland", "soft"]
 # Recommended minimal feature set (uses kas-wgpu)
-default = ["wayland", "vulkan", "dx12", "metal", "clipboard", "shaping"]
+default = ["wayland", "vulkan", "dx12", "metal", "shaping"]
 # All standard test target features
 stable = ["default", "view", "image-default-formats", "canvas", "svg", "markdown", "spawn", "x11", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
@@ -72,9 +72,6 @@ soft = ["dep:kas-soft", "kas-dylib?/soft"]
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.
 internal_doc = ["kas-core/internal_doc"]
-
-# Enables clipboard read/write
-clipboard = ["kas-core/clipboard"]
 
 # Enable AccessKit integration
 accesskit = ["kas-core/accesskit"]

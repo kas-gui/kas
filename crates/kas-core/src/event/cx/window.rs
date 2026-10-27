@@ -12,8 +12,6 @@ use crate::event::{Event, FocusSource};
 use crate::geom::DVec2;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
-#[cfg(all(wayland_platform, feature = "clipboard"))]
-use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
 use crate::{ActionRedraw, Id, Node, WindowActions};
 use winit::event::{ElementState, FingerId, Ime, KeyEvent, MouseButton, MouseScrollDelta};
@@ -313,17 +311,6 @@ impl<'a> EventCx<'a> {
     /// In case of failure, paste actions will simply fail. The implementation
     /// may wish to log an appropriate warning message.
     pub fn get_clipboard(&mut self) -> Option<String> {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard() {
-            return match cb.load() {
-                Ok(s) => Some(s),
-                Err(e) => {
-                    warn_about_error("Failed to get clipboard contents", &e);
-                    None
-                }
-            };
-        }
-
         self.runner.get_clipboard()
     }
 
@@ -358,17 +345,6 @@ impl<'a> EventCx<'a> {
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
     pub fn get_primary(&mut self) -> Option<String> {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard() {
-            return match cb.load_primary() {
-                Ok(s) => Some(s),
-                Err(e) => {
-                    warn_about_error("Failed to get clipboard contents", &e);
-                    None
-                }
-            };
-        }
-
         self.runner.get_primary()
     }
 

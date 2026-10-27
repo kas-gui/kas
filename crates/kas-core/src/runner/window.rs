@@ -33,8 +33,6 @@ use winit::window::{ImeRequest, ImeRequestError, WindowAttributes};
 
 /// Window fields requiring a frame or surface
 struct WindowData<G: GraphicsInstance> {
-    #[cfg(all(wayland_platform, feature = "clipboard"))]
-    wayland_clipboard: Option<smithay_clipboard::Clipboard>,
     /// Graphical surface
     graphical: G::Surface,
     /// Frame rate counter
@@ -207,19 +205,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             "Window::resume: constructed with physical size {size:?}, scale factor {scale_factor}",
         );
 
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        use raw_window_handle::{HasDisplayHandle, RawDisplayHandle, WaylandDisplayHandle};
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        let wayland_clipboard = match window.display_handle() {
-            Ok(handle) => match handle.as_raw() {
-                RawDisplayHandle::Wayland(WaylandDisplayHandle { display, .. }) => {
-                    Some(unsafe { smithay_clipboard::Clipboard::new(display.as_ptr()) })
-                }
-                _ => None,
-            },
-            _ => None,
-        };
-
         let winit_id = window.id();
 
         #[cfg(feature = "accesskit")]
@@ -230,8 +215,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         surface.configure(&mut shared.draw.as_mut().unwrap().draw, size);
 
         let window = WindowData {
-            #[cfg(all(wayland_platform, feature = "clipboard"))]
-            wayland_clipboard,
             graphical: surface,
             frame_count: (Instant::now(), 0),
 
@@ -798,16 +781,9 @@ pub(crate) trait WindowDataErased {
     fn window_id(&self) -> WindowId {
         self.window_id
     }
-
     /// Access the [`ActiveEventLoop`]
     fn event_loop(&self) -> &dyn ActiveEventLoop {
         self.el
-    }
-
-    /// Access the wayland clipboard object, if available
-    #[cfg(all(wayland_platform, feature = "clipboard"))]
-    fn wayland_clipboard(&self) -> Option<&smithay_clipboard::Clipboard> {
-        self.wayland_clipboard.as_ref()
     }
 
     /// Set the mouse pointer icon
