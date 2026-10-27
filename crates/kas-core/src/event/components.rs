@@ -443,7 +443,9 @@ pub enum TextInputAction {
     /// The text cursor and selection anchors should be placed at the closest
     /// position to `coord`.
     ///
-    /// This corresponds to a mouse click (down). It may be followed by
+    /// This corresponds to a mouse click (down) or touch press-and-hold (but
+    /// not touch start: this is ambiguous since it could be interpreted as a
+    /// scroll action instead). It may be followed by
     /// [`Self::PressMove`] and will be concluded by [`Self::PressMove`] unless
     /// cancelled by calling [`TextInput::stop_selecting`].
     PressStart {

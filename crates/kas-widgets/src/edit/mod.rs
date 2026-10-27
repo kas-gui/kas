@@ -77,9 +77,10 @@ enum CurrentAction {
 }
 
 impl CurrentAction {
+    /// True on `None`
     #[inline]
     fn is_none(&self) -> bool {
-        *self == CurrentAction::None
+        matches!(self, CurrentAction::None)
     }
 
     /// Returns `Some(part)` when IME is enabled using the given `part`.
@@ -101,5 +102,11 @@ impl CurrentAction {
     #[inline]
     fn is_ime_enabled(&self) -> bool {
         self.ime_part().is_some()
+    }
+
+    /// True on `Selection`
+    #[inline]
+    fn is_selecting(&self) -> bool {
+        matches!(self, CurrentAction::Selection)
     }
 }

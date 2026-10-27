@@ -125,7 +125,7 @@ pub enum Event<'a> {
     /// An Input Method Editor event
     ///
     /// IME events are only received with
-    /// [IME focus](EventCx::replace_ime_focus).
+    /// [IME focus](EventCx::request_ime_focus).
     ///
     /// On [`Ime::Enabled`],
     /// the widget should call [`EventState::set_ime_cursor_area`] immediately
