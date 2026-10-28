@@ -6,12 +6,12 @@
 //! Menubar
 
 use super::{Menu, SubMenu, SubMenuBuilder};
-use kas::event::{FocusSource, TimerHandle};
+use kas::event::{FocusSource, TimerId};
 use kas::layout::{self, RowPositionSolver, RowSetter, RowSolver, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
 
-const TIMER_SHOW: TimerHandle = TimerHandle::new(0, false);
+const TIMER_SHOW: TimerId = TimerId::new(0, false);
 
 #[impl_self]
 mod MenuBar {

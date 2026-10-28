@@ -9,7 +9,7 @@ use cast::CastApprox;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::{EventCx, IsUsed, TimerHandle, Unused, Used};
+use super::{EventCx, IsUsed, TimerId, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press, PressStart};
 use crate::geom::{Affine, Offset, Vec2};
@@ -195,7 +195,7 @@ pub enum Event<'a> {
     /// Update from a timer
     ///
     /// This event must be requested by [`EventState::request_timer`].
-    Timer(TimerHandle),
+    Timer(TimerId),
     /// Notification that a popup has been closed
     ///
     /// This is sent to the popup when closed.
@@ -765,7 +765,7 @@ fn sizes() {
     assert_eq!(size_of::<ScrollDelta>(), 12);
     assert_eq!(size_of::<Affine>(), 32);
     assert_eq!(size_of::<Press>(), 24);
-    assert_eq!(size_of::<TimerHandle>(), 8);
+    assert_eq!(size_of::<TimerId>(), 8);
     assert_eq!(size_of::<WindowId>(), 4);
     assert_eq!(size_of::<FocusSource>(), 1);
     assert_eq!(size_of::<Event>(), 40);

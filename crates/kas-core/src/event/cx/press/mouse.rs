@@ -7,7 +7,7 @@
 
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::event::{
-    Event, EventCx, EventState, FocusSource, NavAdvance, PressStart, ScrollDelta, TimerHandle,
+    Event, EventCx, EventState, FocusSource, NavAdvance, PressStart, ScrollDelta, TimerId,
 };
 use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::WindowErased;
@@ -100,7 +100,7 @@ impl Default for Mouse {
 }
 
 impl Mouse {
-    pub(crate) const TIMER_TOOLTIP: TimerHandle = TimerHandle::new(1 << 59, false);
+    pub(crate) const TIMER_TOOLTIP: TimerId = TimerId::new(1 << 59, false);
 
     /// Clear all focus and grabs on `target`
     pub(in crate::event::cx) fn cancel_event_focus(&mut self, target: &Id) {

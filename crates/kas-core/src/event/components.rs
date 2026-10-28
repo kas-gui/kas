@@ -14,8 +14,8 @@ use kas_macros::{autoimpl, impl_default};
 use std::time::Instant;
 use unicode_segmentation::UnicodeSegmentation;
 
-const TIMER_SELECT: TimerHandle = TimerHandle::new(1 << 60, true);
-const TIMER_KINETIC: TimerHandle = TimerHandle::new((1 << 60) + 1, true);
+const TIMER_SELECT: TimerId = TimerId::new(1 << 60, true);
+const TIMER_KINETIC: TimerId = TimerId::new((1 << 60) + 1, true);
 const KINETIC_RESIDUAL_VEL_REDUCTION_FACTOR: f32 = 0.5;
 
 /// Details used to initiate kinetic scrolling

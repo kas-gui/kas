@@ -9,30 +9,37 @@ use super::{EventCx, EventState};
 use crate::{Id, Node, event::Event};
 use std::time::{Duration, Instant};
 
-/// A timer handle
+/// A timer identifier
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TimerHandle(i64);
-impl TimerHandle {
-    /// Construct a new handle
+pub struct TimerId(i64);
+impl TimerId {
+    /// Construct a new timer identifier
     ///
-    /// The code must be positive. If a widget uses multiple timers, each must
-    /// have a unique code.
+    /// Requirements:
     ///
-    /// When a timer update is requested multiple times before delivery using
-    /// the same `TimerHandle`, these requests are merged, choosing the
-    /// earliest time if `earliest`, otherwise the latest time.
+    /// -   `code >= 0` (otherwise this method panics)
+    /// -   A widget using multiple timers must use a distinct `TimerId` for
+    ///     each timer; that is the `(Id, TimerId)` pair must be unique.
+    ///
+    /// Note: `TimerId::new(a, true) != TimerId::new(a, false)` for all
+    /// `a >= 0`.
+    ///
+    /// Multiple timer requests for the same widget `Id` and `TimerId` are
+    /// merged, choosing the earliest request's time if `earliest`, otherwise
+    /// the latest time.
     pub const fn new(code: i64, earliest: bool) -> Self {
         assert!(code >= 0);
-        if earliest {
-            TimerHandle(-code - 1)
-        } else {
-            TimerHandle(code)
-        }
+        if earliest { TimerId(-code - 1) } else { TimerId(code) }
     }
 
     /// Check whether this timer chooses the earliest time when merging
     pub fn earliest(self) -> bool {
         self.0 < 0
+    }
+
+    /// Return the identifier's raw code
+    pub fn as_i64(self) -> i64 {
+        if self.earliest() { -(self.0 + 1) } else { self.0 }
     }
 }
 
@@ -52,24 +59,24 @@ impl EventState {
     /// use [`Draw::animate`](crate::draw::Draw::animate) or
     /// [`Self::request_frame_timer`].
     ///
-    /// Widget `id` will receive [`Event::Timer`] with this `handle` at
+    /// Widget `id` will receive [`Event::Timer`] with this `timer` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
     /// Requesting an update with `delay == 0` is valid, except from an
     /// [`Event::Timer`] handler (where it may cause an infinite loop).
     ///
-    /// Multiple timer requests with the same `id` and `handle` are merged
-    /// (see [`TimerHandle`] documentation).
-    pub fn request_timer(&mut self, id: Id, handle: TimerHandle, delay: Duration) {
+    /// Multiple timer requests with the same `id` and `timer` are merged
+    /// (see [`TimerId`] documentation).
+    pub fn request_timer(&mut self, id: Id, timer: TimerId, delay: Duration) {
         debug_assert!(id.is_valid());
         let time = Instant::now() + delay;
         if let Some(row) = self
             .time_updates
             .iter_mut()
-            .find(|row| row.1 == id && row.2 == handle)
+            .find(|row| row.1 == id && row.2 == timer)
         {
-            let earliest = handle.earliest();
+            let earliest = timer.earliest();
             if earliest && row.0 <= time || !earliest && row.0 >= time {
                 return;
             }
@@ -81,7 +88,7 @@ impl EventState {
                 "request_timer: update {id} at now+{}ms",
                 delay.as_millis()
             );
-            self.time_updates.push((time, id, handle));
+            self.time_updates.push((time, id, timer));
         }
 
         self.time_updates.sort_by_key(|b| std::cmp::Reverse(b.0));
@@ -89,17 +96,17 @@ impl EventState {
 
     /// Schedule a frame timer update
     ///
-    /// Widget `id` will receive [`Event::Timer`] with this `handle` either
+    /// Widget `id` will receive [`Event::Timer`] with this `timer` either
     /// before or soon after the next frame is drawn.
     ///
     /// This may be useful for animations which mutate widget state. Animations
     /// which don't mutate widget state may use
     /// [`Draw::animate`](crate::draw::Draw::animate) instead.
     ///
-    /// It is expected that `handle.earliest() == true` (style guide).
-    pub fn request_frame_timer(&mut self, id: Id, handle: TimerHandle) {
-        debug_assert!(handle.earliest());
-        self.frame_updates.insert((id, handle));
+    /// It is expected that `timer.earliest() == true` (style guide).
+    pub fn request_frame_timer(&mut self, id: Id, timer: TimerId) {
+        debug_assert!(timer.earliest());
+        self.frame_updates.insert((id, timer));
     }
 }
 
@@ -117,8 +124,8 @@ impl<'a> EventCx<'a> {
         self.touch_frame_update(widget.re());
 
         let frame_updates = std::mem::take(&mut self.frame_updates);
-        for (id, handle) in frame_updates.into_iter() {
-            self.send_event(widget.re(), id, Event::Timer(handle));
+        for (id, timer) in frame_updates.into_iter() {
+            self.send_event(widget.re(), id, Event::Timer(timer));
         }
 
         self.cx.input.frame_update(self.window, widget.as_tile());

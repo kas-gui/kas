@@ -6,7 +6,7 @@
 //! `ScrollBar` control
 
 use super::{GripMsg, GripPart};
-use kas::event::TimerHandle;
+use kas::event::TimerId;
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
@@ -37,7 +37,7 @@ pub enum ScrollBarMode {
 #[derive(Copy, Clone, Debug)]
 pub struct ScrollBarMsg(pub i32);
 
-const TIMER_HIDE: TimerHandle = TimerHandle::new(0, false);
+const TIMER_HIDE: TimerId = TimerId::new(0, false);
 
 #[impl_self]
 mod ScrollBar {

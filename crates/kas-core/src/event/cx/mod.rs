@@ -42,7 +42,7 @@ pub use handle::TopWindow;
 pub use nav::NavAdvance;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource, PressStart};
 pub(crate) use press::{Mouse, Touch};
-pub use timer::TimerHandle;
+pub use timer::TimerId;
 pub(crate) use window::InputEvent;
 
 struct PopupState {
@@ -88,8 +88,8 @@ pub struct EventState {
     access_keys: HashMap<Key, Id>,
     popups: SmallVec<[PopupState; 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
-    time_updates: Vec<(Instant, Id, TimerHandle)>,
-    frame_updates: LinearSet<(Id, TimerHandle)>,
+    time_updates: Vec<(Instant, Id, TimerId)>,
+    frame_updates: LinearSet<(Id, TimerId)>,
     need_frame_update: bool,
     // Set of messages awaiting sending
     send_queue: VecDeque<(Id, Erased)>,
