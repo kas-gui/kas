@@ -14,6 +14,7 @@ use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::time::Instant;
+use winit::event_loop::AsyncRequestSerial;
 
 use super::*;
 use crate::cast::{Cast, Conv};
@@ -90,6 +91,7 @@ pub struct EventState {
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
     time_updates: Vec<(Instant, Id, TimerId)>,
     frame_updates: LinearSet<(Id, TimerId)>,
+    data_transfers: LinearMap<AsyncRequestSerial, Id>,
     need_frame_update: bool,
     // Set of messages awaiting sending
     send_queue: VecDeque<(Id, Erased)>,
@@ -126,6 +128,7 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             frame_updates: Default::default(),
+            data_transfers: Default::default(),
             need_frame_update: false,
             send_queue: Default::default(),
             pending_send_targets: vec![],

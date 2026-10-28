@@ -8,6 +8,7 @@
 use cast::CastApprox;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use winit::data_transfer::DataTransferId;
 
 use super::{EventCx, IsUsed, TimerId, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
@@ -196,6 +197,11 @@ pub enum Event<'a> {
     ///
     /// This event must be requested by [`EventState::request_timer`].
     Timer(TimerId),
+    /// A data transfer
+    ///
+    /// This event may be returned when requesting clipboard contents or
+    /// drag-and-drop data.
+    DataTransfer { id: DataTransferId, value: String },
     /// Notification that a popup has been closed
     ///
     /// This is sent to the popup when closed.
@@ -325,6 +331,7 @@ impl<'a> Event<'a> {
             Key(_, _) | Scroll(_) => false,
             PointerMove { .. } | PressStart(_) => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
+            DataTransfer { .. } => false,
             Timer(_) | PopupClosed(_) => true,
             NavFocus { .. } | SelFocus(_) | KeyFocus | MouseOver(true) => false,
             LostNavFocus | LostKeyFocus | LostSelFocus | MouseOver(false) => true,
@@ -362,6 +369,7 @@ impl<'a> Event<'a> {
             Key(_, _) | Ime(_) => false,
             PressMove { .. } | PressEnd { .. } => false,
             Timer(_) => false,
+            DataTransfer { .. } => false,
 
             // Notifications of focus/status change
             PopupClosed(_) => false,

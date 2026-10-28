@@ -14,7 +14,10 @@ use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
 use crate::{ActionRedraw, Id, Node, WindowActions};
+use std::sync::Arc;
+use winit::data_transfer::{DataTransferId, TypeHint, TypedData};
 use winit::event::{ElementState, FingerId, Ime, KeyEvent, MouseButton, MouseScrollDelta};
+use winit::event_loop::AsyncRequestSerial;
 use winit::keyboard::ModifiersState;
 
 pub(crate) enum InputEvent {
@@ -48,6 +51,12 @@ pub(crate) enum InputEvent {
     TouchEnd {
         finger_id: FingerId,
         position: DVec2,
+    },
+    /// This is a copy of [`winit::event::WindowEvent::DataTransferReceived`].
+    DataTransferReceived {
+        id: DataTransferId,
+        serial: AsyncRequestSerial,
+        value: Arc<dyn TypedData>,
     },
 }
 
@@ -306,12 +315,27 @@ impl<'a> EventCx<'a> {
         self.runner.close_window(id);
     }
 
-    /// Attempt to get clipboard contents
+    /// Request clipboard contents
     ///
-    /// In case of failure, paste actions will simply fail. The implementation
-    /// may wish to log an appropriate warning message.
-    pub fn get_clipboard(&mut self) -> Option<String> {
-        self.runner.get_clipboard()
+    /// On success, widget `target` will receive [`Event::DataTransfer`] with
+    /// the given [`DataTransferId`]. On failure, no transfer event will be
+    /// delivered.
+    pub fn get_clipboard(&mut self, target: Id) -> Option<DataTransferId> {
+        let el = self.window.event_loop();
+
+        let id = el
+            .clipboard()
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+            .ok()
+            .flatten()?;
+
+        let serial = el
+            .fetch_data_transfer(id, &TypeHint::Plaintext)
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+            .ok()?;
+
+        self.data_transfers.insert(serial, target);
+        Some(id)
     }
 
     /// Attempt to set clipboard contents
@@ -340,12 +364,31 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    /// Get contents of primary buffer
+    /// Request contents of primary selection buffer
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
-    pub fn get_primary(&mut self) -> Option<String> {
-        self.runner.get_primary()
+    ///
+    /// On success, widget `target` will receive [`Event::DataTransfer`] with
+    /// the given [`DataTransferId`]. On failure, no transfer event will be
+    /// delivered.
+    pub fn get_primary(&mut self, target: Id) -> Option<DataTransferId> {
+        let el = self.window.event_loop();
+
+        let id = el
+            .primary_selection_ext()?
+            .primary_selection()
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+            .ok()
+            .flatten()?;
+
+        let serial = el
+            .fetch_data_transfer(id, &TypeHint::Plaintext)
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+            .ok()?;
+
+        self.data_transfers.insert(serial, target);
+        Some(id)
     }
 
     /// Set contents of primary buffer
@@ -430,6 +473,24 @@ impl<'a> EventCx<'a> {
                 finger_id,
                 position,
             } => self.handle_touch_end(win.as_node(data), finger_id, position),
+
+            InputEvent::DataTransferReceived { id, serial, value } => {
+                let Some(target) = self.data_transfers.remove(&serial) else {
+                    log::warn!("received data transfer with unknown serial");
+                    return;
+                };
+
+                match value.try_as_string() {
+                    Ok(value) => {
+                        let event = Event::DataTransfer { id, value };
+                        self.send_event(win.as_node(data), target, event);
+                    }
+                    Err(e) => {
+                        log::warn!("data transfer failed to convert value: {e}");
+                        return;
+                    }
+                }
+            }
         }
     }
 }

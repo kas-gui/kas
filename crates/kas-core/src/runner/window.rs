@@ -398,6 +398,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                     position: position.into(),
                 },
             },
+            WindowEvent::DataTransferReceived { id, serial, value } => {
+                InputEvent::DataTransferReceived { id, serial, value }
+            }
             _ => return false,
         };
 

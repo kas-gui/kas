@@ -1084,22 +1084,6 @@ impl Part {
         self.require_reprepare();
     }
 
-    fn trim_paste(&self, wrap: bool, text: &str) -> Range<usize> {
-        let mut end = text.len();
-        if !wrap {
-            // We cut the content short on control characters and
-            // ignore them (preventing line-breaks and ignoring any
-            // actions such as recursive-paste).
-            for (i, c) in text.char_indices() {
-                if c < '\u{20}' || ('\u{7f}'..='\u{9f}').contains(&c) {
-                    end = i;
-                    break;
-                }
-            }
-        }
-        0..end
-    }
-
     /// Clean up IME state
     ///
     /// One should also call [`EventCx::cancel_ime_focus`] unless this is
@@ -1584,6 +1568,43 @@ impl Common {
                     EventAction::Used
                 }
             }
+            Event::DataTransfer { id, value } => {
+                if let CurrentAction::Paste { id: id2, source } = &self.current
+                    && *id2 == id
+                {
+                    let source = *source;
+                    self.current = CurrentAction::None;
+
+                    let range = {
+                        let mut end = value.len();
+                        if !self.wrap {
+                            // We cut the content short on control characters and
+                            // ignore them (preventing line-breaks and ignoring any
+                            // actions such as recursive-paste).
+                            for (i, c) in value.char_indices() {
+                                if c < '\u{20}' || ('\u{7f}'..='\u{9f}').contains(&c) {
+                                    end = i;
+                                    break;
+                                }
+                            }
+                        }
+                        0..end
+                    };
+
+                    let cursor =
+                        self.replace_range(parts, self.cursor.to_range(), &value[range.clone()]);
+                    self.set_cursor(parts, cursor);
+
+                    self.request_input_focus(parts, cx, source);
+
+                    EventAction::Edit {
+                        is_key_input: false,
+                    }
+                } else {
+                    log::warn!("Unexpected data transfer");
+                    EventAction::Used
+                }
+            }
             Event::Command(cmd, code) => self
                 .cmd_action(parts, cx, cmd, code)
                 .unwrap_or(EventAction::Used),
@@ -1721,24 +1742,16 @@ impl Common {
                 }
                 let preedit = self.cancel_selection_and_ime(parts, cx).is_some();
 
-                let action = if let Some(content) = cx.get_primary() {
-                    let p = cursor.part();
-                    self.save_undo_state(parts, Some(EditOp::Replace(p, p)));
+                let p = cursor.part();
+                self.save_undo_state(parts, Some(EditOp::Replace(p, p)));
 
-                    let part = parts.get_mut(p);
-                    let range = part.trim_paste(self.wrap, &content);
-                    let cursor = self.replace_range(parts, cursor..cursor, &content[range.clone()]);
-                    self.set_cursor(parts, cursor);
-                    EventAction::Edit {
-                        is_key_input: false,
-                    }
-                } else {
-                    self.set_cursor(parts, cursor);
-                    EventAction::Cursor { preedit }
-                };
+                self.set_cursor(parts, cursor);
+                if let Some(id) = cx.get_primary(self.id.clone()) {
+                    let source = FocusSource::Pointer;
+                    self.current = CurrentAction::Paste { id, source };
+                }
 
-                self.request_input_focus(parts, cx, FocusSource::Pointer);
-                action
+                EventAction::Cursor { preedit }
             }
             event => match self.input_handler.handle(cx, self.id.clone(), event) {
                 TextInputAction::Used => EventAction::Used,
@@ -1968,7 +1981,7 @@ impl Common {
         // Virtual keyboards may hit this case so we should handle it:
         let mut update_ime = false;
         match &self.current {
-            CurrentAction::None => (),
+            CurrentAction::None | CurrentAction::Paste { .. } => (),
             CurrentAction::ImeStart(_) => update_ime = true,
             CurrentAction::ImePreedit { .. } => {
                 return match cmd {
@@ -1981,9 +1994,9 @@ impl Common {
             }
             CurrentAction::Selection => {
                 self.input_handler.stop_selecting();
-                self.current = CurrentAction::None;
             }
         }
+        self.current = CurrentAction::None;
 
         let editable = !self.read_only;
         let mut shift = cx.modifiers().shift_key();
@@ -1998,7 +2011,6 @@ impl Common {
         let multi_line = self.wrap;
         let selection = self.cursor.to_range();
         let have_sel = selection.end > selection.start;
-        let string;
 
         if c_part.text_is_rtl() {
             match cmd {
@@ -2018,6 +2030,7 @@ impl Common {
             Delete(Range<TextIndex>, bool),
             Move(TextIndex, Option<f32>),
             UndoRedo(bool),
+            Paste(DataTransferId),
         }
 
         let action = match cmd {
@@ -2265,10 +2278,8 @@ impl Common {
                 }
             }
             Command::Paste if editable => {
-                if let Some(content) = cx.get_clipboard() {
-                    let range = c_part.trim_paste(self.wrap, &content);
-                    string = content;
-                    Action::Insert(&string[range], false)
+                if let Some(id) = cx.get_clipboard(self.id.clone()) {
+                    Action::Paste(id)
                 } else {
                     return Ok(EventAction::Used);
                 }
@@ -2282,7 +2293,7 @@ impl Common {
         let edit_op = match action {
             Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
             Action::Activate | Action::UndoRedo(_) => None,
-            Action::Insert(_, false) => Some(EditOp::Replace(
+            Action::Insert(_, false) | Action::Paste(_) => Some(EditOp::Replace(
                 selection.start.part(),
                 selection.end.part(),
             )),
@@ -2366,6 +2377,11 @@ impl Common {
                 } else {
                     EventAction::Used
                 }
+            }
+            Action::Paste(id) => {
+                let source = FocusSource::Synthetic;
+                self.current = CurrentAction::Paste { id, source };
+                return Ok(EventAction::Used);
             }
         };
 

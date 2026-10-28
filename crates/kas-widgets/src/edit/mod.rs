@@ -16,10 +16,11 @@ pub use edit_box::EditBox;
 pub use edit_field::EditBoxCore;
 pub use editor::{Common, Editor, Part};
 pub use guard::*;
+use kas::data_transfer::DataTransferId;
 pub use multi_part::MultiPartEditor;
 
 use kas::cast::Cast;
-use kas::event::PhysicalKey;
+use kas::event::{FocusSource, PhysicalKey};
 use std::fmt::Debug;
 use std::ops::Range;
 
@@ -62,6 +63,11 @@ enum CurrentAction {
     /// No current action
     #[default]
     None,
+    /// A paste was requested; awaiting data transfer
+    Paste {
+        id: DataTransferId,
+        source: FocusSource,
+    },
     /// IME is enabled but no input has yet been given. This is special in that
     /// a selection may exist (which would get replaced by the pre-edit text).
     ImeStart(u32),
@@ -89,7 +95,7 @@ impl CurrentAction {
     #[inline]
     fn ime_part(&self) -> Option<u32> {
         match self {
-            CurrentAction::None | CurrentAction::Selection => None,
+            CurrentAction::None | CurrentAction::Paste { .. } | CurrentAction::Selection => None,
             CurrentAction::ImeStart(part) | CurrentAction::ImePreedit { part, .. } => {
                 Some((*part).cast())
             }
