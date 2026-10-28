@@ -250,16 +250,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
+        el: &dyn ActiveEventLoop,
     ) -> Option<ActionClose> {
         if let Some((ref theme, ref mut window)) = self.surface {
             self.ev_state.suspended(shared);
 
-            let actions = self.ev_state.flush_pending(
-                shared,
-                theme.size(),
-                window,
-                self.widget.as_node(data),
-            );
+            let awh = ActiveWindowHandle { window, el };
+            let actions =
+                self.ev_state
+                    .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
 
             // NOTE: ignore resize, redraw actions
             actions.close
@@ -280,6 +279,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
+        el: &dyn ActiveEventLoop,
         event: WindowEvent,
     ) -> bool {
         let Some((ref mut theme, ref mut window)) = self.surface else {
@@ -342,7 +342,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 }
                 return false;
             }
-            WindowEvent::RedrawRequested => return self.do_draw(shared, data).is_err(),
+            WindowEvent::RedrawRequested => return self.do_draw(shared, data, el).is_err(),
 
             WindowEvent::CloseRequested => {
                 self.ev_state.close_own_window();
@@ -408,7 +408,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             _ => return false,
         };
 
-        let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
+        let awh = ActiveWindowHandle { window, el };
+        let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.input_event(&mut self.widget, data, event)
         });
         self.apply_size(data, false, resize.is_some());
@@ -420,14 +421,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
+        el: &dyn ActiveEventLoop,
     ) -> (WindowActions, Option<Instant>) {
         let Some((ref theme, ref mut window)) = self.surface else {
             return (WindowActions::default(), None);
         };
 
+        let awh = ActiveWindowHandle { window, el };
         let actions =
             self.ev_state
-                .flush_pending(shared, theme.size(), window, self.widget.as_node(data));
+                .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
         if actions.resize.is_some() {
             self.apply_size(data, false, true);
         }
@@ -534,6 +537,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
+        el: &dyn ActiveEventLoop,
         requested_resume: Instant,
     ) {
         let Some((ref theme, ref mut window)) = self.surface else {
@@ -548,7 +552,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let widget = self.widget.as_node(data);
 
         if Some(requested_resume) == self.ev_state.next_resume() {
-            let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
+            let awh = ActiveWindowHandle { window, el };
+            let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
                 cx.update_timer(widget);
             });
             if resize.is_some() {
@@ -665,14 +670,20 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     ///
     /// Returns an error when drawing is aborted and further event handling may
     /// be needed before a redraw.
-    pub(super) fn do_draw(&mut self, shared: &mut Shared<A, G, T>, data: &A) -> Result<(), ()> {
+    pub(super) fn do_draw(
+        &mut self,
+        shared: &mut Shared<A, G, T>,
+        data: &A,
+        el: &dyn ActiveEventLoop,
+    ) -> Result<(), ()> {
         let start = Instant::now();
         let Some((ref theme, ref window)) = self.surface else {
             return Ok(());
         };
 
         let widget = self.widget.as_node(data);
-        let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
+        let awh = ActiveWindowHandle { window, el };
+        let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.frame_update(widget);
         });
         if resize.is_some() {
@@ -765,11 +776,22 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 }
 
-#[crate::split_impl(for<G: GraphicsInstance> WindowData<G>)]
+#[autoimpl(Deref, DerefMut using self.window)]
+struct ActiveWindowHandle<'a, G: GraphicsInstance> {
+    window: &'a WindowData<G>,
+    el: &'a dyn ActiveEventLoop,
+}
+
+#[crate::split_impl(for<'a, G: GraphicsInstance> ActiveWindowHandle<'a, G>)]
 pub(crate) trait WindowDataErased {
     /// Get the window identifier
     fn window_id(&self) -> WindowId {
         self.window_id
+    }
+
+    /// Access the [`ActiveEventLoop`]
+    fn event_loop(&self) -> &dyn ActiveEventLoop {
+        self.el
     }
 
     /// Access the wayland clipboard object, if available

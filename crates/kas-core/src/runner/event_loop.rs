@@ -55,7 +55,7 @@ where
                     first_future = i;
 
                     if let Some(w) = self.windows.get_mut(&resume.1) {
-                        w.update_timer(&mut self.shared, &self.data, resume.0)
+                        w.update_timer(&mut self.shared, &self.data, el, resume.0)
                     }
                 }
 
@@ -126,7 +126,7 @@ where
     ) {
         if let Some(id) = self.id_map.get(&window_id)
             && let Some(window) = self.windows.get_mut(id)
-            && window.handle_event(&mut self.shared, &self.data, event)
+            && window.handle_event(&mut self.shared, &self.data, el, event)
         {
             el.set_control_flow(ControlFlow::Poll);
         }
@@ -172,10 +172,10 @@ where
         };
     }
 
-    fn suspended(&mut self, _: &dyn ActiveEventLoop) {
+    fn suspended(&mut self, el: &dyn ActiveEventLoop) {
         if !self.suspended {
             self.windows
-                .retain(|_, window| window.suspend(&mut self.shared, &self.data).is_none());
+                .retain(|_, window| window.suspend(&mut self.shared, &self.data, el).is_none());
             self.data.suspended();
             self.shared.suspended();
             self.suspended = true;
@@ -300,18 +300,18 @@ where
 
         self.resumes.clear();
         self.windows.retain(|window_id, window| {
-            let (actions, resume) = window.flush_pending(&mut self.shared, &self.data);
+            let (actions, resume) = window.flush_pending(&mut self.shared, &self.data, el);
             if let Some(instant) = resume {
                 self.resumes.push((instant, *window_id));
             }
 
             if close_all || actions.close.is_some() {
-                window.suspend(&mut self.shared, &self.data);
+                window.suspend(&mut self.shared, &self.data, el);
 
                 // Call flush_pending again since suspend may queue messages.
                 // We don't care about the returned WindowActions or resume times since
                 // the window is being destroyed.
-                let _ = window.flush_pending(&mut self.shared, &self.data);
+                let _ = window.flush_pending(&mut self.shared, &self.data, el);
 
                 self.id_map.retain(|_, v| v != window_id);
                 false
