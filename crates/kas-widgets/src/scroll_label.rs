@@ -202,7 +202,8 @@ mod ScrollTextCore {
         fn set_primary(&self, cx: &mut EventCx) {
             if self.has_sel_focus && !self.selection.is_empty() && cx.has_primary() {
                 let range = self.selection.to_range();
-                cx.set_primary(String::from(&self.text.as_str()[range]));
+                let data = self.text.text().as_data_transfer(range);
+                cx.set_primary(data);
             }
         }
 
@@ -262,7 +263,8 @@ mod ScrollTextCore {
                     }
                     Command::Cut | Command::Copy => {
                         let range = self.selection.to_range();
-                        cx.set_clipboard((self.text.as_str()[range]).to_string());
+                        let data = self.text.text().as_data_transfer(range);
+                        cx.set_clipboard(data);
                         return Used;
                     }
                     _ => return Unused,

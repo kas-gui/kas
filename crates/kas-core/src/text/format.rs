@@ -6,8 +6,10 @@
 //! Formatted text traits and types
 
 use std::num::NonZeroU32;
+use std::ops::Range;
 
 use super::fonts::FontSelector;
+use crate::data_transfer::{DataTransferSend, PlainUtf8Transfer};
 use crate::draw::color::{Rgba, Rgba8Srgb};
 use crate::theme::ColorsLinear;
 pub use kas_text::FontToken;
@@ -222,6 +224,16 @@ pub trait FormattableText: std::cmp::PartialEq {
     #[inline]
     fn decorations(&self) -> &[(u32, Decoration)] {
         &[]
+    }
+
+    /// Construct a [`DataTransferSend`] impl from self
+    ///
+    /// This method is used to implement clipboard copy and drag-and-drop from
+    /// a selected sub-`range` of this (formattable) text. The default
+    /// implementation supports only plain text; other implementations might
+    /// support (for example) HTML or RTF.
+    fn as_data_transfer(&self, range: Range<usize>) -> Box<dyn DataTransferSend> {
+        Box::new(PlainUtf8Transfer::from(self.as_str()[range].to_string()))
     }
 }
 

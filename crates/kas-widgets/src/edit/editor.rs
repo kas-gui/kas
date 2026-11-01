@@ -2271,7 +2271,7 @@ impl Common {
             }
             Command::Cut | Command::Copy if have_sel => {
                 let text = self.copy_selection_to_string(parts);
-                cx.set_clipboard(text);
+                cx.set_clipboard_plain_text(text);
                 if cmd == Command::Cut && editable {
                     Action::Delete(selection.clone(), false)
                 } else {
@@ -2408,7 +2408,7 @@ impl Common {
     /// Set primary clipboard (mouse buffer) contents from selection
     fn set_primary(&self, parts: &impl PartList, cx: &mut EventCx) {
         if !self.cursor.is_empty() && cx.has_primary() && cx.has_sel_focus(&self.id) {
-            cx.set_primary(self.copy_selection_to_string(parts));
+            cx.set_primary_plain_text(self.copy_selection_to_string(parts));
         }
     }
 

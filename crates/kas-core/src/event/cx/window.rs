@@ -16,7 +16,9 @@ use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
 use crate::{ActionRedraw, Id, Node, WindowActions};
 use linear_map::LinearMap;
 use std::sync::Arc;
-use winit::data_transfer::{DataTransfer, DataTransferId, TransferType, TypeHint, TypedData};
+use winit::data_transfer::{
+    DataTransfer, DataTransferId, DataTransferSend, TransferType, TypeHint, TypedData,
+};
 use winit::event::{ElementState, FingerId, Ime, KeyEvent, MouseButton, MouseScrollDelta};
 use winit::event_loop::{ActiveEventLoop, AsyncRequestSerial};
 use winit::keyboard::ModifiersState;
@@ -406,12 +408,16 @@ impl<'a> EventCx<'a> {
     }
 
     /// Attempt to set clipboard contents
-    pub fn set_clipboard(&mut self, content: String) {
-        let boxed = Box::new(PlainUtf8Transfer::from(content));
-        match self.window.event_loop().set_clipboard(boxed) {
+    pub fn set_clipboard(&mut self, content: Box<dyn DataTransferSend>) {
+        match self.window.event_loop().set_clipboard(content) {
             Ok(()) => (),
             Err(e) => log::warn!("set_clipboard failed: {e}"),
         }
+    }
+
+    /// Attempt to set clipboard contents as plain text
+    pub fn set_clipboard_plain_text(&mut self, content: String) {
+        self.set_clipboard(Box::new(PlainUtf8Transfer::from(content)));
     }
 
     /// True if there is primary selection buffer (Linux)
@@ -462,13 +468,22 @@ impl<'a> EventCx<'a> {
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
-    pub fn set_primary(&mut self, content: String) {
+    pub fn set_primary(&mut self, content: Box<dyn DataTransferSend>) {
         if let Some(pri) = self.window.event_loop().primary_selection_ext() {
-            let boxed = Box::new(PlainUtf8Transfer::from(content));
-            match pri.set_primary_selection(boxed) {
+            match pri.set_primary_selection(content) {
                 Ok(()) => (),
                 Err(e) => log::warn!("set_primary failed: {e}"),
             }
+        }
+    }
+
+    /// Set contents of primary buffer as plain text
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    pub fn set_primary_plain_text(&mut self, content: String) {
+        if self.has_primary() {
+            self.set_primary(Box::new(PlainUtf8Transfer::from(content)));
         }
     }
 
