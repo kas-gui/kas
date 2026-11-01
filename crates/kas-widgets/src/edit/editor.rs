@@ -1397,8 +1397,8 @@ impl Common {
     fn copy_selection_to_string(&self, parts: &impl PartList) -> String {
         let range = self.cursor.to_range();
         if range.start.part == range.end.part {
-            return parts.get(range.start.part()).as_str()[range.start.byte()..range.end.byte()]
-                .to_string();
+            let p = range.start.part();
+            return parts.get(p).as_str()[range.start.byte()..range.end.byte()].to_string();
         }
 
         let (p_start, p_end) = (range.start.part(), range.end.part());
@@ -1410,8 +1410,10 @@ impl Common {
 
         let mut s = String::with_capacity(c);
         s.push_str(&parts.get(p_start).as_str()[range.start.byte()..]);
+        s.push('\n');
         for p in p_start + 1..p_end {
             s.push_str(parts.get(p).as_str());
+            s.push('\n');
         }
         if range.end.byte > 0 {
             s.push_str(&parts.get(p_end).as_str()[..range.end.byte()]);
