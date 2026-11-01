@@ -17,6 +17,7 @@
 use super::highlight::{self, Highlighter, SchemeColors};
 use super::*;
 use kas::cast::{Cast, Ceil, Floor, Nearest};
+use kas::data_transfer::TypeHint;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{
     ConfigCx, ElementState, FocusSource, Ime, ImePurpose, ImeSurroundingText, Scroll,
@@ -1573,6 +1574,8 @@ impl Common {
             Event::DataTransfer { id, value } => {
                 if let CurrentAction::Paste { id: id2, source } = &self.current
                     && *id2 == id
+                    && value.type_().matches(&TypeHint::Plaintext)
+                    && let Ok(value) = value.try_as_string()
                 {
                     let source = *source;
                     self.current = CurrentAction::None;
@@ -1745,7 +1748,7 @@ impl Common {
                 self.save_undo_state(parts, Some(EditOp::Replace(p, p)));
 
                 self.set_cursor(parts, cursor);
-                if let Some(id) = cx.get_primary(self.id.clone()) {
+                if let Some(id) = cx.get_primary_plain_text(self.id.clone()) {
                     let source = FocusSource::Pointer;
                     self.current = CurrentAction::Paste { id, source };
                 }
@@ -2276,7 +2279,7 @@ impl Common {
                 }
             }
             Command::Paste if editable => {
-                if let Some(id) = cx.get_clipboard(self.id.clone()) {
+                if let Some(id) = cx.get_clipboard_plain_text(self.id.clone()) {
                     Action::Paste(id)
                 } else {
                     return Ok(EventAction::Used);

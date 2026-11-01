@@ -14,10 +14,11 @@ use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
 use crate::{ActionRedraw, Id, Node, WindowActions};
+use linear_map::LinearMap;
 use std::sync::Arc;
-use winit::data_transfer::{DataTransferId, TypeHint, TypedData};
+use winit::data_transfer::{DataTransfer, DataTransferId, TransferType, TypeHint, TypedData};
 use winit::event::{ElementState, FingerId, Ime, KeyEvent, MouseButton, MouseScrollDelta};
-use winit::event_loop::AsyncRequestSerial;
+use winit::event_loop::{ActiveEventLoop, AsyncRequestSerial};
 use winit::keyboard::ModifiersState;
 
 pub(crate) enum InputEvent {
@@ -58,6 +59,38 @@ pub(crate) enum InputEvent {
         serial: AsyncRequestSerial,
         value: Arc<dyn TypedData>,
     },
+}
+
+/// Control over data transfer type selection
+///
+/// Multiple types may be selected. No transfer happens if no types are selected.
+pub struct TypeSelector<'a> {
+    el: &'a dyn ActiveEventLoop,
+    dt: &'a dyn DataTransfer,
+    transfers: &'a mut LinearMap<AsyncRequestSerial, Id>,
+    id: DataTransferId,
+    target: Id,
+}
+impl<'a> TypeSelector<'a> {
+    /// Return the transfer identifier
+    pub fn id(&self) -> DataTransferId {
+        self.id
+    }
+
+    /// Get available types
+    pub fn types(&self) -> &dyn DataTransfer {
+        self.dt
+    }
+
+    /// Elect to receive data of this type
+    pub fn select(&mut self, type_: &(dyn TransferType + 'static)) {
+        match self.el.fetch_data_transfer(self.id, type_) {
+            Ok(serial) => {
+                self.transfers.insert(serial, self.target.clone());
+            }
+            Err(e) => log::warn!("get_clipboard failed: {e}"),
+        }
+    }
 }
 
 impl EventState {
@@ -317,10 +350,44 @@ impl<'a> EventCx<'a> {
 
     /// Request clipboard contents
     ///
+    /// Assuming the clipboard is not empty, closure `type_selector` will be
+    /// called to select a data type for transfer.
+    ///
     /// On success, widget `target` will receive [`Event::DataTransfer`] with
     /// the given [`DataTransferId`]. On failure, no transfer event will be
     /// delivered.
-    pub fn get_clipboard(&mut self, target: Id) -> Option<DataTransferId> {
+    pub fn get_clipboard(&mut self, target: Id, mut type_selector: impl FnMut(&mut TypeSelector)) {
+        let el = self.window.event_loop();
+
+        let Ok(Some(id)) = el
+            .clipboard()
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+        else {
+            return;
+        };
+
+        let Ok(dt) = el
+            .data_transfer(id)
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+        else {
+            return;
+        };
+
+        type_selector(&mut TypeSelector {
+            el,
+            dt: &*dt,
+            transfers: &mut self.data_transfers,
+            id,
+            target,
+        });
+    }
+
+    /// Request clipboard contents as plain UTF-8
+    ///
+    /// On success, widget `target` will receive [`Event::DataTransfer`] with
+    /// the given [`DataTransferId`]. On failure, no transfer event will be
+    /// delivered.
+    pub fn get_clipboard_plain_text(&mut self, target: Id) -> Option<DataTransferId> {
         let el = self.window.event_loop();
 
         let id = el
@@ -364,7 +431,7 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    /// Request contents of primary selection buffer
+    /// Request contents of primary selection buffer as plain UTF-8
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
@@ -372,7 +439,7 @@ impl<'a> EventCx<'a> {
     /// On success, widget `target` will receive [`Event::DataTransfer`] with
     /// the given [`DataTransferId`]. On failure, no transfer event will be
     /// delivered.
-    pub fn get_primary(&mut self, target: Id) -> Option<DataTransferId> {
+    pub fn get_primary_plain_text(&mut self, target: Id) -> Option<DataTransferId> {
         let el = self.window.event_loop();
 
         let id = el
@@ -480,16 +547,8 @@ impl<'a> EventCx<'a> {
                     return;
                 };
 
-                match value.try_as_string() {
-                    Ok(value) => {
-                        let event = Event::DataTransfer { id, value };
-                        self.send_event(win.as_node(data), target, event);
-                    }
-                    Err(e) => {
-                        log::warn!("data transfer failed to convert value: {e}");
-                        return;
-                    }
-                }
+                let event = Event::DataTransfer { id, value };
+                self.send_event(win.as_node(data), target, event);
             }
         }
     }

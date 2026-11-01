@@ -45,6 +45,7 @@ pub use press::{GrabBuilder, GrabMode, Press, PressSource, PressStart};
 pub(crate) use press::{Mouse, Touch};
 pub use timer::TimerId;
 pub(crate) use window::InputEvent;
+pub use window::TypeSelector;
 
 struct PopupState {
     id: WindowId,

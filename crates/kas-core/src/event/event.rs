@@ -5,17 +5,17 @@
 
 //! Event handling: `Event` type and dependencies
 
-use cast::CastApprox;
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-use winit::data_transfer::DataTransferId;
-
 use super::{EventCx, IsUsed, TimerId, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press, PressStart};
 use crate::geom::{Affine, Offset, Vec2};
 #[allow(unused)] use crate::{Events, window::Popup};
 use crate::{Id, dir::Direction, window::WindowId};
+use cast::CastApprox;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use winit::data_transfer::{DataTransferId, TypedData};
 
 /// Input Method Editor events
 ///
@@ -201,7 +201,10 @@ pub enum Event<'a> {
     ///
     /// This event may be returned when requesting clipboard contents or
     /// drag-and-drop data.
-    DataTransfer { id: DataTransferId, value: String },
+    DataTransfer {
+        id: DataTransferId,
+        value: Arc<dyn TypedData>,
+    },
     /// Notification that a popup has been closed
     ///
     /// This is sent to the popup when closed.
