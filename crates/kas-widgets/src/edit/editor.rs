@@ -1614,7 +1614,7 @@ impl Common {
                     let update_ime = matches!(&self.current, CurrentAction::ImeStart(_));
                     if !update_ime {
                         // Do not attempt to handle other keyboard/IME interactions
-                        let _ = self.cancel_selection_and_ime(parts, cx);
+                        let _ = self.cancel_current_action(parts, cx);
                     }
 
                     let selection = self.cursor.to_range();
@@ -1637,8 +1637,6 @@ impl Common {
                         if let Some(text) = parts.get(p).ime_surrounding_text((b..b).into()) {
                             cx.update_ime_surrounding_text(&self.id, text);
                         }
-                    } else {
-                        self.request_input_focus(parts, cx, FocusSource::Key);
                     }
 
                     EventAction::Edit { is_key_input: true }
@@ -1659,21 +1657,18 @@ impl Common {
             }
             Event::Ime(ime) => {
                 let mut p = self.cursor.cursor.part();
-                match self.current {
-                    CurrentAction::None if ime == Ime::Enabled => {
+                if !self.current.is_ime_enabled() {
+                    if self.current == CurrentAction::Selection {
+                        cx.cancel_ime_focus(&self.id);
+                    } else if ime == Ime::Enabled {
                         let (p, sel) = self.part_subset_of_selection(parts);
                         self.current = CurrentAction::ImeStart(p);
                         parts.get(p).set_ime_cursor_area(self, cx, sel.to_range());
-                        return EventAction::Used;
                     }
-                    CurrentAction::Selection => {
-                        cx.cancel_ime_focus(&self.id);
-                        return EventAction::Unused;
-                    }
-                    _ => (),
+                    return EventAction::Used;
                 }
 
-                if let Some(opt_op) = match ime {
+                let opt_opt_op = match ime {
                     Ime::Enabled | Ime::Disabled => None,
                     Ime::Preedit { text, .. }
                         if text.is_empty()
@@ -1690,7 +1685,9 @@ impl Common {
                     }
                     Ime::Preedit { .. } | Ime::DeleteSurrounding { .. } => Some(None),
                     Ime::Commit { .. } => Some(Some(EditOp::Ime(p))),
-                } {
+                };
+
+                if let Some(opt_op) = opt_opt_op {
                     if let CurrentAction::ImePreedit { part, edit_range } = &mut self.current {
                         debug_assert_eq!(p, *part);
                         // Clear pre-edit before saving undo state.
@@ -1740,7 +1737,7 @@ impl Common {
                         cursor.byte = edit_range.start;
                     }
                 }
-                let preedit = self.cancel_selection_and_ime(parts, cx).is_some();
+                let preedit = self.cancel_current_action(parts, cx).is_some();
 
                 let p = cursor.part();
                 self.save_undo_state(parts, Some(EditOp::Replace(p, p)));
@@ -1803,7 +1800,9 @@ impl Common {
                     }
                     self.set_cursor(parts, CursorRange::from(anchor..cursor));
 
-                    self.request_input_focus(parts, cx, FocusSource::Pointer);
+                    // Request only key (not IME) focus:
+                    cx.request_key_focus(self.id.clone(), FocusSource::Pointer);
+
                     EventAction::Cursor {
                         preedit: action.is_some(),
                     }
@@ -1890,26 +1889,26 @@ impl Common {
         }
     }
 
-    /// Cancel on-going selection and IME actions
+    /// Cancel on-going selection, paste and IME actions
     ///
     /// This should be called to abort the current action. When handling an
     /// event [`Self::request_input_focus`] should be called afterwards.
     #[must_use]
-    fn cancel_selection_and_ime(
+    fn cancel_current_action(
         &mut self,
         parts: &mut impl PartList,
         cx: &mut EventState,
     ) -> Option<ActionPrepare> {
+        let mut action = None;
         if self.current == CurrentAction::Selection {
             self.input_handler.stop_selecting();
-            self.current = CurrentAction::None;
-            None
         } else if let Some((p, part)) = self.ime_part(parts) {
             cx.cancel_ime_focus(&self.id);
-            part.clear_ime(self, p)
-        } else {
-            None
+            action = part.clear_ime(self, p);
         }
+
+        self.current = CurrentAction::None;
+        action
     }
 
     /// Call before an edit to (potentially) commit current state based on last_edit
@@ -1958,15 +1957,13 @@ impl Common {
         cx: &mut EventCx,
         source: FocusSource,
     ) {
-        if self.current.is_none() {
+        if !self.current.is_ime_enabled() && !self.current.is_selecting() {
             let hint = Default::default();
             let purpose = ImePurpose::Normal;
             cx.request_ime_focus(self.id.clone(), source, hint, purpose, || {
                 let (p, sel) = self.part_subset_of_selection(parts);
                 parts.get(p).ime_surrounding_text(sel)
             });
-        } else if !self.current.is_selecting() {
-            cx.request_key_focus(self.id.clone(), source);
         }
     }
 
@@ -1986,7 +1983,7 @@ impl Common {
             CurrentAction::ImePreedit { .. } => {
                 return match cmd {
                     Command::Escape | Command::Deselect => {
-                        let _ = self.cancel_selection_and_ime(parts, cx);
+                        let _ = self.cancel_current_action(parts, cx);
                         Ok(EventAction::Preedit)
                     }
                     _ => Ok(EventAction::Unused),
@@ -1996,7 +1993,6 @@ impl Common {
                 self.input_handler.stop_selecting();
             }
         }
-        self.current = CurrentAction::None;
 
         let editable = !self.read_only;
         let mut shift = cx.modifiers().shift_key();
@@ -2288,6 +2284,7 @@ impl Common {
             _ => return Ok(EventAction::Unused),
         };
 
+        self.current = CurrentAction::None;
         let is_deselect = matches!(action, Action::Deselect);
 
         let edit_op = match action {
@@ -2478,7 +2475,7 @@ impl Editor {
     pub fn clear(&mut self, cx: &mut EventState) {
         self.common.last_edit = Some(EditOp::Initial);
         self.common.undo_stack.clear();
-        let _ = self.common.cancel_selection_and_ime(&mut self.part, cx);
+        let _ = self.common.cancel_current_action(&mut self.part, cx);
 
         Rc::make_mut(&mut self.part.text).clear();
         self.part.require_reprepare();
@@ -2534,7 +2531,7 @@ impl Editor {
     }
 
     fn set_text_unchecked(&mut self, cx: &mut EventState, text: Rc<String>) {
-        let _ = self.common.cancel_selection_and_ime(&mut self.part, cx);
+        let _ = self.common.cancel_current_action(&mut self.part, cx);
 
         self.common
             .save_undo_state(&mut self.part, Some(EditOp::Replace(0, 0)));
@@ -2553,7 +2550,7 @@ impl Editor {
     /// This method does not call action handlers on the guard.
     #[inline]
     pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
-        let _ = self.common.cancel_selection_and_ime(&mut self.part, cx);
+        let _ = self.common.cancel_current_action(&mut self.part, cx);
 
         self.common
             .save_undo_state(&mut self.part, Some(EditOp::Replace(0, 0)));
