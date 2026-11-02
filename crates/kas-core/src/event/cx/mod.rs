@@ -14,6 +14,7 @@ use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::time::Instant;
+use winit::event_loop::AsyncRequestSerial;
 
 use super::*;
 use crate::cast::{Cast, Conv};
@@ -42,8 +43,9 @@ pub use handle::TopWindow;
 pub use nav::NavAdvance;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource, PressStart};
 pub(crate) use press::{Mouse, Touch};
-pub use timer::TimerHandle;
+pub use timer::TimerId;
 pub(crate) use window::InputEvent;
+pub use window::TypeSelector;
 
 struct PopupState {
     id: WindowId,
@@ -88,8 +90,9 @@ pub struct EventState {
     access_keys: HashMap<Key, Id>,
     popups: SmallVec<[PopupState; 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
-    time_updates: Vec<(Instant, Id, TimerHandle)>,
-    frame_updates: LinearSet<(Id, TimerHandle)>,
+    time_updates: Vec<(Instant, Id, TimerId)>,
+    frame_updates: LinearSet<(Id, TimerId)>,
+    data_transfers: LinearMap<AsyncRequestSerial, Id>,
     need_frame_update: bool,
     // Set of messages awaiting sending
     send_queue: VecDeque<(Id, Erased)>,
@@ -126,6 +129,7 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             frame_updates: Default::default(),
+            data_transfers: Default::default(),
             need_frame_update: false,
             send_queue: Default::default(),
             pending_send_targets: vec![],
@@ -197,14 +201,6 @@ impl EventState {
         let redraw = cx.redraw;
         self.action_redraw = self.action_redraw.or(redraw);
         resize
-    }
-
-    /// Clear all focus and grabs on `target`
-    fn cancel_event_focus(&mut self, target: &Id) {
-        self.input.clear_sel_socus_on(target);
-        self.clear_nav_focus_on(target);
-        self.mouse.cancel_event_focus(target);
-        self.touch.cancel_event_focus(target);
     }
 
     /// Check whether a widget is disabled
@@ -394,7 +390,10 @@ impl<'a> ConfigCx<'a> {
     /// target is disabled, and also cancels press/pan grabs.
     pub fn set_disabled(&mut self, target: Id, disable: bool) {
         if disable {
-            self.cancel_event_focus(&target);
+            self.input.clear_focus_on(&target, true);
+            self.clear_nav_focus_on(&target);
+            self.mouse.cancel_event_focus(&target);
+            self.touch.cancel_event_focus(&target);
         }
 
         for (i, id) in self.disabled.iter().enumerate() {

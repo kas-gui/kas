@@ -7,15 +7,20 @@
 
 use super::{EventCx, EventState, PopupState, TopWindow};
 use crate::cast::Cast;
+use crate::data_transfer::PlainUtf8Transfer;
 use crate::event::{Event, FocusSource};
 use crate::geom::DVec2;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
-#[cfg(all(wayland_platform, feature = "clipboard"))]
-use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
 use crate::{ActionRedraw, Id, Node, WindowActions};
+use linear_map::LinearMap;
+use std::sync::Arc;
+use winit::data_transfer::{
+    DataTransfer, DataTransferId, DataTransferSend, TransferType, TypeHint, TypedData,
+};
 use winit::event::{ElementState, FingerId, Ime, KeyEvent, MouseButton, MouseScrollDelta};
+use winit::event_loop::{ActiveEventLoop, AsyncRequestSerial};
 use winit::keyboard::ModifiersState;
 
 pub(crate) enum InputEvent {
@@ -50,6 +55,44 @@ pub(crate) enum InputEvent {
         finger_id: FingerId,
         position: DVec2,
     },
+    /// This is a copy of [`winit::event::WindowEvent::DataTransferReceived`].
+    DataTransferReceived {
+        id: DataTransferId,
+        serial: AsyncRequestSerial,
+        value: Arc<dyn TypedData>,
+    },
+}
+
+/// Control over data transfer type selection
+///
+/// Multiple types may be selected. No transfer happens if no types are selected.
+pub struct TypeSelector<'a> {
+    el: &'a dyn ActiveEventLoop,
+    dt: &'a dyn DataTransfer,
+    transfers: &'a mut LinearMap<AsyncRequestSerial, Id>,
+    id: DataTransferId,
+    target: Id,
+}
+impl<'a> TypeSelector<'a> {
+    /// Return the transfer identifier
+    pub fn id(&self) -> DataTransferId {
+        self.id
+    }
+
+    /// Get available types
+    pub fn types(&self) -> &dyn DataTransfer {
+        self.dt
+    }
+
+    /// Elect to receive data of this type
+    pub fn select(&mut self, type_: &(dyn TransferType + 'static)) {
+        match self.el.fetch_data_transfer(self.id, type_) {
+            Ok(serial) => {
+                self.transfers.insert(serial, self.target.clone());
+            }
+            Err(e) => log::warn!("get_clipboard failed: {e}"),
+        }
+    }
 }
 
 impl EventState {
@@ -307,79 +350,178 @@ impl<'a> EventCx<'a> {
         self.runner.close_window(id);
     }
 
-    /// Attempt to get clipboard contents
+    /// Request clipboard contents
     ///
-    /// In case of failure, paste actions will simply fail. The implementation
-    /// may wish to log an appropriate warning message.
-    pub fn get_clipboard(&mut self) -> Option<String> {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard() {
-            return match cb.load() {
-                Ok(s) => Some(s),
-                Err(e) => {
-                    warn_about_error("Failed to get clipboard contents", &e);
-                    None
-                }
-            };
-        }
+    /// Assuming the clipboard is not empty, closure `type_selector` will be
+    /// called to select a data type for transfer.
+    ///
+    /// On success, widget `target` will receive [`Event::DataTransfer`] with
+    /// the given [`DataTransferId`]. On failure, no transfer event will be
+    /// delivered.
+    pub fn get_clipboard(&mut self, target: Id, mut type_selector: impl FnMut(&mut TypeSelector)) {
+        let el = self.window.event_loop();
 
-        self.runner.get_clipboard()
+        let Ok(Some(id)) = el
+            .clipboard()
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+        else {
+            return;
+        };
+
+        let Ok(dt) = el
+            .data_transfer(id)
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+        else {
+            return;
+        };
+
+        type_selector(&mut TypeSelector {
+            el,
+            dt: &*dt,
+            transfers: &mut self.data_transfers,
+            id,
+            target,
+        });
+    }
+
+    /// Request clipboard contents as plain UTF-8
+    ///
+    /// On success, widget `target` will receive [`Event::DataTransfer`] with
+    /// the given [`DataTransferId`]. On failure, no transfer event will be
+    /// delivered.
+    pub fn get_clipboard_plain_text(&mut self, target: Id) -> Option<DataTransferId> {
+        let el = self.window.event_loop();
+
+        let id = el
+            .clipboard()
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+            .ok()
+            .flatten()?;
+
+        let serial = el
+            .fetch_data_transfer(id, &TypeHint::Plaintext)
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+            .ok()?;
+
+        self.data_transfers.insert(serial, target);
+        Some(id)
     }
 
     /// Attempt to set clipboard contents
-    pub fn set_clipboard(&mut self, content: String) {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard() {
-            cb.store(content);
-            return;
+    pub fn set_clipboard(&mut self, content: Box<dyn DataTransferSend>) {
+        match self.window.event_loop().set_clipboard(content) {
+            Ok(()) => (),
+            Err(e) => log::warn!("set_clipboard failed: {e}"),
         }
-
-        self.runner.set_clipboard(content)
     }
 
-    /// True if the primary buffer is enabled
+    /// Attempt to set clipboard contents as plain text
+    pub fn set_clipboard_plain_text(&mut self, content: String) {
+        self.set_clipboard(Box::new(PlainUtf8Transfer::from(content)));
+    }
+
+    /// True if there is primary selection buffer (Linux)
     #[inline]
     pub fn has_primary(&self) -> bool {
-        cfg_if::cfg_if! {
-            if #[cfg(unix)] {
-                true
-            } else {
-                false
-            }
+        #[cfg(all(
+            unix,
+            not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+        ))]
+        {
+            return self.window.has_primary_selection();
+        }
+
+        #[allow(unused)]
+        {
+            false
         }
     }
 
-    /// Get contents of primary buffer
+    /// Request contents of primary selection buffer
+    ///
+    /// Assuming the clipboard is not empty, closure `type_selector` will be
+    /// called to select a data type for transfer.
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
-    pub fn get_primary(&mut self) -> Option<String> {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard() {
-            return match cb.load_primary() {
-                Ok(s) => Some(s),
-                Err(e) => {
-                    warn_about_error("Failed to get clipboard contents", &e);
-                    None
-                }
-            };
-        }
+    ///
+    /// On success, widget `target` will receive [`Event::DataTransfer`] with
+    /// the given [`DataTransferId`]. On failure, no transfer event will be
+    /// delivered.
+    pub fn get_primary(&mut self, target: Id, mut type_selector: impl FnMut(&mut TypeSelector)) {
+        let el = self.window.event_loop();
 
-        self.runner.get_primary()
+        let Some(Ok(Some(id))) = el.primary_selection_ext().map(|ext| {
+            ext.primary_selection()
+                .inspect_err(|e| log::warn!("get_primary failed: {e}"))
+        }) else {
+            return;
+        };
+
+        let Ok(dt) = el
+            .data_transfer(id)
+            .inspect_err(|e| log::warn!("get_primary failed: {e}"))
+        else {
+            return;
+        };
+
+        type_selector(&mut TypeSelector {
+            el,
+            dt: &*dt,
+            transfers: &mut self.data_transfers,
+            id,
+            target,
+        });
+    }
+
+    /// Request contents of primary selection buffer as plain UTF-8
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    ///
+    /// On success, widget `target` will receive [`Event::DataTransfer`] with
+    /// the given [`DataTransferId`]. On failure, no transfer event will be
+    /// delivered.
+    pub fn get_primary_plain_text(&mut self, target: Id) -> Option<DataTransferId> {
+        let el = self.window.event_loop();
+
+        let id = el
+            .primary_selection_ext()?
+            .primary_selection()
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+            .ok()
+            .flatten()?;
+
+        let serial = el
+            .fetch_data_transfer(id, &TypeHint::Plaintext)
+            .inspect_err(|e| log::warn!("get_clipboard failed: {e}"))
+            .ok()?;
+
+        self.data_transfers.insert(serial, target);
+        Some(id)
     }
 
     /// Set contents of primary buffer
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
-    pub fn set_primary(&mut self, content: String) {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard() {
-            cb.store_primary(content);
-            return;
+    pub fn set_primary(&mut self, content: Box<dyn DataTransferSend>) {
+        if let Some(pri) = self.window.event_loop().primary_selection_ext() {
+            match pri.set_primary_selection(content) {
+                Ok(()) => (),
+                Err(e) => log::warn!("set_primary failed: {e}"),
+            }
         }
+    }
 
-        self.runner.set_primary(content)
+    /// Set contents of primary buffer as plain text
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    pub fn set_primary_plain_text(&mut self, content: String) {
+        if self.has_primary() {
+            self.set_primary(Box::new(PlainUtf8Transfer::from(content)));
+        }
     }
 
     /// Get a handle to the current window
@@ -450,6 +592,16 @@ impl<'a> EventCx<'a> {
                 finger_id,
                 position,
             } => self.handle_touch_end(win.as_node(data), finger_id, position),
+
+            InputEvent::DataTransferReceived { id, serial, value } => {
+                let Some(target) = self.data_transfers.remove(&serial) else {
+                    log::warn!("received data transfer with unknown serial");
+                    return;
+                };
+
+                let event = Event::DataTransfer { id, value };
+                self.send_event(win.as_node(data), target, event);
+            }
         }
     }
 }

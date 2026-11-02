@@ -6,7 +6,7 @@
 //! Adapt widget
 
 use super::{AdaptConfigCx, AdaptEventCx};
-use kas::event::TimerHandle;
+use kas::event::TimerId;
 use kas::prelude::*;
 use linear_map::LinearMap;
 use std::fmt::Debug;
@@ -48,7 +48,7 @@ mod Adapt {
         configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &mut W::Data) + Send>>,
         update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &mut W::Data, &A) + Send>>,
         timer_handlers:
-            LinearMap<TimerHandle, Box<dyn Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + Send>>,
+            LinearMap<TimerId, Box<dyn Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + Send>>,
         message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + Send>>,
     }
 
@@ -94,12 +94,12 @@ mod Adapt {
         /// It is assumed that state is modified by this timer. Frequent usage
         /// of timers which don't do anything may be inefficient; prefer usage
         /// of [`EventState::send_async`](kas::event::EventState::send_async).
-        pub fn on_timer<H>(mut self, timer_id: TimerHandle, handler: H) -> Self
+        pub fn on_timer<H>(mut self, timer: TimerId, handler: H) -> Self
         where
             H: Fn(&mut AdaptEventCx, &mut W, &mut W::Data, &A) + Send + 'static,
         {
-            debug_assert!(self.timer_handlers.get(&timer_id).is_none());
-            self.timer_handlers.insert(timer_id, Box::new(handler));
+            debug_assert!(self.timer_handlers.get(&timer).is_none());
+            self.timer_handlers.insert(timer, Box::new(handler));
             self
         }
 
@@ -150,8 +150,8 @@ mod Adapt {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::Timer(timer_id) => {
-                    if let Some(handler) = self.timer_handlers.get(&timer_id) {
+                Event::Timer(timer) => {
+                    if let Some(handler) = self.timer_handlers.get(&timer) {
                         let mut cx = AdaptEventCx::new(cx, self.id());
                         handler(&mut cx, &mut self.inner, &mut self.state, data);
                         cx.update(self.as_node(data));

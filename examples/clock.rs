@@ -18,13 +18,13 @@ use std::f32::consts::PI;
 use std::time::Duration;
 
 use kas::draw::color::Rgba;
-use kas::event::TimerHandle;
+use kas::event::TimerId;
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
 use kas::text::Text;
 use kas::theme::TextClass;
 
-const TIMER: TimerHandle = TimerHandle::new(0, true);
+const TIMER: TimerId = TimerId::new(0, true);
 
 #[impl_self]
 mod Clock {

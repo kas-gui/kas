@@ -6,11 +6,13 @@
 //! Markdown parsing
 
 use super::{Decoration, DecorationType, FontToken, FormattableText};
-use crate::cast::Cast;
+use crate::cast::{Cast, Conv};
+use crate::data_transfer::{DataTransfer, DataTransferSend, SendData, TransferType, TypeHint};
 use crate::text::fonts::{FamilySelector, FontSelector, FontStyle, FontWeight};
 use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd};
 use std::fmt::Write;
 use std::iter::FusedIterator;
+use std::ops::{ControlFlow, Range};
 use thiserror::Error;
 
 /// Markdown parsing errors
@@ -56,9 +58,8 @@ impl Markdown {
     ///
     /// Parsing happens immediately. Fonts must be initialized before calling
     /// this method.
-    #[inline]
-    pub fn new(input: &str) -> Result<Self, Error> {
-        parse(input)
+    pub fn new(input: impl AsRef<str>) -> Result<Self, Error> {
+        parse(input.as_ref())
     }
 }
 
@@ -130,6 +131,205 @@ impl FormattableText for Markdown {
     fn decorations(&self) -> &[(u32, Decoration)] {
         &self.decorations
     }
+
+    fn as_data_transfer(&self, range: Range<usize>) -> Box<dyn DataTransferSend> {
+        let (start32, end32): (u32, u32) = (range.start.cast(), range.end.cast());
+
+        let fmt_start = match self.fmt.binary_search_by(|p| p.start.cmp(&start32)) {
+            Ok(i) => i,
+            Err(0) => 0,
+            Err(i) => i - 1,
+        };
+        let fmt_end = match self.fmt.binary_search_by(|p| p.start.cmp(&end32)) {
+            Ok(i) => i,
+            Err(i) => i,
+        };
+        let mut fmt = Vec::new();
+        fmt.extend_from_slice(&self.fmt[fmt_start..fmt_end]);
+        for tok in fmt.iter_mut() {
+            tok.start = tok.start.saturating_sub(start32);
+        }
+
+        let dec_start = match self.decorations.binary_search_by(|p| p.0.cmp(&start32)) {
+            Ok(i) => i,
+            Err(0) => 0,
+            Err(i) => i - 1,
+        };
+        let dec_end = match self.decorations.binary_search_by(|p| p.0.cmp(&end32)) {
+            Ok(i) => i,
+            Err(i) => i,
+        };
+        let mut decorations = Vec::new();
+        decorations.extend_from_slice(&self.decorations[dec_start..dec_end]);
+        for tok in decorations.iter_mut() {
+            tok.0 = tok.0.saturating_sub(start32);
+        }
+
+        Box::new(Markdown {
+            text: self.text[range].to_string(),
+            fmt,
+            decorations,
+        })
+    }
+}
+
+impl DataTransfer for Markdown {
+    fn for_each_available_type<'a>(
+        &'a self,
+        f: &mut dyn FnMut(&'a dyn TransferType) -> ControlFlow<()>,
+    ) {
+        if let ControlFlow::Break(()) = f(&TypeHint::Html) {
+            return;
+        }
+
+        // NOTE: Implementation is incomplete and does not encode non-ASCII chars
+        /* if self.text.is_ascii()
+            && let ControlFlow::Break(()) = f(&TypeHint::Rtf)
+        {
+            return;
+        } */
+
+        let _ = f(&TypeHint::Plaintext);
+    }
+}
+impl DataTransferSend for Markdown {
+    fn data_for_type(&self, type_: &dyn TransferType) -> Option<SendData> {
+        if type_.matches(&TypeHint::Plaintext) {
+            return Some(self.text.clone().into());
+        }
+
+        /* if type_.matches(&TypeHint::Rtf) {
+            let mut s = String::with_capacity(self.text.len() + 3 * self.fmt.len());
+            let mut start = 0;
+            let mut bold = false;
+            let mut italic = false;
+            for tok in self.fmt.iter() {
+                if usize::conv(tok.start) > start {
+                    s.push_str(&self.text[start..usize::conv(tok.start)]);
+                    start = usize::conv(tok.start);
+                }
+
+                if tok.bold != bold {
+                    bold = tok.bold;
+                    s.push_str(if bold { "\\b1" } else { "\\b0" });
+                }
+
+                if tok.italic != italic {
+                    italic = tok.italic;
+                    s.push_str(if italic { "\\i1" } else { "\\i0" });
+                }
+            }
+
+            if start < self.text.len() {
+                s.push_str(&self.text[start..]);
+            }
+
+            return Some(s.into());
+        } */
+
+        if type_.matches(&TypeHint::Html) {
+            fn push_escaped(out: &mut String, s: &str) {
+                for c in s.chars() {
+                    match c {
+                        '&' => out.push_str("&amp;"),
+                        '<' => out.push_str("&lt;"),
+                        '>' => out.push_str("&gt;"),
+                        '"' => out.push_str("&quot;"),
+                        '\'' => out.push_str("&#x27;"),
+                        _ => out.push(c),
+                    }
+                }
+            }
+
+            fn escape_text(out: &mut String, mut text: &str) {
+                while let Some(i) = text.find("\n\n") {
+                    push_escaped(out, &text[..i]);
+                    out.push_str("</p><p>");
+                    text = &text[i + 2..];
+                }
+
+                push_escaped(out, text);
+            }
+
+            // NOTE: this is a very dirty recreation from the parsed result.
+            // It would be better to use the original input, but we'd need to
+            // map and apply the sub-range to it.
+            let mut s = String::with_capacity(33 + self.text.len() + 8 * self.fmt.len());
+            s.push_str("<html><body><p>");
+
+            let mut start = 0;
+            let mut bold = false;
+            let mut italic = false;
+            let mut code = false;
+            let mut level = None;
+            for tok in self.fmt.iter() {
+                if usize::conv(tok.start) > start {
+                    escape_text(&mut s, &self.text[start..usize::conv(tok.start)]);
+                    start = usize::conv(tok.start);
+                }
+
+                let opt_lev = rel_size_to_heading_level(tok.rel_size);
+                if opt_lev != level {
+                    if let Some(h) = level {
+                        s.push_str(&format!("</{h}>"));
+                    }
+                    level = opt_lev;
+                    if let Some(h) = level {
+                        s.push_str(&format!("<{h}>"));
+                    }
+                }
+
+                if tok.bold != bold {
+                    bold = tok.bold;
+                    s.push_str(if bold { "<strong>" } else { "</strong>" });
+                }
+
+                if tok.italic != italic {
+                    italic = tok.italic;
+                    s.push_str(if italic { "<em>" } else { "</em>" });
+                }
+
+                if tok.monospace != code {
+                    code = tok.monospace;
+                    s.push_str(if code { "<code>" } else { "</code>" });
+                }
+            }
+
+            if start < self.text.len() {
+                escape_text(&mut s, &self.text[start..]);
+            }
+            if let Some(h) = level {
+                s.push_str(&format!("</{h}>"));
+            }
+            if bold {
+                s.push_str("</strong>");
+            }
+            if italic {
+                s.push_str("</em>");
+            }
+            if code {
+                s.push_str("</code>");
+            }
+
+            s.push_str("</p></body></html>");
+            return Some(s.into());
+        }
+
+        None
+    }
+}
+
+fn rel_size_to_heading_level(rel_size: f32) -> Option<HeadingLevel> {
+    Some(match rel_size {
+        x if x == 2.0 / 1.0 => HeadingLevel::H1,
+        x if x == 3.0 / 2.0 => HeadingLevel::H2,
+        x if x == 6.0 / 5.0 => HeadingLevel::H3,
+        // Note: H4 has the same size as normal text!
+        // x if x == 1.0 => HeadingLevel::H4,
+        x if x == 8.0 / 9.0 => HeadingLevel::H5,
+        x if x == 3.0 / 5.0 => HeadingLevel::H6,
+        _ => return None,
+    })
 }
 
 fn parse(input: &str) -> Result<Markdown, Error> {

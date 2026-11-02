@@ -13,8 +13,6 @@ use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
 use crate::runner::GraphicsFeatures;
 use crate::theme::Theme;
-#[cfg(feature = "clipboard")]
-use crate::util::warn_about_error;
 use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
 use crate::{ConfigAction, Id};
 use std::any::TypeId;
@@ -24,15 +22,11 @@ use std::rc::Rc;
 use std::sync::mpsc;
 use std::task::Waker;
 
-#[cfg(feature = "clipboard")] use arboard::Clipboard;
-
 /// Runner state shared by all windows and used by [`RunnerT`]
 pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
     config_writer: Option<Box<dyn FnMut(&Config)>>,
     pub(super) config: Rc<RefCell<Config>>,
-    #[cfg(feature = "clipboard")]
-    clipboard: Option<Clipboard>,
     pub(super) instance: G,
     pub(super) draw: Option<SharedState<G::Shared>>,
     pub(super) theme: T,
@@ -60,21 +54,10 @@ where
         proxy_rx: mpsc::Receiver<ProxyAction>,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
-        #[cfg(feature = "clipboard")]
-        let clipboard = match Clipboard::new() {
-            Ok(cb) => Some(cb),
-            Err(e) => {
-                warn_about_error("Failed to connect clipboard", &e);
-                None
-            }
-        };
-
         Ok(Shared {
             platform,
             config_writer,
             config,
-            #[cfg(feature = "clipboard")]
-            clipboard,
             instance,
             draw: None,
             theme,
@@ -273,101 +256,16 @@ pub(crate) trait RunnerT {
     ///
     /// In case of failure, paste actions will simply fail. The implementation
     /// may wish to log an appropriate warning message.
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
     fn get_clipboard(&mut self) -> Option<String> {
-        #[cfg(feature = "clipboard")]
-        {
-            if let Some(cb) = self.clipboard.as_mut() {
-                match cb.get_text() {
-                    Ok(s) => return Some(s),
-                    Err(e) => warn_about_error("Failed to get clipboard contents", &e),
-                }
-            }
-        }
-
         None
-    }
-
-    /// Attempt to set clipboard contents
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
-    fn set_clipboard(&mut self, content: String) {
-        #[cfg(not(feature = "clipboard"))]
-        let _ = content;
-
-        #[cfg(feature = "clipboard")]
-        if let Some(cb) = self.clipboard.as_mut() {
-            match cb.set_text(content) {
-                Ok(()) => (),
-                Err(e) => warn_about_error("Failed to set clipboard contents", &e),
-            }
-        }
     }
 
     /// Get contents of primary buffer
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
     fn get_primary(&mut self) -> Option<String> {
-        #[cfg(all(
-            unix,
-            not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
-            feature = "clipboard",
-        ))]
-        {
-            use arboard::{GetExtLinux, LinuxClipboardKind};
-            if let Some(cb) = self.clipboard.as_mut() {
-                match cb.get().clipboard(LinuxClipboardKind::Primary).text() {
-                    Ok(s) => return Some(s),
-                    Err(e) => warn_about_error("Failed to get clipboard contents", &e),
-                }
-            }
-        }
-
         None
-    }
-
-    /// Set contents of primary buffer
-    ///
-    /// Linux has a "primary buffer" with implicit copy on text selection and
-    /// paste on middle-click. This method does nothing on other platforms.
-    ///
-    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
-    /// This split API probably can't be resolved until Winit integrates
-    /// clipboard support.
-    fn set_primary(&mut self, content: String) {
-        #[cfg(any(
-            not(unix),
-            any(target_os = "macos", target_os = "android", target_os = "emscripten"),
-            not(feature = "clipboard"),
-        ))]
-        let _ = content;
-
-        #[cfg(all(
-            unix,
-            not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
-            feature = "clipboard",
-        ))]
-        if let Some(cb) = self.clipboard.as_mut() {
-            use arboard::{LinuxClipboardKind, SetExtLinux};
-            match cb
-                .set()
-                .clipboard(LinuxClipboardKind::Primary)
-                .text(content)
-            {
-                Ok(()) => (),
-                Err(e) => warn_about_error("Failed to set clipboard contents", &e),
-            }
-        }
     }
 
     /// Access the [`DrawShared`] object

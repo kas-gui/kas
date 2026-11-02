@@ -5,16 +5,17 @@
 
 //! Event handling: `Event` type and dependencies
 
-use cast::CastApprox;
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
-use super::{EventCx, IsUsed, TimerHandle, Unused, Used};
+use super::{EventCx, IsUsed, TimerId, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press, PressStart};
 use crate::geom::{Affine, Offset, Vec2};
 #[allow(unused)] use crate::{Events, window::Popup};
 use crate::{Id, dir::Direction, window::WindowId};
+use cast::CastApprox;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use winit::data_transfer::{DataTransferId, TypedData};
 
 /// Input Method Editor events
 ///
@@ -195,7 +196,15 @@ pub enum Event<'a> {
     /// Update from a timer
     ///
     /// This event must be requested by [`EventState::request_timer`].
-    Timer(TimerHandle),
+    Timer(TimerId),
+    /// A data transfer
+    ///
+    /// This event may be returned when requesting clipboard contents or
+    /// drag-and-drop data.
+    DataTransfer {
+        id: DataTransferId,
+        value: Arc<dyn TypedData>,
+    },
     /// Notification that a popup has been closed
     ///
     /// This is sent to the popup when closed.
@@ -325,6 +334,7 @@ impl<'a> Event<'a> {
             Key(_, _) | Scroll(_) => false,
             PointerMove { .. } | PressStart(_) => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
+            DataTransfer { .. } => false,
             Timer(_) | PopupClosed(_) => true,
             NavFocus { .. } | SelFocus(_) | KeyFocus | MouseOver(true) => false,
             LostNavFocus | LostKeyFocus | LostSelFocus | MouseOver(false) => true,
@@ -362,6 +372,7 @@ impl<'a> Event<'a> {
             Key(_, _) | Ime(_) => false,
             PressMove { .. } | PressEnd { .. } => false,
             Timer(_) => false,
+            DataTransfer { .. } => false,
 
             // Notifications of focus/status change
             PopupClosed(_) => false,
@@ -765,7 +776,7 @@ fn sizes() {
     assert_eq!(size_of::<ScrollDelta>(), 12);
     assert_eq!(size_of::<Affine>(), 32);
     assert_eq!(size_of::<Press>(), 24);
-    assert_eq!(size_of::<TimerHandle>(), 8);
+    assert_eq!(size_of::<TimerId>(), 8);
     assert_eq!(size_of::<WindowId>(), 4);
     assert_eq!(size_of::<FocusSource>(), 1);
     assert_eq!(size_of::<Event>(), 40);

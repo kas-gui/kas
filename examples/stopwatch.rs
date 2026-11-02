@@ -7,7 +7,7 @@
 
 use std::time::{Duration, Instant};
 
-use kas::event::TimerHandle;
+use kas::event::TimerId;
 use kas::prelude::*;
 use kas::widgets::{Button, format_label, row};
 
@@ -27,7 +27,7 @@ struct Timer {
     last: Option<Instant>,
 }
 
-const TIMER: TimerHandle = TimerHandle::new(0, true);
+const TIMER: TimerId = TimerId::new(0, true);
 
 fn make_ui() -> impl Widget<Data = ()> {
     let ui = row![

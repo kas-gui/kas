@@ -5,7 +5,7 @@
 
 //! Adapted contexts
 
-use kas::event::TimerHandle;
+use kas::event::TimerId;
 use kas::prelude::*;
 use std::time::Duration;
 
@@ -50,33 +50,33 @@ impl<'a: 'b, 'b> AdaptEventCx<'a, 'b> {
     /// use [`Draw::animate`](kas::draw::Draw::animate) or
     /// [`Self::request_frame_timer`].
     ///
-    /// This widget will receive an update for timer `handle` at
+    /// This widget will receive an update for timer `timer` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
     /// Requesting an update with `delay == 0` is valid except from a timer
     /// handler where it may cause an infinite loop.
     ///
-    /// Multiple timer requests with the same `id` and `handle` are merged
-    /// (see [`TimerHandle`] documentation).
+    /// Multiple timer requests with the same `id` and `timer` are merged
+    /// (see [`TimerId`] documentation).
     #[inline]
-    pub fn request_timer(&mut self, handle: TimerHandle, delay: Duration) {
-        self.cx.request_timer(self.id.clone(), handle, delay);
+    pub fn request_timer(&mut self, timer: TimerId, delay: Duration) {
+        self.cx.request_timer(self.id.clone(), timer, delay);
     }
 
     /// Schedule a frame timer update
     ///
-    /// Widget `id` will receive [`Event::Timer`] with this `handle` either
+    /// Widget `id` will receive [`Event::Timer`] with this `timer` either
     /// before or soon after the next frame is drawn.
     ///
     /// This may be useful for animations which mutate widget state. Animations
     /// which don't mutate widget state may use
     /// [`Draw::animate`](kas::draw::Draw::animate) instead.
     ///
-    /// It is expected that `handle.earliest() == true` (style guide).
+    /// It is expected that `timer.earliest() == true` (style guide).
     #[inline]
-    pub fn request_frame_timer(&mut self, handle: TimerHandle) {
-        self.cx.request_frame_timer(self.id.clone(), handle);
+    pub fn request_frame_timer(&mut self, timer: TimerId) {
+        self.cx.request_frame_timer(self.id.clone(), timer);
     }
 }
 
@@ -121,32 +121,32 @@ impl<'a: 'b, 'b> AdaptConfigCx<'a, 'b> {
     /// use [`Draw::animate`](kas::draw::Draw::animate) or
     /// [`Self::request_frame_timer`].
     ///
-    /// This widget will receive an update for timer `handle` at
+    /// This widget will receive an update for timer `timer` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
     /// Requesting an update with `delay == 0` is valid except from a timer
     /// handler where it may cause an infinite loop.
     ///
-    /// Multiple timer requests with the same `id` and `handle` are merged
-    /// (see [`TimerHandle`] documentation).
+    /// Multiple timer requests with the same `id` and `timer` are merged
+    /// (see [`TimerId`] documentation).
     #[inline]
-    pub fn request_timer(&mut self, handle: TimerHandle, delay: Duration) {
-        self.cx.request_timer(self.id.clone(), handle, delay);
+    pub fn request_timer(&mut self, timer: TimerId, delay: Duration) {
+        self.cx.request_timer(self.id.clone(), timer, delay);
     }
 
     /// Schedule a frame timer update
     ///
-    /// Widget `id` will receive [`Event::Timer`] with this `handle` either
+    /// Widget `id` will receive [`Event::Timer`] with this `timer` either
     /// before or soon after the next frame is drawn.
     ///
     /// This may be useful for animations which mutate widget state. Animations
     /// which don't mutate widget state may use
     /// [`Draw::animate`](kas::draw::Draw::animate) instead.
     ///
-    /// It is expected that `handle.earliest() == true` (style guide).
+    /// It is expected that `timer.earliest() == true` (style guide).
     #[inline]
-    pub fn request_frame_timer(&mut self, handle: TimerHandle) {
-        self.cx.request_frame_timer(self.id.clone(), handle);
+    pub fn request_frame_timer(&mut self, timer: TimerId) {
+        self.cx.request_frame_timer(self.id.clone(), timer);
     }
 }

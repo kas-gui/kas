@@ -21,7 +21,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # about target platforms).
 minimal = ["wayland"]
 # All standard test target features
-stable = ["minimal", "clipboard", "markdown", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"]
+stable = ["minimal", "markdown", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics"]
 # Additional, less recommendation-worthy features
@@ -61,9 +61,6 @@ ron = ["serde", "dep:ron"]
 
 # Enable support for TOML (de)serialisation
 toml = ["serde", "dep:toml"]
-
-# Enables clipboard read/write
-clipboard = ["dep:arboard", "dep:smithay-clipboard"]
 
 # Enable AccessKit integration
 accesskit = ["dep:accesskit", "dep:accesskit_winit", "dep:hash_hasher"]
@@ -121,12 +118,6 @@ winit = { version = "=0.31.0-beta.4", default-features = false }
 [dependencies.kas-macros]
 version = "=0.17.0" # pinned because kas-macros makes assumptions about kas-core's internals
 path = "../kas-macros"
-
-[target.'cfg(any(target_os="linux", target_os="dragonfly", target_os="freebsd", target_os="netbsd", target_os="openbsd"))'.dependencies]
-smithay-clipboard = { version = "0.7.0", optional = true }
-
-[target.'cfg(not(target_os = "android"))'.dependencies]
-arboard = { version = "3.2.0", optional = true, default-features = false }
 
 [lints.clippy]
 module_inception = "allow"

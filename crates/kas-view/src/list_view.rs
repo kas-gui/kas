@@ -8,7 +8,7 @@
 use crate::clerk::{Changes, Key, TokenClerk};
 use crate::{Driver, SelectionMode, SelectionMsg, Update};
 use kas::event::components::{ClickInput, ClickInputAction};
-use kas::event::{FocusSource, Scroll, TimerHandle};
+use kas::event::{FocusSource, Scroll, TimerId};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -20,7 +20,7 @@ use std::fmt::Debug;
 use std::ops::Range;
 use std::time::Instant;
 
-const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
+const TIMER_UPDATE_WIDGETS: TimerId = TimerId::new(1, true);
 
 #[impl_self]
 mod ListItem {

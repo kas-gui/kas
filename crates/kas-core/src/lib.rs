@@ -38,6 +38,7 @@ pub use kas_macros::{layout, widget, widget_index};
 
 // public implementations:
 pub mod config;
+pub mod data_transfer;
 pub mod dir;
 pub mod draw;
 pub mod event;

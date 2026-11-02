@@ -33,8 +33,6 @@ use winit::window::{ImeRequest, ImeRequestError, WindowAttributes};
 
 /// Window fields requiring a frame or surface
 struct WindowData<G: GraphicsInstance> {
-    #[cfg(all(wayland_platform, feature = "clipboard"))]
-    wayland_clipboard: Option<smithay_clipboard::Clipboard>,
     /// Graphical surface
     graphical: G::Surface,
     /// Frame rate counter
@@ -46,6 +44,11 @@ struct WindowData<G: GraphicsInstance> {
     window_id: WindowId,
     solve_cache: SolveCache,
     need_redraw: bool,
+    #[cfg(all(
+        unix,
+        not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+    ))]
+    has_primary_selection: bool,
 }
 
 impl<G: GraphicsInstance> WindowData<G> {
@@ -202,19 +205,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             "Window::resume: constructed with physical size {size:?}, scale factor {scale_factor}",
         );
 
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        use raw_window_handle::{HasDisplayHandle, RawDisplayHandle, WaylandDisplayHandle};
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        let wayland_clipboard = match window.display_handle() {
-            Ok(handle) => match handle.as_raw() {
-                RawDisplayHandle::Wayland(WaylandDisplayHandle { display, .. }) => {
-                    Some(unsafe { smithay_clipboard::Clipboard::new(display.as_ptr()) })
-                }
-                _ => None,
-            },
-            _ => None,
-        };
-
         let winit_id = window.id();
 
         #[cfg(feature = "accesskit")]
@@ -225,8 +215,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         surface.configure(&mut shared.draw.as_mut().unwrap().draw, size);
 
         let window = WindowData {
-            #[cfg(all(wayland_platform, feature = "clipboard"))]
-            wayland_clipboard,
             graphical: surface,
             frame_count: (Instant::now(), 0),
 
@@ -236,6 +224,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             window_id: self.ev_state.window_id,
             solve_cache,
             need_redraw: true,
+            #[cfg(all(
+                unix,
+                not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+            ))]
+            has_primary_selection: el.primary_selection_ext().is_some(),
         };
         self.surface = Some((theme, window));
 
@@ -250,16 +243,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
+        el: &dyn ActiveEventLoop,
     ) -> Option<ActionClose> {
         if let Some((ref theme, ref mut window)) = self.surface {
             self.ev_state.suspended(shared);
 
-            let actions = self.ev_state.flush_pending(
-                shared,
-                theme.size(),
-                window,
-                self.widget.as_node(data),
-            );
+            let awh = ActiveWindowHandle { window, el };
+            let actions =
+                self.ev_state
+                    .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
 
             // NOTE: ignore resize, redraw actions
             actions.close
@@ -280,6 +272,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
+        el: &dyn ActiveEventLoop,
         event: WindowEvent,
     ) -> bool {
         let Some((ref mut theme, ref mut window)) = self.surface else {
@@ -342,7 +335,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 }
                 return false;
             }
-            WindowEvent::RedrawRequested => return self.do_draw(shared, data).is_err(),
+            WindowEvent::RedrawRequested => return self.do_draw(shared, data, el).is_err(),
 
             WindowEvent::CloseRequested => {
                 self.ev_state.close_own_window();
@@ -405,10 +398,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                     position: position.into(),
                 },
             },
+            WindowEvent::DataTransferReceived { id, serial, value } => {
+                InputEvent::DataTransferReceived { id, serial, value }
+            }
             _ => return false,
         };
 
-        let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
+        let awh = ActiveWindowHandle { window, el };
+        let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.input_event(&mut self.widget, data, event)
         });
         self.apply_size(data, false, resize.is_some());
@@ -420,14 +417,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
+        el: &dyn ActiveEventLoop,
     ) -> (WindowActions, Option<Instant>) {
         let Some((ref theme, ref mut window)) = self.surface else {
             return (WindowActions::default(), None);
         };
 
+        let awh = ActiveWindowHandle { window, el };
         let actions =
             self.ev_state
-                .flush_pending(shared, theme.size(), window, self.widget.as_node(data));
+                .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
         if actions.resize.is_some() {
             self.apply_size(data, false, true);
         }
@@ -534,6 +533,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
+        el: &dyn ActiveEventLoop,
         requested_resume: Instant,
     ) {
         let Some((ref theme, ref mut window)) = self.surface else {
@@ -548,7 +548,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let widget = self.widget.as_node(data);
 
         if Some(requested_resume) == self.ev_state.next_resume() {
-            let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
+            let awh = ActiveWindowHandle { window, el };
+            let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
                 cx.update_timer(widget);
             });
             if resize.is_some() {
@@ -665,14 +666,20 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     ///
     /// Returns an error when drawing is aborted and further event handling may
     /// be needed before a redraw.
-    pub(super) fn do_draw(&mut self, shared: &mut Shared<A, G, T>, data: &A) -> Result<(), ()> {
+    pub(super) fn do_draw(
+        &mut self,
+        shared: &mut Shared<A, G, T>,
+        data: &A,
+        el: &dyn ActiveEventLoop,
+    ) -> Result<(), ()> {
         let start = Instant::now();
         let Some((ref theme, ref window)) = self.surface else {
             return Ok(());
         };
 
         let widget = self.widget.as_node(data);
-        let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
+        let awh = ActiveWindowHandle { window, el };
+        let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.frame_update(widget);
         });
         if resize.is_some() {
@@ -765,17 +772,21 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 }
 
-#[crate::split_impl(for<G: GraphicsInstance> WindowData<G>)]
+#[autoimpl(Deref, DerefMut using self.window)]
+struct ActiveWindowHandle<'a, G: GraphicsInstance> {
+    window: &'a WindowData<G>,
+    el: &'a dyn ActiveEventLoop,
+}
+
+#[crate::split_impl(for<'a, G: GraphicsInstance> ActiveWindowHandle<'a, G>)]
 pub(crate) trait WindowDataErased {
     /// Get the window identifier
     fn window_id(&self) -> WindowId {
         self.window_id
     }
-
-    /// Access the wayland clipboard object, if available
-    #[cfg(all(wayland_platform, feature = "clipboard"))]
-    fn wayland_clipboard(&self) -> Option<&smithay_clipboard::Clipboard> {
-        self.wayland_clipboard.as_ref()
+    /// Access the [`ActiveEventLoop`]
+    fn event_loop(&self) -> &dyn ActiveEventLoop {
+        self.el
     }
 
     /// Set the mouse pointer icon
@@ -804,5 +815,14 @@ pub(crate) trait WindowDataErased {
     /// window. An application may have multiple top-level windows.
     fn top_window(&self) -> &dyn winit::window::Window {
         self.window()
+    }
+
+    /// True if there is primary selection buffer (Linux)
+    #[cfg(all(
+        unix,
+        not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+    ))]
+    fn has_primary_selection(&self) -> bool {
+        self.has_primary_selection
     }
 }
