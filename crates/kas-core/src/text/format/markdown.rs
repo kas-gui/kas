@@ -228,6 +228,29 @@ impl DataTransferSend for Markdown {
         } */
 
         if type_.matches(&TypeHint::Html) {
+            fn push_escaped(out: &mut String, s: &str) {
+                for c in s.chars() {
+                    match c {
+                        '&' => out.push_str("&amp;"),
+                        '<' => out.push_str("&lt;"),
+                        '>' => out.push_str("&gt;"),
+                        '"' => out.push_str("&quot;"),
+                        '\'' => out.push_str("&#x27;"),
+                        _ => out.push(c),
+                    }
+                }
+            }
+
+            fn escape_text(out: &mut String, mut text: &str) {
+                while let Some(i) = text.find("\n\n") {
+                    push_escaped(out, &text[..i]);
+                    out.push_str("</p><p>");
+                    text = &text[i + 2..];
+                }
+
+                push_escaped(out, text);
+            }
+
             // NOTE: this is a very dirty recreation from the parsed result.
             // It would be better to use the original input, but we'd need to
             // map and apply the sub-range to it.
@@ -241,14 +264,7 @@ impl DataTransferSend for Markdown {
             let mut level = None;
             for tok in self.fmt.iter() {
                 if usize::conv(tok.start) > start {
-                    let mut slice = &self.text[start..usize::conv(tok.start)];
-                    while let Some(i) = slice.find("\n\n") {
-                        s.push_str(&slice[..i]);
-                        s.push_str("</p><p>");
-                        slice = &slice[i + 2..];
-                    }
-
-                    s.push_str(slice);
+                    escape_text(&mut s, &self.text[start..usize::conv(tok.start)]);
                     start = usize::conv(tok.start);
                 }
 
@@ -275,12 +291,12 @@ impl DataTransferSend for Markdown {
 
                 if tok.monospace != code {
                     code = tok.monospace;
-                    s.push_str(if italic { "<code>" } else { "</code>" });
+                    s.push_str(if code { "<code>" } else { "</code>" });
                 }
             }
 
             if start < self.text.len() {
-                s.push_str(&self.text[start..]);
+                escape_text(&mut s, &self.text[start..]);
             }
             if let Some(h) = level {
                 s.push_str(&format!("</{h}>"));
