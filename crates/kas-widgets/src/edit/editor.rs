@@ -276,7 +276,8 @@ impl Common {
     /// Set the cursor index / range
     ///
     /// This does not interact with undo history or call action handlers on the
-    /// guard.
+    /// guard. It is recommended to clear or set the [`CurrentAction`] when
+    /// calling this method.
     pub fn set_cursor(&mut self, parts: &impl PartList, range: impl Into<CursorRange<TextIndex>>) {
         let range = range.into();
         if range != self.cursor {
@@ -1551,19 +1552,13 @@ impl Common {
                 }
             }
             Event::LostSelFocus => {
-                let action = if let Some(p) = self.current.ime_part() {
-                    cx.cancel_ime_focus(&self.id);
-                    parts.get_mut(p).clear_ime(self, p)
-                } else {
-                    None
-                };
+                let action = self.cancel_current_action(parts, cx);
 
                 if !self.cursor.is_empty() {
                     self.save_undo_state(parts, None);
                     self.cursor.clear_selection();
+                    cx.redraw();
                 }
-                self.input_handler.stop_selecting();
-                cx.redraw();
 
                 if action.is_some() {
                     EventAction::Preedit
@@ -2583,7 +2578,8 @@ impl Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     #[inline]
-    pub fn set_cursor(&mut self, index: usize) {
+    pub fn set_cursor(&mut self, cx: &mut EventState, index: usize) {
+        let _ = self.common.cancel_current_action(&mut self.part, cx);
         self.common.set_cursor(&self.part, TextIndex::new(0, index))
     }
 
@@ -2592,7 +2588,8 @@ impl Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     #[inline]
-    pub fn set_cursor_range(&mut self, range: CursorRange<usize>) {
+    pub fn set_cursor_range(&mut self, cx: &mut EventState, range: CursorRange<usize>) {
+        let _ = self.common.cancel_current_action(&mut self.part, cx);
         self.common.set_cursor(&self.part, CursorRange {
             anchor: TextIndex::new(0, range.anchor),
             cursor: TextIndex::new(0, range.cursor),
