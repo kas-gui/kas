@@ -2376,6 +2376,11 @@ impl Common {
                 }
             }
             Action::Paste(id) => {
+                if update_ime {
+                    cx.cancel_ime_focus(&self.id);
+                    // IME focus should be restored on Event::DataTransfer
+                }
+
                 let source = FocusSource::Synthetic;
                 self.current = CurrentAction::Paste { id, source };
                 return Ok(EventAction::Used);
