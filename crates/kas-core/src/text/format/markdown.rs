@@ -182,12 +182,12 @@ impl DataTransfer for Markdown {
             return;
         }
 
-        // NOTE: RTF has its own encoding for unicode chars but conversion is not implemented here
-        if self.text.is_ascii()
+        // NOTE: Implementation is incomplete and does not encode non-ASCII chars
+        /* if self.text.is_ascii()
             && let ControlFlow::Break(()) = f(&TypeHint::Rtf)
         {
             return;
-        }
+        } */
 
         let _ = f(&TypeHint::Plaintext);
     }
@@ -198,7 +198,7 @@ impl DataTransferSend for Markdown {
             return Some(self.text.clone().into());
         }
 
-        if type_.matches(&TypeHint::Rtf) {
+        /* if type_.matches(&TypeHint::Rtf) {
             let mut s = String::with_capacity(self.text.len() + 3 * self.fmt.len());
             let mut start = 0;
             let mut bold = false;
@@ -225,7 +225,7 @@ impl DataTransferSend for Markdown {
             }
 
             return Some(s.into());
-        }
+        } */
 
         if type_.matches(&TypeHint::Html) {
             // NOTE: this is a very dirty recreation from the parsed result.
