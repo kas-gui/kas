@@ -203,14 +203,6 @@ impl EventState {
         resize
     }
 
-    /// Clear all focus and grabs on `target`
-    fn cancel_event_focus(&mut self, target: &Id) {
-        self.input.clear_focus_on(target, false);
-        self.clear_nav_focus_on(target);
-        self.mouse.cancel_event_focus(target);
-        self.touch.cancel_event_focus(target);
-    }
-
     /// Check whether a widget is disabled
     ///
     /// A widget is disabled if any ancestor is.
@@ -398,7 +390,10 @@ impl<'a> ConfigCx<'a> {
     /// target is disabled, and also cancels press/pan grabs.
     pub fn set_disabled(&mut self, target: Id, disable: bool) {
         if disable {
-            self.cancel_event_focus(&target);
+            self.input.clear_focus_on(&target, true);
+            self.clear_nav_focus_on(&target);
+            self.mouse.cancel_event_focus(&target);
+            self.touch.cancel_event_focus(&target);
         }
 
         for (i, id) in self.disabled.iter().enumerate() {
