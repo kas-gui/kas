@@ -322,9 +322,7 @@ mod ScrollTextCore {
                         )
                     }
                     TextInputAction::PressEnd { .. } => {
-                        if self.has_sel_focus {
-                            self.set_primary(cx);
-                        }
+                        self.set_primary(cx);
                         return Used;
                     }
                 },

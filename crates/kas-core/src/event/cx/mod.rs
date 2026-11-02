@@ -205,7 +205,7 @@ impl EventState {
 
     /// Clear all focus and grabs on `target`
     fn cancel_event_focus(&mut self, target: &Id) {
-        self.input.clear_sel_socus_on(target);
+        self.input.clear_focus_on(target, false);
         self.clear_nav_focus_on(target);
         self.mouse.cancel_event_focus(target);
         self.touch.cancel_event_focus(target);

@@ -221,7 +221,7 @@ impl<'a> EventCx<'a> {
         if let Some(id) = self.input.sel_focus().cloned()
             && id != target
         {
-            self.input.clear_sel_socus_on(&id);
+            self.input.clear_focus_on(&id, false);
         }
 
         if let Some(old) = self.nav.focus.take() {

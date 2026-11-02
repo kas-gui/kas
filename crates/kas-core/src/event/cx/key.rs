@@ -21,6 +21,7 @@ use winit::window::{
 #[derive(Debug)]
 struct LostFocus {
     id: Id,
+    sel: bool,
     key: bool,
     ime: bool,
 }
@@ -59,10 +60,10 @@ impl Input {
         self.ime_focus.then_some(self.focus.as_ref()).flatten()
     }
 
-    /// Clear sel, key and ime focus on target
+    /// Clears key, ime and optionally `sel` focus on `target`
     ///
     /// Returns `true` on success.
-    pub(super) fn clear_sel_socus_on(&mut self, target: &Id) -> bool {
+    pub(super) fn clear_focus_on(&mut self, target: &Id, sel: bool) -> bool {
         if *target != self.sel_focus() {
             return true; // nothing to do
         } else if let Some(ref focus) = self.lost_focus
@@ -71,7 +72,11 @@ impl Input {
             return false; // conflicting focus request
         }
 
-        let old_focus = self.focus.take().unwrap();
+        let old_focus = if sel {
+            self.focus.take().unwrap()
+        } else {
+            self.focus.clone().unwrap()
+        };
         let key = std::mem::take(&mut self.key_focus);
         let ime = std::mem::take(&mut self.ime_focus);
 
@@ -81,11 +86,13 @@ impl Input {
 
         if let Some(ref mut focus) = self.lost_focus {
             // Upgrade partial-loss to full-loss
+            focus.sel |= sel;
             focus.key |= key;
             focus.ime |= ime;
         } else {
             self.lost_focus = Some(LostFocus {
                 id: old_focus,
+                sel,
                 key,
                 ime,
             });
@@ -221,6 +228,7 @@ impl EventState {
         } else {
             self.input.lost_focus = Some(LostFocus {
                 id: target.clone(),
+                sel: false,
                 key: false,
                 ime,
             });
@@ -315,7 +323,7 @@ impl<'a> EventCx<'a> {
         if target == self.input.sel_focus() {
             return true;
         } else if let Some(id) = self.input.sel_focus().cloned() {
-            if !self.input.clear_sel_socus_on(&id) {
+            if !self.input.clear_focus_on(&id, true) {
                 return false;
             }
         }
@@ -595,7 +603,7 @@ impl<'a> EventCx<'a> {
                 self.send_event(widget.re(), focus.id.clone(), Event::LostKeyFocus);
             }
 
-            if focus.id != self.input.sel_focus() {
+            if focus.sel && focus.id != self.input.sel_focus() {
                 self.send_event(widget.re(), focus.id, Event::LostSelFocus);
             }
         }
