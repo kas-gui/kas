@@ -279,6 +279,10 @@ impl<F: FormattableText + ?Sized> FormattableText for &F {
     fn decorations(&self) -> &[(u32, Decoration)] {
         F::decorations(self)
     }
+
+    fn as_data_transfer(&self, range: Range<usize>) -> Box<dyn DataTransferSend> {
+        F::as_data_transfer(self, range)
+    }
 }
 
 #[cfg(test)]
