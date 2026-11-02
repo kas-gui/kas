@@ -6,11 +6,13 @@
 //! Markdown parsing
 
 use super::{Decoration, DecorationType, FontToken, FormattableText};
-use crate::cast::Cast;
+use crate::cast::{Cast, Conv};
+use crate::data_transfer::{DataTransfer, DataTransferSend, SendData, TransferType, TypeHint};
 use crate::text::fonts::{FamilySelector, FontSelector, FontStyle, FontWeight};
 use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd};
 use std::fmt::Write;
 use std::iter::FusedIterator;
+use std::ops::{ControlFlow, Range};
 use thiserror::Error;
 
 /// Markdown parsing errors
@@ -129,6 +131,100 @@ impl FormattableText for Markdown {
     #[inline]
     fn decorations(&self) -> &[(u32, Decoration)] {
         &self.decorations
+    }
+
+    fn as_data_transfer(&self, range: Range<usize>) -> Box<dyn DataTransferSend> {
+        let (start32, end32): (u32, u32) = (range.start.cast(), range.end.cast());
+
+        let fmt_start = match self.fmt.binary_search_by(|p| p.start.cmp(&start32)) {
+            Ok(i) => i,
+            Err(0) => 0,
+            Err(i) => i - 1,
+        };
+        let fmt_end = match self.fmt.binary_search_by(|p| p.start.cmp(&end32)) {
+            Ok(i) => i,
+            Err(i) => i,
+        };
+        let mut fmt = Vec::new();
+        fmt.extend_from_slice(&self.fmt[fmt_start..fmt_end]);
+        for tok in fmt.iter_mut() {
+            tok.start = tok.start.saturating_sub(start32);
+        }
+
+        let dec_start = match self.decorations.binary_search_by(|p| p.0.cmp(&start32)) {
+            Ok(i) => i,
+            Err(0) => 0,
+            Err(i) => i - 1,
+        };
+        let dec_end = match self.decorations.binary_search_by(|p| p.0.cmp(&end32)) {
+            Ok(i) => i,
+            Err(i) => i,
+        };
+        let mut decorations = Vec::new();
+        decorations.extend_from_slice(&self.decorations[dec_start..dec_end]);
+        for tok in decorations.iter_mut() {
+            tok.0 = tok.0.saturating_sub(start32);
+        }
+
+        Box::new(Markdown {
+            text: self.text[range].to_string(),
+            fmt,
+            decorations,
+        })
+    }
+}
+
+impl DataTransfer for Markdown {
+    fn for_each_available_type<'a>(
+        &'a self,
+        f: &mut dyn FnMut(&'a dyn TransferType) -> ControlFlow<()>,
+    ) {
+        // NOTE: RTF has its own encoding for unicode chars but conversion is not implemented here
+        if self.text.is_ascii()
+            && let ControlFlow::Break(()) = f(&TypeHint::Rtf)
+        {
+            return;
+        }
+
+        let _ = f(&TypeHint::Plaintext);
+    }
+}
+impl DataTransferSend for Markdown {
+    fn data_for_type(&self, type_: &dyn TransferType) -> Option<SendData> {
+        if type_.matches(&TypeHint::Plaintext) {
+            return Some(self.text.clone().into());
+        }
+
+        if type_.matches(&TypeHint::Rtf) {
+            let mut s = String::with_capacity(self.text.len() + 3 * self.fmt.len());
+            let mut start = 0;
+            let mut bold = false;
+            let mut italic = false;
+            for tok in self.fmt.iter() {
+                if usize::conv(tok.start) > start {
+                    s.push_str(&self.text[start..usize::conv(tok.start)]);
+                    start = usize::conv(tok.start);
+                }
+
+                if tok.bold != bold {
+                    bold = tok.bold;
+                    s.push_str(if bold { "\\b1" } else { "\\b0" });
+                }
+
+                if tok.italic != italic {
+                    italic = tok.italic;
+                    s.push_str(if italic { "\\i1" } else { "\\i0" });
+                }
+            }
+
+            if start < self.text.len() {
+                s.push_str(&self.text[start..]);
+            }
+
+            return Some(s.into());
+        }
+
+        None
     }
 }
 
