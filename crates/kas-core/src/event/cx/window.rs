@@ -437,6 +437,43 @@ impl<'a> EventCx<'a> {
         }
     }
 
+    /// Request contents of primary selection buffer
+    ///
+    /// Assuming the clipboard is not empty, closure `type_selector` will be
+    /// called to select a data type for transfer.
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    ///
+    /// On success, widget `target` will receive [`Event::DataTransfer`] with
+    /// the given [`DataTransferId`]. On failure, no transfer event will be
+    /// delivered.
+    pub fn get_primary(&mut self, target: Id, mut type_selector: impl FnMut(&mut TypeSelector)) {
+        let el = self.window.event_loop();
+
+        let Some(Ok(Some(id))) = el.primary_selection_ext().map(|ext| {
+            ext.primary_selection()
+                .inspect_err(|e| log::warn!("get_primary failed: {e}"))
+        }) else {
+            return;
+        };
+
+        let Ok(dt) = el
+            .data_transfer(id)
+            .inspect_err(|e| log::warn!("get_primary failed: {e}"))
+        else {
+            return;
+        };
+
+        type_selector(&mut TypeSelector {
+            el,
+            dt: &*dt,
+            transfers: &mut self.data_transfers,
+            id,
+            target,
+        });
+    }
+
     /// Request contents of primary selection buffer as plain UTF-8
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
