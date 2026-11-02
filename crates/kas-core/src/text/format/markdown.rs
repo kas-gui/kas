@@ -58,9 +58,8 @@ impl Markdown {
     ///
     /// Parsing happens immediately. Fonts must be initialized before calling
     /// this method.
-    #[inline]
-    pub fn new(input: &str) -> Result<Self, Error> {
-        parse(input)
+    pub fn new(input: impl AsRef<str>) -> Result<Self, Error> {
+        parse(input.as_ref())
     }
 }
 
@@ -179,6 +178,10 @@ impl DataTransfer for Markdown {
         &'a self,
         f: &mut dyn FnMut(&'a dyn TransferType) -> ControlFlow<()>,
     ) {
+        if let ControlFlow::Break(()) = f(&TypeHint::Html) {
+            return;
+        }
+
         // NOTE: RTF has its own encoding for unicode chars but conversion is not implemented here
         if self.text.is_ascii()
             && let ControlFlow::Break(()) = f(&TypeHint::Rtf)
@@ -224,8 +227,93 @@ impl DataTransferSend for Markdown {
             return Some(s.into());
         }
 
+        if type_.matches(&TypeHint::Html) {
+            // NOTE: this is a very dirty recreation from the parsed result.
+            // It would be better to use the original input, but we'd need to
+            // map and apply the sub-range to it.
+            let mut s = String::with_capacity(33 + self.text.len() + 8 * self.fmt.len());
+            s.push_str("<html><body><p>");
+
+            let mut start = 0;
+            let mut bold = false;
+            let mut italic = false;
+            let mut code = false;
+            let mut level = None;
+            for tok in self.fmt.iter() {
+                if usize::conv(tok.start) > start {
+                    let mut slice = &self.text[start..usize::conv(tok.start)];
+                    while let Some(i) = slice.find("\n\n") {
+                        s.push_str(&slice[..i]);
+                        s.push_str("</p><p>");
+                        slice = &slice[i + 2..];
+                    }
+
+                    s.push_str(slice);
+                    start = usize::conv(tok.start);
+                }
+
+                let opt_lev = rel_size_to_heading_level(tok.rel_size);
+                if opt_lev != level {
+                    if let Some(h) = level {
+                        s.push_str(&format!("</{h}>"));
+                    }
+                    level = opt_lev;
+                    if let Some(h) = level {
+                        s.push_str(&format!("<{h}>"));
+                    }
+                }
+
+                if tok.bold != bold {
+                    bold = tok.bold;
+                    s.push_str(if bold { "<strong>" } else { "</strong>" });
+                }
+
+                if tok.italic != italic {
+                    italic = tok.italic;
+                    s.push_str(if italic { "<em>" } else { "</em>" });
+                }
+
+                if tok.monospace != code {
+                    code = tok.monospace;
+                    s.push_str(if italic { "<code>" } else { "</code>" });
+                }
+            }
+
+            if start < self.text.len() {
+                s.push_str(&self.text[start..]);
+            }
+            if let Some(h) = level {
+                s.push_str(&format!("</{h}>"));
+            }
+            if bold {
+                s.push_str("</strong>");
+            }
+            if italic {
+                s.push_str("</em>");
+            }
+            if code {
+                s.push_str("</code>");
+            }
+
+            s.push_str("</p></body></html>");
+            return Some(s.into());
+        }
+
         None
     }
+}
+
+fn rel_size_to_heading_level(rel_size: f32) -> Option<HeadingLevel> {
+    Some(match rel_size {
+        x if x == 2.0 / 1.0 => HeadingLevel::H1,
+        x if x == 3.0 / 2.0 => HeadingLevel::H2,
+        x if x == 6.0 / 5.0 => HeadingLevel::H3,
+        // Note: H4 has the same size as normal text!
+        // x if x == 1.0 => HeadingLevel::H4,
+        x if x == 8.0 / 9.0 => HeadingLevel::H5,
+        x if x == 3.0 / 5.0 => HeadingLevel::H6,
+        _ => return None,
+    })
 }
 
 fn parse(input: &str) -> Result<Markdown, Error> {
