@@ -6,7 +6,7 @@
 //! The [`MultiPartEditor`] widget
 
 use super::editor::{Common, EventAction, Part};
-use crate::edit::editor::{ActionResetStatus, PartList, TextIndex};
+use crate::edit::editor::{ActionResetStatus, PartList};
 use crate::edit::highlight::{Highlighter, Plain};
 use crate::{ScrollBar, ScrollBarMsg};
 use kas::cast::Ceil;
@@ -372,8 +372,6 @@ mod Inner {
         #[must_use]
         fn with_text(mut self, text: &str) -> Self {
             debug_assert!(self.common.is_unedited());
-
-            self.common.set_cursor(&self.parts, TextIndex::new(0, 0));
 
             let mut have_default_lb = false;
 

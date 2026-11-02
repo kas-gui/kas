@@ -276,9 +276,24 @@ impl Common {
     /// Set the cursor index / range
     ///
     /// This does not interact with undo history or call action handlers on the
+    /// guard.
+    pub fn set_cursor(
+        &mut self,
+        parts: &mut impl PartList,
+        cx: &mut EventState,
+        range: impl Into<CursorRange<TextIndex>>,
+    ) -> Option<ActionPrepare> {
+        let action = self.cancel_current_action(parts, cx);
+        self.set_cursor_(parts, range);
+        action
+    }
+
+    /// Set the cursor index / range
+    ///
+    /// This does not interact with undo history or call action handlers on the
     /// guard. It is recommended to clear or set the [`CurrentAction`] when
     /// calling this method.
-    pub fn set_cursor(&mut self, parts: &impl PartList, range: impl Into<CursorRange<TextIndex>>) {
+    fn set_cursor_(&mut self, parts: &impl PartList, range: impl Into<CursorRange<TextIndex>>) {
         let range = range.into();
         if range != self.cursor {
             self.validate_range(parts, range.to_range());
@@ -1593,7 +1608,7 @@ impl Common {
 
                     let cursor =
                         self.replace_range(parts, self.cursor.to_range(), &value[range.clone()]);
-                    self.set_cursor(parts, cursor);
+                    self.set_cursor_(parts, cursor);
 
                     self.request_input_focus(parts, cx, source);
 
@@ -1627,7 +1642,7 @@ impl Common {
                     );
 
                     let end = self.replace_range(parts, selection.clone(), text);
-                    self.set_cursor(parts, end);
+                    self.set_cursor_(parts, end);
                     self.edit_x_coord = None;
 
                     if update_ime {
@@ -1707,7 +1722,7 @@ impl Common {
                             // Remove selection contents before starting IME edit.
                             let cursor = self.replace_range(parts, self.cursor.to_range(), "");
                             p = cursor.part();
-                            self.set_cursor(parts, cursor);
+                            self.set_cursor_(parts, cursor);
                         }
 
                         let b = self.cursor.cursor.byte;
@@ -1742,7 +1757,7 @@ impl Common {
                 let p = cursor.part();
                 self.save_undo_state(parts, Some(EditOp::Replace(p, p)));
 
-                self.set_cursor(parts, cursor);
+                self.set_cursor_(parts, cursor);
                 if let Some(id) = cx.get_primary_plain_text(self.id.clone()) {
                     let source = FocusSource::Pointer;
                     self.current = CurrentAction::Paste { id, source };
@@ -1798,7 +1813,7 @@ impl Common {
                             // TODO: anchor and cursor use different parts; expand separately then recombine
                         }
                     }
-                    self.set_cursor(parts, CursorRange::from(anchor..cursor));
+                    self.set_cursor_(parts, CursorRange::from(anchor..cursor));
 
                     // Request only key (not IME) focus:
                     cx.request_key_focus(self.id.clone(), FocusSource::Pointer);
@@ -1830,7 +1845,7 @@ impl Common {
                         // TODO
                         cursor = index;
                     }
-                    self.set_cursor(parts, CursorRange::from(anchor..cursor));
+                    self.set_cursor_(parts, CursorRange::from(anchor..cursor));
                     EventAction::Cursor { preedit: false }
                 }
                 TextInputAction::PressEnd { coord } => {
@@ -1861,7 +1876,7 @@ impl Common {
 
                     self.save_undo_state(parts, Some(EditOp::Cursor));
                     if let Some(index) = opt_index {
-                        self.set_cursor(parts, index);
+                        self.set_cursor_(parts, index);
                     } else {
                         self.set_primary(parts, cx);
                     }
@@ -2318,13 +2333,13 @@ impl Common {
                 let mut index = self.cursor.cursor;
                 let range = if have_sel { selection.clone() } else { index..index };
                 index = self.replace_range(parts, range, s);
-                self.set_cursor(parts, index);
+                self.set_cursor_(parts, index);
                 self.edit_x_coord = None;
                 EventAction::Edit { is_key_input }
             }
             Action::Delete(sel, is_key_input) => {
                 self.replace_range(parts, sel.clone(), "");
-                self.set_cursor(parts, sel.start);
+                self.set_cursor_(parts, sel.start);
                 self.edit_x_coord = None;
                 EventAction::Edit { is_key_input }
             }
@@ -2367,7 +2382,7 @@ impl Common {
 
                     self.edit_x_coord = None;
                     let range = item.cursor;
-                    self.set_cursor(parts, range);
+                    self.set_cursor_(parts, range);
                     EventAction::Edit {
                         is_key_input: false,
                     }
@@ -2565,7 +2580,7 @@ impl Editor {
         let end = selection.end.byte();
         self.part.replace_range(start..end, text);
         let index = TextIndex::new(0, start + text.len());
-        self.common.set_cursor(&self.part, index);
+        self.common.set_cursor_(&self.part, index);
         self.error_state = None;
     }
 
@@ -2583,9 +2598,9 @@ impl Editor {
     /// This does not interact with undo history or call action handlers on the
     /// guard.
     #[inline]
-    pub fn set_cursor(&mut self, cx: &mut EventState, index: usize) {
-        let _ = self.common.cancel_current_action(&mut self.part, cx);
-        self.common.set_cursor(&self.part, TextIndex::new(0, index))
+    pub fn set_cursor(&mut self, cx: &mut EventState, index: usize) -> Option<ActionPrepare> {
+        self.common
+            .set_cursor(&mut self.part, cx, TextIndex::new(0, index))
     }
 
     /// Set the cursor index / range
@@ -2594,8 +2609,7 @@ impl Editor {
     /// guard.
     #[inline]
     pub fn set_cursor_range(&mut self, cx: &mut EventState, range: CursorRange<usize>) {
-        let _ = self.common.cancel_current_action(&mut self.part, cx);
-        self.common.set_cursor(&self.part, CursorRange {
+        self.common.set_cursor(&mut self.part, cx, CursorRange {
             anchor: TextIndex::new(0, range.anchor),
             cursor: TextIndex::new(0, range.cursor),
         });
