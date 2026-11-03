@@ -6,7 +6,7 @@
 //! Window widgets
 
 use super::icon::Icon;
-use super::{Decorations, Popup, PopupDescriptor, ResizeDirection, WindowId};
+use super::{Decorations, Popup, PopupDescriptor, PopupWindow, ResizeDirection, WindowId};
 use crate::cast::Cast;
 use crate::dir::{Direction, Directional};
 use crate::event::{Command, ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
@@ -275,7 +275,7 @@ mod Window {
         bar_margin: i32,
         dec_offset: Offset,
         dec_size: Size,
-        popups: SmallVec<[(WindowId, PopupDescriptor, Offset); 16]>,
+        popups: SmallVec<[PopupWindow; 16]>,
     }
 
     impl Layout for Self {
@@ -372,11 +372,11 @@ mod Window {
 
         fn draw(&self, mut draw: DrawCx) {
             // Draw access keys first to prioritise their access key bindings
-            for (_, popup, translation) in &self.popups {
-                if let Some(child) = self.find_tile(&popup.id) {
+            for popup in &self.popups {
+                if let Some(child) = self.find_tile(&popup.desc.id) {
                     // We use a new pass to control draw order and clip content:
-                    let clip_rect = child.rect() - *translation;
-                    draw.with_overlay(clip_rect, *translation, |draw| {
+                    let clip_rect = child.rect() - popup.translation;
+                    draw.with_overlay(clip_rect, popup.translation, |draw| {
                         child.draw(draw);
                     });
                 }
@@ -402,9 +402,9 @@ mod Window {
         type Data = Data;
 
         fn probe(&self, coord: Coord) -> Id {
-            for (_, popup, translation) in self.popups.iter().rev() {
-                if let Some(widget) = self.inner.find_tile(&popup.id)
-                    && let Some(id) = widget.try_probe(coord + *translation)
+            for popup in self.popups.iter().rev() {
+                if let Some(widget) = self.inner.find_tile(&popup.desc.id)
+                    && let Some(id) = widget.try_probe(coord + popup.translation)
                 {
                     return id;
                 }
@@ -453,7 +453,7 @@ mod Window {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(Command::Escape, _) => {
-                    if let Some(id) = self.popups.last().map(|desc| desc.0) {
+                    if let Some(id) = self.popups.last().map(|popup| popup.id) {
                         cx.close_window(id);
                     } else if self.props.escapable {
                         cx.top_window().close();
@@ -542,19 +542,19 @@ impl<Data: AppData> WindowWidget for Window<Data> {
         cx: &mut SizeCx,
         data: &Data,
         id: WindowId,
-        popup: PopupDescriptor,
+        desc: PopupDescriptor,
     ) {
         let index = 'index: {
             for i in 0..self.popups.len() {
-                if self.popups[i].0 == id {
-                    debug_assert_eq!(self.popups[i].1.id, popup.id);
-                    self.popups[i].1 = popup;
+                if self.popups[i].id == id {
+                    debug_assert_eq!(self.popups[i].desc.id, desc.id);
+                    self.popups[i].desc = desc;
                     break 'index i;
                 }
             }
 
             let len = self.popups.len();
-            self.popups.push((id, popup, Offset::ZERO));
+            self.popups.push(PopupWindow::new(id, desc));
             len
         };
 
@@ -565,7 +565,7 @@ impl<Data: AppData> WindowWidget for Window<Data> {
 
     fn remove_popup(&mut self, cx: &mut SizeCx, id: WindowId) {
         for i in 0..self.popups.len() {
-            if id == self.popups[i].0 {
+            if id == self.popups[i].id {
                 self.popups.remove(i);
                 cx.region_moved();
                 return;
@@ -585,9 +585,9 @@ impl<Data: AppData> Window<Data> {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.rect();
-        let popup = self.popups[index].1.clone();
+        let desc = self.popups[index].desc.clone();
 
-        let is_reversed = popup.direction.is_reversed();
+        let is_reversed = desc.direction.is_reversed();
         let place_in = |rp, rs: i32, cp: i32, cs: i32, ideal, m: (u16, u16)| -> (i32, i32) {
             let m: (i32, i32) = (m.0.into(), m.1.into());
             let before: i32 = cp - (rp + m.1);
@@ -622,23 +622,23 @@ impl<Data: AppData> Window<Data> {
             (pos, size)
         };
 
-        let Some((c, t)) = self.as_tile().find_tile_rect(&popup.parent) else {
+        let Some((c, t)) = self.as_tile().find_tile_rect(&desc.parent) else {
             return;
         };
-        self.popups[index].2 = t;
+        self.popups[index].translation = t;
         let r = r + t; // work in translated coordinate space
-        let result = Widget::as_node(self, data).find_node(&popup.id, |mut node| {
+        let result = Widget::as_node(self, data).find_node(&desc.id, |mut node| {
             let mut cache = layout::SolveCache::default();
             cache.find_constraints(node.re(), cx);
             let ideal = cache.ideal(false);
             let m = cache.margins();
 
-            let rect = if popup.direction.is_horizontal() {
+            let rect = if desc.direction.is_horizontal() {
                 let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
-                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, popup.align);
+                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, desc.align);
                 Rect::new(Coord(x, y), Size::new(w, h))
             } else {
-                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, popup.align);
+                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, desc.align);
                 let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
                 Rect::new(Coord(x, y), Size::new(w, h))
             };

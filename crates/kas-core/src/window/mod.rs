@@ -12,7 +12,7 @@ mod window;
 #[doc(inline)]
 pub(crate) use popup::POPUP_INNER_INDEX;
 #[doc(inline)] pub use popup::Popup;
-#[doc(inline)] pub(crate) use popup::PopupDescriptor;
+pub(crate) use popup::{PopupDescriptor, PopupWindow};
 pub use window::*;
 pub use winit::icon;
 pub use winit::window::ResizeDirection;
