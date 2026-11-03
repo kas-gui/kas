@@ -246,7 +246,7 @@ where
                     self.windows
                         .get_mut(&parent_id)
                         .unwrap()
-                        .add_popup(&self.data, id, popup);
+                        .add_or_update_popup(&self.data, id, popup);
                     self.popups.insert(id, parent_id);
                 }
                 Pending::RepositionPopup(id, popup) => {
@@ -254,7 +254,7 @@ where
                         self.windows
                             .get_mut(parent_id)
                             .unwrap()
-                            .add_popup(&self.data, id, popup);
+                            .add_or_update_popup(&self.data, id, popup);
                     }
                 }
                 Pending::AddWindow(id, window) => {

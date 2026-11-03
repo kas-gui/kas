@@ -53,10 +53,12 @@ pub(crate) trait WindowErased: Tile {
 
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub(crate) trait WindowWidget: WindowErased + Widget {
-    /// Add a pop-up as a layer in the current window
+    /// Add or update a popup
     ///
-    /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
-    fn add_popup(
+    /// A popup is emulated as a layer in the current window. If there is an
+    /// existing popup with the given `id` then it is updated with the given
+    /// `popup` descriptor, otherwise a new popup is created.
+    fn add_or_update_popup(
         &mut self,
         cx: &mut SizeCx,
         data: &Self::Data,
@@ -588,7 +590,13 @@ impl<Data: AppData> Window<Data> {
 }
 
 impl<Data: AppData> WindowWidget for Window<Data> {
-    fn add_popup(&mut self, cx: &mut SizeCx, data: &Data, id: WindowId, popup: PopupDescriptor) {
+    fn add_or_update_popup(
+        &mut self,
+        cx: &mut SizeCx,
+        data: &Data,
+        id: WindowId,
+        popup: PopupDescriptor,
+    ) {
         let index = 'index: {
             for i in 0..self.popups.len() {
                 if self.popups[i].0 == id {

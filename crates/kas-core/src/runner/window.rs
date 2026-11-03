@@ -561,14 +561,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
     }
 
-    /// Add or reposition a pop-up
-    pub(super) fn add_popup(&mut self, data: &A, id: WindowId, popup: PopupDescriptor) {
+    /// Add or update a popup with the given `id` and `popup` descriptor
+    pub(super) fn add_or_update_popup(&mut self, data: &A, id: WindowId, popup: PopupDescriptor) {
         let Some((ref theme, _)) = self.surface else {
             return;
         };
 
         let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
-        self.widget.add_popup(&mut cx, data, id, popup);
+        self.widget.add_or_update_popup(&mut cx, data, id, popup);
     }
 
     pub(super) fn send_close(&mut self, id: WindowId) {
