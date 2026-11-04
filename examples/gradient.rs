@@ -174,6 +174,10 @@ mod Gradient {
 fn main() -> kas::runner::Result<()> {
     kas::runner::Runner::new(())
         .unwrap()
-        .with(Window::new(Gradient::new((500., 500.)), "Gradient"))
+        .with(
+            Gradient::new((500., 500.)),
+            "Gradient",
+            Properties::top_defaults(),
+        )
         .run()
 }

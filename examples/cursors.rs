@@ -86,6 +86,7 @@ fn main() -> kas::runner::Result<()> {
         cursor!(ZoomOut),
     ]);
 
-    let window = Window::new(list, "Cursor gallery");
-    kas::runner::Runner::new(())?.with(window).run()
+    kas::runner::Runner::new(())?
+        .with(list, "Cursor gallery", Properties::dialog_defaults())
+        .run()
 }

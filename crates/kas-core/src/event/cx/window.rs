@@ -12,8 +12,8 @@ use crate::event::{Event, FocusSource};
 use crate::geom::DVec2;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
-use crate::window::{PopupDescriptor, Window, WindowId, WindowWidget};
-use crate::{ActionRedraw, Id, Node, WindowActions};
+use crate::window::{PopupDescriptor, Properties, Window, WindowId, WindowWidget};
+use crate::{ActionRedraw, Id, Node, Widget, WindowActions};
 use linear_map::LinearMap;
 use std::sync::Arc;
 use winit::data_transfer::{
@@ -294,15 +294,18 @@ impl<'a> EventCx<'a> {
     /// Adding the window is infallible. Opening the new window is theoretically
     /// fallible (unlikely assuming a window has already been opened).
     ///
-    /// If `modal`, then the new `window` is considered owned by this window
-    /// (the window the calling widget belongs to), preventing interaction with
-    /// this window until the new `window` has been closed. **Note:** this is
-    /// mostly unimplemented; see [`Window::set_modal_with_parent`].
+    /// Sets [`properties.parent`](Properties::parent) to this window's
+    /// [`WindowId`], then constructs a window over the given `widget` and
+    /// `title`.
     #[inline]
-    pub fn add_dataless_window(&mut self, mut window: Window<()>, modal: bool) -> WindowId {
-        if modal {
-            window.set_modal_with_parent(self.window_id);
-        }
+    pub fn add_dataless_window(
+        &mut self,
+        widget: Box<dyn Widget<Data = ()>>,
+        title: String,
+        mut properties: Properties,
+    ) -> WindowId {
+        properties.parent = Some(self.window_id);
+        let window = Window::new(widget, title, properties);
         self.runner.add_dataless_window(window)
     }
 
@@ -319,15 +322,19 @@ impl<'a> EventCx<'a> {
     /// Adding the window is infallible. Opening the new window is theoretically
     /// fallible (unlikely assuming a window has already been opened).
     ///
-    /// If `modal`, then the new `window` is considered owned by this window
-    /// (the window the calling widget belongs to), preventing interaction with
-    /// this window until the new `window` has been closed. **Note:** this is
-    /// mostly unimplemented; see [`Window::set_modal_with_parent`].
+    /// Sets [`properties.parent`](Properties::parent) to this window's
+    /// [`WindowId`], then constructs a window over the given `widget` and
+    /// `title`.
     #[inline]
-    pub fn add_window<Data: AppData>(&mut self, mut window: Window<Data>, modal: bool) -> WindowId {
-        if modal {
-            window.set_modal_with_parent(self.window_id);
-        }
+    pub fn add_window<Data: AppData>(
+        &mut self,
+        widget: Box<dyn Widget<Data = Data>>,
+        title: String,
+        mut properties: Properties,
+    ) -> WindowId {
+        properties.parent = Some(self.window_id);
+        let window = Window::new(widget, title, properties);
+
         let data_type_id = std::any::TypeId::of::<Data>();
         unsafe {
             let window: Window<()> = std::mem::transmute(window);

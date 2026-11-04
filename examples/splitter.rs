@@ -38,7 +38,7 @@ fn main() -> kas::runner::Result<()> {
         }
     });
 
-    let window = Window::new(adapt, "Slitter panes").escapable();
-
-    kas::runner::Runner::new(())?.with(window).run()
+    kas::runner::Runner::new(())?
+        .with(adapt, "Slitter panes", Properties::dialog_defaults())
+        .run()
 }

@@ -114,14 +114,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node);
 
         let props = self.widget.properties();
-        let transparent = props.transparent();
-        let (restrict_min, restrict_max) = props.restrictions();
+        let transparent = props.transparent;
+        let (restrict_min, restrict_max) = (props.restrict_min, props.restrict_max);
 
         // Construct a window without a size (on Wayland the precise scale
         // factor is not known before constructing the window):
         let mut attrs = WindowAttributes::default();
         attrs.visible = false;
-        attrs.window_icon = props.take_icon();
+        attrs.window_icon = props.icon.take();
         attrs.transparent = transparent;
         attrs.decorations = self.ev_state.decorations == Decorations::Server;
         if attrs.decorations {
@@ -322,7 +322,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
                 let is_desktop = self.ev_state.platform().is_desktop();
                 let size = window.graphical.size();
-                let (restrict_min, _) = self.widget.properties().restrictions();
+                let restrict_min = self.widget.properties().restrict_min;
                 let mut apply = true;
                 if is_desktop && restrict_min && size < min {
                     let size = size.max(min);
@@ -640,8 +640,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         self.widget.resize_popups(&mut cx, data);
 
         // Update window size restrictions: the new width may have changed height requirements
-        let (restrict_min, restrict_max) = self.widget.properties().restrictions();
-        let min_size = if restrict_min {
+        let props = self.widget.properties();
+        let min_size = if props.restrict_min {
             window.solve_cache.min(true).as_physical()
         } else {
             PhysicalSize::new(1, 1)
@@ -650,7 +650,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if self.ev_state.platform().is_desktop() {
             ww.set_min_surface_size(Some(min_size.into()));
             ww.set_max_surface_size(
-                restrict_max.then(|| window.solve_cache.ideal(true).as_physical().into()),
+                props
+                    .restrict_max
+                    .then(|| window.solve_cache.ideal(true).as_physical().into()),
             );
         }
 
@@ -721,7 +723,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         // widget requested a resize during draw. Likely it's better not to do
         // this even if the frame is imperfect.
 
-        let clear_color = if self.widget.properties().transparent() {
+        let clear_color = if self.widget.properties().transparent {
             Rgba::TRANSPARENT
         } else {
             shared.theme.clear_color()

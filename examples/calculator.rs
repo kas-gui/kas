@@ -29,7 +29,7 @@ fn key_button_with(label: &str, key: Key) -> Button<AccessLabel> {
     Button::label_msg(label, key.clone()).with_access_key(key)
 }
 
-fn calc_ui() -> Window<()> {
+fn calc_ui() -> Box<dyn Widget<Data = ()>> {
     // We could use kas::widget::Text, but EditBox looks better.
     let display = EditBox::read_only(|calc: &Calculator| calc.display())
         .with_multi_line(true)
@@ -64,13 +64,10 @@ fn calc_ui() -> Window<()> {
     // We use map_any to avoid passing input data (not wanted by buttons):
     let buttons = Frame::new(buttons).with_style(FrameStyle::None).map_any();
 
-    let ui = Adapt::new(column![display, buttons], Calculator::new())
-        .on_message(|_, calc, key| calc.handle(key));
-
-    Window::new(ui, "Calculator")
-        .escapable()
-        .with_alt_bypass()
-        .without_nav_focus()
+    Box::new(
+        Adapt::new(column![display, buttons], Calculator::new())
+            .on_message(|_, calc, key| calc.handle(key)),
+    )
 }
 
 fn main() -> kas::runner::Result<()> {
@@ -79,7 +76,12 @@ fn main() -> kas::runner::Result<()> {
     let theme = Theme::new();
     let mut app = kas::runner::Runner::with_theme(theme)?.build(())?;
     let _ = app.config_mut().font.set_size(24.0);
-    app.with(calc_ui()).run()
+    let props = Properties {
+        alt_bypass: true,
+        disable_nav_focus: true,
+        ..Properties::dialog_defaults()
+    };
+    app.with_boxed(calc_ui(), "Calculator", props).run()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

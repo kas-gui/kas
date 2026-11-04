@@ -268,7 +268,7 @@ where
                     log::debug!("Pending: adding {}", window.widget.identify());
                     if !self.suspended {
                         let mut modal_parent = None;
-                        if let Some(id) = window.widget.properties().modal_parent
+                        if let Some(id) = window.widget.properties().modal_parent()
                             && let Some(window) = self.windows.get(&id)
                         {
                             modal_parent = window.winit_window();

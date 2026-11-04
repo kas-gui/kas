@@ -197,6 +197,5 @@ fn main() -> kas::runner::Result<()> {
     let app = kas::runner::Runner::with_theme(theme)?.build(())?;
 
     let ui = column![menus(), Editor::new()];
-    let window = Window::new(ui, "Editor");
-    app.with(window).run()
+    app.with(ui, "Editor", Properties::top_defaults()).run()
 }

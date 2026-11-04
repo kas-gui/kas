@@ -226,7 +226,7 @@ fn main() -> kas::runner::Result<()> {
         .with_state(data)
         .on_message(|_, data, control| data.handle(control));
 
-    let window = Window::new(ui, "Dynamic widget demo");
-
-    kas::runner::Runner::new(())?.with(window).run()
+    kas::runner::Runner::new(())?
+        .with(ui, "Dynamic widget demo", Properties::top_defaults())
+        .run()
 }

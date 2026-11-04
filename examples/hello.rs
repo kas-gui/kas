@@ -5,7 +5,7 @@
 
 //! Hello world example
 
-use kas::window::Window;
+use kas::window::Properties;
 use kas_widgets::{Button, column};
 
 fn main() -> kas::runner::Result<()> {
@@ -13,7 +13,8 @@ fn main() -> kas::runner::Result<()> {
         "Hello, world!",
         Button::label("&Close").with(|cx, _| cx.exit())
     ];
-    let window = Window::new(ui, "Hello").escapable();
 
-    kas::runner::Runner::new(())?.with(window).run()
+    kas::runner::Runner::new(())?
+        .with(ui, "Hello", Properties::dialog_defaults())
+        .run()
 }
