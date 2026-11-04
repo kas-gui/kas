@@ -185,7 +185,7 @@ pub(crate) trait RunnerT {
     }
 
     /// Add a window to the UI at run-time.
-    fn add_dataless_window(
+    fn add_window(
         &mut self,
         widget: Box<dyn Widget<Data = ()>>,
         title: String,
@@ -209,7 +209,7 @@ pub(crate) trait RunnerT {
     /// type accepted by the widget as input). As an alternative we require the
     /// caller to type-cast `Window<Data>` to `Window<()>` and pass in
     /// `TypeId::of::<Data>()`.
-    unsafe fn add_window(
+    unsafe fn add_window_with_data(
         &mut self,
         widget: Box<dyn Widget<Data = ()>>,
         data_type_id: TypeId,

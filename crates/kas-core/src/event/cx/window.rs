@@ -298,21 +298,32 @@ impl<'a> EventCx<'a> {
     /// [`WindowId`], then constructs a window over the given `widget` and
     /// `title`.
     #[inline]
-    pub fn add_dataless_window(
+    pub fn add_window(
+        &mut self,
+        widget: impl Widget<Data = ()> + 'static,
+        title: impl ToString,
+        properties: Properties,
+    ) -> WindowId {
+        self.add_window_boxed(Box::new(widget), title.to_string(), properties)
+    }
+
+    /// Add a data-less window
+    ///
+    /// This is a variant of [`Self::add_window`] taking an already-boxed widget.
+    pub fn add_window_boxed(
         &mut self,
         widget: Box<dyn Widget<Data = ()>>,
         title: String,
         mut properties: Properties,
     ) -> WindowId {
         properties.parent = Some(self.window_id);
-        self.runner
-            .add_dataless_window(widget, title.to_string(), properties)
+        self.runner.add_window(widget, title, properties)
     }
 
     /// Add a window able to access top-level app data
     ///
     /// This method may be used to attach a new window to the UI at run-time.
-    /// See also [`Self::add_dataless_window`] for a variant which does not
+    /// See also [`Self::add_window`] for a variant which does not
     /// require a `Data` parameter.
     ///
     /// Requirement: the type `Data` must match the type of data passed to the
@@ -326,7 +337,7 @@ impl<'a> EventCx<'a> {
     /// [`WindowId`], then constructs a window over the given `widget` and
     /// `title`.
     #[inline]
-    pub fn add_window<Data: AppData>(
+    pub fn add_window_with_data<Data: AppData>(
         &mut self,
         widget: Box<dyn Widget<Data = Data>>,
         title: String,
@@ -338,7 +349,7 @@ impl<'a> EventCx<'a> {
         unsafe {
             let widget: Box<dyn Widget<Data = ()>> = std::mem::transmute(widget);
             self.runner
-                .add_window(widget, data_type_id, title.to_string(), properties)
+                .add_window_with_data(widget, data_type_id, title.to_string(), properties)
         }
     }
 
