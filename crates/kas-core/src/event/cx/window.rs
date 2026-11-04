@@ -12,7 +12,7 @@ use crate::event::{Event, FocusSource};
 use crate::geom::DVec2;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
-use crate::window::{PopupDescriptor, Properties, Window, WindowId, WindowWidget};
+use crate::window::{PopupDescriptor, Properties, WindowId, WindowWidget};
 use crate::{ActionRedraw, Id, Node, Widget, WindowActions};
 use linear_map::LinearMap;
 use std::sync::Arc;
@@ -305,8 +305,8 @@ impl<'a> EventCx<'a> {
         mut properties: Properties,
     ) -> WindowId {
         properties.parent = Some(self.window_id);
-        let window = Window::new(widget, title, properties);
-        self.runner.add_dataless_window(window)
+        self.runner
+            .add_dataless_window(widget, title.to_string(), properties)
     }
 
     /// Add a window able to access top-level app data
@@ -333,12 +333,12 @@ impl<'a> EventCx<'a> {
         mut properties: Properties,
     ) -> WindowId {
         properties.parent = Some(self.window_id);
-        let window = Window::new(widget, title, properties);
 
         let data_type_id = std::any::TypeId::of::<Data>();
         unsafe {
-            let window: Window<()> = std::mem::transmute(window);
-            self.runner.add_window(window, data_type_id)
+            let widget: Box<dyn Widget<Data = ()>> = std::mem::transmute(widget);
+            self.runner
+                .add_window(widget, data_type_id, title.to_string(), properties)
         }
     }
 

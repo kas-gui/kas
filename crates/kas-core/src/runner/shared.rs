@@ -13,8 +13,8 @@ use crate::draw::{DrawShared, DrawSharedImpl, SharedState};
 use crate::messages::Erased;
 use crate::runner::GraphicsFeatures;
 use crate::theme::Theme;
-use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
-use crate::{ConfigAction, Id};
+use crate::window::{PopupDescriptor, Properties, WindowId, WindowIdFactory};
+use crate::{ConfigAction, Id, Widget};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -185,10 +185,20 @@ pub(crate) trait RunnerT {
     }
 
     /// Add a window to the UI at run-time.
-    fn add_dataless_window(&mut self, window: WindowWidget<()>) -> WindowId {
+    fn add_dataless_window(
+        &mut self,
+        widget: Box<dyn Widget<Data = ()>>,
+        title: String,
+        properties: Properties,
+    ) -> WindowId {
         let id = self.window_id_factory.make_next();
-        self.pending
-            .push_back(Pending::AddWindow(id, window.map_any().boxed()));
+        self.pending.push_back(Pending::AddWindow {
+            id,
+            // TODO: can we avoid double-boxing widget?
+            widget: Box::new(crate::widgets::adapt::MapAny::new(widget)),
+            title,
+            properties,
+        });
         id
     }
 
@@ -200,13 +210,19 @@ pub(crate) trait RunnerT {
     /// type accepted by the widget as input). As an alternative we require the
     /// caller to type-cast `Window<Data>` to `Window<()>` and pass in
     /// `TypeId::of::<Data>()`.
-    unsafe fn add_window(&mut self, window: WindowWidget<()>, data_type_id: TypeId) -> WindowId {
-        // Safety: the window should be `Window<Data>`. We cast to that.
+    unsafe fn add_window(
+        &mut self,
+        widget: Box<dyn Widget<Data = ()>>,
+        data_type_id: TypeId,
+        title: String,
+        properties: Properties,
+    ) -> WindowId {
+        // SAFETY: the `widget` should have type `Box<dyn Widget<Data = Data>>`.
+        // We use a run-time test to verify this.
         if data_type_id != TypeId::of::<Data>() {
-            // If this fails it is not safe to add the window (though we could just return).
-            panic!("add_window: window has wrong Data type!");
+            panic!("add_window: widget has wrong Data type!");
         }
-        let window: WindowWidget<Data> = unsafe { std::mem::transmute(window) };
+        let widget: Box<dyn Widget<Data = Data>> = unsafe { std::mem::transmute(widget) };
 
         // By far the simplest way to implement this is to let our call
         // ancestor, event::Loop::handle, do the work.
@@ -215,8 +231,12 @@ pub(crate) trait RunnerT {
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
         let id = self.window_id_factory.make_next();
-        self.pending
-            .push_back(Pending::AddWindow(id, window.boxed()));
+        self.pending.push_back(Pending::AddWindow {
+            id,
+            widget,
+            title,
+            properties,
+        });
         id
     }
 

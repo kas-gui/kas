@@ -237,9 +237,6 @@ impl Properties {
     }
 }
 
-/// A boxed [`Window`]
-pub struct BoxedWindow<Data: 'static>(pub(crate) Box<dyn WindowWidget<Data = Data>>);
-
 #[impl_self]
 mod Window {
     /// The window widget
@@ -572,12 +569,6 @@ impl<Data: AppData> Window<Data> {
         w.b_sw.set_resizable(resizable);
 
         w
-    }
-
-    /// Convert into a [`BoxedWindow`]
-    #[inline]
-    pub fn boxed(self) -> BoxedWindow<Data> {
-        BoxedWindow(Box::new(self))
     }
 }
 

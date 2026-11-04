@@ -13,7 +13,7 @@ mod window;
 
 use crate::ConfigAction;
 use crate::messages::Erased;
-use crate::window::{BoxedWindow, PopupDescriptor, WindowId};
+use crate::window::{PopupDescriptor, WindowId};
 use event_loop::Loop;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 pub(crate) use shared::RunnerT;
@@ -212,7 +212,12 @@ enum Pending<A: AppData> {
     ConfigUpdate(ConfigAction),
     AddPopup(WindowId, WindowId, PopupDescriptor),
     RepositionPopup(WindowId, PopupDescriptor),
-    AddWindow(WindowId, BoxedWindow<A>),
+    AddWindow {
+        id: WindowId,
+        widget: Box<dyn crate::Widget<Data = A>>,
+        title: String,
+        properties: crate::window::Properties,
+    },
     CloseWindow(WindowId),
     Exit,
 }
@@ -240,6 +245,6 @@ mod test {
 
     #[test]
     fn size_of_pending() {
-        assert_eq!(std::mem::size_of::<Pending<()>>(), 40);
+        assert_eq!(std::mem::size_of::<Pending<()>>(), 80);
     }
 }
