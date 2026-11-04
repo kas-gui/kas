@@ -11,7 +11,7 @@
 use crate::Widget;
 use crate::config::{AutoFactory, Config, ConfigFactory};
 use crate::theme::Theme;
-use crate::window::{Properties, Window, WindowId};
+use crate::window::{Properties, WindowId};
 pub use kas_core::runner::{AppData, ClosedError, Error, Platform, Proxy, ReadMessage, Result};
 use kas_core::runner::{GraphicsInstance, PreLaunchState};
 #[allow(unused)]
@@ -299,12 +299,14 @@ where
         properties: Properties,
     ) -> WindowId {
         let id = self.state.next_window_id();
-        let win = Box::new(kas_core::runner::Window::new(
+        let win = kas_core::runner::Window::new_boxed(
             self.state.config().clone(),
             self.state.platform(),
             id,
-            Window::new(widget, title, properties).boxed(),
-        ));
+            widget,
+            title,
+            properties,
+        );
         self.windows.push(win);
         id
     }

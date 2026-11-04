@@ -7,8 +7,9 @@
 
 use super::{AppData, GraphicsInstance, Pending, Shared};
 use super::{ProxyAction, Window};
+use crate::Tile;
 use crate::theme::Theme;
-use crate::window::WindowId;
+use crate::window::{WindowErased, WindowId};
 use std::collections::HashMap;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
@@ -257,13 +258,20 @@ where
                             .add_or_update_popup(&self.data, id, popup);
                     }
                 }
-                Pending::AddWindow(id, window) => {
-                    let mut window = Box::new(Window::new(
+                Pending::AddWindow {
+                    id,
+                    widget,
+                    title,
+                    properties,
+                } => {
+                    let mut window = Window::new_boxed(
                         self.shared.config.clone(),
                         self.shared.platform,
                         id,
-                        window,
-                    ));
+                        widget,
+                        title,
+                        properties,
+                    );
 
                     log::debug!("Pending: adding {}", window.widget.identify());
                     if !self.suspended {

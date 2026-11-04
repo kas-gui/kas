@@ -18,7 +18,9 @@ use crate::layout::SolveCache;
 use crate::messages::Erased;
 use crate::runner::PresentResult;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, Window as _};
-use crate::window::{BoxedWindow, Decorations, PopupDescriptor, WindowId, WindowWidget};
+use crate::window::{
+    Decorations, PopupDescriptor, Properties, WindowErased, WindowId, WindowWidget,
+};
 use crate::{
     ActionClose, ActionResize, ConfigAction, Id, Layout, Tile, Widget, WindowActions, autoimpl,
 };
@@ -63,26 +65,29 @@ impl<G: GraphicsInstance> WindowData<G> {
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[autoimpl(Debug ignore self.widget, self.ev_state, self.surface)]
 pub struct Window<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
-    pub(super) widget: Box<dyn WindowWidget<Data = A>>,
-    ev_state: EventState,
     surface: Option<(T::Window, WindowData<G>)>,
+    ev_state: EventState,
+    pub(super) widget: crate::window::Window<A>,
 }
 
 // Public functions, for use by the toolkit
 impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Construct window state (widget)
-    pub fn new(
+    #[inline]
+    pub fn new_boxed(
         config: Rc<RefCell<Config>>,
         platform: Platform,
         window_id: WindowId,
-        widget: BoxedWindow<A>,
-    ) -> Self {
+        widget: Box<dyn Widget<Data = A>>,
+        title: String,
+        props: Properties,
+    ) -> Box<Self> {
         let config = WindowConfig::new(config);
-        Window {
-            widget: widget.0,
-            ev_state: EventState::new(window_id, config, platform),
+        Box::new(Window {
             surface: None,
-        }
+            ev_state: EventState::new(window_id, config, platform),
+            widget: crate::window::Window::new(widget, title, props),
+        })
     }
 
     #[inline]
