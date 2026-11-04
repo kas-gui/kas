@@ -49,11 +49,7 @@ mod MessageBox {
 
         /// Display as a modal window with the given `title`
         pub fn display(self, cx: &mut EventCx, title: impl ToString) {
-            cx.add_dataless_window(
-                Box::new(self),
-                title.to_string(),
-                Properties::modal_defaults(),
-            );
+            cx.add_window(self, title, Properties::modal_defaults());
         }
     }
 
@@ -138,7 +134,7 @@ mod AlertError {
         pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
             self.parent = parent;
             let title = std::mem::take(&mut self.title);
-            cx.add_dataless_window(Box::new(self), title, Properties::modal_defaults());
+            cx.add_window(self, title, Properties::modal_defaults());
         }
     }
 
@@ -226,7 +222,7 @@ mod AlertUnsaved {
         pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
             self.parent = parent;
             let title = std::mem::take(&mut self.title);
-            cx.add_dataless_window(Box::new(self), title, Properties::modal_defaults());
+            cx.add_window(self, title, Properties::modal_defaults());
         }
     }
 
