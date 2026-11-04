@@ -90,6 +90,24 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         })
     }
 
+    /// Construct window state (widget), mapping `()` to `A`
+    #[inline]
+    pub fn new_any_boxed(
+        config: Rc<RefCell<Config>>,
+        platform: Platform,
+        window_id: WindowId,
+        widget: Box<dyn Widget<Data = ()>>,
+        title: String,
+        props: Properties,
+    ) -> Box<Self> {
+        let config = WindowConfig::new(config);
+        Box::new(Window {
+            surface: None,
+            ev_state: EventState::new(window_id, config, platform),
+            widget: crate::window::Window::new(widget, title, props).map_any(),
+        })
+    }
+
     #[inline]
     pub(super) fn window_id(&self) -> WindowId {
         self.ev_state.window_id
