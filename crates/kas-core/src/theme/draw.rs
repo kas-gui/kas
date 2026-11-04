@@ -236,8 +236,8 @@ impl<'a> DrawCx<'a> {
     ///
     /// An *access key* (also known as mnemonic) is a shortcut key able to
     /// directly open menus, activate buttons, etc. Usually this requires that
-    /// the <kbd>Alt</kbd> is held, though
-    /// [alt-bypass mode](crate::window::Window::with_alt_bypass) is available.
+    /// the <kbd>Alt</kbd> is held; alternatively the window can have
+    /// [alt-bypass mode](crate::window::Properties::alt_bypass) enabled.
     ///
     /// The widget `id` is bound to the given `key`, if available. When the
     /// access key is pressed (assuming that this binding succeeds), widget `id`

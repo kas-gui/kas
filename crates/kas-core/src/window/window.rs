@@ -79,48 +79,161 @@ pub(crate) trait WindowWidget: WindowErased + Widget {
 }
 
 /// Window properties
-pub(crate) struct Properties {
-    icon: Option<Icon>,               // initial icon, if any
-    decorations: Option<Decorations>, // decoration mode, if specified
-    restrictions: (bool, bool),
-    drag_anywhere: bool,
-    transparent: bool,
-    escapable: bool,
-    alt_bypass: bool,
-    disable_nav_focus: bool,
-    pub(crate) modal_parent: Option<WindowId>,
+///
+/// It is recommended to construct this using one of the provided constructors,
+/// for example [`Properties::top_defaults()`] or as follows:
+/// ```
+/// # use kas_core::window::Properties;
+/// let props = Properties {
+///     transparent: true,
+///     ..Properties::modal_defaults()
+/// };
+/// ```
+#[derive(Clone, Debug)]
+pub struct Properties {
+    /// The window's icon
+    pub icon: Option<Icon>,
+    /// The window's decoration preferences
+    ///
+    /// Desktop platforms (i.e. not mobile or web) usually include a
+    /// title-bar, icons and potentially side borders. These are known as
+    /// **decorations**.
+    ///
+    /// Defaults to `None`. In this case behaviour is platform dependent:
+    ///
+    /// -   [`Decorations::Toolkit`] on Wayland (TODO: support detection of
+    ///     whether the compositor can provide decorations)
+    /// -   [`Decorations::Server`] on other desktop platforms
+    /// -   [`Decorations::None`] on mobile and web
+    pub decorations: Option<Decorations>,
+    /// If set, the window may not be resized smaller than its minimum size.
+    pub restrict_min: bool,
+    /// If set, the window may not be resized larger than its ideal size.
+    pub restrict_max: bool,
+    /// Whether to allow dragging the window from the background
+    ///
+    /// If true, then any unhandled click+drag in the window may be used to
+    /// drag the window on supported platforms.
+    pub drag_anywhere: bool,
+    /// Whether the window supports transparency
+    ///
+    /// If true, painting with `alpha < 1.0` makes the background visible.
+    /// Additionally, window draw targets are cleared to transparent. This does
+    /// not stop theme elements from drawing a solid background.
+    ///
+    /// Note: results may vary by platform. Current output does *not* use
+    /// pre-multiplied alpha which *some* platforms expect, thus pixels with
+    /// partial transparency may have incorrect appearance.
+    pub transparent: bool,
+    /// Whether the window can be closed with the <kbd>Escape</kbd> key
+    pub escapable: bool,
+    /// Enable <kbd>Alt</kbd> bypass
+    ///
+    /// Access keys usually require that <kbd>Alt</kbd> be held. This method
+    /// allows access keys to be activated without holding <kbd>Alt</kbd>.
+    pub alt_bypass: bool,
+    /// Disable navigation focus
+    ///
+    /// Usually, widgets may be focussed and this focus may be navigated using
+    /// the <kbd>Tab</kbd> key. This method prevents widgets from gaining focus.
+    pub disable_nav_focus: bool,
+    /// Window is modal
+    ///
+    /// If set, this window is considered modal: it is owned by parent window,
+    /// is not listed on the taskbar, and prevents interaction with the parent
+    /// until this window has been closed.
+    ///
+    /// [`Self::parent`] must also be set for this to have any effect. The
+    /// [`EventCx`] methods adding a child window do this automatically.
+    ///
+    /// **Implementation status:** planned (currently does nothing).
+    pub modal: bool,
+    /// The parent window, if any
+    ///
+    /// This is set automatically by [`EventCx`] methods which add a window.
+    pub parent: Option<WindowId>,
 }
 
-impl Default for Properties {
-    fn default() -> Self {
+impl Properties {
+    /// Defaults intended for top-level windows
+    ///
+    /// Sets `restrict_min: true`; uses type-defaults for everything else.
+    pub fn top_defaults() -> Self {
         Properties {
             icon: None,
             decorations: None,
-            restrictions: (true, false),
-            drag_anywhere: true,
+            restrict_min: true,
+            restrict_max: false,
+            drag_anywhere: false,
             transparent: false,
             escapable: false,
             alt_bypass: false,
             disable_nav_focus: false,
-            modal_parent: None,
+            modal: false,
+            parent: None,
         }
     }
-}
 
-impl Properties {
-    /// Get the window's icon, if any
-    pub(crate) fn take_icon(&mut self) -> Option<Icon> {
-        self.icon.take()
+    /// Defaults intended for top-level dialog windows
+    ///
+    /// Sets `drag_anywhere: true`, `escapable: true`; other
+    /// settings are inherited from [`Self::top_defaults`].
+    pub fn dialog_defaults() -> Self {
+        Properties {
+            drag_anywhere: true,
+            escapable: true,
+            ..Self::top_defaults()
+        }
     }
 
-    /// Get window resizing restrictions: `(restrict_min, restrict_max)`
-    pub fn restrictions(&self) -> (bool, bool) {
-        self.restrictions
+    /// Defaults intended for modal windows
+    ///
+    /// Sets `modal: true`; other settings are inherited from
+    /// [`Self::dialog_defaults`].
+    pub fn modal_defaults() -> Self {
+        Properties {
+            drag_anywhere: true,
+            escapable: true,
+            modal: true,
+            ..Self::top_defaults()
+        }
     }
 
-    /// Get whether this window should use transparent rendering
-    pub fn transparent(&self) -> bool {
-        self.transparent
+    /// Defaults intended for fixed-size modal windows
+    ///
+    /// Sets `restrict_max: true`; other settings are inherited from
+    /// [`Self::modal_defaults`].
+    pub fn fixed_modal_defaults() -> Self {
+        Properties {
+            restrict_max: true,
+            ..Self::modal_defaults()
+        }
+    }
+
+    /// Defaults intended for widget apps
+    ///
+    /// This restricts size (min and max), disables decorations, enables
+    /// [`Self::drag_anywhere`] and [`Self::transparent`] and disables
+    /// navigation focus.
+    pub fn widget_defaults() -> Self {
+        Properties {
+            decorations: Some(Decorations::None),
+            restrict_max: true,
+            drag_anywhere: true,
+            transparent: true,
+            disable_nav_focus: true,
+            ..Self::top_defaults()
+        }
+    }
+
+    /// Get the parent if modal
+    pub fn modal_parent(&self) -> Option<WindowId> {
+        if self.modal && self.parent.is_some() {
+            return self.parent;
+        } else if cfg!(debug_assertions) && self.modal {
+            log::warn!("Properties: model = true but parent = None");
+        }
+        None
     }
 }
 
@@ -424,16 +537,13 @@ impl Window<()> {
 }
 
 impl<Data: AppData> Window<Data> {
-    /// Construct a window with a `W: Widget` and a title
-    pub fn new(ui: impl Widget<Data = Data> + 'static, title: impl ToString) -> Self {
-        Self::new_boxed(Box::new(ui), title)
-    }
-
     /// Construct a window from a boxed `ui` widget and a `title`
-    pub fn new_boxed(ui: Box<dyn Widget<Data = Data>>, title: impl ToString) -> Self {
-        Window {
+    pub fn new(ui: Box<dyn Widget<Data = Data>>, title: String, props: Properties) -> Self {
+        let resizable = !props.restrict_min || !props.restrict_max;
+
+        let mut w = Window {
             core: Default::default(),
-            props: Properties::default(),
+            props,
             inner: ui,
             tooltip: Popup::new(Label::new("".to_string()), Direction::Down).align(Align::Center),
             title_bar: TitleBar::new(title),
@@ -450,142 +560,24 @@ impl<Data: AppData> Window<Data> {
             dec_offset: Default::default(),
             dec_size: Default::default(),
             popups: Default::default(),
-        }
+        };
+
+        w.b_w.set_resizable(resizable);
+        w.b_e.set_resizable(resizable);
+        w.b_n.set_resizable(resizable);
+        w.b_s.set_resizable(resizable);
+        w.b_nw.set_resizable(resizable);
+        w.b_ne.set_resizable(resizable);
+        w.b_se.set_resizable(resizable);
+        w.b_sw.set_resizable(resizable);
+
+        w
     }
 
     /// Convert into a [`BoxedWindow`]
     #[inline]
     pub fn boxed(self) -> BoxedWindow<Data> {
         BoxedWindow(Box::new(self))
-    }
-
-    /// Set the window's icon (inline)
-    ///
-    /// Default: `None`
-    pub fn with_icon(mut self, icon: impl Into<Option<Icon>>) -> Self {
-        self.props.icon = icon.into();
-        self
-    }
-
-    /// Set the preference for window decorations
-    ///
-    /// Desktop platforms (i.e. not mobile or web) usually include a
-    /// title-bar, icons and potentially side borders. These are known as
-    /// **decorations**.
-    ///
-    /// The default mode is platform dependent:
-    ///
-    /// -   [`Decorations::Toolkit`] on Wayland (TODO: support detection of
-    ///     whether the compositor can provide decorations)
-    /// -   [`Decorations::Server`] on other desktop platforms
-    /// -   [`Decorations::None`] on mobile and web
-    pub fn with_decorations(mut self, decorations: Decorations) -> Self {
-        self.props.decorations = Some(decorations);
-        self
-    }
-
-    /// Get window resizing restrictions: `(restrict_min, restrict_max)`
-    pub fn restrictions(&self) -> (bool, bool) {
-        self.props.restrictions
-    }
-
-    /// Whether to limit the maximum size of a window
-    ///
-    /// All widgets' size rules allow calculation of two sizes: the minimum
-    /// size and the ideal size. Windows are initially sized to the ideal size.
-    ///
-    /// If `restrict_min`, the window may not be sized below the minimum size.
-    /// Default value: `true`.
-    ///
-    /// If `restrict_max`, the window may not be sized above the ideal size.
-    /// Default value: `false`.
-    pub fn with_restrictions(mut self, restrict_min: bool, restrict_max: bool) -> Self {
-        self.props.restrictions = (restrict_min, restrict_max);
-        let resizable = !restrict_min || !restrict_max;
-        self.b_w.set_resizable(resizable);
-        self.b_e.set_resizable(resizable);
-        self.b_n.set_resizable(resizable);
-        self.b_s.set_resizable(resizable);
-        self.b_nw.set_resizable(resizable);
-        self.b_ne.set_resizable(resizable);
-        self.b_se.set_resizable(resizable);
-        self.b_sw.set_resizable(resizable);
-        self
-    }
-
-    /// Get "drag anywhere" state
-    pub fn drag_anywhere(&self) -> bool {
-        self.props.drag_anywhere
-    }
-
-    /// Whether to allow dragging the window from the background
-    ///
-    /// If true, then any unhandled click+drag in the window may be used to
-    /// drag the window on supported platforms. Default value: `true`.
-    pub fn with_drag_anywhere(mut self, drag_anywhere: bool) -> Self {
-        self.props.drag_anywhere = drag_anywhere;
-        self
-    }
-
-    /// Get whether this window should use transparent rendering
-    pub fn transparent(&self) -> bool {
-        self.props.transparent
-    }
-
-    /// Whether the window supports transparency
-    ///
-    /// If true, painting with `alpha < 1.0` makes the background visible.
-    /// Additionally, window draw targets are cleared to transparent. This does
-    /// not stop theme elements from drawing a solid background.
-    ///
-    /// Note: results may vary by platform. Current output does *not* use
-    /// pre-multiplied alpha which *some* platforms expect, thus pixels with
-    /// partial transparency may have incorrect appearance.
-    ///
-    /// Default: `false`.
-    pub fn with_transparent(mut self, transparent: bool) -> Self {
-        self.props.transparent = transparent;
-        self
-    }
-
-    /// Enable closure via <kbd>Escape</kbd> key
-    pub fn escapable(mut self) -> Self {
-        self.props.escapable = true;
-        self
-    }
-
-    /// Enable <kbd>Alt</kbd> bypass
-    ///
-    /// Access keys usually require that <kbd>Alt</kbd> be held. This method
-    /// allows access keys to be activated without holding <kbd>Alt</kbd>.
-    pub fn with_alt_bypass(mut self) -> Self {
-        self.props.alt_bypass = true;
-        self
-    }
-
-    /// Disable navigation focus
-    ///
-    /// Usually, widgets may be focussed and this focus may be navigated using
-    /// the <kbd>Tab</kbd> key. This method prevents widgets from gaining focus.
-    pub fn without_nav_focus(mut self) -> Self {
-        self.props.disable_nav_focus = true;
-        self
-    }
-
-    /// Set the window as being modal with the given `parent`
-    ///
-    /// If set, this window is considered modal: it is owned by `parent`, is not
-    /// listed on the taskbar, and prevents interaction with `parent` until it
-    /// has been closed.
-    ///
-    /// **Implementation status:** partially implement on Windows only.
-    /// This feature uses [`WindowAttributesExtWindows`]'s `with_owner_window`
-    /// and `with_skip_taskbar` methods where available.
-    /// Winit currently provides no equivalents for other platforms.
-    ///
-    /// [`WindowAttributesExtWindows`]: https://docs.rs/winit/latest/winit/platform/windows/trait.WindowAttributesExtWindows.html
-    pub fn set_modal_with_parent(&mut self, parent: WindowId) {
-        self.props.modal_parent = Some(parent);
     }
 }
 

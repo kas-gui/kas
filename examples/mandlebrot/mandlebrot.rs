@@ -494,12 +494,15 @@ mod MandlebrotUI {
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let window =
-        Window::new(MandlebrotUI::new(), "Mandlebrot").with_decorations(Decorations::Border);
+    let props = Properties {
+        decorations: Some(Decorations::Border),
+        drag_anywhere: true,
+        ..Properties::top_defaults()
+    };
     let mut runner = kas::runner::Runner::builder()?
         .with_custom_pipe(PipeBuilder)
         .with_theme(kas::theme::FlatTheme::new())?
         .build(())?;
     let _ = runner.config_mut().theme.set_active_scheme("dark");
-    runner.with(window).run()
+    runner.with(MandlebrotUI::new(), "Mandlebrot", props).run()
 }

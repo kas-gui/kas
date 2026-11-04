@@ -842,6 +842,6 @@ fn main() -> kas::runner::Result<()> {
             }
         });
 
-    runner.add(Window::new(ui, "Gallery — Widgets"));
+    runner.add(ui, "Gallery — Widgets", Properties::dialog_defaults());
     runner.run()
 }
