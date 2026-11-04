@@ -218,6 +218,12 @@ enum Pending<A: AppData> {
         title: String,
         properties: crate::window::Properties,
     },
+    AddWindowAny {
+        id: WindowId,
+        widget: Box<dyn crate::Widget<Data = ()>>,
+        title: String,
+        properties: crate::window::Properties,
+    },
     CloseWindow(WindowId),
     Exit,
 }

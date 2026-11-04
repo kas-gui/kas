@@ -218,6 +218,31 @@ where
         }
     }
 
+    fn add_window(
+        &mut self,
+        el: &dyn ActiveEventLoop,
+        id: WindowId,
+        mut window: Box<Window<A, G, T>>,
+    ) {
+        log::debug!("Pending: adding {}", window.widget.identify());
+        if !self.suspended {
+            let modal_parent = window
+                .widget
+                .properties()
+                .modal_parent()
+                .and_then(|id| self.windows.get(&id).and_then(|w| w.winit_window()));
+            match window.create_surfaces(&mut self.shared, &self.data, el, modal_parent) {
+                Ok(winit_id) => {
+                    self.id_map.insert(winit_id, id);
+                }
+                Err(e) => {
+                    log::error!("Unable to create window: {e}");
+                }
+            }
+        }
+        self.windows.insert(id, window);
+    }
+
     fn flush_pending(&mut self, el: &dyn ActiveEventLoop) {
         let mut close_all = false;
         while let Some(pending) = self.shared.pending.pop_front() {
@@ -263,36 +288,35 @@ where
                     widget,
                     title,
                     properties,
-                } => {
-                    let mut window = Window::new_boxed(
+                } => self.add_window(
+                    el,
+                    id,
+                    Window::new_boxed(
                         self.shared.config.clone(),
                         self.shared.platform,
                         id,
                         widget,
                         title,
                         properties,
-                    );
-
-                    log::debug!("Pending: adding {}", window.widget.identify());
-                    if !self.suspended {
-                        let mut modal_parent = None;
-                        if let Some(id) = window.widget.properties().modal_parent()
-                            && let Some(window) = self.windows.get(&id)
-                        {
-                            modal_parent = window.winit_window();
-                        }
-                        match window.create_surfaces(&mut self.shared, &self.data, el, modal_parent)
-                        {
-                            Ok(winit_id) => {
-                                self.id_map.insert(winit_id, id);
-                            }
-                            Err(e) => {
-                                log::error!("Unable to create window: {e}");
-                            }
-                        }
-                    }
-                    self.windows.insert(id, window);
-                }
+                    ),
+                ),
+                Pending::AddWindowAny {
+                    id,
+                    widget,
+                    title,
+                    properties,
+                } => self.add_window(
+                    el,
+                    id,
+                    Window::new_any_boxed(
+                        self.shared.config.clone(),
+                        self.shared.platform,
+                        id,
+                        widget,
+                        title,
+                        properties,
+                    ),
+                ),
                 Pending::CloseWindow(target) => {
                     let mut win_id = target;
                     if let Some(id) = self.popups.remove(&target) {
