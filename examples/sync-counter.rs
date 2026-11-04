@@ -8,7 +8,6 @@
 //! Each window shares the counter, but has its own increment step.
 
 use kas::widgets::{AdaptWidget, Button, Label, Slider, column, format_label, row};
-use kas::window::Window;
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
@@ -23,7 +22,7 @@ impl kas::runner::AppData for Count {
     }
 }
 
-fn counter(title: &str) -> Window<Count> {
+fn counter() -> Box<dyn kas::Widget<Data = Count>> {
     // Per window state: (count, increment).
     // We must store a local copy of the count in order to have a Data instance
     // to pass by reference.
@@ -50,7 +49,7 @@ fn counter(title: &str) -> Window<Count> {
         .with_state(initial)
         .on_update(|_, _, state, count| state.0 = *count)
         .on_message(|_, state, SetValue(v)| state.1 = v);
-    Window::new(ui, title).escapable()
+    Box::new(ui)
 }
 
 fn main() -> kas::runner::Result<()> {
@@ -58,10 +57,12 @@ fn main() -> kas::runner::Result<()> {
 
     let count = Count(0);
 
+    let props = kas::window::Properties::dialog_defaults();
+
     let mut runner = kas::runner::Runner::new(count)?;
     let _ = runner.config_mut().font.set_size(24.0);
     runner
-        .with(counter("Counter 1"))
-        .with(counter("Counter 2"))
+        .with_boxed(counter(), "Counter 1", props.clone())
+        .with_boxed(counter(), "Counter 2", props)
         .run()
 }

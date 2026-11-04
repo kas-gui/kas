@@ -8,9 +8,10 @@
 //! Start by constructing a [`Runner`] or its [`Default`](type@Default)
 //! type-def (requires a backend be enabled, e.g. "wgpu").
 
+use crate::Widget;
 use crate::config::{AutoFactory, Config, ConfigFactory};
 use crate::theme::Theme;
-use crate::window::{Window, WindowId};
+use crate::window::{Properties, WindowId};
 pub use kas_core::runner::{AppData, ClosedError, Error, Platform, Proxy, ReadMessage, Result};
 use kas_core::runner::{GraphicsInstance, PreLaunchState};
 #[allow(unused)]
@@ -280,24 +281,57 @@ where
         &mut self.theme
     }
 
-    /// Assume ownership of and display a window
-    #[inline]
-    pub fn add(&mut self, window: Window<Data>) -> WindowId {
+    /// Add a window constructed over a `widget`
+    pub fn add(
+        &mut self,
+        widget: impl Widget<Data = Data> + 'static,
+        title: impl ToString,
+        properties: Properties,
+    ) -> WindowId {
+        self.add_boxed(Box::new(widget), title.to_string(), properties)
+    }
+
+    /// Add a window over a boxed `widget`
+    pub fn add_boxed(
+        &mut self,
+        widget: Box<dyn Widget<Data = Data>>,
+        title: String,
+        properties: Properties,
+    ) -> WindowId {
         let id = self.state.next_window_id();
-        let win = Box::new(kas_core::runner::Window::new(
+        let win = kas_core::runner::Window::new_boxed(
             self.state.config().clone(),
             self.state.platform(),
             id,
-            window.boxed(),
-        ));
+            widget,
+            title,
+            properties,
+        );
         self.windows.push(win);
         id
     }
 
-    /// Assume ownership of and display a window, inline
+    /// Add a window over a `widget`, inline
     #[inline]
-    pub fn with(mut self, window: Window<Data>) -> Self {
-        let _ = self.add(window);
+    pub fn with(
+        mut self,
+        widget: impl Widget<Data = Data> + 'static,
+        title: impl ToString,
+        properties: Properties,
+    ) -> Self {
+        let _ = self.add(widget, title, properties);
+        self
+    }
+
+    /// Add a window over a boxed `widget`, inline
+    #[inline]
+    pub fn with_boxed(
+        mut self,
+        widget: Box<dyn Widget<Data = Data>>,
+        title: impl ToString,
+        properties: Properties,
+    ) -> Self {
+        let _ = self.add_boxed(widget, title.to_string(), properties);
         self
     }
 

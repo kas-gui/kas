@@ -70,7 +70,8 @@ fn main() -> kas::runner::Result<()> {
             }
             _ => (),
         });
-    let window = Window::new(ui, "Times-Tables").escapable();
 
-    kas::runner::Runner::new(())?.with(window).run()
+    kas::runner::Runner::new(())?
+        .with(ui, "Times-Tables", Properties::dialog_defaults())
+        .run()
 }
