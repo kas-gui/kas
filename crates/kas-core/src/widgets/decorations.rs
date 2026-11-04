@@ -28,16 +28,12 @@ mod Border {
     }
 
     impl Self {
-        pub fn new(direction: ResizeDirection) -> Self {
+        pub fn new(direction: ResizeDirection, resizable: bool) -> Self {
             Border {
                 core: Default::default(),
-                resizable: true,
+                resizable,
                 direction,
             }
-        }
-
-        pub fn set_resizable(&mut self, resizable: bool) {
-            self.resizable = resizable;
         }
     }
 

@@ -506,37 +506,26 @@ impl<Data: AppData> Window<Data> {
     pub fn new(ui: Box<dyn Widget<Data = Data>>, title: String, props: Properties) -> Self {
         let resizable = !props.restrict_min || !props.restrict_max;
 
-        let mut w = Window {
+        Window {
             core: Default::default(),
             props,
             inner: ui,
             tooltip: Popup::new(Label::new("".to_string()), Direction::Down).align(Align::Center),
             title_bar: TitleBar::new(title),
-            b_w: Border::new(ResizeDirection::West),
-            b_e: Border::new(ResizeDirection::East),
-            b_n: Border::new(ResizeDirection::North),
-            b_s: Border::new(ResizeDirection::South),
-            b_nw: Border::new(ResizeDirection::NorthWest),
-            b_ne: Border::new(ResizeDirection::NorthEast),
-            b_sw: Border::new(ResizeDirection::SouthWest),
-            b_se: Border::new(ResizeDirection::SouthEast),
+            b_w: Border::new(ResizeDirection::West, resizable),
+            b_e: Border::new(ResizeDirection::East, resizable),
+            b_n: Border::new(ResizeDirection::North, resizable),
+            b_s: Border::new(ResizeDirection::South, resizable),
+            b_nw: Border::new(ResizeDirection::NorthWest, resizable),
+            b_ne: Border::new(ResizeDirection::NorthEast, resizable),
+            b_sw: Border::new(ResizeDirection::SouthWest, resizable),
+            b_se: Border::new(ResizeDirection::SouthEast, resizable),
             bar_h: 0,
             bar_margin: 0,
             dec_offset: Default::default(),
             dec_size: Default::default(),
             popups: Default::default(),
-        };
-
-        w.b_w.set_resizable(resizable);
-        w.b_e.set_resizable(resizable);
-        w.b_n.set_resizable(resizable);
-        w.b_s.set_resizable(resizable);
-        w.b_nw.set_resizable(resizable);
-        w.b_ne.set_resizable(resizable);
-        w.b_se.set_resizable(resizable);
-        w.b_sw.set_resizable(resizable);
-
-        w
+        }
     }
 }
 
