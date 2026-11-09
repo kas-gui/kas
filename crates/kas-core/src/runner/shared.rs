@@ -192,9 +192,9 @@ pub(crate) trait RunnerT {
         properties: Properties,
     ) -> WindowId {
         let id = self.window_id_factory.make_next();
-        self.pending.push_back(Pending::AddWindowAny {
+        self.pending.push_back(Pending::AddWindow {
             id,
-            widget,
+            widget: Box::new(crate::widgets::adapt::MapAny::new(widget)),
             title,
             properties,
         });

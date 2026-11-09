@@ -300,23 +300,6 @@ where
                         properties,
                     ),
                 ),
-                Pending::AddWindowAny {
-                    id,
-                    widget,
-                    title,
-                    properties,
-                } => self.add_window(
-                    el,
-                    id,
-                    Window::new_any_boxed(
-                        self.shared.config.clone(),
-                        self.shared.platform,
-                        id,
-                        widget,
-                        title,
-                        properties,
-                    ),
-                ),
                 Pending::CloseWindow(target) => {
                     let mut win_id = target;
                     if let Some(id) = self.popups.remove(&target) {
