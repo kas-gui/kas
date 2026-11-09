@@ -44,9 +44,12 @@ pub(crate) trait WindowErased: Tile {
     fn properties(&mut self) -> &mut Properties;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
     fn close_tooltip(&mut self, cx: &mut EventCx);
+}
 
+#[cfg(feature = "accesskit")]
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
+pub(crate) trait WindowNode: WindowErased {
     /// Iterate over popups
-    #[cfg(feature = "accesskit")]
     fn iter_popups(&self) -> PopupIterator<'_>;
 }
 
@@ -489,11 +492,6 @@ mod Window {
         fn close_tooltip(&mut self, cx: &mut EventCx) {
             self.tooltip.close(cx);
         }
-
-        #[cfg(feature = "accesskit")]
-        fn iter_popups(&self) -> PopupIterator<'_> {
-            PopupIterator(0, &self.popups)
-        }
     }
 
     impl std::fmt::Debug for Self {
@@ -539,6 +537,13 @@ impl<Data: AppData> Window<Data> {
         w.b_sw.set_resizable(resizable);
 
         w
+    }
+}
+
+#[cfg(feature = "accesskit")]
+impl<Data: AppData> WindowNode for Window<Data> {
+    fn iter_popups(&self) -> PopupIterator<'_> {
+        PopupIterator(0, &self.popups)
     }
 }
 

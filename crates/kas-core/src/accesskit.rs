@@ -7,7 +7,7 @@
 
 use crate::cast::Cast;
 use crate::geom::Offset;
-use crate::window::{POPUP_INNER_INDEX, WindowErased};
+use crate::window::{POPUP_INNER_INDEX, WindowNode};
 use crate::{Role, RoleCx, TextOrSource, Tile, TileExt};
 use accesskit::{Action, Node, NodeId};
 
@@ -105,7 +105,7 @@ fn push_all_children(
 }
 
 /// Returns a list of nodes and the root node's identifier
-pub(crate) fn window_nodes(root: &dyn WindowErased) -> (Vec<(NodeId, Node)>, NodeId) {
+pub(crate) fn window_nodes(root: &dyn WindowNode) -> (Vec<(NodeId, Node)>, NodeId) {
     let mut nodes = vec![];
     let mut children = push_all_children(root.as_tile(), &mut nodes, false);
 
