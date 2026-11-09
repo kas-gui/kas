@@ -43,9 +43,8 @@ fn main() -> kas::runner::Result<()> {
     thread::spawn(move || generate_colors(proxy));
 
     let widget = ColourSquare::new();
-    let window = Window::new(widget, "Async event demo").escapable();
-
-    app.with(window).run()
+    app.with(widget, "Async event demo", Properties::dialog_defaults())
+        .run()
 }
 
 #[impl_self]

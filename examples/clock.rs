@@ -160,11 +160,9 @@ mod Clock {
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let window = Window::new(Clock::new(), "Clock")
-        .with_decorations(kas::window::Decorations::None)
-        .with_transparent(true);
-
-    kas::runner::Runner::new(())?.with(window).run()
+    kas::runner::Runner::new(())?
+        .with(Clock::new(), "Clock", Properties::widget_defaults())
+        .run()
 }
 
 #[cfg(not(feature = "wgpu"))]

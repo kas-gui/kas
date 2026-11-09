@@ -60,16 +60,17 @@ fn make_ui() -> impl Widget<Data = ()> {
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let window = Window::new(make_ui(), "Stopwatch")
-        .escapable()
-        .with_alt_bypass()
-        .with_decorations(kas::window::Decorations::Border)
-        .with_transparent(true)
-        .with_restrictions(true, true);
+    let props = Properties {
+        escapable: true,
+        alt_bypass: true,
+        decorations: Some(kas::window::Decorations::Border),
+        transparent: true,
+        ..Properties::dialog_defaults()
+    };
 
     let theme = Theme::new();
     let mut app = kas::runner::Runner::with_theme(theme)?.build(())?;
     let _ = app.config_mut().font.set_size(24.0);
     let _ = app.config_mut().theme.set_active_scheme("dark");
-    app.with(window).run()
+    app.with(make_ui(), "Stopwatch", props).run()
 }

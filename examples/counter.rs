@@ -30,6 +30,6 @@ fn main() -> kas::runner::Result<()> {
 
     let mut app = kas::runner::Runner::new(())?;
     let _ = app.config_mut().font.set_size(24.0);
-    let window = Window::new(counter(), "Counter").escapable();
-    app.with(window).run()
+    app.with(counter(), "Counter", Properties::dialog_defaults())
+        .run()
 }

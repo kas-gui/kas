@@ -11,7 +11,6 @@ mod viewer;
 use kas::prelude::*;
 use kas::widgets::adapt::{MapAny, WithMarginStyle};
 use kas::widgets::{Button, CheckButton, Filler, Label, Row, Slider, column, frame, row};
-use kas::window::Window;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -125,9 +124,10 @@ fn main() -> kas::runner::Result<()> {
             TILE_SIZE.store(size, Ordering::Relaxed);
             cx.resize();
         });
-    let window = Window::new(ui, title).escapable();
 
-    kas::runner::Runner::new(())?.with(window).run()
+    kas::runner::Runner::new(())?
+        .with(ui, title, Properties::top_defaults())
+        .run()
 }
 
 fn window_title(path: &Path) -> String {

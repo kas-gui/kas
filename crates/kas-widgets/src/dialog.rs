@@ -13,12 +13,11 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
-use crate::adapt::AdaptWidgetAny;
 use crate::edit::Editor;
 use crate::{AccessLabel, Button, EditBox, Filler, ScrollLabel};
 use kas::prelude::*;
-use kas::runner::AppData;
 use kas::text::format::FormattableText;
+use kas::window::Properties;
 use std::error::Error;
 use std::fmt::Write;
 
@@ -48,14 +47,9 @@ mod MessageBox {
             }
         }
 
-        /// Build a [`Window`]
-        pub fn into_window<A: AppData>(self, title: impl ToString) -> Window<A> {
-            Window::new(self.map_any(), title).with_restrictions(true, true)
-        }
-
         /// Display as a modal window with the given `title`
         pub fn display(self, cx: &mut EventCx, title: impl ToString) {
-            cx.add_dataless_window(self.into_window(title), true);
+            cx.add_window(self, title, Properties::modal_defaults());
         }
     }
 
@@ -140,8 +134,7 @@ mod AlertError {
         pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
             self.parent = parent;
             let title = std::mem::take(&mut self.title);
-            let window = Window::new(self, title).with_restrictions(true, true);
-            cx.add_dataless_window(window, true);
+            cx.add_window(self, title, Properties::modal_defaults());
         }
     }
 
@@ -229,8 +222,7 @@ mod AlertUnsaved {
         pub fn display_for(mut self, cx: &mut EventCx, parent: Id) {
             self.parent = parent;
             let title = std::mem::take(&mut self.title);
-            let window = Window::new(self, title).with_restrictions(true, true);
-            cx.add_dataless_window(window, true);
+            cx.add_window(self, title, Properties::modal_defaults());
         }
     }
 
@@ -325,11 +317,6 @@ mod TextEdit {
             edit: impl FnOnce(&mut Editor, &mut EventCx) -> T,
         ) -> T {
             self.edit.edit(cx, &(), edit)
-        }
-
-        /// Build a [`Window`]
-        pub fn into_window<A: AppData>(self, title: impl ToString) -> Window<A> {
-            Window::new(self.map_any(), title)
         }
 
         fn close(&mut self, cx: &mut EventCx, commit: bool) -> IsUsed {
