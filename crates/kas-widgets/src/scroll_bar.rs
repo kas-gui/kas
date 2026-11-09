@@ -231,7 +231,7 @@ mod ScrollBar {
                 self.value = value;
                 self.grip.set_offset(cx, self.offset());
             }
-            if !self.is_under_mouse {
+            if self.invisible && !self.is_under_mouse {
                 self.force_visible = true;
                 let delay = cx.config().event().touch_select_delay();
                 cx.request_timer(self.id(), TIMER_HIDE, delay);
@@ -385,14 +385,16 @@ mod ScrollBar {
                 }
                 Event::MouseOver(true) => {
                     self.is_under_mouse = true;
-                    self.force_visible = true;
+                    self.force_visible = self.invisible;
                     cx.redraw();
                     Used
                 }
                 Event::MouseOver(false) => {
                     self.is_under_mouse = false;
-                    let delay = cx.config().event().touch_select_delay();
-                    cx.request_timer(self.id(), TIMER_HIDE, delay);
+                    if self.invisible {
+                        let delay = cx.config().event().touch_select_delay();
+                        cx.request_timer(self.id(), TIMER_HIDE, delay);
+                    }
                     Used
                 }
                 _ => Unused,
