@@ -245,6 +245,7 @@ where
 
     fn flush_pending(&mut self, el: &dyn ActiveEventLoop) {
         let mut close_all = false;
+        let mut any_closed = false;
         while let Some(pending) = self.shared.pending.pop_front() {
             match pending {
                 Pending::UpdateAll => {
@@ -308,6 +309,7 @@ where
                     if let Some(window) = self.windows.get_mut(&win_id) {
                         window.send_close(target);
                     }
+                    any_closed = true;
                 }
                 Pending::Exit => close_all = true,
             }
@@ -334,5 +336,13 @@ where
                 true
             }
         });
+
+        if !close_all && any_closed {
+            let mut max_id = 0;
+            for id in self.windows.keys().chain(self.popups.keys()) {
+                max_id = max_id.max(id.get());
+            }
+            self.shared.window_id_factory.reset_to(max_id);
+        }
     }
 }

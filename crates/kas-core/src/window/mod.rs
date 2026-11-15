@@ -75,4 +75,16 @@ impl WindowIdFactory {
         self.0 = id;
         WindowId(NonZeroU32::new(id).unwrap())
     }
+
+    /// Reset the internal counter
+    ///
+    /// Since [`WindowId`] values are used to construct a window's root [`Id`],
+    /// and since the latter encodes small numbers most efficiently, it is worth
+    /// attempting to avoid large values occurring here as a result of common
+    /// patterns (e.g. opening many popup menus).
+    ///
+    /// [`Id`]: crate::Id
+    pub(crate) fn reset_to(&mut self, n: u32) {
+        self.0 = n;
+    }
 }

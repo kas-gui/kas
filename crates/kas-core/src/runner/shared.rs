@@ -36,7 +36,7 @@ pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>
     send_targets: HashMap<TypeId, Id>,
     pub(super) waker: Waker,
     pub(super) proxy_rx: mpsc::Receiver<ProxyAction>,
-    window_id_factory: WindowIdFactory,
+    pub(super) window_id_factory: WindowIdFactory,
 }
 
 impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Shared<A, G, T>
