@@ -69,12 +69,21 @@ where
     fn proxy_wake_up(&mut self, _: &dyn ActiveEventLoop) {
         while let Ok(event) = self.shared.proxy_rx.try_recv() {
             match event {
-                ProxyAction::Close(id) => {
-                    if let Some(window) = self.windows.get_mut(&id) {
-                        window.send_close(id);
+                ProxyAction::Close(window_id) => {
+                    let mut parent_id = window_id;
+                    if let Some(id) = self.popups.get(&window_id) {
+                        parent_id = *id;
+                    }
+                    if let Some(window) = self.windows.get_mut(&parent_id) {
+                        window.send_close(window_id);
                     }
                 }
-                ProxyAction::CloseAll => {
+                ProxyAction::Exit => {
+                    for (popup, parent) in self.popups.iter() {
+                        if let Some(window) = self.windows.get_mut(parent) {
+                            window.send_close(*popup);
+                        }
+                    }
                     for (id, window) in self.windows.iter_mut() {
                         window.send_close(*id);
                     }

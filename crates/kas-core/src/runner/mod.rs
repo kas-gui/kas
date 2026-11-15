@@ -224,7 +224,7 @@ enum Pending<A: AppData> {
 
 #[derive(Debug)]
 enum ProxyAction {
-    CloseAll,
+    Exit,
     Close(WindowId),
     Message(kas::messages::SendErased),
     #[cfg(feature = "accesskit")]
