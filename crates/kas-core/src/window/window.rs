@@ -456,7 +456,7 @@ mod Window {
                     if let Some(id) = self.popups.last().map(|popup| popup.id) {
                         cx.close_window(id);
                     } else if self.props.escapable {
-                        cx.top_window().close();
+                        cx.current_window().close();
                     }
                     Used
                 }

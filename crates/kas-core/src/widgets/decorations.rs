@@ -109,14 +109,14 @@ mod TitleBarButtons {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(msg) = cx.try_pop() {
-                let mut window = cx.top_window();
                 match msg {
-                    TitleBarButton::Minimize => window.set_minimized(true),
+                    TitleBarButton::Minimize => cx.top_window().set_minimized(true),
                     TitleBarButton::Maximize => {
+                        let mut window = cx.current_window();
                         let maximize = !window.is_maximized();
                         window.set_maximized(maximize)
                     }
-                    TitleBarButton::Close => window.close(),
+                    TitleBarButton::Close => cx.current_window().close(),
                 }
             }
         }

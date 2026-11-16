@@ -241,7 +241,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if let Some((ref theme, ref mut window)) = self.surface {
             self.ev_state.suspended(shared);
 
-            let awh = ActiveWindowHandle { window, el };
+            let id = self.ev_state.window_id;
+            let awh = ActiveWindowHandle { id, window, el };
             let actions =
                 self.ev_state
                     .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
@@ -397,7 +398,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             _ => return false,
         };
 
-        let awh = ActiveWindowHandle { window, el };
+        let id = self.ev_state.window_id;
+        let awh = ActiveWindowHandle { id, window, el };
         let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.input_event(&mut self.widget, data, event)
         });
@@ -416,7 +418,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return (WindowActions::default(), None);
         };
 
-        let awh = ActiveWindowHandle { window, el };
+        let id = self.ev_state.window_id;
+        let awh = ActiveWindowHandle { id, window, el };
         let actions =
             self.ev_state
                 .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
@@ -541,7 +544,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let widget = self.widget.as_node(data);
 
         if Some(requested_resume) == self.ev_state.next_resume() {
-            let awh = ActiveWindowHandle { window, el };
+            let id = self.ev_state.window_id;
+            let awh = ActiveWindowHandle { id, window, el };
             let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
                 cx.update_timer(widget);
             });
@@ -673,7 +677,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         let widget = self.widget.as_node(data);
-        let awh = ActiveWindowHandle { window, el };
+        let id = self.ev_state.window_id;
+        let awh = ActiveWindowHandle { id, window, el };
         let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.frame_update(widget);
         });
@@ -769,6 +774,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
 #[autoimpl(Deref, DerefMut using self.window)]
 struct ActiveWindowHandle<'a, G: GraphicsInstance> {
+    id: WindowId,
     window: &'a WindowData<G>,
     el: &'a dyn ActiveEventLoop,
 }
@@ -791,12 +797,12 @@ pub(crate) trait WindowDataErased {
         self.window().request_ime_update(request)
     }
 
-    /// Get a handle to the current window
+    /// Get an identifier for and handle to the current window
     ///
     /// This returns a handle to the current popup or top-level window.
     #[inline]
-    fn current_window(&self) -> &dyn winit::window::Window {
-        self.window()
+    fn current_window(&self) -> (WindowId, &dyn winit::window::Window) {
+        (self.id, self.window())
     }
 
     /// Get a handle to the top-level window
