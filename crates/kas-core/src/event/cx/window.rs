@@ -254,7 +254,7 @@ impl<'a> EventCx<'a> {
     pub(crate) fn add_popup(&mut self, popup: PopupDescriptor, set_focus: bool) -> WindowId {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
 
-        let parent_id = self.window.window_id();
+        let parent_id = self.window_id;
         let id = self.runner.add_popup(parent_id, popup.clone());
         let mut old_nav_focus = None;
         if set_focus {

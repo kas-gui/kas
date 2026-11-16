@@ -43,14 +43,8 @@ struct WindowData<G: GraphicsInstance> {
     accesskit: accesskit_winit::Adapter,
 
     // NOTE: cached components could be here or in Window
-    window_id: WindowId,
     solve_cache: SolveCache,
     need_redraw: bool,
-    #[cfg(all(
-        unix,
-        not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
-    ))]
-    has_primary_selection: bool,
 }
 
 impl<G: GraphicsInstance> WindowData<G> {
@@ -226,14 +220,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             #[cfg(feature = "accesskit")]
             accesskit,
 
-            window_id: self.ev_state.window_id,
             solve_cache,
             need_redraw: true,
-            #[cfg(all(
-                unix,
-                not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
-            ))]
-            has_primary_selection: el.primary_selection_ext().is_some(),
         };
         self.surface = Some((theme, window));
 
@@ -756,7 +744,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 if window.frame_count.0 + SECOND <= end {
                     log::debug!(
                         "Window {:?}: {} frames in last second",
-                        window.window_id,
+                        self.ev_state.window_id,
                         window.frame_count.1
                     );
                     window.frame_count.0 = end;
@@ -787,10 +775,6 @@ struct ActiveWindowHandle<'a, G: GraphicsInstance> {
 
 #[crate::split_impl(for<'a, G: GraphicsInstance> ActiveWindowHandle<'a, G>)]
 pub(crate) trait WindowDataErased {
-    /// Get the window identifier
-    fn window_id(&self) -> WindowId {
-        self.window_id
-    }
     /// Access the [`ActiveEventLoop`]
     fn event_loop(&self) -> &dyn ActiveEventLoop {
         self.el
@@ -830,6 +814,6 @@ pub(crate) trait WindowDataErased {
         not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
     ))]
     fn has_primary_selection(&self) -> bool {
-        self.has_primary_selection
+        self.el.primary_selection_ext().is_some()
     }
 }
