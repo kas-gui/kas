@@ -237,10 +237,8 @@ impl Proxy {
     /// Close all windows and terminate the UI.
     ///
     /// Fails if the application has exited.
-    pub fn close_all(&self) -> std::result::Result<(), ClosedError> {
-        self.tx
-            .send(ProxyAction::CloseAll)
-            .map_err(|_| ClosedError)?;
+    pub fn exit(&self) -> std::result::Result<(), ClosedError> {
+        self.tx.send(ProxyAction::Exit).map_err(|_| ClosedError)?;
         self.waker.wake_up();
         Ok(())
     }

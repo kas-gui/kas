@@ -6,7 +6,7 @@
 //! Window widgets
 
 use super::icon::Icon;
-use super::{Decorations, Popup, PopupDescriptor, ResizeDirection, WindowId};
+use super::{Decorations, Popup, PopupDescriptor, PopupWindow, ResizeDirection, WindowId};
 use crate::cast::Cast;
 use crate::dir::{Direction, Directional};
 use crate::event::{Command, ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
@@ -14,7 +14,6 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
 use crate::runner::AppData;
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::widgets::adapt::MapAny;
 use crate::widgets::{Border, Label, TitleBar};
 use crate::{Events, Id, Layout, Role, RoleCx, Tile, TileExt, Widget, WidgetCoreRect};
 use kas_macros::{autoimpl, impl_self};
@@ -45,9 +44,12 @@ pub(crate) trait WindowErased: Tile {
     fn properties(&mut self) -> &mut Properties;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
     fn close_tooltip(&mut self, cx: &mut EventCx);
+}
 
+#[cfg(feature = "accesskit")]
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
+pub(crate) trait WindowNode: WindowErased {
     /// Iterate over popups
-    #[cfg(feature = "accesskit")]
     fn iter_popups(&self) -> PopupIterator<'_>;
 }
 
@@ -273,7 +275,7 @@ mod Window {
         bar_margin: i32,
         dec_offset: Offset,
         dec_size: Size,
-        popups: SmallVec<[(WindowId, PopupDescriptor, Offset); 16]>,
+        popups: SmallVec<[PopupWindow; 16]>,
     }
 
     impl Layout for Self {
@@ -370,11 +372,11 @@ mod Window {
 
         fn draw(&self, mut draw: DrawCx) {
             // Draw access keys first to prioritise their access key bindings
-            for (_, popup, translation) in &self.popups {
-                if let Some(child) = self.find_tile(&popup.id) {
+            for popup in &self.popups {
+                if let Some(child) = self.find_tile(&popup.desc.id) {
                     // We use a new pass to control draw order and clip content:
-                    let clip_rect = child.rect() - *translation;
-                    draw.with_overlay(clip_rect, *translation, |draw| {
+                    let clip_rect = child.rect() - popup.translation;
+                    draw.with_overlay(clip_rect, popup.translation, |draw| {
                         child.draw(draw);
                     });
                 }
@@ -400,9 +402,9 @@ mod Window {
         type Data = Data;
 
         fn probe(&self, coord: Coord) -> Id {
-            for (_, popup, translation) in self.popups.iter().rev() {
-                if let Some(widget) = self.inner.find_tile(&popup.id)
-                    && let Some(id) = widget.try_probe(coord + *translation)
+            for popup in self.popups.iter().rev() {
+                if let Some(widget) = self.inner.find_tile(&popup.desc.id)
+                    && let Some(id) = widget.try_probe(coord + popup.translation)
                 {
                     return id;
                 }
@@ -451,10 +453,10 @@ mod Window {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(Command::Escape, _) => {
-                    if let Some(id) = self.popups.last().map(|desc| desc.0) {
+                    if let Some(id) = self.popups.last().map(|popup| popup.id) {
                         cx.close_window(id);
                     } else if self.props.escapable {
-                        cx.top_window().close();
+                        cx.current_window().close();
                     }
                     Used
                 }
@@ -490,11 +492,6 @@ mod Window {
         fn close_tooltip(&mut self, cx: &mut EventCx) {
             self.tooltip.close(cx);
         }
-
-        #[cfg(feature = "accesskit")]
-        fn iter_popups(&self) -> PopupIterator<'_> {
-            PopupIterator(0, &self.popups)
-        }
     }
 
     impl std::fmt::Debug for Self {
@@ -504,71 +501,38 @@ mod Window {
     }
 }
 
-impl Window<()> {
-    /// Map data type.
-    ///
-    /// Expectation: the window will be configured and sized after this.
-    pub(crate) fn map_any<Data: AppData>(self) -> Window<Data> {
-        Window {
-            core: Default::default(),
-            props: self.props,
-            // TODO(opt): maybe we shouldn't box here?
-            inner: Box::new(MapAny::new(self.inner)),
-            tooltip: self.tooltip,
-            title_bar: self.title_bar,
-            b_w: self.b_w,
-            b_e: self.b_e,
-            b_n: self.b_n,
-            b_s: self.b_s,
-            b_nw: self.b_nw,
-            b_ne: self.b_ne,
-            b_sw: self.b_sw,
-            b_se: self.b_se,
-            bar_h: 0,
-            bar_margin: 0,
-            dec_offset: Default::default(),
-            dec_size: Default::default(),
-            popups: self.popups,
-        }
-    }
-}
-
 impl<Data: AppData> Window<Data> {
     /// Construct a window from a boxed `ui` widget and a `title`
     pub fn new(ui: Box<dyn Widget<Data = Data>>, title: String, props: Properties) -> Self {
         let resizable = !props.restrict_min || !props.restrict_max;
 
-        let mut w = Window {
+        Window {
             core: Default::default(),
             props,
             inner: ui,
             tooltip: Popup::new(Label::new("".to_string()), Direction::Down).align(Align::Center),
             title_bar: TitleBar::new(title),
-            b_w: Border::new(ResizeDirection::West),
-            b_e: Border::new(ResizeDirection::East),
-            b_n: Border::new(ResizeDirection::North),
-            b_s: Border::new(ResizeDirection::South),
-            b_nw: Border::new(ResizeDirection::NorthWest),
-            b_ne: Border::new(ResizeDirection::NorthEast),
-            b_sw: Border::new(ResizeDirection::SouthWest),
-            b_se: Border::new(ResizeDirection::SouthEast),
+            b_w: Border::new(ResizeDirection::West, resizable),
+            b_e: Border::new(ResizeDirection::East, resizable),
+            b_n: Border::new(ResizeDirection::North, resizable),
+            b_s: Border::new(ResizeDirection::South, resizable),
+            b_nw: Border::new(ResizeDirection::NorthWest, resizable),
+            b_ne: Border::new(ResizeDirection::NorthEast, resizable),
+            b_sw: Border::new(ResizeDirection::SouthWest, resizable),
+            b_se: Border::new(ResizeDirection::SouthEast, resizable),
             bar_h: 0,
             bar_margin: 0,
             dec_offset: Default::default(),
             dec_size: Default::default(),
             popups: Default::default(),
-        };
+        }
+    }
+}
 
-        w.b_w.set_resizable(resizable);
-        w.b_e.set_resizable(resizable);
-        w.b_n.set_resizable(resizable);
-        w.b_s.set_resizable(resizable);
-        w.b_nw.set_resizable(resizable);
-        w.b_ne.set_resizable(resizable);
-        w.b_se.set_resizable(resizable);
-        w.b_sw.set_resizable(resizable);
-
-        w
+#[cfg(feature = "accesskit")]
+impl<Data: AppData> WindowNode for Window<Data> {
+    fn iter_popups(&self) -> PopupIterator<'_> {
+        PopupIterator(0, &self.popups)
     }
 }
 
@@ -578,19 +542,19 @@ impl<Data: AppData> WindowWidget for Window<Data> {
         cx: &mut SizeCx,
         data: &Data,
         id: WindowId,
-        popup: PopupDescriptor,
+        desc: PopupDescriptor,
     ) {
         let index = 'index: {
             for i in 0..self.popups.len() {
-                if self.popups[i].0 == id {
-                    debug_assert_eq!(self.popups[i].1.id, popup.id);
-                    self.popups[i].1 = popup;
+                if self.popups[i].id == id {
+                    debug_assert_eq!(self.popups[i].desc.id, desc.id);
+                    self.popups[i].desc = desc;
                     break 'index i;
                 }
             }
 
             let len = self.popups.len();
-            self.popups.push((id, popup, Offset::ZERO));
+            self.popups.push(PopupWindow::new(id, desc));
             len
         };
 
@@ -601,7 +565,7 @@ impl<Data: AppData> WindowWidget for Window<Data> {
 
     fn remove_popup(&mut self, cx: &mut SizeCx, id: WindowId) {
         for i in 0..self.popups.len() {
-            if id == self.popups[i].0 {
+            if id == self.popups[i].id {
                 self.popups.remove(i);
                 cx.region_moved();
                 return;
@@ -621,9 +585,9 @@ impl<Data: AppData> Window<Data> {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.rect();
-        let popup = self.popups[index].1.clone();
+        let desc = self.popups[index].desc.clone();
 
-        let is_reversed = popup.direction.is_reversed();
+        let is_reversed = desc.direction.is_reversed();
         let place_in = |rp, rs: i32, cp: i32, cs: i32, ideal, m: (u16, u16)| -> (i32, i32) {
             let m: (i32, i32) = (m.0.into(), m.1.into());
             let before: i32 = cp - (rp + m.1);
@@ -658,23 +622,23 @@ impl<Data: AppData> Window<Data> {
             (pos, size)
         };
 
-        let Some((c, t)) = self.as_tile().find_tile_rect(&popup.parent) else {
+        let Some((c, t)) = self.as_tile().find_tile_rect(&desc.parent) else {
             return;
         };
-        self.popups[index].2 = t;
+        self.popups[index].translation = t;
         let r = r + t; // work in translated coordinate space
-        let result = Widget::as_node(self, data).find_node(&popup.id, |mut node| {
+        let result = Widget::as_node(self, data).find_node(&desc.id, |mut node| {
             let mut cache = layout::SolveCache::default();
             cache.find_constraints(node.re(), cx);
             let ideal = cache.ideal(false);
             let m = cache.margins();
 
-            let rect = if popup.direction.is_horizontal() {
+            let rect = if desc.direction.is_horizontal() {
                 let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
-                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, popup.align);
+                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, desc.align);
                 Rect::new(Coord(x, y), Size::new(w, h))
             } else {
-                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, popup.align);
+                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, desc.align);
                 let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
                 Rect::new(Coord(x, y), Size::new(w, h))
             };

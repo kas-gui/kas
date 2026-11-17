@@ -239,27 +239,27 @@ impl PressStart {
         self.grab(id, GrabMode::Grab)
     }
 
-    /// Enable dragging the window with the pointer until the press ends
+    /// Enable dragging the current window with the pointer until the press ends
     ///
     /// This functionality is specific to desktop platforms and likely only
     /// works with mouse (and mouse emulator) pointers.
     ///
     /// Incompatible with [`Self::grab`].
     pub fn drag_window(&self, cx: &mut EventCx) -> IsUsed {
-        if let Err(e) = cx.current_window().drag_window() {
+        if let Err(e) = cx.current_window().window.drag_window() {
             log::warn!("PressStart::drag_window: {e}");
         }
         Used
     }
 
-    /// Enable resizing the window with the pointer until the press ends
+    /// Enable resizing the current window with the pointer until the press ends
     ///
     /// This functionality is specific to desktop platforms and likely only
     /// works with mouse (and mouse emulator) pointers.
     ///
     /// Incompatible with [`Self::grab`].
     pub fn drag_resize_window(&self, cx: &mut EventCx, direction: ResizeDirection) -> IsUsed {
-        if let Err(e) = cx.current_window().drag_resize_window(direction) {
+        if let Err(e) = cx.current_window().window.drag_resize_window(direction) {
             log::warn!("PressStart::drag_resize_window: {e}");
         }
         Used

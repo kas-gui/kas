@@ -69,12 +69,21 @@ where
     fn proxy_wake_up(&mut self, _: &dyn ActiveEventLoop) {
         while let Ok(event) = self.shared.proxy_rx.try_recv() {
             match event {
-                ProxyAction::Close(id) => {
-                    if let Some(window) = self.windows.get_mut(&id) {
-                        window.send_close(id);
+                ProxyAction::Close(window_id) => {
+                    let mut parent_id = window_id;
+                    if let Some(id) = self.popups.get(&window_id) {
+                        parent_id = *id;
+                    }
+                    if let Some(window) = self.windows.get_mut(&parent_id) {
+                        window.send_close(window_id);
                     }
                 }
-                ProxyAction::CloseAll => {
+                ProxyAction::Exit => {
+                    for (popup, parent) in self.popups.iter() {
+                        if let Some(window) = self.windows.get_mut(parent) {
+                            window.send_close(*popup);
+                        }
+                    }
                     for (id, window) in self.windows.iter_mut() {
                         window.send_close(*id);
                     }
@@ -245,6 +254,7 @@ where
 
     fn flush_pending(&mut self, el: &dyn ActiveEventLoop) {
         let mut close_all = false;
+        let mut any_closed = false;
         while let Some(pending) = self.shared.pending.pop_front() {
             match pending {
                 Pending::UpdateAll => {
@@ -300,23 +310,6 @@ where
                         properties,
                     ),
                 ),
-                Pending::AddWindowAny {
-                    id,
-                    widget,
-                    title,
-                    properties,
-                } => self.add_window(
-                    el,
-                    id,
-                    Window::new_any_boxed(
-                        self.shared.config.clone(),
-                        self.shared.platform,
-                        id,
-                        widget,
-                        title,
-                        properties,
-                    ),
-                ),
                 Pending::CloseWindow(target) => {
                     let mut win_id = target;
                     if let Some(id) = self.popups.remove(&target) {
@@ -325,6 +318,7 @@ where
                     if let Some(window) = self.windows.get_mut(&win_id) {
                         window.send_close(target);
                     }
+                    any_closed = true;
                 }
                 Pending::Exit => close_all = true,
             }
@@ -351,5 +345,13 @@ where
                 true
             }
         });
+
+        if !close_all && any_closed {
+            let mut max_id = 0;
+            for id in self.windows.keys().chain(self.popups.keys()) {
+                max_id = max_id.max(id.get());
+            }
+            self.shared.window_id_factory.reset_to(max_id);
+        }
     }
 }

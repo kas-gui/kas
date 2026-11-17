@@ -9,7 +9,7 @@ use super::{EventCx, EventState};
 use crate::cast::CastApprox;
 use crate::event::{Command, Event, FocusSource, Scroll, ScrollDelta};
 use crate::geom::{Rect, Size};
-use crate::window::WindowErased;
+use crate::window::WindowNode;
 use crate::{Id, Node, TileExt};
 
 impl EventState {
@@ -19,10 +19,7 @@ impl EventState {
         self.accesskit_is_enabled
     }
 
-    pub(crate) fn accesskit_tree_update(
-        &mut self,
-        root: &dyn WindowErased,
-    ) -> accesskit::TreeUpdate {
+    pub(crate) fn accesskit_tree_update(&mut self, root: &dyn WindowNode) -> accesskit::TreeUpdate {
         self.accesskit_is_enabled = true;
 
         let (nodes, root_id) = crate::accesskit::window_nodes(root);

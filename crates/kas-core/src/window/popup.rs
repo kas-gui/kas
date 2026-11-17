@@ -7,6 +7,7 @@
 
 use crate::dir::Direction;
 use crate::event::{Event, EventCx, IsUsed, Scroll, Unused, Used};
+use crate::geom::Offset;
 #[allow(unused)] use crate::geom::Rect;
 use crate::layout::Align;
 use crate::window::WindowId;
@@ -30,6 +31,22 @@ pub(crate) struct PopupDescriptor {
     /// alignment. In this case, [`Align::TL`] would imply that the top of the
     /// popup would be aligned to the top of the parent.
     pub align: Align,
+}
+
+pub(crate) struct PopupWindow {
+    pub id: WindowId,
+    pub desc: PopupDescriptor,
+    pub translation: Offset,
+}
+
+impl PopupWindow {
+    pub fn new(id: WindowId, desc: PopupDescriptor) -> Self {
+        PopupWindow {
+            id,
+            desc,
+            translation: Offset::ZERO,
+        }
+    }
 }
 
 pub(crate) const POPUP_INNER_INDEX: usize = 0;

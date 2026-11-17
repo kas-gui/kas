@@ -8,9 +8,56 @@
 use std::borrow::Cow;
 
 use crate::runner::RunnerT;
+use crate::window::WindowId;
 use crate::{event::EventState, window::Decorations};
 use raw_window_handle::{self as rwh, HandleError, HasDisplayHandle, HasWindowHandle};
 use winit::icon::Icon;
+
+/// A handle to the current window
+///
+/// This handle may refer to any type of window. It supports a smaller API than
+/// [`TopWindow`] since it is not guaranteed that a "current window" has a
+/// titlebar and since it does not make sense to minimize a popup or modal
+/// window independently of its top window.
+pub struct CurrentWindow<'a> {
+    pub(super) id: WindowId,
+    pub(super) runner: &'a mut dyn RunnerT,
+    pub(super) window: &'a dyn winit::window::Window,
+}
+
+impl<'a> CurrentWindow<'a> {
+    /// Test whether the window is maximized
+    #[inline]
+    pub fn is_maximized(&mut self) -> bool {
+        self.window.is_maximized()
+    }
+
+    /// Set the maximized status
+    #[inline]
+    pub fn set_maximized(&mut self, maximized: bool) {
+        self.window.set_maximized(maximized);
+    }
+
+    /// Request that the window be closed
+    #[inline]
+    pub fn close(&mut self) {
+        self.runner.close_window(self.id);
+    }
+}
+
+impl<'a> HasWindowHandle for CurrentWindow<'a> {
+    #[inline]
+    fn window_handle(&self) -> Result<rwh::WindowHandle<'_>, HandleError> {
+        self.window.window_handle()
+    }
+}
+
+impl<'a> HasDisplayHandle for CurrentWindow<'a> {
+    #[inline]
+    fn display_handle(&self) -> Result<rwh::DisplayHandle<'_>, HandleError> {
+        self.window.display_handle()
+    }
+}
 
 /// A handle to a top-level window
 pub struct TopWindow<'a> {

@@ -43,14 +43,8 @@ struct WindowData<G: GraphicsInstance> {
     accesskit: accesskit_winit::Adapter,
 
     // NOTE: cached components could be here or in Window
-    window_id: WindowId,
     solve_cache: SolveCache,
     need_redraw: bool,
-    #[cfg(all(
-        unix,
-        not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
-    ))]
-    has_primary_selection: bool,
 }
 
 impl<G: GraphicsInstance> WindowData<G> {
@@ -87,24 +81,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             surface: None,
             ev_state: EventState::new(window_id, config, platform),
             widget: crate::window::Window::new(widget, title, props),
-        })
-    }
-
-    /// Construct window state (widget), mapping `()` to `A`
-    #[inline]
-    pub fn new_any_boxed(
-        config: Rc<RefCell<Config>>,
-        platform: Platform,
-        window_id: WindowId,
-        widget: Box<dyn Widget<Data = ()>>,
-        title: String,
-        props: Properties,
-    ) -> Box<Self> {
-        let config = WindowConfig::new(config);
-        Box::new(Window {
-            surface: None,
-            ev_state: EventState::new(window_id, config, platform),
-            widget: crate::window::Window::new(widget, title, props).map_any(),
         })
     }
 
@@ -244,14 +220,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             #[cfg(feature = "accesskit")]
             accesskit,
 
-            window_id: self.ev_state.window_id,
             solve_cache,
             need_redraw: true,
-            #[cfg(all(
-                unix,
-                not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
-            ))]
-            has_primary_selection: el.primary_selection_ext().is_some(),
         };
         self.surface = Some((theme, window));
 
@@ -271,7 +241,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if let Some((ref theme, ref mut window)) = self.surface {
             self.ev_state.suspended(shared);
 
-            let awh = ActiveWindowHandle { window, el };
+            let id = self.ev_state.window_id;
+            let awh = ActiveWindowHandle { id, window, el };
             let actions =
                 self.ev_state
                     .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
@@ -427,7 +398,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             _ => return false,
         };
 
-        let awh = ActiveWindowHandle { window, el };
+        let id = self.ev_state.window_id;
+        let awh = ActiveWindowHandle { id, window, el };
         let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.input_event(&mut self.widget, data, event)
         });
@@ -446,7 +418,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return (WindowActions::default(), None);
         };
 
-        let awh = ActiveWindowHandle { window, el };
+        let id = self.ev_state.window_id;
+        let awh = ActiveWindowHandle { id, window, el };
         let actions =
             self.ev_state
                 .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
@@ -571,7 +544,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let widget = self.widget.as_node(data);
 
         if Some(requested_resume) == self.ev_state.next_resume() {
-            let awh = ActiveWindowHandle { window, el };
+            let id = self.ev_state.window_id;
+            let awh = ActiveWindowHandle { id, window, el };
             let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
                 cx.update_timer(widget);
             });
@@ -703,7 +677,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         let widget = self.widget.as_node(data);
-        let awh = ActiveWindowHandle { window, el };
+        let id = self.ev_state.window_id;
+        let awh = ActiveWindowHandle { id, window, el };
         let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.frame_update(widget);
         });
@@ -774,7 +749,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 if window.frame_count.0 + SECOND <= end {
                     log::debug!(
                         "Window {:?}: {} frames in last second",
-                        window.window_id,
+                        self.ev_state.window_id,
                         window.frame_count.1
                     );
                     window.frame_count.0 = end;
@@ -799,16 +774,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
 #[autoimpl(Deref, DerefMut using self.window)]
 struct ActiveWindowHandle<'a, G: GraphicsInstance> {
+    id: WindowId,
     window: &'a WindowData<G>,
     el: &'a dyn ActiveEventLoop,
 }
 
 #[crate::split_impl(for<'a, G: GraphicsInstance> ActiveWindowHandle<'a, G>)]
 pub(crate) trait WindowDataErased {
-    /// Get the window identifier
-    fn window_id(&self) -> WindowId {
-        self.window_id
-    }
     /// Access the [`ActiveEventLoop`]
     fn event_loop(&self) -> &dyn ActiveEventLoop {
         self.el
@@ -825,12 +797,12 @@ pub(crate) trait WindowDataErased {
         self.window().request_ime_update(request)
     }
 
-    /// Get a handle to the current window
+    /// Get an identifier for and handle to the current window
     ///
     /// This returns a handle to the current popup or top-level window.
     #[inline]
-    fn current_window(&self) -> &dyn winit::window::Window {
-        self.window()
+    fn current_window(&self) -> (WindowId, &dyn winit::window::Window) {
+        (self.id, self.window())
     }
 
     /// Get a handle to the top-level window
@@ -848,6 +820,6 @@ pub(crate) trait WindowDataErased {
         not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
     ))]
     fn has_primary_selection(&self) -> bool {
-        self.has_primary_selection
+        self.el.primary_selection_ext().is_some()
     }
 }
