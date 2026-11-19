@@ -558,6 +558,25 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
     }
 
+    pub(super) fn show_tooltip(
+        &mut self,
+        shared: &mut Shared<A, G, T>,
+        el: &dyn ActiveEventLoop,
+        target: Id,
+        text: String,
+    ) {
+        let Some((ref theme, ref mut window)) = self.surface else {
+            return;
+        };
+
+        let id = self.ev_state.window_id;
+        let awh = ActiveWindowHandle { id, window, el };
+        let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
+            self.widget.show_tooltip(cx, target, text)
+        });
+        debug_assert!(resize.is_none());
+    }
+
     /// Add or update a popup with the given `id` and `popup` descriptor
     pub(super) fn add_or_update_popup(&mut self, data: &A, id: WindowId, popup: PopupDescriptor) {
         let Some((ref theme, _)) = self.surface else {

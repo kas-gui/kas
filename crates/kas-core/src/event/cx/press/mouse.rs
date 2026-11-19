@@ -11,7 +11,6 @@ use crate::event::{
 };
 use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::WindowErased;
-use crate::window::WindowWidget;
 use crate::{ActionRedraw, Id, Node, Tile, TileExt};
 use cast::{CastApprox, CastTo, Nearest};
 use std::time::{Duration, Instant};
@@ -363,16 +362,11 @@ impl<'a> EventCx<'a> {
     }
 
     /// Handle mouse pointer motion.
-    pub(in crate::event::cx) fn handle_pointer_moved<A>(
-        &mut self,
-        win: &mut dyn WindowWidget<Data = A>,
-        data: &A,
-        position: DVec2,
-    ) {
+    pub(in crate::event::cx) fn handle_pointer_moved(&mut self, node: Node, position: DVec2) {
         let coord = position.cast_to(Nearest);
-        let id = win.try_probe(coord);
-        self.tooltip_motion(win, &id);
-        self.handle_pointer_moved_(id, win.as_node(data), coord, position);
+        let id = node.try_probe(coord);
+        self.tooltip_motion(node.as_tile(), &id);
+        self.handle_pointer_moved_(id, node, coord, position);
     }
 
     pub(in crate::event::cx) fn handle_pointer_moved_(
@@ -546,13 +540,13 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    fn tooltip_motion(&mut self, win: &mut dyn WindowErased, id: &Option<Id>) {
+    fn tooltip_motion(&mut self, tile: &dyn Tile, id: &Option<Id>) {
         if let Some(source) = &mut self.mouse.tooltip_source
             && *source != id
             && let Some(id) = id.as_ref()
-            && let Some(text) = win.as_tile().find_tile(id).and_then(|tile| tile.tooltip())
+            && let Some(text) = tile.find_tile(id).and_then(|tile| tile.tooltip())
         {
-            win.show_tooltip(self, id.clone(), text.to_string());
+            self.runner.show_tooltip(id.clone(), text.to_string());
             self.post_recursion();
             self.mouse.tooltip_source = Some(id.clone());
         }

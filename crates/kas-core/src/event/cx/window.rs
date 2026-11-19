@@ -590,7 +590,9 @@ impl<'a> EventCx<'a> {
             } => self.keyboard_input(win.as_node(data), event, is_synthetic),
             InputEvent::ModifiersChanged(state) => self.modifiers_changed(state),
             InputEvent::Ime(event) => self.ime_event(win.as_node(data), event),
-            InputEvent::MouseMoved { position } => self.handle_pointer_moved(win, data, position),
+            InputEvent::MouseMoved { position } => {
+                self.handle_pointer_moved(win.as_node(data), position)
+            }
             InputEvent::MouseEntered => self.handle_pointer_entered(),
             InputEvent::MouseLeft => self.handle_pointer_left(win.as_node(data)),
             InputEvent::MouseWheel { delta } => self.handle_mouse_wheel(win.as_node(data), delta),

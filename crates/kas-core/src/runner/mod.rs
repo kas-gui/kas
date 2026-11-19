@@ -210,6 +210,7 @@ enum Pending<A: AppData> {
     UpdateAll,
     UpdateWindow(WindowId),
     ConfigUpdate(ConfigAction),
+    ShowTooltip(crate::Id, String),
     AddPopup(WindowId, WindowId, PopupDescriptor),
     RepositionPopup(WindowId, PopupDescriptor),
     AddWindow {

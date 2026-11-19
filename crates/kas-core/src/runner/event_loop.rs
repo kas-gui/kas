@@ -276,6 +276,13 @@ where
                         window.config_update(&mut self.shared, &self.data, action);
                     }
                 }
+                Pending::ShowTooltip(id, text) => {
+                    if let Some(win_id) = id.window_id()
+                        && let Some(window) = self.windows.get_mut(&win_id)
+                    {
+                        window.show_tooltip(&mut self.shared, el, id, text);
+                    }
+                }
                 Pending::AddPopup(parent_id, id, popup) => {
                     log::debug!("Pending: adding overlay");
                     // TODO: support pop-ups as a special window, where available
