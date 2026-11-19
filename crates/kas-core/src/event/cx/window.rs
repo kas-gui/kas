@@ -14,7 +14,7 @@ use crate::geom::DVec2;
 use crate::messages::Erased;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
-use crate::window::{PopupDescriptor, Properties, WindowId, WindowWidget};
+use crate::window::{PopupDescriptor, Properties, WindowId};
 use crate::{ActionRedraw, Id, Node, Widget, WindowActions};
 use linear_map::LinearMap;
 use std::sync::Arc;
@@ -565,12 +565,7 @@ impl<'a> EventCx<'a> {
     }
 
     /// Handle an input event
-    pub(crate) fn input_event<A>(
-        &mut self,
-        win: &mut dyn WindowWidget<Data = A>,
-        data: &A,
-        event: InputEvent,
-    ) {
+    pub(crate) fn input_event(&mut self, node: Node, event: InputEvent) {
         match event {
             InputEvent::Focused(state) => {
                 self.window_has_focus = state;
@@ -587,30 +582,28 @@ impl<'a> EventCx<'a> {
             InputEvent::KeyboardInput {
                 event,
                 is_synthetic,
-            } => self.keyboard_input(win.as_node(data), event, is_synthetic),
+            } => self.keyboard_input(node, event, is_synthetic),
             InputEvent::ModifiersChanged(state) => self.modifiers_changed(state),
-            InputEvent::Ime(event) => self.ime_event(win.as_node(data), event),
-            InputEvent::MouseMoved { position } => {
-                self.handle_pointer_moved(win.as_node(data), position)
-            }
+            InputEvent::Ime(event) => self.ime_event(node, event),
+            InputEvent::MouseMoved { position } => self.handle_pointer_moved(node, position),
             InputEvent::MouseEntered => self.handle_pointer_entered(),
-            InputEvent::MouseLeft => self.handle_pointer_left(win.as_node(data)),
-            InputEvent::MouseWheel { delta } => self.handle_mouse_wheel(win.as_node(data), delta),
+            InputEvent::MouseLeft => self.handle_pointer_left(node),
+            InputEvent::MouseWheel { delta } => self.handle_mouse_wheel(node, delta),
             InputEvent::MouseButton { button, state } => {
-                self.handle_mouse_input(win.as_node(data), state, button)
+                self.handle_mouse_input(node, state, button)
             }
             InputEvent::TouchStart {
                 finger_id,
                 position,
-            } => self.handle_touch_start(win.as_node(data), finger_id, position),
+            } => self.handle_touch_start(node, finger_id, position),
             InputEvent::TouchMoved {
                 finger_id,
                 position,
-            } => self.handle_touch_moved(win.as_node(data), finger_id, position),
+            } => self.handle_touch_moved(node, finger_id, position),
             InputEvent::TouchEnd {
                 finger_id,
                 position,
-            } => self.handle_touch_end(win.as_node(data), finger_id, position),
+            } => self.handle_touch_end(node, finger_id, position),
 
             InputEvent::DataTransferReceived { id, serial, value } => {
                 let Some(target) = self.data_transfers.remove(&serial) else {
@@ -619,7 +612,7 @@ impl<'a> EventCx<'a> {
                 };
 
                 let event = Event::DataTransfer { id, value };
-                self.send_event(win.as_node(data), target, event);
+                self.send_event(node, target, event);
             }
         }
     }

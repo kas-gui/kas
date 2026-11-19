@@ -401,7 +401,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let id = self.ev_state.window_id;
         let awh = ActiveWindowHandle { id, window, el };
         let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
-            cx.input_event(&mut self.widget, data, event)
+            cx.input_event(self.widget.as_node(data), event)
         });
         self.apply_size(data, false, resize.is_some());
         false
