@@ -251,8 +251,10 @@ impl<'a> EventCx<'a> {
 
         if let Some(id) = self
             .popups
-            .last()
-            .filter(|popup| popup.is_sized)
+            .iter()
+            .rev()
+            .filter(|popup| popup.desc.takes_focus && popup.is_sized)
+            .next()
             .map(|state| state.desc.id.clone())
         {
             if id.is_ancestor_of(widget.id_ref()) {

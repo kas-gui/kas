@@ -249,13 +249,13 @@ impl<'a> EventCx<'a> {
     ///
     /// A pop-up may be closed by calling [`EventCx::close_window`] with
     /// the [`WindowId`] returned by this method.
-    pub(crate) fn add_popup(&mut self, popup: PopupDescriptor, set_focus: bool) -> WindowId {
+    pub(crate) fn add_popup(&mut self, popup: PopupDescriptor) -> WindowId {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
 
         let parent_id = self.window_id;
         let id = self.runner.add_popup(parent_id, popup.clone());
         let mut old_nav_focus = None;
-        if set_focus {
+        if popup.takes_focus {
             old_nav_focus = self.nav_focus().cloned();
             self.clear_nav_focus();
         }

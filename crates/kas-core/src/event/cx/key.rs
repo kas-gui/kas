@@ -476,8 +476,10 @@ impl<'a> EventCx<'a> {
 
             if let Some(id) = self
                 .popups
-                .last()
-                .filter(|popup| popup.is_sized)
+                .iter()
+                .rev()
+                .filter(|popup| popup.desc.takes_focus && popup.is_sized)
+                .next()
                 .map(|popup| popup.desc.id.clone())
                 && send(self, id, cmd)
             {

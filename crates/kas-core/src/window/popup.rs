@@ -31,6 +31,13 @@ pub(crate) struct PopupDescriptor {
     /// alignment. In this case, [`Align::TL`] would imply that the top of the
     /// popup would be aligned to the top of the parent.
     pub align: Align,
+    /// Whether the popup captures focus
+    ///
+    /// If this is the top-most popup with the property set to `true`,
+    /// navigation will be limited to this popup and attempting to focus
+    /// anything outside of the popup will automatically dismiss it.
+    /// If this property is `false`, navigation will ignore this popup.
+    pub takes_focus: bool,
 }
 
 pub(crate) struct PopupWindow {
@@ -186,6 +193,11 @@ mod Popup {
         /// The `parent` is marked as depressed (pushed down) while the popup is
         /// open.
         ///
+        /// If this is the top-most popup with `takes_focus == true`,
+        /// navigation will be limited to this popup and attempting to focus
+        /// anything outside of the popup will automatically dismiss it.
+        /// If `!takes_focus`, navigation will ignore this popup.
+        ///
         /// Returns `true` when the popup is newly opened. In this case, the
         /// caller may wish to call [`EventCx::next_nav_focus`] next.
         pub fn open(
@@ -193,13 +205,14 @@ mod Popup {
             cx: &mut EventCx,
             data: &W::Data,
             parent: Id,
-            set_focus: bool,
+            takes_focus: bool,
         ) -> bool {
             let desc = PopupDescriptor {
                 id: self.id(),
                 parent,
                 direction: self.direction,
                 align: self.align,
+                takes_focus,
             };
 
             if let Some(id) = self.win_id {
@@ -212,7 +225,7 @@ mod Popup {
             let id = self.make_child_id(index);
             cx.configure(self.inner.as_node(data), id);
 
-            self.win_id = Some(cx.add_popup(desc, set_focus));
+            self.win_id = Some(cx.add_popup(desc));
 
             true
         }

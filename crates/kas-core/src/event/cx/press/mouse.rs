@@ -406,8 +406,10 @@ impl<'a> EventCx<'a> {
             }
         } else if let Some(popup_id) = self
             .popups
-            .last()
-            .filter(|popup| popup.is_sized)
+            .iter()
+            .rev()
+            .filter(|popup| popup.desc.takes_focus && popup.is_sized)
+            .next()
             .map(|state| state.desc.id.clone())
         {
             let press = Press {
