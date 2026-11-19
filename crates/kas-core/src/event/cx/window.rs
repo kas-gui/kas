@@ -148,6 +148,10 @@ impl EventState {
         }
 
         let resize = self.with(runner, theme, window, |cx| {
+            if cx.pending.is_some() {
+                cx.handle_pending_event(node.re());
+            }
+
             cx.mouse_handle_pending(node.re());
             cx.touch_handle_pending(node.re());
 
@@ -566,6 +570,67 @@ impl<'a> EventCx<'a> {
 
     /// Handle an input event
     pub(crate) fn input_event(&mut self, node: Node, event: InputEvent) {
+        if let Some(pending) = self.pending.as_mut() {
+            // Merge high-frequency events to avoid a backlog
+            match (&event, pending) {
+                (
+                    InputEvent::MouseMoved { position },
+                    InputEvent::MouseMoved { position: pos2 },
+                ) => {
+                    *pos2 = *position;
+                    return;
+                }
+                (
+                    InputEvent::MouseWheel {
+                        delta: MouseScrollDelta::LineDelta(x, y),
+                    },
+                    InputEvent::MouseWheel {
+                        delta: MouseScrollDelta::LineDelta(x2, y2),
+                    },
+                ) => {
+                    *x2 += x;
+                    *y2 += y;
+                    return;
+                }
+                (
+                    InputEvent::MouseWheel {
+                        delta: MouseScrollDelta::PixelDelta(d),
+                    },
+                    InputEvent::MouseWheel {
+                        delta: MouseScrollDelta::PixelDelta(d2),
+                    },
+                ) => {
+                    d2.x += d.x;
+                    d2.y += d.y;
+                    return;
+                }
+                (
+                    InputEvent::TouchMoved {
+                        finger_id,
+                        position,
+                    },
+                    InputEvent::TouchMoved {
+                        finger_id: finger2,
+                        position: pos2,
+                    },
+                ) if *finger_id == *finger2 => {
+                    *pos2 = *position;
+                    return;
+                }
+                _ => (),
+            }
+
+            self.handle_pending_event(node);
+        }
+
+        self.pending = Some(event);
+    }
+
+    fn handle_pending_event(&mut self, node: Node) {
+        let Some(event) = self.pending.take() else {
+            return;
+        };
+
         match event {
             InputEvent::Focused(state) => {
                 self.window_has_focus = state;
