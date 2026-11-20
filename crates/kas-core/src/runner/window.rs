@@ -401,7 +401,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let id = self.ev_state.window_id;
         let awh = ActiveWindowHandle { id, window, el };
         let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
-            cx.input_event(&mut self.widget, data, event)
+            cx.input_event(self.widget.as_node(data), event)
         });
         self.apply_size(data, false, resize.is_some());
         false
@@ -556,6 +556,25 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             #[allow(clippy::drop_non_drop)]
             drop(widget); // make the borrow checker happy
         }
+    }
+
+    pub(super) fn show_tooltip(
+        &mut self,
+        shared: &mut Shared<A, G, T>,
+        el: &dyn ActiveEventLoop,
+        target: Id,
+        text: String,
+    ) {
+        let Some((ref theme, ref mut window)) = self.surface else {
+            return;
+        };
+
+        let id = self.ev_state.window_id;
+        let awh = ActiveWindowHandle { id, window, el };
+        let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
+            self.widget.show_tooltip(cx, target, text)
+        });
+        debug_assert!(resize.is_none());
     }
 
     /// Add or update a popup with the given `id` and `popup` descriptor

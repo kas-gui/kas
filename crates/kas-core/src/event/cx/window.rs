@@ -11,9 +11,10 @@ use crate::data_transfer::PlainUtf8Transfer;
 use crate::event::cx::handle::CurrentWindow;
 use crate::event::{Event, FocusSource};
 use crate::geom::DVec2;
+use crate::messages::Erased;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
-use crate::window::{PopupDescriptor, Properties, WindowId, WindowWidget};
+use crate::window::{PopupDescriptor, Properties, WindowId};
 use crate::{ActionRedraw, Id, Node, Widget, WindowActions};
 use linear_map::LinearMap;
 use std::sync::Arc;
@@ -111,13 +112,10 @@ impl EventState {
     // Remove popup at index and return its [`WindowId`]
     //
     // Panics if `index` is out of bounds.
-    //
-    // The caller must call `runner.close_window(window_id)`.
-    #[must_use]
-    pub(super) fn close_popup(&mut self, index: usize) -> WindowId {
+    pub(super) fn close_popup(&mut self, runner: &mut dyn RunnerT, index: usize) {
         let state = self.popups.remove(index);
         if state.is_sized {
-            self.popup_removed.push((state.desc.id, state.id));
+            runner.send_erased(state.desc.id, Erased::new(Event::PopupClosed(state.id)));
         }
         self.mouse.tooltip_popup_close(&state.desc.parent);
 
@@ -125,7 +123,7 @@ impl EventState {
             self.set_nav_focus(id, FocusSource::Synthetic);
         }
 
-        state.id
+        runner.close_window(state.id);
     }
 
     pub(crate) fn confirm_popup_is_sized(&mut self, id: WindowId) {
@@ -150,8 +148,8 @@ impl EventState {
         }
 
         let resize = self.with(runner, theme, window, |cx| {
-            while let Some((id, wid)) = cx.popup_removed.pop() {
-                cx.send_event(node.re(), id, Event::PopupClosed(wid));
+            if cx.pending.is_some() {
+                cx.handle_pending_event(node.re());
             }
 
             cx.mouse_handle_pending(node.re());
@@ -199,8 +197,7 @@ impl EventState {
 
     pub(super) fn close_all_popups(&mut self, runner: &mut dyn RunnerT) {
         while !self.popups.is_empty() {
-            let id = self.close_popup(self.popups.len() - 1);
-            runner.close_window(id);
+            self.close_popup(runner, self.popups.len() - 1);
         }
     }
 
@@ -220,18 +217,18 @@ impl<'a> EventCx<'a> {
                 continue;
             }
 
-            let id = self.close_popup(index);
-            self.runner.close_window(id);
+            self.cx.state.close_popup(self.runner, index);
         }
     }
 
     pub(super) fn handle_close(&mut self) {
-        let mut id = self.window_id;
         if !self.popups.is_empty() {
             let index = self.popups.len() - 1;
-            id = self.close_popup(index);
+            self.cx.state.close_popup(self.runner, index);
+            return;
         }
-        self.runner.close_window(id);
+
+        self.runner.close_window(self.window_id);
     }
 
     /// Add a pop-up
@@ -358,11 +355,11 @@ impl<'a> EventCx<'a> {
     ///
     /// Navigation focus will return to whichever widget had focus before
     /// the popup was open.
-    pub fn close_window(&mut self, mut id: WindowId) {
+    pub fn close_window(&mut self, id: WindowId) {
         for (index, p) in self.popups.iter().enumerate() {
             if p.id == id {
-                id = self.close_popup(index);
-                break;
+                self.cx.state.close_popup(self.runner, index);
+                return;
             }
         }
 
@@ -572,12 +569,68 @@ impl<'a> EventCx<'a> {
     }
 
     /// Handle an input event
-    pub(crate) fn input_event<A>(
-        &mut self,
-        win: &mut dyn WindowWidget<Data = A>,
-        data: &A,
-        event: InputEvent,
-    ) {
+    pub(crate) fn input_event(&mut self, node: Node, event: InputEvent) {
+        if let Some(pending) = self.pending.as_mut() {
+            // Merge high-frequency events to avoid a backlog
+            match (&event, pending) {
+                (
+                    InputEvent::MouseMoved { position },
+                    InputEvent::MouseMoved { position: pos2 },
+                ) => {
+                    *pos2 = *position;
+                    return;
+                }
+                (
+                    InputEvent::MouseWheel {
+                        delta: MouseScrollDelta::LineDelta(x, y),
+                    },
+                    InputEvent::MouseWheel {
+                        delta: MouseScrollDelta::LineDelta(x2, y2),
+                    },
+                ) => {
+                    *x2 += x;
+                    *y2 += y;
+                    return;
+                }
+                (
+                    InputEvent::MouseWheel {
+                        delta: MouseScrollDelta::PixelDelta(d),
+                    },
+                    InputEvent::MouseWheel {
+                        delta: MouseScrollDelta::PixelDelta(d2),
+                    },
+                ) => {
+                    d2.x += d.x;
+                    d2.y += d.y;
+                    return;
+                }
+                (
+                    InputEvent::TouchMoved {
+                        finger_id,
+                        position,
+                    },
+                    InputEvent::TouchMoved {
+                        finger_id: finger2,
+                        position: pos2,
+                    },
+                ) if *finger_id == *finger2 => {
+                    *pos2 = *position;
+                    return;
+                }
+                _ => (),
+            }
+
+            self.handle_pending_event(node);
+        }
+
+        self.pending = Some(event);
+    }
+
+    fn handle_pending_event(&mut self, node: Node) {
+        let Some(event) = self.pending.take() else {
+            return;
+        };
+
         match event {
             InputEvent::Focused(state) => {
                 self.window_has_focus = state;
@@ -594,28 +647,28 @@ impl<'a> EventCx<'a> {
             InputEvent::KeyboardInput {
                 event,
                 is_synthetic,
-            } => self.keyboard_input(win.as_node(data), event, is_synthetic),
+            } => self.keyboard_input(node, event, is_synthetic),
             InputEvent::ModifiersChanged(state) => self.modifiers_changed(state),
-            InputEvent::Ime(event) => self.ime_event(win.as_node(data), event),
-            InputEvent::MouseMoved { position } => self.handle_pointer_moved(win, data, position),
+            InputEvent::Ime(event) => self.ime_event(node, event),
+            InputEvent::MouseMoved { position } => self.handle_pointer_moved(node, position),
             InputEvent::MouseEntered => self.handle_pointer_entered(),
-            InputEvent::MouseLeft => self.handle_pointer_left(win.as_node(data)),
-            InputEvent::MouseWheel { delta } => self.handle_mouse_wheel(win.as_node(data), delta),
+            InputEvent::MouseLeft => self.handle_pointer_left(node),
+            InputEvent::MouseWheel { delta } => self.handle_mouse_wheel(node, delta),
             InputEvent::MouseButton { button, state } => {
-                self.handle_mouse_input(win.as_node(data), state, button)
+                self.handle_mouse_input(node, state, button)
             }
             InputEvent::TouchStart {
                 finger_id,
                 position,
-            } => self.handle_touch_start(win.as_node(data), finger_id, position),
+            } => self.handle_touch_start(node, finger_id, position),
             InputEvent::TouchMoved {
                 finger_id,
                 position,
-            } => self.handle_touch_moved(win.as_node(data), finger_id, position),
+            } => self.handle_touch_moved(node, finger_id, position),
             InputEvent::TouchEnd {
                 finger_id,
                 position,
-            } => self.handle_touch_end(win.as_node(data), finger_id, position),
+            } => self.handle_touch_end(node, finger_id, position),
 
             InputEvent::DataTransferReceived { id, serial, value } => {
                 let Some(target) = self.data_transfers.remove(&serial) else {
@@ -624,7 +677,7 @@ impl<'a> EventCx<'a> {
                 };
 
                 let event = Event::DataTransfer { id, value };
-                self.send_event(win.as_node(data), target, event);
+                self.send_event(node, target, event);
             }
         }
     }

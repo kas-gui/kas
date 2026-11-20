@@ -162,6 +162,11 @@ pub(crate) trait RunnerT {
         self.pending.push_back(Pending::UpdateAll);
     }
 
+    /// Show a tooltip
+    fn show_tooltip(&mut self, id: Id, text: String) {
+        self.pending.push_back(Pending::ShowTooltip(id, text));
+    }
+
     /// Add a pop-up
     ///
     /// A pop-up may be presented as an overlay layer in the current window or
