@@ -44,7 +44,7 @@ impl FrameStorage {
     /// Generate [`SizeRules`]
     pub fn size_rules(
         &mut self,
-        cx: &mut SizeCx,
+        cx: &SizeCx,
         axis: AxisInfo,
         child_rules: SizeRules,
         style: FrameStyle,

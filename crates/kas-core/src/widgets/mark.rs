@@ -47,7 +47,7 @@ mod Mark {
         }
     }
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             cx.feature(self.style.into(), axis)
         }
 
@@ -104,7 +104,7 @@ mod MarkButton {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             cx.feature(self.style.into(), axis)
                 .with_stretch(Stretch::Low)
         }

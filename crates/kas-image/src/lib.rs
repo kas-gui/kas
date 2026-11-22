@@ -74,7 +74,7 @@ impl_scope! {
 
 impl Scaling {
     /// Generates [`SizeRules`] based on size
-    pub fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    pub fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
         let scale_factor = cx.scale_factor();
         let ideal = self.size.to_physical(scale_factor).extract(axis);
         SizeRules::new(ideal, ideal, self.stretch)

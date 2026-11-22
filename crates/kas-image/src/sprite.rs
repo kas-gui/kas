@@ -137,7 +137,7 @@ mod Sprite {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             if self.scaling.size == LogicalSize::default() {
                 let scale: i32 = (cx.scale_factor() * 0.9).cast_to(Nearest);
                 debug_assert!(scale >= 1);

@@ -228,7 +228,7 @@ mod MenuView {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
                 col_spans: self
@@ -252,7 +252,7 @@ mod MenuView {
                 .frame(FrameStyle::MenuEntry, axis.flipped())
                 .surround(child_rules);
 
-            let child_rules = |cx: &mut SizeCx, w: &mut dyn Tile, mut axis: AxisInfo| {
+            let child_rules = |cx: &SizeCx, w: &mut dyn Tile, mut axis: AxisInfo| {
                 axis.map_other(|x| x - frame_size_flipped);
                 let rules = w.size_rules(cx, axis);
                 frame_rules.surround(rules).0

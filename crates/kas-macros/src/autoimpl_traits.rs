@@ -31,7 +31,7 @@ impl ImplTrait for ImplLayout {
                     self.#using.rect()
                 }
                 #[inline]
-                fn size_rules(&mut self, cx: &mut ::kas::theme::SizeCx, axis: ::kas::layout::AxisInfo) -> ::kas::layout::SizeRules {
+                fn size_rules(&mut self, cx: &::kas::theme::SizeCx, axis: ::kas::layout::AxisInfo) -> ::kas::layout::SizeRules {
                     self.#using.size_rules(cx, axis)
                 }
                 #[inline]

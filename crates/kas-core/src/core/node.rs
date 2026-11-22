@@ -37,7 +37,7 @@ trait NodeT {
         self.0.child_node(self.1, index)
     }
 
-    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
         self.0.size_rules(cx, axis)
     }
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
@@ -222,7 +222,7 @@ impl<'a> Node<'a> {
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> Node<'a> {
     /// Get size rules for the given axis
-    pub(crate) fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    pub(crate) fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
         self.0.size_rules(cx, axis)
     }
 

@@ -81,7 +81,7 @@ mod TextTile {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let _ = self.text.size_rules(cx, axis);
             let size = crate::tile_size().cast();
             cx.logical(size, size).build(axis)
@@ -127,7 +127,7 @@ mod Tile {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let size = crate::tile_size().cast();
             let rules = cx.logical(size, size).build(axis);
             self.stack.size_rules(cx, axis).max(rules)

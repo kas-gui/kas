@@ -25,7 +25,7 @@ mod Reserve {
     pub struct Reserve<W: Widget> {
         #[widget]
         pub inner: W,
-        reserve: Box<dyn Fn(&mut SizeCx, AxisInfo) -> SizeRules + Send>,
+        reserve: Box<dyn Fn(&SizeCx, AxisInfo) -> SizeRules + Send>,
     }
 
     impl Self {
@@ -38,7 +38,7 @@ mod Reserve {
         /// use kas_widgets::Filler;
         /// use kas::prelude::*;
         ///
-        /// let label = Reserve::new(Filler::new(), |cx: &mut SizeCx<'_>, axis| {
+        /// let label = Reserve::new(Filler::new(), |cx: &SizeCx<'_>, axis| {
         ///     cx.logical(100.0, 100.0).build(axis)
         /// });
         ///```
@@ -47,7 +47,7 @@ mod Reserve {
         #[inline]
         pub fn new(
             inner: W,
-            reserve: impl Fn(&mut SizeCx, AxisInfo) -> SizeRules + Send + 'static,
+            reserve: impl Fn(&SizeCx, AxisInfo) -> SizeRules + Send + 'static,
         ) -> Self {
             let reserve = Box::new(reserve);
             Reserve { inner, reserve }
@@ -55,7 +55,7 @@ mod Reserve {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let inner_rules = self.inner.size_rules(cx, axis);
             let reserve_rules = (self.reserve)(cx, axis);
             inner_rules.max(reserve_rules)
@@ -89,7 +89,7 @@ mod WithMarginStyle {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let child_rules = self.inner.size_rules(cx, axis);
             let margins = cx.margins(self.style).extract(axis);
             child_rules.with_margins(margins)

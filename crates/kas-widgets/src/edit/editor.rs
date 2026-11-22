@@ -481,7 +481,7 @@ impl<H: Highlighter> Layout for Component<H> {
     }
 
     #[inline]
-    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
         self.0.part.size_rules(&self.0.common, cx, axis)
     }
 
@@ -825,7 +825,7 @@ impl Part {
     }
 
     /// Solve size rules
-    pub fn size_rules(&mut self, common: &Common, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    pub fn size_rules(&mut self, common: &Common, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
         let rules = if axis.is_horizontal() {
             let mut bound = 0i32;
             if common.wrap {

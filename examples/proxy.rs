@@ -66,7 +66,7 @@ mod ColourSquare {
         }
     }
     impl Layout for ColourSquare {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let _ = self.loading_text.size_rules(cx, axis);
             cx.logical(100.0, 100.0).build(axis)
         }

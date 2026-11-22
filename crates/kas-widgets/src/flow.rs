@@ -62,7 +62,7 @@ mod Flow {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let mut solver = FlowSolver::new(
                 axis,
                 self.list.direction.as_direction(),

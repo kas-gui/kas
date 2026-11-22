@@ -61,7 +61,7 @@ mod WithStretch {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = self.inner.size_rules(cx, axis);
             if axis.is_horizontal()
                 && let Some(stretch) = self.horiz
