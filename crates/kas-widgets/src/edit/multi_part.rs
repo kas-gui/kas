@@ -41,7 +41,7 @@ mod MultiPartEditor {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, mut axis: AxisInfo) -> SizeRules {
             let size = self.frame_size.extract(axis.flipped());
             axis.map_other(|x| x - size);
 
@@ -406,7 +406,7 @@ mod Inner {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
                 let dpem = cx.dpem(TextClass::Editor);

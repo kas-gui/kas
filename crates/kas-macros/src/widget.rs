@@ -561,7 +561,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 #[inline]
                 fn size_rules(
                     &mut self,
-                    cx: &mut ::kas::theme::SizeCx,
+                    cx: &::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
                     #tree_size_rules
@@ -596,7 +596,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         fn_size_rules = Some(quote! {
             fn size_rules(
                 &mut self,
-                cx: &mut ::kas::theme::SizeCx,
+                cx: &::kas::theme::SizeCx,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
                 ::kas::WidgetCore::update_status_size_rules(&mut #core_path, axis);

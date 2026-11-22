@@ -252,7 +252,7 @@ fn derive_widget(attr_span: Span, _: DeriveArgs, scope: &mut Scope) -> Result<()
     let fn_size_rules = quote! {
         #[inline]
         fn size_rules(&mut self,
-            cx: &mut ::kas::theme::SizeCx,
+            cx: &::kas::theme::SizeCx,
             axis: ::kas::layout::AxisInfo,
         ) -> ::kas::layout::SizeRules {
             self.#inner.size_rules(cx, axis)

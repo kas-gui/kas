@@ -82,7 +82,7 @@ mod EditBoxCore {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, mut ideal): (i32, i32);
             if axis.is_horizontal() {
                 let dpem = cx.dpem(TextClass::Editor);

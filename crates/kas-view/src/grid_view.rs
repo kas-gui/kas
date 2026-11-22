@@ -590,7 +590,7 @@ mod GridView {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = if self.sel_style.is_external() {
                 cx.inner_margins().extract(axis)

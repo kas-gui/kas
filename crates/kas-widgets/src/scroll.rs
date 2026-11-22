@@ -65,7 +65,7 @@ mod ClipRegion {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, mut axis: AxisInfo) -> SizeRules {
             let dir = axis.as_direction();
             axis.map_other(|x| {
                 (x - self.frame_size.extract(dir)).max(self.min_child_size.extract(dir))
@@ -263,7 +263,7 @@ mod ScrollRegion {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = self.inner.size_rules(cx, axis);
             let vert_rules = self.vert_bar.size_rules(cx, axis);
             let horiz_rules = self.horiz_bar.size_rules(cx, axis);

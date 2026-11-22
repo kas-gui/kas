@@ -121,7 +121,7 @@ mod Pack {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let rules = self.inner.size_rules(cx, axis);
             self.size.set_component(axis, rules.ideal_size());
             rules

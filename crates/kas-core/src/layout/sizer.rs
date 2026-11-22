@@ -69,7 +69,7 @@ pub trait RulesSetter {
 /// fixed and are used e.g. for text wrapping.
 pub fn solve_size_rules<W: Tile + ?Sized>(
     widget: &mut W,
-    cx: &mut SizeCx,
+    cx: &SizeCx,
     x_size: Option<i32>,
     y_size: Option<i32>,
 ) {
@@ -134,7 +134,7 @@ impl SolveCache {
     /// Calculate required size of widget
     ///
     /// Assumes no explicit alignment.
-    pub fn find_constraints(&mut self, mut widget: Node<'_>, cx: &mut SizeCx) {
+    pub fn find_constraints(&mut self, mut widget: Node<'_>, cx: &SizeCx) {
         let start = std::time::Instant::now();
 
         let w = widget.size_rules(cx, AxisInfo::new(false, None));

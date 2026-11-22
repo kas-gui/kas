@@ -37,7 +37,7 @@ trait NodeT {
         self.0.child_node(self.1, index)
     }
 
-    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
         self.0.size_rules(cx, axis)
     }
     fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
@@ -222,7 +222,7 @@ impl<'a> Node<'a> {
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> Node<'a> {
     /// Get size rules for the given axis
-    pub(crate) fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    pub(crate) fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
         self.0.size_rules(cx, axis)
     }
 
@@ -232,6 +232,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: configure recursively
+    #[inline(always)]
     pub(crate) fn _configure(&mut self, cx: &mut ConfigCx, id: Id) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
@@ -243,6 +244,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: update recursively
+    #[inline(always)]
     pub(crate) fn _update(&mut self, cx: &mut ConfigCx) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
@@ -254,6 +256,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: send recursively
+    #[inline(always)]
     pub(crate) fn _send(&mut self, cx: &mut EventCx, id: Id, event: Event) -> IsUsed {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
@@ -265,6 +268,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: replay recursively
+    #[inline(always)]
     pub(crate) fn _replay(&mut self, cx: &mut EventCx, id: Id) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {

@@ -150,7 +150,7 @@ mod Splitter {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
             }

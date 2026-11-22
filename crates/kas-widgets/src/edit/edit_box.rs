@@ -80,7 +80,7 @@ mod EditBox {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, mut axis: AxisInfo) -> SizeRules {
             let size = self.frame_size.extract(axis.flipped());
             axis.map_other(|x| x - size);
 

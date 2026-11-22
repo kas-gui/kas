@@ -43,7 +43,7 @@ impl<T: FormattableText> Layout for Text<T> {
     }
 
     #[inline]
-    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
         self.prepare_runs();
         self.inner.size_rules(cx, axis)
     }

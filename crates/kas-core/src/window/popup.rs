@@ -9,7 +9,7 @@ use crate::dir::Direction;
 use crate::event::{Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::geom::Offset;
 #[allow(unused)] use crate::geom::Rect;
-use crate::layout::Align;
+use crate::layout::{Align, SolveCache};
 use crate::window::WindowId;
 use crate::{ChildIndices, Events, Id, Tile, Widget};
 use kas_macros::{impl_self, widget_index};
@@ -31,6 +31,13 @@ pub(crate) struct PopupDescriptor {
     /// alignment. In this case, [`Align::TL`] would imply that the top of the
     /// popup would be aligned to the top of the parent.
     pub align: Align,
+    /// Whether the popup captures focus
+    ///
+    /// If this is the top-most popup with the property set to `true`,
+    /// navigation will be limited to this popup and attempting to focus
+    /// anything outside of the popup will automatically dismiss it.
+    /// If this property is `false`, navigation will ignore this popup.
+    pub takes_focus: bool,
 }
 
 pub(crate) struct PopupWindow {
@@ -186,6 +193,11 @@ mod Popup {
         /// The `parent` is marked as depressed (pushed down) while the popup is
         /// open.
         ///
+        /// If this is the top-most popup with `takes_focus == true`,
+        /// navigation will be limited to this popup and attempting to focus
+        /// anything outside of the popup will automatically dismiss it.
+        /// If `!takes_focus`, navigation will ignore this popup.
+        ///
         /// Returns `true` when the popup is newly opened. In this case, the
         /// caller may wish to call [`EventCx::next_nav_focus`] next.
         pub fn open(
@@ -193,13 +205,14 @@ mod Popup {
             cx: &mut EventCx,
             data: &W::Data,
             parent: Id,
-            set_focus: bool,
+            takes_focus: bool,
         ) -> bool {
             let desc = PopupDescriptor {
                 id: self.id(),
                 parent,
                 direction: self.direction,
                 align: self.align,
+                takes_focus,
             };
 
             if let Some(id) = self.win_id {
@@ -212,7 +225,18 @@ mod Popup {
             let id = self.make_child_id(index);
             cx.configure(self.inner.as_node(data), id);
 
-            self.win_id = Some(cx.add_popup(desc, set_focus));
+            // Ensure that the popup is sized.
+            // NOTE: ideally we'd reuse this SolveCache elsewhere
+            let mut cache = SolveCache::default();
+            let inner_margin = false;
+            cache.find_constraints(self.as_node(data), &mut cx.size_cx());
+            let rect = Rect {
+                pos: Default::default(),
+                size: cache.ideal(inner_margin),
+            };
+            cache.apply_rect(self.as_node(data), &mut cx.size_cx(), rect, inner_margin);
+
+            self.win_id = Some(cx.add_popup(desc));
 
             true
         }

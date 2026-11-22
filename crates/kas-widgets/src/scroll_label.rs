@@ -42,7 +42,7 @@ mod ScrollTextCore {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = kas::MacroDefinedLayout::size_rules(self, cx, axis);
             if axis.is_vertical()
                 && let Some(width) = axis.other()
@@ -369,7 +369,7 @@ mod ScrollText {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = self.text.size_rules(cx, axis);
             let _ = self.vert_bar.size_rules(cx, axis);
             if axis.is_vertical() {

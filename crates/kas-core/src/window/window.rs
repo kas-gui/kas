@@ -279,7 +279,7 @@ mod Window {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, mut axis: AxisInfo) -> SizeRules {
             let frame_width = self.dec_size.extract(axis.flipped());
             axis.map_other(|w| w - frame_width);
             let mut inner = self.inner.size_rules(cx, axis);
@@ -559,7 +559,6 @@ impl<Data: AppData> WindowWidget for Window<Data> {
         };
 
         self.resize_popup(cx, data, index);
-        cx.confirm_popup_is_sized(id);
         cx.region_moved();
     }
 

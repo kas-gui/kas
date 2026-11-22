@@ -269,7 +269,7 @@ mod List {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let dim = (self.direction, self.widgets.len(), true);
             let mut solver = RowSolver::new(axis, dim, &mut self.layout);
             for n in 0..self.widgets.len() {

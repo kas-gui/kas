@@ -56,7 +56,7 @@ impl Layout for ConfiguredForme {
 
     /// [`Self::prepare_runs`] should be called before this method otherwise the
     /// result will have zero size.
-    fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
         let rules = if axis.is_horizontal() {
             if self.wrap() {
                 let (min, ideal) = cx.wrapped_line_len(self.class(), self.font_size());
@@ -150,7 +150,7 @@ impl ConfiguredForme {
     /// [theme configuration]).
     ///
     /// [theme configuration]: crate::config::ThemeConfig
-    pub fn configure(&mut self, cx: &mut SizeCx) {
+    pub fn configure(&mut self, cx: &SizeCx) {
         let font = cx.config().font().get_font_selector(self.class);
         let dpem = cx.dpem(self.class);
         if font != self.font || dpem != self.dpem {

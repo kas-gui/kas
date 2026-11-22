@@ -66,7 +66,7 @@ mod MenuBar {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, cx: &mut SizeCx, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,
             // but the frame does not adjust the children's rects.
 

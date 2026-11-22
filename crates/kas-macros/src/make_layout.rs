@@ -651,7 +651,7 @@ impl Layout {
                 let inner = layout.size_rules(core_path);
                 quote! {
                     let child_rules = {
-                        let cx = &mut *cx;
+                        let cx = &*cx;
                         let axis = #core_path.#stor.child_axis(axis);
                         #inner
                     };
@@ -668,7 +668,7 @@ impl Layout {
                     let inner = item.size_rules(core_path);
                     toks.append_all(quote!{{
                         ::kas::layout::RulesSolver::for_child(&mut solver, &mut #core_path.#stor, #index, |axis| {
-                            let cx = &mut *cx;
+                            let cx = &*cx;
                             #inner
                         });
                     }});
@@ -700,7 +700,7 @@ impl Layout {
                     let inner = layout.size_rules(core_path);
                     toks.append_all(quote!{{
                         ::kas::layout::RulesSolver::for_child(&mut solver, &mut #core_path.#stor, #cell, |axis| {
-                            let cx = &mut *cx;
+                            let cx = &*cx;
                             #inner
                         });
                     }});

@@ -166,7 +166,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn with_min_size_px(self, w: i32, h: i32) -> Reserve<Self> {
         let size = Vec2(w.cast(), h.cast());
-        Reserve::new(self, move |cx: &mut SizeCx, axis: AxisInfo| {
+        Reserve::new(self, move |cx: &SizeCx, axis: AxisInfo| {
             let size = size.extract(axis) * cx.scale_factor();
             SizeRules::fixed(size.cast_to(Ceil))
         })
@@ -180,7 +180,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn with_min_size_em(self, w: f32, h: f32) -> Reserve<Self> {
         let size = Vec2(w, h);
-        Reserve::new(self, move |cx: &mut SizeCx, axis: AxisInfo| {
+        Reserve::new(self, move |cx: &SizeCx, axis: AxisInfo| {
             let size = size.extract(axis) * cx.dpem(TextClass::Standard);
             SizeRules::fixed(size.cast_to(Ceil))
         })
