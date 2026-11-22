@@ -7,7 +7,7 @@
 
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::config::EventWindowConfig;
-use crate::event::{Event, EventCx, EventState, FocusSource, NavAdvance, PressStart};
+use crate::event::{Event, EventCx, FocusSource, NavAdvance, PressStart};
 use crate::geom::{Affine, DVec2, Vec2};
 use crate::{ActionRedraw, Id, Node};
 use cast::{Cast, CastApprox, CastTo, Conv, Nearest};
@@ -228,7 +228,7 @@ impl Touch {
     }
 }
 
-impl EventState {
+impl<'a> EventCx<'a> {
     // Clears touch grab and pan grab and redraws
     //
     // Returns the grab. Panics on out-of-bounds error.
@@ -239,14 +239,12 @@ impl EventState {
             grab.finger_id,
             grab.start_id
         );
-        self.opt_redraw(grab.depress.clone());
+        self.redraw_opt_target(grab.depress.clone());
         self.touch.remove_pan_grab(grab.pan_grab);
         self.action_redraw(grab.flush_click_move());
         grab
     }
-}
 
-impl<'a> EventCx<'a> {
     pub(in crate::event::cx) fn touch_handle_pending(&mut self, mut node: Node<'_>) {
         let mut i = 0;
         while i < self.touch.touch_grab.len() {

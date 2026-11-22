@@ -265,14 +265,6 @@ impl EventState {
         self.action_redraw = Some(ActionRedraw);
     }
 
-    /// Redraw `id` if not `None`
-    #[inline]
-    pub(crate) fn opt_redraw(&mut self, id: Option<Id>) {
-        if let Some(id) = id {
-            self.redraw(id);
-        }
-    }
-
     /// Notify that widgets under self may have moved
     ///
     /// This updates the widget(s) under mouse and touch events.
@@ -483,6 +475,27 @@ impl<'a> DerefMut for EventCx<'a> {
 }
 
 impl<'a> EventCx<'a> {
+    /// Notify that a widget must be redrawn
+    ///
+    /// This method is designed to support partial redraws though these are not
+    /// currently implemented. See also [`Self::action_redraw`].
+    #[inline]
+    pub(crate) fn redraw_target(&mut self, id: Id) {
+        if Id::from(self.window_id).is_ancestor_of(&id) {
+            self.action_redraw = Some(ActionRedraw);
+        } else {
+            debug_assert!(false, "cross-window redraw requests are not supported");
+        }
+    }
+
+    /// Redraw `id` if not `None`
+    #[inline]
+    pub(crate) fn redraw_opt_target(&mut self, target: Option<Id>) {
+        if let Some(id) = target {
+            self.redraw_target(id);
+        }
+    }
+
     /// Get a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         self.runner.draw_shared()
