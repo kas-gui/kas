@@ -232,6 +232,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: configure recursively
+    #[inline(always)]
     pub(crate) fn _configure(&mut self, cx: &mut ConfigCx, id: Id) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
@@ -243,6 +244,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: update recursively
+    #[inline(always)]
     pub(crate) fn _update(&mut self, cx: &mut ConfigCx) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
@@ -254,6 +256,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: send recursively
+    #[inline(always)]
     pub(crate) fn _send(&mut self, cx: &mut EventCx, id: Id, event: Event) -> IsUsed {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
@@ -265,6 +268,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: replay recursively
+    #[inline(always)]
     pub(crate) fn _replay(&mut self, cx: &mut EventCx, id: Id) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {

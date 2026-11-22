@@ -340,6 +340,7 @@ pub enum WidgetStatus {
 }
 
 impl WidgetStatus {
+    #[track_caller]
     fn require(self, id: &Id, expected: Self) {
         if self < expected {
             panic!("WidgetStatus of {id}: require {expected:?}, found {self:?}");
