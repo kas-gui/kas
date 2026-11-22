@@ -6,10 +6,10 @@
 //! Theme traits
 
 use super::{ColorsLinear, ThemeDraw, ThemeSize};
-use crate::autoimpl;
 use crate::config::{Config, WindowConfig};
 use crate::draw::{DrawIface, DrawSharedImpl, color};
 use crate::event::EventState;
+use crate::{ActionResize, autoimpl};
 use std::any::Any;
 use std::cell::RefCell;
 
@@ -56,8 +56,12 @@ pub trait Theme<DS: DrawSharedImpl> {
     ///
     /// This is called when the DPI factor changes or theme config or dimensions change.
     ///
-    /// Returns `true` when a resize is required based on changes to the scale factor or font size.
-    fn update_window(&mut self, window: &mut Self::Window, config: &WindowConfig) -> bool;
+    /// Returns whether a resize is required based on changes to the scale factor or font size.
+    fn update_window(
+        &mut self,
+        window: &mut Self::Window,
+        config: &WindowConfig,
+    ) -> Option<ActionResize>;
 
     /// Prepare to draw and construct a [`ThemeDraw`] object
     ///

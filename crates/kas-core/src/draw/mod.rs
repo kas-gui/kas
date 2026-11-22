@@ -42,6 +42,7 @@ pub mod color;
 mod draw_rounded;
 mod draw_shared;
 
+use crate::ActionRedraw;
 use crate::cast::Cast;
 use crate::geom::{Quad, Size};
 #[allow(unused)] use crate::theme::DrawCx;
@@ -120,15 +121,15 @@ impl WindowCommon {
     }
 
     /// Check whether immediate redraw is required, and if so clear it
-    pub fn immediate_redraw(&mut self) -> bool {
+    pub fn immediate_redraw(&mut self) -> Option<ActionRedraw> {
         match self.anim {
-            AnimationState::None => return false,
+            AnimationState::None => return None,
             // AnimationState::Timed(_) => return false,
-            AnimationState::Timed(when) if when > Instant::now() => return false,
+            AnimationState::Timed(when) if when > Instant::now() => return None,
             _ => (),
         }
         self.anim = AnimationState::None;
-        true
+        Some(ActionRedraw)
     }
 
     /// Get the next resume time due to animation

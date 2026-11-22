@@ -22,7 +22,8 @@ use crate::window::{
     Decorations, PopupDescriptor, Properties, WindowErased, WindowId, WindowWidget,
 };
 use crate::{
-    ActionClose, ActionResize, ConfigAction, Id, Layout, Tile, Widget, WindowActions, autoimpl,
+    ActionClose, ActionRedraw, ActionResize, ConfigAction, Id, Layout, Tile, Widget, WindowActions,
+    autoimpl,
 };
 use std::cell::RefCell;
 use std::mem::take;
@@ -44,7 +45,8 @@ struct WindowData<G: GraphicsInstance> {
 
     // NOTE: cached components could be here or in Window
     solve_cache: SolveCache,
-    need_redraw: bool,
+    resize: Option<ActionResize>,
+    redraw: Option<ActionRedraw>,
 }
 
 impl<G: GraphicsInstance> WindowData<G> {
@@ -221,7 +223,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             accesskit,
 
             solve_cache,
-            need_redraw: true,
+            resize: None,
+            redraw: Some(ActionRedraw),
         };
         self.surface = Some((theme, window));
 
@@ -403,7 +406,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.input_event(self.widget.as_node(data), event)
         });
-        self.apply_size(data, false, resize.is_some());
+        window.resize = window.resize.or(resize);
         false
     }
 
@@ -424,18 +427,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state
                 .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
         if actions.resize.is_some() {
-            self.apply_size(data, false, true);
+            window.resize = actions.resize;
         }
 
         if actions.close.is_some() {
             return (actions, None);
         }
 
-        let Some((_, ref mut window)) = self.surface else {
-            unreachable!();
-        };
-        if actions != WindowActions::default() {
-            window.need_redraw = true;
+        if window.redraw.is_none() {
+            window.redraw = actions.redraw;
         }
 
         let resume = match (
@@ -450,8 +450,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         // NOTE: need_frame_update() does not imply a need to redraw, but other
         // approaches do not yield good frame timing for e.g. kinetic scrolling.
-        if window.need_redraw || self.ev_state.need_frame_update() {
+        if window.redraw.take().is_some() || self.ev_state.need_frame_update() {
             window.window().request_redraw();
+        }
+
+        if window.resize.take().is_some() {
+            self.apply_size(data, false, true);
         }
 
         (actions, resume)
@@ -478,21 +482,17 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 .update_config(window.window().scale_factor() as f32);
         }
 
-        let resize = if action.contains(ConfigAction::THEME_SWITCH) {
+        if action.contains(ConfigAction::THEME_SWITCH) {
             let config = self.ev_state.config();
             *theme = shared.theme.new_window(config);
-            true
+            window.resize = Some(ActionResize);
         } else if action.contains(ConfigAction::THEME) {
             let config = self.ev_state.config();
-            shared.theme.update_window(theme, config)
-        } else {
-            false
-        };
+            let resize = shared.theme.update_window(theme, config);
+            window.resize = window.resize.or(resize);
+        }
 
         self.reconfigure(data);
-        if resize {
-            self.apply_size(data, false, true);
-        }
     }
 
     #[cfg(feature = "accesskit")]
@@ -515,9 +515,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
                     cx.handle_accesskit_action(self.widget.as_node(data), request);
                 });
-                if resize.is_some() {
-                    self.apply_size(data, false, true);
-                }
+                window.resize = window.resize.or(resize);
             }
             WE::AccessibilityDeactivated => {
                 self.ev_state.disable_accesskit();
@@ -536,8 +534,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        if window.graphical.common_mut().immediate_redraw() {
-            window.need_redraw = true;
+        if let Some(action) = window.graphical.common_mut().immediate_redraw() {
+            window.redraw = Some(action);
             window.window().request_redraw();
         }
 
@@ -549,9 +547,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
                 cx.update_timer(widget);
             });
-            if resize.is_some() {
-                self.apply_size(data, false, true);
-            }
+            window.resize = window.resize.or(resize);
         } else {
             #[allow(clippy::drop_non_drop)]
             drop(widget); // make the borrow checker happy
@@ -602,16 +598,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     fn reconfigure(&mut self, data: &A) {
         let time = Instant::now();
-        let Some((ref theme, _)) = self.surface else {
+        let Some((ref theme, ref mut window)) = self.surface else {
             return;
         };
 
-        let resize: Option<ActionResize> = self
+        let resize = self
             .ev_state
             .full_configure(theme.size(), self.widget.as_node(data));
-        if resize.is_some() {
-            self.apply_size(data, false, true);
-        }
+        window.resize = window.resize.or(resize);
 
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
@@ -626,9 +620,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut cx = ConfigCx::new(&size, &mut self.ev_state);
         cx.update(self.widget.as_node(data));
         if cx.needs_resize() {
-            self.apply_size(data, false, true);
+            window.resize = Some(ActionResize);
         } else if cx.needs_redraw() {
-            window.window().request_redraw();
+            window.redraw = Some(ActionRedraw);
         }
 
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
@@ -691,7 +685,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         el: &dyn ActiveEventLoop,
     ) -> Result<(), ()> {
         let start = Instant::now();
-        let Some((ref theme, ref window)) = self.surface else {
+        let Some((ref theme, ref mut window)) = self.surface else {
             return Ok(());
         };
 
@@ -701,9 +695,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
             cx.frame_update(widget);
         });
-        if resize.is_some() {
-            self.apply_size(data, false, true);
-        }
+        window.resize = window.resize.or(resize);
         let Some((ref mut theme, ref mut window)) = self.surface else {
             unreachable!();
         };
@@ -734,7 +726,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
         let time2 = Instant::now();
 
-        window.need_redraw = window.graphical.common_mut().immediate_redraw();
+        window.redraw = window.graphical.common_mut().immediate_redraw();
         self.ev_state.action_redraw = None;
         // NOTE: we used to return Err(()) if !action.is_empty() here, e.g. if a
         // widget requested a resize during draw. Likely it's better not to do

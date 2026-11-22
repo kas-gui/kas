@@ -10,7 +10,6 @@ use std::f32;
 use std::time::Instant;
 
 use super::ColorsSrgb;
-use crate::Id;
 use crate::cast::traits::*;
 use crate::config::{Config, WindowConfig};
 use crate::dir::{Direction, Directional};
@@ -22,6 +21,7 @@ use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{SelectionStyle, ThemeDraw, ThemeSize};
+use crate::{ActionResize, Id};
 
 /// A simple theme
 ///
@@ -68,7 +68,11 @@ impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme {
         dim::Window::new(&self.dims, config)
     }
 
-    fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) -> bool {
+    fn update_window(
+        &mut self,
+        w: &mut Self::Window,
+        config: &WindowConfig,
+    ) -> Option<ActionResize> {
         self.cols = config.theme().get_active_scheme().into();
         w.update(&self.dims, config)
     }

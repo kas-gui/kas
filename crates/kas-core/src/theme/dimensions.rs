@@ -11,6 +11,7 @@ use std::f32;
 
 use super::anim::AnimState;
 use super::{Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
+use crate::ActionResize;
 use crate::cast::{Ceil, Nearest, traits::*};
 use crate::config::WindowConfig;
 use crate::dir::Directional;
@@ -173,12 +174,13 @@ impl Window {
 
     /// Updates self based on new `config` data
     ///
-    /// Returns `true` if a resize is needed based on changes to `config` data.
+    /// Returns whether a resize is needed based on changes to `config` data.
     /// Does not test whether `dims` have changed.
-    pub fn update(&mut self, dims: &Parameters, config: &WindowConfig) -> bool {
+    pub fn update(&mut self, dims: &Parameters, config: &WindowConfig) -> Option<ActionResize> {
         let old_dims = self.dims.clone();
         self.dims = Dimensions::new(dims, config);
-        old_dims.scale != self.dims.scale || old_dims.dpem != self.dims.dpem
+        (old_dims.scale != self.dims.scale || old_dims.dpem != self.dims.dpem)
+            .then_some(ActionResize)
     }
 }
 
