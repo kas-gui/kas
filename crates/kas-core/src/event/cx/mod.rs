@@ -51,7 +51,6 @@ struct PopupState {
     id: WindowId,
     desc: PopupDescriptor,
     old_nav_focus: Option<Id>,
-    is_sized: bool,
 }
 
 /// Event context state

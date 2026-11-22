@@ -9,7 +9,7 @@ use crate::dir::Direction;
 use crate::event::{Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::geom::Offset;
 #[allow(unused)] use crate::geom::Rect;
-use crate::layout::Align;
+use crate::layout::{Align, SolveCache};
 use crate::window::WindowId;
 use crate::{ChildIndices, Events, Id, Tile, Widget};
 use kas_macros::{impl_self, widget_index};
@@ -224,6 +224,17 @@ mod Popup {
             assert_eq!(index, POPUP_INNER_INDEX);
             let id = self.make_child_id(index);
             cx.configure(self.inner.as_node(data), id);
+
+            // Ensure that the popup is sized.
+            // NOTE: ideally we'd reuse this SolveCache elsewhere
+            let mut cache = SolveCache::default();
+            let inner_margin = false;
+            cache.find_constraints(self.as_node(data), &mut cx.size_cx());
+            let rect = Rect {
+                pos: Default::default(),
+                size: cache.ideal(inner_margin),
+            };
+            cache.apply_rect(self.as_node(data), &mut cx.size_cx(), rect, inner_margin);
 
             self.win_id = Some(cx.add_popup(desc));
 

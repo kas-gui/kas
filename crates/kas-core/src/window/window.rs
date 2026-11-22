@@ -559,7 +559,6 @@ impl<Data: AppData> WindowWidget for Window<Data> {
         };
 
         self.resize_popup(cx, data, index);
-        cx.confirm_popup_is_sized(id);
         cx.region_moved();
     }
 

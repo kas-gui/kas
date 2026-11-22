@@ -253,7 +253,7 @@ impl<'a> EventCx<'a> {
             .popups
             .iter()
             .rev()
-            .filter(|popup| popup.desc.takes_focus && popup.is_sized)
+            .filter(|popup| popup.desc.takes_focus)
             .next()
             .map(|state| state.desc.id.clone())
         {

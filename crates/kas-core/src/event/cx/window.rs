@@ -114,9 +114,7 @@ impl EventState {
     // Panics if `index` is out of bounds.
     pub(super) fn close_popup(&mut self, runner: &mut dyn RunnerT, index: usize) {
         let state = self.popups.remove(index);
-        if state.is_sized {
-            runner.send_erased(state.desc.id, Erased::new(Event::PopupClosed(state.id)));
-        }
+        runner.send_erased(state.desc.id, Erased::new(Event::PopupClosed(state.id)));
         self.mouse.tooltip_popup_close(&state.desc.parent);
 
         if let Some(id) = state.old_nav_focus {
@@ -124,14 +122,6 @@ impl EventState {
         }
 
         runner.close_window(state.id);
-    }
-
-    pub(crate) fn confirm_popup_is_sized(&mut self, id: WindowId) {
-        for popup in &mut self.popups {
-            if popup.id == id {
-                popup.is_sized = true;
-            }
-        }
     }
 
     /// Handle all pending items before event loop sleeps
@@ -263,7 +253,6 @@ impl<'a> EventCx<'a> {
             id,
             desc: popup,
             old_nav_focus,
-            is_sized: false,
         });
         id
     }
