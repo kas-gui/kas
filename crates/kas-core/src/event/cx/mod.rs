@@ -17,7 +17,7 @@ use std::time::Instant;
 use winit::event_loop::AsyncRequestSerial;
 
 use super::*;
-use crate::cast::{Cast, Conv};
+use crate::cast::Conv;
 use crate::config::{ConfigMsg, WindowConfig};
 use crate::draw::DrawShared;
 use crate::geom::{Offset, Vec2};
@@ -159,7 +159,7 @@ impl EventState {
         sizer: &dyn ThemeSize,
         node: Node,
     ) -> Option<ActionResize> {
-        let id = Id::ROOT.make_child(self.window_id.get().cast());
+        let id = Id::from(self.window_id);
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
 
