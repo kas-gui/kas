@@ -26,7 +26,7 @@ use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{Decorations, PopupDescriptor, WindowId};
-use crate::{ActionClose, ActionMoved, ActionRedraw, ActionResize, ConfigAction, HasId, Id, Node};
+use crate::{ActionClose, ActionMoved, ActionRedraw, ActionResize, ConfigAction, Id, Node};
 use key::Input;
 use nav::NavFocus;
 
@@ -253,18 +253,6 @@ impl EventState {
         Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
     }
 
-    /// Notify that a widget must be redrawn
-    ///
-    /// This method is designed to support partial redraws though these are not
-    /// currently implemented. See also [`Self::action_redraw`].
-    #[inline]
-    pub fn redraw(&mut self, id: impl HasId) {
-        // NOTE: redraws are fast enough not to bother handling locally
-        let _ = id;
-
-        self.action_redraw = Some(ActionRedraw);
-    }
-
     /// Notify that widgets under self may have moved
     ///
     /// This updates the widget(s) under mouse and touch events.
@@ -315,6 +303,28 @@ impl<'a> Deref for ConfigCx<'a> {
 impl<'a> DerefMut for ConfigCx<'a> {
     fn deref_mut(&mut self) -> &mut EventState {
         self.state
+    }
+}
+
+impl<'a> CanRedraw for ConfigCx<'a> {
+    #[inline]
+    fn event_state(&self) -> &EventState {
+        self.state
+    }
+    #[inline]
+    fn event_state_mut(&mut self) -> &mut EventState {
+        self.state
+    }
+    #[inline]
+    fn size_cx<'b>(&'b mut self) -> SizeCx<'b>
+    where
+        'a: 'b,
+    {
+        SizeCx::new(self.state, self.theme)
+    }
+    #[inline]
+    fn redraw(&mut self) {
+        self.redraw = Some(ActionRedraw);
     }
 }
 
@@ -471,6 +481,28 @@ impl<'a> Deref for EventCx<'a> {
 impl<'a> DerefMut for EventCx<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.cx
+    }
+}
+
+impl<'a> CanRedraw for EventCx<'a> {
+    #[inline]
+    fn event_state(&self) -> &EventState {
+        self.cx.state
+    }
+    #[inline]
+    fn event_state_mut(&mut self) -> &mut EventState {
+        self.cx.state
+    }
+    #[inline]
+    fn size_cx<'b>(&'b mut self) -> SizeCx<'b>
+    where
+        'a: 'b,
+    {
+        SizeCx::new(self.cx.state, self.cx.theme)
+    }
+    #[inline]
+    fn redraw(&mut self) {
+        self.cx.redraw();
     }
 }
 

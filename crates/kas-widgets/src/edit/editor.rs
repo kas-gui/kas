@@ -2661,8 +2661,8 @@ impl Editor {
     ///
     /// When set, the input field's background is drawn red. If a message is
     /// supplied, then a tooltip will be available on mouse-hover.
-    pub fn set_error(&mut self, cx: &mut EventState, message: Option<Cow<'static, str>>) {
+    pub fn set_error(&mut self, cx: &mut ConfigCx, message: Option<Cow<'static, str>>) {
         self.error_state = Some(message);
-        cx.redraw(self.id_ref());
+        cx.redraw();
     }
 }

@@ -12,7 +12,9 @@
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
-pub use crate::event::{Command, ConfigCx, Event, EventCx, EventState, IsUsed, Unused, Used};
+pub use crate::event::{
+    CanRedraw, Command, ConfigCx, Event, EventCx, EventState, IsUsed, Unused, Used,
+};
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]

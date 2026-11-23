@@ -291,18 +291,18 @@ mod GridView {
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
         ///
         /// [`Select`]: kas::messages::Select
-        pub fn set_selection_mode(&mut self, cx: &mut EventState, mode: SelectionMode) {
+        pub fn set_selection_mode(&mut self, cx: &mut dyn CanRedraw, mode: SelectionMode) {
             self.sel_mode = mode;
             match mode {
                 SelectionMode::None if !self.selection.is_empty() => {
                     self.selection.clear();
-                    cx.redraw(self);
+                    cx.redraw();
                 }
                 SelectionMode::Single if self.selection.len() > 1 => {
                     if let Some(first) = self.selection.iter().next().cloned() {
                         self.selection.retain(|item| *item == first);
                     }
-                    cx.redraw(self);
+                    cx.redraw();
                 }
                 _ => (),
             }
@@ -354,10 +354,10 @@ mod GridView {
         }
 
         /// Clear all selected items
-        pub fn clear_selected(&mut self, cx: &mut EventState) {
+        pub fn clear_selected(&mut self, cx: &mut dyn CanRedraw) {
             if !self.selection.is_empty() {
                 self.selection.clear();
-                cx.redraw(self);
+                cx.redraw();
             }
         }
 
@@ -370,7 +370,7 @@ mod GridView {
         /// Returns `true` if newly selected, `false` if
         /// already selected. Fails if selection mode does not permit selection
         /// or if the key is invalid.
-        pub fn select(&mut self, cx: &mut EventState, key: C::Key) -> bool {
+        pub fn select(&mut self, cx: &mut dyn CanRedraw, key: C::Key) -> bool {
             match self.sel_mode {
                 SelectionMode::None => return false,
                 SelectionMode::Single => self.selection.clear(),
@@ -378,7 +378,7 @@ mod GridView {
             }
             let r = self.selection.insert(key);
             if r {
-                cx.redraw(self);
+                cx.redraw();
             }
             r
         }
@@ -387,10 +387,10 @@ mod GridView {
         ///
         /// Returns `true` if deselected, `false` if not
         /// previously selected or if the key is invalid.
-        pub fn deselect(&mut self, cx: &mut EventState, key: &C::Key) -> bool {
+        pub fn deselect(&mut self, cx: &mut dyn CanRedraw, key: &C::Key) -> bool {
             let r = self.selection.remove(key);
             if r {
-                cx.redraw(self);
+                cx.redraw();
             }
             r
         }

@@ -190,7 +190,7 @@ mod ScrollBar {
         ///
         /// The choice of units is not important (e.g. can be pixels or lines),
         /// so long as both parameters use the same units.
-        pub fn set_limits(&mut self, cx: &mut EventState, max_value: i32, grip_size: i32) {
+        pub fn set_limits(&mut self, cx: &mut dyn CanRedraw, max_value: i32, grip_size: i32) {
             // We should gracefully handle zero, though appearance may be wrong.
             self.grip_size = grip_size.max(1);
 
@@ -224,7 +224,7 @@ mod ScrollBar {
         /// Set the value
         ///
         /// Returns true if the value changes.
-        pub fn set_value(&mut self, cx: &mut EventState, value: i32) -> bool {
+        pub fn set_value(&mut self, cx: &mut dyn CanRedraw, value: i32) -> bool {
             let value = value.clamp(0, self.max_value);
             let changed = value != self.value;
             if changed {
@@ -247,7 +247,7 @@ mod ScrollBar {
             }
         }
 
-        fn update_widgets(&mut self, cx: &mut EventState) {
+        fn update_widgets(&mut self, cx: &mut dyn CanRedraw) {
             let len = self.bar_len();
             let total = 1i64.max(i64::from(self.max_value) + i64::from(self.grip_size));
             let grip_len = i64::from(self.grip_size) * i64::conv(len) / total;

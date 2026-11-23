@@ -206,12 +206,12 @@ mod GripPart {
         ///
         /// It is expected that [`Self::set_track`] and [`Self::set_size`] are
         /// called before this method.
-        pub fn set_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
+        pub fn set_offset(&mut self, cx: &mut dyn CanRedraw, offset: Offset) -> Offset {
             let offset = offset.min(self.max_offset()).max(Offset::ZERO);
             let grip_pos = self.track.pos + offset;
             if grip_pos != self.rect.pos {
                 self.rect.pos = grip_pos;
-                cx.redraw(self);
+                cx.redraw();
             }
             offset
         }

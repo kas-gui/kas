@@ -302,20 +302,20 @@ mod ListView {
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
         ///
         /// [`Select`]: kas::messages::Select
-        pub fn set_selection_mode(&mut self, cx: &mut EventState, mode: SelectionMode) {
+        pub fn set_selection_mode(&mut self, cx: &mut dyn CanRedraw, mode: SelectionMode) {
             self.sel_mode = mode;
             match mode {
                 SelectionMode::None if !self.selection.is_empty() => {
                     self.selection.clear();
                     self.update_selected_items();
-                    cx.redraw(self);
+                    cx.redraw();
                 }
                 SelectionMode::Single if self.selection.len() > 1 => {
                     if let Some(first) = self.selection.iter().next().cloned() {
                         self.selection.retain(|item| *item == first);
                     }
                     self.update_selected_items();
-                    cx.redraw(self);
+                    cx.redraw();
                 }
                 _ => (),
             }
@@ -367,11 +367,11 @@ mod ListView {
         }
 
         /// Clear all selected items
-        pub fn clear_selected(&mut self, cx: &mut EventState) {
+        pub fn clear_selected(&mut self, cx: &mut dyn CanRedraw) {
             if !self.selection.is_empty() {
                 self.selection.clear();
                 self.update_selected_items();
-                cx.redraw(self);
+                cx.redraw();
             }
         }
 
@@ -384,7 +384,7 @@ mod ListView {
         /// Returns `true` if newly selected, `false` if
         /// already selected. Fails if selection mode does not permit selection
         /// or if the key is invalid.
-        pub fn select(&mut self, cx: &mut EventState, key: C::Key) -> bool {
+        pub fn select(&mut self, cx: &mut dyn CanRedraw, key: C::Key) -> bool {
             match self.sel_mode {
                 SelectionMode::None => return false,
                 SelectionMode::Single => self.selection.clear(),
@@ -393,7 +393,7 @@ mod ListView {
             let r = self.selection.insert(key);
             if r {
                 self.update_selected_items();
-                cx.redraw(self);
+                cx.redraw();
             }
             r
         }
@@ -402,11 +402,11 @@ mod ListView {
         ///
         /// Returns `true` if deselected, `false` if not
         /// previously selected or if the key is invalid.
-        pub fn deselect(&mut self, cx: &mut EventState, key: &C::Key) -> bool {
+        pub fn deselect(&mut self, cx: &mut dyn CanRedraw, key: &C::Key) -> bool {
             let r = self.selection.remove(key);
             if r {
                 self.update_selected_items();
-                cx.redraw(self);
+                cx.redraw();
             }
             r
         }
@@ -416,13 +416,13 @@ mod ListView {
         /// By default, the set of selected keys persists when items filtered or
         /// removed the data set. This allows the selection to survive changing
         /// filters. To avoid this behaviour, call this method on update.
-        pub fn deselect_unavailable(&mut self, cx: &mut EventState) {
+        pub fn deselect_unavailable(&mut self, cx: &mut dyn CanRedraw) {
             let len = self.selection.len();
             self.selection
                 .retain(|key| self.widgets.iter().any(|widget| widget.key() == Some(key)));
             self.update_selected_items();
             if len != self.selection.len() {
-                cx.redraw(self);
+                cx.redraw();
             }
         }
 

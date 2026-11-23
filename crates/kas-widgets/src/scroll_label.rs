@@ -474,10 +474,10 @@ mod ScrollText {
         }
 
         /// Replace text contents
-        pub fn set_text(&mut self, cx: &mut EventState, text: T) {
+        pub fn set_text(&mut self, cx: &mut dyn CanRedraw, text: T) {
             if self.text.set_text(text) {
                 self.update_content_size(cx);
-                cx.redraw(self);
+                cx.redraw();
             }
         }
 
@@ -504,7 +504,7 @@ mod ScrollText {
             self
         }
 
-        fn update_content_size(&mut self, cx: &mut EventState) {
+        fn update_content_size(&mut self, cx: &mut dyn CanRedraw) {
             if !self.core.status.is_sized() {
                 return;
             }

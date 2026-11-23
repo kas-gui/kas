@@ -80,6 +80,28 @@ impl<'a: 'b, 'b> AdaptEventCx<'a, 'b> {
     }
 }
 
+impl<'a: 'b, 'b> CanRedraw for AdaptEventCx<'a, 'b> {
+    #[inline]
+    fn event_state(&self) -> &EventState {
+        &*self.cx
+    }
+    #[inline]
+    fn event_state_mut(&mut self) -> &mut EventState {
+        &mut *self.cx
+    }
+    #[inline]
+    fn size_cx<'c>(&'c mut self) -> SizeCx<'c>
+    where
+        'b: 'c,
+    {
+        self.cx.size_cx()
+    }
+    #[inline]
+    fn redraw(&mut self) {
+        self.cx.redraw();
+    }
+}
+
 /// A [`ConfigCx`] with embedded [`Id`]
 ///
 /// NOTE: this is a temporary design: it may be expanded or integrated with
@@ -148,5 +170,27 @@ impl<'a: 'b, 'b> AdaptConfigCx<'a, 'b> {
     #[inline]
     pub fn request_frame_timer(&mut self, timer: TimerId) {
         self.cx.request_frame_timer(self.id.clone(), timer);
+    }
+}
+
+impl<'a: 'b, 'b> CanRedraw for AdaptConfigCx<'a, 'b> {
+    #[inline]
+    fn event_state(&self) -> &EventState {
+        &*self.cx
+    }
+    #[inline]
+    fn event_state_mut(&mut self) -> &mut EventState {
+        &mut *self.cx
+    }
+    #[inline]
+    fn size_cx<'c>(&'c mut self) -> SizeCx<'c>
+    where
+        'b: 'c,
+    {
+        self.cx.size_cx()
+    }
+    #[inline]
+    fn redraw(&mut self) {
+        self.cx.redraw();
     }
 }

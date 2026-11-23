@@ -273,7 +273,7 @@ mod MultiPartEditor {
             s
         }
 
-        fn update_content_size(&mut self, cx: &mut EventState) {
+        fn update_content_size(&mut self, cx: &mut dyn CanRedraw) {
             if !self.core.status.is_sized() {
                 return;
             }
@@ -284,7 +284,7 @@ mod MultiPartEditor {
             self.update_scroll_offset(cx);
         }
 
-        fn update_scroll_offset(&mut self, cx: &mut EventState) {
+        fn update_scroll_offset(&mut self, cx: &mut dyn CanRedraw) {
             self.vert_bar.set_value(cx, self.scroll.offset().1);
         }
 
