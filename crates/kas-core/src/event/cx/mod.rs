@@ -17,6 +17,7 @@ use std::time::Instant;
 use winit::event_loop::AsyncRequestSerial;
 
 use super::*;
+use crate::action::WindowActions;
 use crate::cast::Conv;
 use crate::config::{ConfigMsg, WindowConfig};
 use crate::draw::DrawShared;
@@ -26,7 +27,7 @@ use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{Decorations, PopupDescriptor, WindowId};
-use crate::{ActionClose, ActionMoved, ActionRedraw, ActionResize, ConfigAction, Id, Node};
+use crate::{ActionClose, ActionMoved, ConfigAction, Id, Node};
 use key::Input;
 use nav::NavFocus;
 
@@ -99,7 +100,6 @@ pub struct EventState {
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Option<Erased>>>>)>,
     pub(super) pending_send_targets: Vec<(TypeId, Id)>,
     action_moved: Option<ActionMoved>,
-    pub(crate) action_redraw: Option<ActionRedraw>,
     action_close: Option<ActionClose>,
 }
 
@@ -134,7 +134,6 @@ impl EventState {
             pending_send_targets: vec![],
             fut_messages: vec![],
             action_moved: None,
-            action_redraw: None,
             action_close: None,
         }
     }
@@ -154,11 +153,7 @@ impl EventState {
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     #[must_use]
-    pub(crate) fn full_configure(
-        &mut self,
-        sizer: &dyn ThemeSize,
-        node: Node,
-    ) -> Option<ActionResize> {
+    pub(crate) fn full_configure(&mut self, sizer: &dyn ThemeSize, node: Node) -> WindowActions {
         let id = Id::from(self.window_id);
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
@@ -168,10 +163,9 @@ impl EventState {
 
         let mut cx = ConfigCx::new(sizer, self);
         cx.configure(node, id);
-        let resize = cx.resize;
-        // Ignore cx.redraw: we can assume a redraw will happen
+        let actions = cx.actions;
         self.action_moved = Some(ActionMoved);
-        resize
+        actions
     }
 
     /// Construct a [`EventCx`] referring to this state
@@ -185,7 +179,7 @@ impl EventState {
         theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         f: F,
-    ) -> Option<ActionResize> {
+    ) -> WindowActions {
         let mut cx = EventCx {
             runner,
             window,
@@ -193,13 +187,11 @@ impl EventState {
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
-            resize_window: None,
+            window_actions: WindowActions::None,
         };
         f(&mut cx);
-        let resize = cx.resize.or(cx.resize_window);
-        let redraw = cx.redraw;
-        self.action_redraw = self.action_redraw.or(redraw);
-        resize
+        cx.window_actions.upgrade(cx.cx.actions);
+        cx.window_actions
     }
 
     /// Check whether a widget is disabled
@@ -282,8 +274,7 @@ impl EventState {
 pub struct ConfigCx<'a> {
     state: &'a mut EventState,
     theme: &'a dyn ThemeSize,
-    resize: Option<ActionResize>,
-    redraw: Option<ActionRedraw>,
+    actions: WindowActions,
 }
 
 impl<'a> Deref for ConfigCx<'a> {
@@ -316,7 +307,7 @@ impl<'a> CanRedraw for ConfigCx<'a> {
     }
     #[inline]
     fn redraw(&mut self) {
-        self.redraw = Some(ActionRedraw);
+        self.actions.upgrade(WindowActions::Redraw);
     }
 }
 
@@ -328,8 +319,7 @@ impl<'a> ConfigCx<'a> {
         ConfigCx {
             theme: sh,
             state: ev,
-            resize: None,
-            redraw: None,
+            actions: WindowActions::None,
         }
     }
 
@@ -354,10 +344,9 @@ impl<'a> ConfigCx<'a> {
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
         // This recurses; avoid passing existing state in
-        // (Except redraw: this doesn't matter.)
-        let start_resize = std::mem::take(&mut self.resize);
+        let initial_actions = std::mem::take(&mut self.actions);
         widget._configure(self, id);
-        self.resize = self.resize.or(start_resize);
+        self.actions.upgrade(initial_actions);
     }
 
     /// Update a widget
@@ -367,10 +356,9 @@ impl<'a> ConfigCx<'a> {
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
         // This recurses; avoid passing existing state in
-        // (Except redraw: this doesn't matter.)
-        let start_resize = std::mem::take(&mut self.resize);
+        let initial_actions = std::mem::take(&mut self.actions);
         widget._update(self);
-        self.resize = self.resize.or(start_resize);
+        self.actions.upgrade(initial_actions);
     }
 
     /// Set/unset a widget as disabled
@@ -414,8 +402,8 @@ impl<'a> ConfigCx<'a> {
     }
 
     /// Require an action on the current window
-    pub fn action(&mut self, action: ActionRedraw) {
-        self.redraw = Some(action);
+    pub fn action(&mut self, action: impl Into<WindowActions>) {
+        self.actions.upgrade(action);
     }
 
     /// Notify that a widget must be redrawn
@@ -425,7 +413,7 @@ impl<'a> ConfigCx<'a> {
     /// during the traversal unwind if possible.
     #[inline]
     pub fn redraw(&mut self) {
-        self.redraw = Some(ActionRedraw);
+        self.actions.upgrade(WindowActions::Redraw);
     }
 
     /// Require that the current widget (and its descendants) be resized
@@ -435,22 +423,23 @@ impl<'a> ConfigCx<'a> {
     /// during the traversal unwind if possible.
     #[inline]
     pub fn resize(&mut self) {
-        self.resize = Some(ActionResize);
-    }
-
-    #[inline]
-    pub(crate) fn needs_redraw(&self) -> bool {
-        self.redraw.is_some()
+        self.actions.upgrade(WindowActions::Resize);
     }
 
     #[inline]
     pub(crate) fn needs_resize(&self) -> bool {
-        self.resize.is_some()
+        self.actions.resize()
+    }
+    pub(crate) fn clear_resize_action(&mut self) {
+        if self.actions == WindowActions::Resize {
+            // Assume a redraw is still required
+            self.actions = WindowActions::Redraw;
+        }
     }
 
     #[inline]
-    pub(crate) fn set_resize(&mut self, resize: Option<ActionResize>) {
-        self.resize = resize;
+    pub(crate) fn take_actions(self) -> WindowActions {
+        self.actions
     }
 }
 
@@ -466,7 +455,7 @@ pub struct EventCx<'a> {
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
-    resize_window: Option<ActionResize>,
+    window_actions: WindowActions,
 }
 
 impl<'a> Deref for EventCx<'a> {
@@ -511,7 +500,7 @@ impl<'a> EventCx<'a> {
     #[inline]
     pub(crate) fn redraw_target(&mut self, id: Id) {
         if Id::from(self.window_id).is_ancestor_of(&id) {
-            self.action_redraw = Some(ActionRedraw);
+            self.cx.redraw();
         } else {
             debug_assert!(false, "cross-window redraw requests are not supported");
         }
@@ -555,7 +544,7 @@ impl<'a> EventCx<'a> {
 
     /// Check for clean flags pre-recursion
     fn pre_recursion(&self) {
-        debug_assert!(self.resize.is_none());
+        debug_assert!(!self.actions.resize());
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
     }
@@ -564,7 +553,7 @@ impl<'a> EventCx<'a> {
     fn post_recursion(&mut self) {
         self.last_child = None;
         self.scroll = Scroll::None;
-        self.resize_window = self.resize_window.or(self.resize);
-        self.resize = None;
+        self.window_actions
+            .upgrade(std::mem::take(&mut self.cx.actions));
     }
 }

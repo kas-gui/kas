@@ -43,7 +43,7 @@ pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &W::Data) {
 
         if cx.needs_resize() && widget.status().is_sized() {
             if widget.handle_resize(cx) {
-                cx.set_resize(None);
+                cx.clear_resize_action();
             }
         }
     }
@@ -101,7 +101,7 @@ pub fn _send<W: Events>(
             if cx.needs_resize() {
                 debug_assert!(widget.status().is_sized());
                 if widget.handle_resize(cx) {
-                    cx.set_resize(None);
+                    cx.clear_resize_action();
                 }
             }
 
@@ -150,7 +150,7 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
 
         if cx.needs_resize() && widget.status().is_sized() {
             if widget.handle_resize(cx) {
-                cx.set_resize(None);
+                cx.clear_resize_action();
             }
         }
 

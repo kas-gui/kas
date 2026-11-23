@@ -137,7 +137,7 @@ impl EventState {
             runner.set_send_targets(&mut self.pending_send_targets);
         }
 
-        let resize = self.with(runner, theme, window, |cx| {
+        let actions = self.with(runner, theme, window, |cx| {
             if cx.pending.is_some() {
                 cx.handle_pending_event(node.re());
             }
@@ -178,10 +178,10 @@ impl EventState {
             window.set_pointer_icon(icon);
         }
 
-        WindowActions {
-            resize,
-            redraw: self.action_redraw.take(),
-            close: self.action_close.take(),
+        if let Some(close) = self.action_close.take() {
+            close.into()
+        } else {
+            actions.into()
         }
     }
 

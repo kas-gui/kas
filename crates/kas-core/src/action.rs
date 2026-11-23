@@ -47,10 +47,71 @@ bitflags! {
     }
 }
 
-/// Set of actions which may affect a window
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct WindowActions {
-    pub resize: Option<ActionResize>,
-    pub redraw: Option<ActionRedraw>,
-    pub close: Option<ActionClose>,
+/// Actions which may affect a window
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[must_use]
+pub enum WindowActions {
+    /// No action required
+    #[default]
+    None,
+    /// Redraw the active window
+    Redraw,
+    /// Resize, re-probe and redraw
+    Resize,
+    /// Close the window
+    Close,
+}
+impl From<ActionRedraw> for WindowActions {
+    #[inline]
+    fn from(_: ActionRedraw) -> Self {
+        WindowActions::Redraw
+    }
+}
+impl From<Option<ActionRedraw>> for WindowActions {
+    #[inline]
+    fn from(opt: Option<ActionRedraw>) -> Self {
+        match opt {
+            None => WindowActions::None,
+            Some(ActionRedraw) => WindowActions::Redraw,
+        }
+    }
+}
+impl From<ActionResize> for WindowActions {
+    #[inline]
+    fn from(_: ActionResize) -> Self {
+        WindowActions::Resize
+    }
+}
+impl From<Option<ActionResize>> for WindowActions {
+    #[inline]
+    fn from(opt: Option<ActionResize>) -> Self {
+        match opt {
+            None => WindowActions::None,
+            Some(ActionResize) => WindowActions::Resize,
+        }
+    }
+}
+impl From<ActionClose> for WindowActions {
+    #[inline]
+    fn from(_: ActionClose) -> Self {
+        WindowActions::Close
+    }
+}
+impl WindowActions {
+    pub(crate) fn redraw(self) -> bool {
+        self >= WindowActions::Redraw
+    }
+    pub(crate) fn resize(self) -> bool {
+        self == WindowActions::Resize
+    }
+    pub(crate) fn is_close(self) -> bool {
+        matches!(self, WindowActions::Close)
+    }
+
+    pub(crate) fn upgrade(&mut self, rhs: impl Into<Self>) {
+        let rhs = rhs.into();
+        if rhs > *self {
+            *self = rhs;
+        }
+    }
 }

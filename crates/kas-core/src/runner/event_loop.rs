@@ -333,12 +333,12 @@ where
 
         self.resumes.clear();
         self.windows.retain(|window_id, window| {
-            let (actions, resume) = window.flush_pending(&mut self.shared, &self.data, el);
+            let (opt_close, resume) = window.flush_pending(&mut self.shared, &self.data, el);
             if let Some(instant) = resume {
                 self.resumes.push((instant, *window_id));
             }
 
-            if close_all || actions.close.is_some() {
+            if close_all || opt_close.is_some() {
                 window.suspend(&mut self.shared, &self.data, el);
 
                 // Call flush_pending again since suspend may queue messages.
