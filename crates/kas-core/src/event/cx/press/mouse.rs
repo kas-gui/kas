@@ -543,13 +543,12 @@ impl<'a> EventCx<'a> {
     }
 
     fn tooltip_motion(&mut self, tile: &dyn Tile, id: &Option<Id>) {
-        if let Some(source) = &mut self.mouse.tooltip_source
+        if let Some(source) = &self.mouse.tooltip_source
             && *source != id
             && let Some(id) = id.as_ref()
             && let Some(text) = tile.find_tile(id).and_then(|tile| tile.tooltip())
         {
             self.runner.show_tooltip(id.clone(), text.to_string());
-            self.post_recursion();
             self.mouse.tooltip_source = Some(id.clone());
         }
     }
