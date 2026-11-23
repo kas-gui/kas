@@ -122,7 +122,7 @@ impl<'a> TopWindow<'a> {
     /// Request that the window be closed
     #[inline]
     pub fn close(&mut self) {
-        self.state.action_close = Some(crate::ActionClose);
+        self.runner.close_window(self.state.window_id);
     }
 }
 

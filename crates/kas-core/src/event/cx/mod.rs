@@ -27,7 +27,7 @@ use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{Decorations, PopupDescriptor, WindowId};
-use crate::{ActionClose, ActionMoved, ConfigAction, Id, Node};
+use crate::{ActionMoved, ConfigAction, Id, Node};
 use key::Input;
 use nav::NavFocus;
 
@@ -100,7 +100,6 @@ pub struct EventState {
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Option<Erased>>>>)>,
     pub(super) pending_send_targets: Vec<(TypeId, Id)>,
     action_moved: Option<ActionMoved>,
-    action_close: Option<ActionClose>,
 }
 
 impl EventState {
@@ -134,7 +133,6 @@ impl EventState {
             pending_send_targets: vec![],
             fut_messages: vec![],
             action_moved: None,
-            action_close: None,
         }
     }
 
@@ -251,12 +249,6 @@ impl EventState {
     #[inline]
     pub fn region_moved(&mut self) {
         self.action_moved = Some(ActionMoved);
-    }
-
-    /// Request that the window be closed
-    #[inline]
-    pub(crate) fn close_own_window(&mut self) {
-        self.action_close = Some(ActionClose);
     }
 
     /// Notify of an [`ActionMoved`] or `Option<ActionMoved>`

@@ -178,11 +178,7 @@ impl EventState {
             window.set_pointer_icon(icon);
         }
 
-        if let Some(close) = self.action_close.take() {
-            close.into()
-        } else {
-            actions.into()
-        }
+        actions.into()
     }
 
     pub(super) fn close_all_popups(&mut self, runner: &mut dyn RunnerT) {
