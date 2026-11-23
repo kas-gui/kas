@@ -286,8 +286,8 @@ impl ScrollComponent {
                 }
             }
             Scroll::Rect(rect) => {
-                let action = self.focus_rect(cx, rect, window_rect);
-                cx.action_moved(action);
+                let moved = self.focus_rect(cx, rect, window_rect);
+                cx.action(moved);
             }
         }
     }
@@ -295,7 +295,7 @@ impl ScrollComponent {
     /// Scroll self, returning any excess delta
     ///
     /// Caller is expected to call [`EventCx::set_scroll`].
-    fn scroll_self_by_delta(&mut self, cx: &mut EventState, d: Offset) -> Offset {
+    fn scroll_self_by_delta(&mut self, cx: &mut EventCx, d: Offset) -> Offset {
         let mut delta = d;
         let offset = (self.offset - d).clamp(Offset::ZERO, self.max_offset);
         if offset != self.offset {
@@ -363,7 +363,7 @@ impl ScrollComponent {
                         return Used;
                     }
                 };
-                cx.action_moved(self.set_offset(offset));
+                cx.action(self.set_offset(offset));
                 cx.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {

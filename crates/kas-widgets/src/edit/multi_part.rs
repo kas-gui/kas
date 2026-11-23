@@ -171,7 +171,7 @@ mod MultiPartEditor {
             };
 
             if let Some(moved) = self.scroll.set_offset(offset) {
-                cx.action_moved(moved);
+                cx.action(moved);
                 self.update_scroll_offset(cx);
             }
         }

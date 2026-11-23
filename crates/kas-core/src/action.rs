@@ -56,6 +56,11 @@ pub enum WindowActions {
     None,
     /// Redraw the active window
     Redraw,
+    /// Re-probe content under the mouse and redraw
+    ///
+    /// This implies that content moved on the screen (e.g. content scrolled or
+    /// was internally resized).
+    Moved,
     /// Resize, re-probe and redraw
     Resize,
     /// Close the window
@@ -73,6 +78,21 @@ impl From<Option<ActionRedraw>> for WindowActions {
         match opt {
             None => WindowActions::None,
             Some(ActionRedraw) => WindowActions::Redraw,
+        }
+    }
+}
+impl From<ActionMoved> for WindowActions {
+    #[inline]
+    fn from(_: ActionMoved) -> Self {
+        WindowActions::Moved
+    }
+}
+impl From<Option<ActionMoved>> for WindowActions {
+    #[inline]
+    fn from(opt: Option<ActionMoved>) -> Self {
+        match opt {
+            None => WindowActions::None,
+            Some(ActionMoved) => WindowActions::Moved,
         }
     }
 }

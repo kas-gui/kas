@@ -243,9 +243,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
             let id = self.ev_state.window_id;
             let awh = ActiveWindowHandle { id, window, el };
-            let actions =
-                self.ev_state
-                    .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
+            let actions = self.ev_state.flush_pending(
+                shared,
+                theme.size(),
+                &awh,
+                self.widget.as_node(data),
+                false,
+            );
 
             if actions == WindowActions::Close {
                 Some(ActionClose)
@@ -424,9 +428,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let id = self.ev_state.window_id;
         let awh = ActiveWindowHandle { id, window, el };
-        let actions =
-            self.ev_state
-                .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
+        let moved = self.actions == WindowActions::Moved;
+        let actions = self.ev_state.flush_pending(
+            shared,
+            theme.size(),
+            &awh,
+            self.widget.as_node(data),
+            moved,
+        );
         if actions.is_close() {
             return (Some(ActionClose), None);
         }
@@ -575,15 +584,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
         self.widget.add_or_update_popup(&mut cx, data, id, popup);
+        self.actions.upgrade(WindowActions::Moved);
     }
 
     pub(super) fn send_close(&mut self, id: WindowId) {
         if id == self.ev_state.window_id {
             self.actions = WindowActions::Close;
-        } else if let Some((ref theme, _)) = self.surface {
-            let widget = &mut self.widget;
-            let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
-            widget.remove_popup(&mut cx, id);
+        } else if self.widget.remove_popup(id) {
+            self.actions.upgrade(WindowActions::Moved);
         }
     }
 }

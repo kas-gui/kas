@@ -9,7 +9,7 @@ use super::{GrabMode, Press, PressSource, velocity};
 use crate::config::EventWindowConfig;
 use crate::event::{Event, EventCx, FocusSource, NavAdvance, PressStart};
 use crate::geom::{Affine, DVec2, Vec2};
-use crate::{ActionRedraw, Id, Node};
+use crate::{ActionRedraw, Id, Node, Tile};
 use cast::{Cast, CastApprox, CastTo, Conv, Nearest};
 use smallvec::SmallVec;
 use winit::event::FingerId;
@@ -271,11 +271,11 @@ impl<'a> EventCx<'a> {
                 i += 1;
             }
         }
+    }
 
-        if self.action_moved.is_some() {
-            for grab in self.touch.touch_grab.iter_mut() {
-                grab.over = node.try_probe(grab.last_position.cast_to(Nearest));
-            }
+    pub(in crate::event::cx) fn touch_handle_moved(&mut self, tile: &dyn Tile) {
+        for grab in self.touch.touch_grab.iter_mut() {
+            grab.over = tile.try_probe(grab.last_position.cast_to(Nearest));
         }
     }
 

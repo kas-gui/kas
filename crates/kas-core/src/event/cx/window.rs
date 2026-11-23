@@ -132,6 +132,7 @@ impl EventState {
         theme: &'a dyn ThemeSize,
         window: &'a dyn WindowDataErased,
         mut node: Node,
+        mut moved: bool,
     ) -> WindowActions {
         if !self.pending_send_targets.is_empty() {
             runner.set_send_targets(&mut self.pending_send_targets);
@@ -168,9 +169,13 @@ impl EventState {
                 }
             }
 
-            // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
-            if cx.action_moved.take().is_some() {
-                cx.redraw();
+            if cx.actions == WindowActions::Moved {
+                moved = true;
+                cx.actions = WindowActions::Redraw;
+            }
+            if moved {
+                cx.touch_handle_moved(node.as_tile());
+                cx.mouse_handle_moved(node);
             }
         });
 

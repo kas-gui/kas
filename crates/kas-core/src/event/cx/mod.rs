@@ -27,7 +27,7 @@ use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
 use crate::theme::ThemeSize;
 use crate::window::{Decorations, PopupDescriptor, WindowId};
-use crate::{ActionMoved, ConfigAction, Id, Node};
+use crate::{ConfigAction, Id, Node};
 use key::Input;
 use nav::NavFocus;
 
@@ -99,7 +99,6 @@ pub struct EventState {
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Option<Erased>>>>)>,
     pub(super) pending_send_targets: Vec<(TypeId, Id)>,
-    action_moved: Option<ActionMoved>,
 }
 
 impl EventState {
@@ -132,7 +131,6 @@ impl EventState {
             send_queue: Default::default(),
             pending_send_targets: vec![],
             fut_messages: vec![],
-            action_moved: None,
         }
     }
 
@@ -161,9 +159,8 @@ impl EventState {
 
         let mut cx = ConfigCx::new(sizer, self);
         cx.configure(node, id);
-        let actions = cx.actions;
-        self.action_moved = Some(ActionMoved);
-        actions
+        cx.actions.upgrade(WindowActions::Moved);
+        cx.actions
     }
 
     /// Construct a [`EventCx`] referring to this state
@@ -241,20 +238,6 @@ impl EventState {
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
         Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
-    }
-
-    /// Notify that widgets under self may have moved
-    ///
-    /// This updates the widget(s) under mouse and touch events.
-    #[inline]
-    pub fn region_moved(&mut self) {
-        self.action_moved = Some(ActionMoved);
-    }
-
-    /// Notify of an [`ActionMoved`] or `Option<ActionMoved>`
-    #[inline]
-    pub fn action_moved(&mut self, action: impl Into<Option<ActionMoved>>) {
-        self.action_moved = self.action_moved.or(action.into());
     }
 }
 
@@ -406,6 +389,15 @@ impl<'a> ConfigCx<'a> {
     #[inline]
     pub fn redraw(&mut self) {
         self.actions.upgrade(WindowActions::Redraw);
+    }
+
+    /// Notify that content moved on the screen
+    ///
+    /// This implies a redraw and that the content under the mouse pointer (as
+    /// well as other probe results) may have changed.
+    #[inline]
+    pub fn region_moved(&mut self) {
+        self.actions.upgrade(WindowActions::Moved);
     }
 
     /// Require that the current widget (and its descendants) be resized

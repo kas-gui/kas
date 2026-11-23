@@ -349,11 +349,11 @@ impl<'a> EventCx<'a> {
         if cancel {
             self.remove_mouse_grab(node.re(), false);
         }
+    }
 
-        if self.action_moved.is_some() {
-            let over = node.try_probe(self.mouse.last_position.cast_to(Nearest));
-            self.set_over(node, over);
-        }
+    pub(in crate::event::cx) fn mouse_handle_moved(&mut self, node: Node<'_>) {
+        let over = node.try_probe(self.mouse.last_position.cast_to(Nearest));
+        self.set_over(node, over);
     }
 
     /// Handle mouse pointer motion.
