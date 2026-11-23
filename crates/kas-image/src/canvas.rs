@@ -224,7 +224,7 @@ mod Canvas {
 
                 if let Some(handle) = self.image.as_ref() {
                     match ds.image_upload(handle, pixmap.data()) {
-                        Ok(_) => cx.redraw(),
+                        Ok(redraw) => cx.action(redraw),
                         Err(err) => log::warn!("Canvas: image upload failed: {err}"),
                     }
                 }

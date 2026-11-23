@@ -272,14 +272,6 @@ impl EventState {
     pub fn action_moved(&mut self, action: impl Into<Option<ActionMoved>>) {
         self.action_moved = self.action_moved.or(action.into());
     }
-
-    /// Notify of an [`ActionRedraw`] or `Option<ActionRedraw>`
-    ///
-    /// This will force a redraw of the whole window. See also [`Self::redraw`].
-    #[inline]
-    pub fn action_redraw(&mut self, action: impl Into<Option<ActionRedraw>>) {
-        self.action_redraw = self.action_redraw.or(action.into());
-    }
 }
 
 /// Widget configuration and update context
@@ -419,6 +411,11 @@ impl<'a> ConfigCx<'a> {
     pub fn set_send_target_for<M: Debug + 'static>(&mut self, id: Id) {
         let type_id = TypeId::of::<M>();
         self.pending_send_targets.push((type_id, id));
+    }
+
+    /// Require an action on the current window
+    pub fn action(&mut self, action: ActionRedraw) {
+        self.redraw = Some(action);
     }
 
     /// Notify that a widget must be redrawn

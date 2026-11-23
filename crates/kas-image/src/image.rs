@@ -180,7 +180,7 @@ mod Image {
                     };
 
                     match draw.image_upload(&handle, &image) {
-                        Ok(_) => cx.redraw(),
+                        Ok(redraw) => cx.action(redraw),
                         Err(err) => log::warn!("Image: image upload failed: {err}"),
                     };
                     self.raw.set(cx, handle);

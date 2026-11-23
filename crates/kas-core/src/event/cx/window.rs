@@ -15,7 +15,7 @@ use crate::messages::Erased;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, Properties, WindowId};
-use crate::{ActionRedraw, Id, Node, Widget, WindowActions};
+use crate::{Id, Node, Widget, WindowActions};
 use linear_map::LinearMap;
 use std::sync::Arc;
 use winit::data_transfer::{
@@ -170,7 +170,7 @@ impl EventState {
 
             // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
             if cx.action_moved.take().is_some() {
-                cx.action_redraw(ActionRedraw);
+                cx.redraw();
             }
         });
 

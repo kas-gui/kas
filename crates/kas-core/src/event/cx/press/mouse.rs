@@ -11,7 +11,7 @@ use crate::event::{
 };
 use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::WindowErased;
-use crate::{ActionRedraw, Id, Node, Tile, TileExt};
+use crate::{Id, Node, Tile, TileExt};
 use cast::{CastApprox, CastTo, Nearest};
 use std::time::{Duration, Instant};
 use winit::cursor::CursorIcon;
@@ -151,26 +151,6 @@ impl Mouse {
     /// Identifier of widget under the mouse
     pub(crate) fn over_id(&self) -> Option<Id> {
         self.over.clone()
-    }
-
-    fn update_grab(&mut self) -> (bool, Option<ActionRedraw>) {
-        let (mut cancel, mut redraw) = (false, None);
-        if let Some(grab) = self.grab.as_mut() {
-            cancel = grab.cancel;
-            if let GrabDetails::Click = grab.details {
-                let over = self.over.as_ref();
-                if grab.start_id == over {
-                    if grab.depress.as_ref() != over {
-                        grab.depress = over.cloned();
-                        redraw = Some(ActionRedraw);
-                    }
-                } else if grab.depress.is_some() {
-                    grab.depress = None;
-                    redraw = Some(ActionRedraw);
-                }
-            }
-        }
-        (cancel, redraw)
     }
 
     /// Returns `true` on success
@@ -349,11 +329,26 @@ impl<'a> EventCx<'a> {
     }
 
     pub(in crate::event::cx) fn mouse_handle_pending(&mut self, mut node: Node<'_>) {
-        let (cancel, redraw) = self.mouse.update_grab();
+        let mut cancel = false;
+        if let Some(grab) = self.cx.state.mouse.grab.as_mut() {
+            cancel = grab.cancel;
+            if let GrabDetails::Click = grab.details {
+                let over = self.cx.state.mouse.over.as_ref();
+                if grab.start_id == over {
+                    if grab.depress.as_ref() != over {
+                        grab.depress = over.cloned();
+                        self.redraw();
+                    }
+                } else if grab.depress.is_some() {
+                    grab.depress = None;
+                    self.redraw();
+                }
+            }
+        }
+
         if cancel {
             self.remove_mouse_grab(node.re(), false);
         }
-        self.action_redraw(redraw);
 
         if self.action_moved.is_some() {
             let over = node.try_probe(self.mouse.last_position.cast_to(Nearest));

@@ -241,15 +241,18 @@ impl<'a> EventCx<'a> {
         );
         self.redraw_opt_target(grab.depress.clone());
         self.touch.remove_pan_grab(grab.pan_grab);
-        self.action_redraw(grab.flush_click_move());
+        if let Some(redraw) = grab.flush_click_move() {
+            self.action(redraw);
+        }
         grab
     }
 
     pub(in crate::event::cx) fn touch_handle_pending(&mut self, mut node: Node<'_>) {
         let mut i = 0;
         while i < self.touch.touch_grab.len() {
-            let redraw = self.touch.touch_grab[i].flush_click_move();
-            self.action_redraw(redraw);
+            if let Some(redraw) = self.touch.touch_grab[i].flush_click_move() {
+                self.action(redraw);
+            }
 
             if self.touch.touch_grab[i].cancel {
                 let grab = self.remove_touch(i);

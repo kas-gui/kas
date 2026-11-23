@@ -121,7 +121,7 @@ impl WindowCommon {
     }
 
     /// Check whether immediate redraw is required, and if so clear it
-    pub fn immediate_redraw(&mut self) -> Option<ActionRedraw> {
+    pub(crate) fn immediate_redraw(&mut self) -> Option<ActionRedraw> {
         match self.anim {
             AnimationState::None => return None,
             // AnimationState::Timed(_) => return false,
@@ -133,7 +133,7 @@ impl WindowCommon {
     }
 
     /// Get the next resume time due to animation
-    pub fn next_resume(&self) -> Option<Instant> {
+    pub(crate) fn next_resume(&self) -> Option<Instant> {
         match self.anim {
             AnimationState::Timed(when) => Some(when),
             _ => None,
