@@ -1994,13 +1994,34 @@ impl Common {
             return false;
         };
 
+        let current_len = parts.len();
         let target_len: u32 = item.texts.len().cast();
-        if parts.len() > target_len {
-            parts.delete(target_len..parts.len());
+        let matches = |part: &Part, (text, lb): &(Rc<String>, LineBreakBytes)| {
+            Rc::ptr_eq(&part.text, text) && part.line_break == *lb
+        };
+        let mut start = 0;
+        while start < current_len.min(target_len)
+            && matches(parts.get(start), &item.texts[usize::conv(start)])
+        {
+            start += 1;
         }
-        for (index, (text, lb)) in item.texts.iter().enumerate() {
-            let p: u32 = index.cast();
-            if p >= parts.len() {
+        let mut current_end = current_len;
+        let mut target_end = target_len;
+        while current_end > start
+            && target_end > start
+            && matches(parts.get(current_end - 1), &item.texts[usize::conv(target_end - 1)])
+        {
+            current_end -= 1;
+            target_end -= 1;
+        }
+
+        if current_end - start > target_end - start {
+            parts.delete(target_end..current_end);
+            current_end = target_end;
+        }
+        for p in start..target_end {
+            let (text, lb) = &item.texts[usize::conv(p)];
+            if p >= current_end {
                 let mut part = Part::empty();
                 part.text = Rc::clone(text);
                 part.line_break = *lb;
@@ -2615,6 +2636,49 @@ mod tests {
         assert_eq!(parts[0].line_break, LineBreakBytes::LF);
         assert!(common.apply_undo_redo(&mut parts, true));
         assert_eq!(parts[0].line_break, LineBreakBytes::CR_LF);
+    }
+
+    #[test]
+    fn history_preserves_unchanged_parts_after_insertions_and_deletions() {
+        for insert in [true, false] {
+            let mut common = Common::new(true);
+            let mut parts: Vec<_> = (0..100)
+                .map(|i| Part::new(format!("line {i}"), LineBreakBytes::LF))
+                .collect();
+            parts.last_mut().unwrap().line_break = LineBreakBytes::NONE;
+            let original_len = parts.len();
+            let range = if insert {
+                TextIndex::new(0, 0)..TextIndex::new(0, 0)
+            } else {
+                TextIndex::new(0, 0)..TextIndex::new(2, 0)
+            };
+            edit(
+                &mut common,
+                &mut parts,
+                range,
+                if insert { "new\n" } else { "" },
+                EditOp::Replace(0, if insert { 0 } else { 2 }),
+            );
+            let edited_len = parts.len();
+            let tail: Vec<_> = parts[edited_len - 90..]
+                .iter_mut()
+                .map(|part| {
+                    part.status = Status::Ready;
+                    part.rect.pos = Coord(73, 42);
+                    part.clone_text()
+                })
+                .collect();
+
+            for (redo, expected_len) in [(false, original_len), (true, edited_len)] {
+                assert!(common.apply_undo_redo(&mut parts, redo));
+                assert_eq!(parts.len(), expected_len);
+                for (part, text) in parts[expected_len - 90..].iter().zip(&tail) {
+                    assert!(Rc::ptr_eq(&part.text, text));
+                    assert_eq!(part.status, Status::Ready);
+                    assert_eq!(part.rect.pos, Coord(73, 42));
+                }
+            }
+        }
     }
 
     #[test]
