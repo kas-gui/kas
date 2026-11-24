@@ -550,11 +550,11 @@ impl<'a> EventCx<'a> {
     /// and popups) windows each have a parent window (which may also be a child
     /// window); in all cases there should be a top (root ancestor) window.
     #[inline]
-    pub fn top_window(&mut self) -> TopWindow<'_> {
+    pub fn top_window(&mut self) -> TopWindow<'_, 'a> {
         TopWindow {
             runner: self.runner,
             window: self.window.top_window(),
-            state: self.cx.state,
+            cx: &mut self.cx,
         }
     }
 
