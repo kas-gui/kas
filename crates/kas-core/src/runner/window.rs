@@ -436,11 +436,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.widget.as_node(data),
             moved,
         );
+        self.actions.upgrade(actions);
+        let actions = std::mem::take(&mut self.actions);
         if actions.is_close() {
             return (Some(ActionClose), None);
         }
-        self.actions.upgrade(actions);
-        let actions = std::mem::take(&mut self.actions);
 
         let resume = match (
             self.ev_state.next_resume(),
