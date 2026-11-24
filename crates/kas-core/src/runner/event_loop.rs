@@ -175,6 +175,10 @@ where
             }
             el.exit();
         } else if matches!(el.control_flow(), ControlFlow::Poll) {
+        } else if !self.shared.pending.is_empty() {
+            // New pending events: do not handle immediately (which could
+            // live-lock the loop), but also do not sleep.
+            el.set_control_flow(ControlFlow::Poll);
         } else if let Some((instant, _)) = self.resumes.first() {
             el.set_control_flow(ControlFlow::WaitUntil(*instant));
         } else {
