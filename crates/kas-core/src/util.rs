@@ -214,6 +214,13 @@ impl<T: PartialEq> UndoStack<T> {
         self.head = 0;
     }
 
+    /// Access the current state, if any
+    pub fn current_mut(&mut self) -> Option<&mut T> {
+        self.head
+            .checked_sub(1)
+            .and_then(|i| self.states.get_mut(i))
+    }
+
     /// Push a new state
     ///
     /// Tries pushing a new state, failing if the new state is identical to the current one.
@@ -255,13 +262,38 @@ impl<K: Eq, S> UndoStack<(K, S)> {
         while i < self.states.len() {
             if self.states[i].0 == key {
                 self.states.remove(i);
-                if i <= self.head {
+                if i < self.head {
                     self.head -= 1;
                 }
             } else {
                 i += 1;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod undo_stack_tests {
+    use super::UndoStack;
+
+    #[test]
+    fn clear_for_key_removes_redo_entries_without_moving_head() {
+        let mut stack = UndoStack::new();
+        stack.try_push((0, "a"));
+        stack.try_push((1, "b"));
+        stack.try_push((2, "c"));
+        assert_eq!(stack.undo_or_redo(false), Some(&(1, "b")));
+        stack.clear_for_key(2);
+        assert_eq!(stack.undo_or_redo(false), Some(&(0, "a")));
+        assert_eq!(stack.undo_or_redo(true), Some(&(1, "b")));
+        stack.clear_for_key(1);
+        stack.clear_for_key(0);
+        stack.try_push((3, "d"));
+        stack.try_push((4, "e"));
+        assert_eq!(stack.undo_or_redo(false), Some(&(3, "d")));
+        stack.clear_for_key(3);
+        stack.clear_for_key(4);
+        assert_eq!(stack.undo_or_redo(true), None);
     }
 }
 
