@@ -13,7 +13,7 @@ use crate::cast::Cast;
 use crate::config::{Config, WindowConfig};
 use crate::draw::PassType;
 use crate::draw::color::Rgba;
-use crate::event::{ConfigCx, CursorIcon, EventState, InputEvent};
+use crate::event::{ConfigCx, EventState, InputEvent};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::Erased;
@@ -242,13 +242,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state.suspended(shared);
 
             let id = self.ev_state.window_id;
-            let awh = ActiveWindowHandle { id, window, el };
+            let mut awh = ActiveWindowHandle { id, window, el };
             let actions = self.ev_state.flush_pending(
                 shared,
                 theme.size(),
-                &awh,
+                &mut awh,
                 self.widget.as_node(data),
-                false,
             );
 
             if actions == WindowActions::Close {
@@ -407,8 +406,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         let id = self.ev_state.window_id;
-        let awh = ActiveWindowHandle { id, window, el };
-        let actions = self.ev_state.with(shared, theme.size(), &awh, |cx| {
+        let mut awh = ActiveWindowHandle { id, window, el };
+        let actions = self.ev_state.with(shared, theme.size(), &mut awh, |cx| {
             cx.input_event(self.widget.as_node(data), event)
         });
         self.actions.upgrade(actions);
@@ -427,15 +426,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         let id = self.ev_state.window_id;
-        let awh = ActiveWindowHandle { id, window, el };
-        let moved = self.actions == WindowActions::Moved;
-        let actions = self.ev_state.flush_pending(
-            shared,
-            theme.size(),
-            &awh,
-            self.widget.as_node(data),
-            moved,
-        );
+        let mut awh = ActiveWindowHandle { id, window, el };
+        let actions =
+            self.ev_state
+                .flush_pending(shared, theme.size(), &mut awh, self.widget.as_node(data));
         self.actions.upgrade(actions);
         let actions = std::mem::take(&mut self.actions);
         if actions.is_close() {
@@ -452,14 +446,33 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             (Some(a), Some(b)) => Some(a.min(b)),
         };
 
+        if actions.resize() {
+            self.apply_size(data, false, true);
+        }
+        let Some((ref mut theme, ref mut window)) = self.surface else {
+            unreachable!();
+        };
+        if actions >= WindowActions::Moved {
+            let mut awh = ActiveWindowHandle { id, window, el };
+            let acts = self.ev_state.reprobe_coordinates(
+                shared,
+                theme.size(),
+                &mut awh,
+                self.widget.as_node(data),
+            );
+            if acts > WindowActions::Moved {
+                // Resize and Close actions are unlikely here; delay handling
+                self.actions = acts;
+            }
+        }
+        if let Some(icon) = self.ev_state.mouse.update_pointer_icon() {
+            window.window().set_cursor(icon.into());
+        }
+
         // NOTE: need_frame_update() does not imply a need to redraw, but other
         // approaches do not yield good frame timing for e.g. kinetic scrolling.
         if actions.redraw() || self.ev_state.need_frame_update() {
             window.window().request_redraw();
-        }
-
-        if actions.resize() {
-            self.apply_size(data, false, true);
         }
 
         (None, resume)
@@ -546,8 +559,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         if Some(requested_resume) == self.ev_state.next_resume() {
             let id = self.ev_state.window_id;
-            let awh = ActiveWindowHandle { id, window, el };
-            let actions = self.ev_state.with(shared, theme.size(), &awh, |cx| {
+            let mut awh = ActiveWindowHandle { id, window, el };
+            let actions = self.ev_state.with(shared, theme.size(), &mut awh, |cx| {
                 cx.update_timer(widget);
             });
             self.actions.upgrade(actions);
@@ -569,8 +582,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         let id = self.ev_state.window_id;
-        let awh = ActiveWindowHandle { id, window, el };
-        let actions = self.ev_state.with(shared, theme.size(), &awh, |cx| {
+        let mut awh = ActiveWindowHandle { id, window, el };
+        let actions = self.ev_state.with(shared, theme.size(), &mut awh, |cx| {
             self.widget.show_tooltip(cx, target, text)
         });
         self.actions.upgrade(actions);
@@ -687,13 +700,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return Ok(());
         };
 
-        let widget = self.widget.as_node(data);
         let id = self.ev_state.window_id;
-        let awh = ActiveWindowHandle { id, window, el };
-        let actions = self.ev_state.with(shared, theme.size(), &awh, |cx| {
-            cx.frame_update(widget);
-        });
+        let mut awh = ActiveWindowHandle { id, window, el };
+        let actions =
+            self.ev_state
+                .frame_update(shared, theme.size(), &mut awh, &mut self.widget, data);
         self.actions.upgrade(actions);
+        if self.actions == WindowActions::Redraw {
+            self.actions = WindowActions::None;
+        }
         let Some((ref mut theme, ref mut window)) = self.surface else {
             unreachable!();
         };
@@ -784,7 +799,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 #[autoimpl(Deref, DerefMut using self.window)]
 struct ActiveWindowHandle<'a, G: GraphicsInstance> {
     id: WindowId,
-    window: &'a WindowData<G>,
+    window: &'a mut WindowData<G>,
     el: &'a dyn ActiveEventLoop,
 }
 
@@ -793,12 +808,6 @@ pub(crate) trait WindowDataErased {
     /// Access the [`ActiveEventLoop`]
     fn event_loop(&self) -> &dyn ActiveEventLoop {
         self.el
-    }
-
-    /// Set the mouse pointer icon
-    #[inline]
-    fn set_pointer_icon(&self, icon: CursorIcon) {
-        self.window().set_cursor(icon.into());
     }
 
     /// Enable / update / disable the Input Method Editor
@@ -830,5 +839,9 @@ pub(crate) trait WindowDataErased {
     ))]
     fn has_primary_selection(&self) -> bool {
         self.el.primary_selection_ext().is_some()
+    }
+
+    fn solve_cache(&mut self) -> &mut SolveCache {
+        &mut self.window.solve_cache
     }
 }

@@ -130,15 +130,14 @@ impl EventState {
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         theme: &'a dyn ThemeSize,
-        window: &'a dyn WindowDataErased,
+        window: &'a mut dyn WindowDataErased,
         mut node: Node,
-        mut moved: bool,
     ) -> WindowActions {
         if !self.pending_send_targets.is_empty() {
             runner.set_send_targets(&mut self.pending_send_targets);
         }
 
-        let actions = self.with(runner, theme, window, |cx| {
+        self.with(runner, theme, window, |cx| {
             if cx.pending.is_some() {
                 cx.handle_pending_event(node.re());
             }
@@ -168,22 +167,22 @@ impl EventState {
                     cx.runner.send_erased(id, msg);
                 }
             }
+        })
+    }
 
-            if cx.actions == WindowActions::Moved {
-                moved = true;
-                cx.actions = WindowActions::Redraw;
-            }
-            if moved {
-                cx.touch_handle_moved(node.as_tile());
-                cx.mouse_handle_moved(node);
-            }
-        });
-
-        if let Some(icon) = self.mouse.update_pointer_icon() {
-            window.set_pointer_icon(icon);
+    pub(crate) fn reprobe_coordinates(
+        &mut self,
+        runner: &mut dyn RunnerT,
+        theme: &dyn ThemeSize,
+        window: &mut dyn WindowDataErased,
+        mut node: Node,
+    ) -> WindowActions {
+        self.touch.handle_moved(node.as_tile());
+        if let Some(over) = self.mouse.handle_moved(node.re()) {
+            self.with(runner, theme, window, |cx| cx.set_mouse_over(node, over))
+        } else {
+            WindowActions::None
         }
-
-        actions.into()
     }
 
     pub(super) fn close_all_popups(&mut self, runner: &mut dyn RunnerT) {
@@ -384,7 +383,7 @@ impl<'a> EventCx<'a> {
         type_selector(&mut TypeSelector {
             el,
             dt: &*dt,
-            transfers: &mut self.data_transfers,
+            transfers: &mut self.cx.state.data_transfers,
             id,
             target,
         });
@@ -474,7 +473,7 @@ impl<'a> EventCx<'a> {
         type_selector(&mut TypeSelector {
             el,
             dt: &*dt,
-            transfers: &mut self.data_transfers,
+            transfers: &mut self.cx.state.data_transfers,
             id,
             target,
         });

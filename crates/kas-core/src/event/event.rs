@@ -252,6 +252,9 @@ pub enum Event<'a> {
     /// Notification that the mouse moves over or leaves a widget
     ///
     /// The state is `true` on mouse over, `false` when the mouse leaves.
+    ///
+    /// Note: actions other than redraw requests and changing the mouse pointer
+    /// (on mouse motion) may not have immediate effect.
     MouseOver(bool),
 }
 

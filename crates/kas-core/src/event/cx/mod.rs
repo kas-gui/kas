@@ -85,7 +85,7 @@ pub struct EventState {
     input: Input,
     nav: NavFocus,
     key_depress: LinearMap<PhysicalKey, Id>,
-    mouse: Mouse,
+    pub(crate) mouse: Mouse,
     touch: Touch,
     pending: Option<InputEvent>,
     access_keys: HashMap<Key, Id>,
@@ -172,7 +172,7 @@ impl EventState {
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         theme: &'a dyn ThemeSize,
-        window: &'a dyn WindowDataErased,
+        window: &'a mut dyn WindowDataErased,
         f: F,
     ) -> WindowActions {
         let mut cx = EventCx {
@@ -416,8 +416,8 @@ impl<'a> ConfigCx<'a> {
     }
     pub(crate) fn clear_resize_action(&mut self) {
         if self.actions == WindowActions::Resize {
-            // Assume a redraw is still required
-            self.actions = WindowActions::Redraw;
+            // Assume coordinate reprobing and redrawing is required
+            self.actions = WindowActions::Moved;
         }
     }
 
@@ -435,7 +435,7 @@ impl<'a> ConfigCx<'a> {
 pub struct EventCx<'a> {
     cx: ConfigCx<'a>,
     runner: &'a mut dyn RunnerT,
-    window: &'a dyn WindowDataErased,
+    window: &'a mut dyn WindowDataErased,
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,

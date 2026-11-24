@@ -226,6 +226,17 @@ impl Touch {
             .get(v as usize)
             .map(|sampler| sampler.velocity(evc.kinetic_timeout()))
     }
+
+    pub(in crate::event::cx) fn handle_moved(&mut self, tile: &dyn Tile) {
+        for grab in self.touch_grab.iter_mut() {
+            grab.over = tile.try_probe(grab.last_position.cast_to(Nearest));
+        }
+    }
+
+    #[inline]
+    pub fn needs_frame_update(&self) -> bool {
+        !self.pan_grab.is_empty()
+    }
 }
 
 impl<'a> EventCx<'a> {
@@ -270,12 +281,6 @@ impl<'a> EventCx<'a> {
             } else {
                 i += 1;
             }
-        }
-    }
-
-    pub(in crate::event::cx) fn touch_handle_moved(&mut self, tile: &dyn Tile) {
-        for grab in self.touch.touch_grab.iter_mut() {
-            grab.over = tile.try_probe(grab.last_position.cast_to(Nearest));
         }
     }
 

@@ -111,7 +111,7 @@ impl Mouse {
     }
 
     /// Call on frame to detect change in mouse pointer icon
-    pub(in crate::event::cx) fn update_pointer_icon(&mut self) -> Option<CursorIcon> {
+    pub(crate) fn update_pointer_icon(&mut self) -> Option<CursorIcon> {
         let icon = self
             .grab
             .as_ref()
@@ -125,6 +125,13 @@ impl Mouse {
         }
     }
 
+    #[inline]
+    pub fn needs_frame_update(&self) -> bool {
+        self.grab
+            .as_ref()
+            .map(|grab| matches!(&grab.details, GrabDetails::Pan(_)))
+            .unwrap_or(false)
+    }
     pub fn frame_update(&mut self) -> Option<(Id, Affine)> {
         if let Some(grab) = self.grab.as_mut()
             && let GrabDetails::Pan(details) = &mut grab.details
@@ -202,6 +209,11 @@ impl Mouse {
         true
     }
 
+    pub(in crate::event::cx) fn handle_moved(&mut self, node: Node<'_>) -> Option<Option<Id>> {
+        let over = node.try_probe(self.last_position.cast_to(Nearest));
+        (over != self.over).then_some(over)
+    }
+
     pub(in crate::event::cx) fn tooltip_popup_close(&mut self, id: &Id) {
         if self.tooltip_source.as_ref() == Some(id) {
             self.tooltip_source = None;
@@ -238,7 +250,7 @@ fn has_tooltip(window: &dyn Tile, id: Option<&Id>) -> bool {
 impl<'a> EventCx<'a> {
     // Clear old `over` id, set new `over`, send events.
     // If there is a popup, only permit descendants of that.
-    fn set_over(&mut self, mut window: Node<'_>, w_id: Option<Id>) {
+    pub(crate) fn set_mouse_over(&mut self, mut window: Node<'_>, w_id: Option<Id>) {
         if self.mouse.over != w_id {
             log::trace!("set_over: w_id={w_id:?}");
             if let Some(id) = self.mouse.over.take() {
@@ -351,11 +363,6 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    pub(in crate::event::cx) fn mouse_handle_moved(&mut self, node: Node<'_>) {
-        let over = node.try_probe(self.mouse.last_position.cast_to(Nearest));
-        self.set_over(node, over);
-    }
-
     /// Handle mouse pointer motion.
     pub(in crate::event::cx) fn handle_pointer_moved(&mut self, node: Node, position: DVec2) {
         let coord = position.cast_to(Nearest);
@@ -377,7 +384,7 @@ impl<'a> EventCx<'a> {
         }
         self.mouse.last_position = position;
 
-        self.set_over(window.re(), id.clone());
+        self.set_mouse_over(window.re(), id.clone());
 
         if let Some(grab) = self.mouse.grab.as_mut() {
             match &mut grab.details {
@@ -428,7 +435,7 @@ impl<'a> EventCx<'a> {
         self.mouse.last_click_button = None;
 
         if self.mouse.grab.is_none() {
-            self.set_over(window, None);
+            self.set_mouse_over(window, None);
         }
     }
 
