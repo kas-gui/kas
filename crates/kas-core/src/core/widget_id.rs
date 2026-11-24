@@ -745,6 +745,13 @@ impl fmt::Display for Id {
     }
 }
 
+impl From<WindowId> for Id {
+    #[inline]
+    fn from(w: WindowId) -> Id {
+        Id::ROOT.make_child(w.get().cast())
+    }
+}
+
 /// Convert to a `NodeId` using [`Id::to_nzu64`]
 ///
 /// Use [`Id::try_from_u64`] for the inverse conversion.

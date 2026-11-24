@@ -15,7 +15,7 @@ use crate::messages::Erased;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
 use crate::theme::ThemeSize;
 use crate::window::{PopupDescriptor, Properties, WindowId};
-use crate::{ActionRedraw, Id, Node, Widget, WindowActions};
+use crate::{Id, Node, Widget, WindowActions};
 use linear_map::LinearMap;
 use std::sync::Arc;
 use winit::data_transfer::{
@@ -130,14 +130,14 @@ impl EventState {
         &'a mut self,
         runner: &'a mut dyn RunnerT,
         theme: &'a dyn ThemeSize,
-        window: &'a dyn WindowDataErased,
+        window: &'a mut dyn WindowDataErased,
         mut node: Node,
     ) -> WindowActions {
         if !self.pending_send_targets.is_empty() {
             runner.set_send_targets(&mut self.pending_send_targets);
         }
 
-        let resize = self.with(runner, theme, window, |cx| {
+        self.with(runner, theme, window, |cx| {
             if cx.pending.is_some() {
                 cx.handle_pending_event(node.re());
             }
@@ -167,21 +167,21 @@ impl EventState {
                     cx.runner.send_erased(id, msg);
                 }
             }
+        })
+    }
 
-            // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
-            if cx.action_moved.take().is_some() {
-                cx.action_redraw(ActionRedraw);
-            }
-        });
-
-        if let Some(icon) = self.mouse.update_pointer_icon() {
-            window.set_pointer_icon(icon);
-        }
-
-        WindowActions {
-            resize,
-            redraw: self.action_redraw.take(),
-            close: self.action_close.take(),
+    pub(crate) fn reprobe_coordinates(
+        &mut self,
+        runner: &mut dyn RunnerT,
+        theme: &dyn ThemeSize,
+        window: &mut dyn WindowDataErased,
+        mut node: Node,
+    ) -> WindowActions {
+        self.touch.handle_moved(node.as_tile());
+        if let Some(over) = self.mouse.handle_moved(node.re()) {
+            self.with(runner, theme, window, |cx| cx.set_mouse_over(node, over))
+        } else {
+            WindowActions::None
         }
     }
 
@@ -383,7 +383,7 @@ impl<'a> EventCx<'a> {
         type_selector(&mut TypeSelector {
             el,
             dt: &*dt,
-            transfers: &mut self.data_transfers,
+            transfers: &mut self.cx.state.data_transfers,
             id,
             target,
         });
@@ -473,7 +473,7 @@ impl<'a> EventCx<'a> {
         type_selector(&mut TypeSelector {
             el,
             dt: &*dt,
-            transfers: &mut self.data_transfers,
+            transfers: &mut self.cx.state.data_transfers,
             id,
             target,
         });
@@ -549,11 +549,11 @@ impl<'a> EventCx<'a> {
     /// and popups) windows each have a parent window (which may also be a child
     /// window); in all cases there should be a top (root ancestor) window.
     #[inline]
-    pub fn top_window(&mut self) -> TopWindow<'_> {
+    pub fn top_window(&mut self) -> TopWindow<'_, 'a> {
         TopWindow {
             runner: self.runner,
             window: self.window.top_window(),
-            state: self.cx.state,
+            cx: &mut self.cx,
         }
     }
 

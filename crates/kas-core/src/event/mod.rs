@@ -64,8 +64,50 @@ pub use winit::event::{ElementState, KeyEvent, MouseButton};
 pub use winit::keyboard::{Key, ModifiersState, NamedKey, PhysicalKey};
 pub use winit::window::{ImeHint, ImePurpose, ImeSurroundingText};
 
+use crate::theme::SizeCx;
 #[allow(unused)]
 use crate::{Events, Widget, runner::AppData};
 pub use cx::*;
 pub use event::*;
 pub use response::{IsUsed, Scroll, Unused, Used};
+use std::ops::{Deref, DerefMut};
+
+/// Capability: redraw
+///
+/// This trait covers the capabilities in common with [`SizeCx`] and
+/// [`ConfigCx`]: the ability to dereference to [`EventState`] and the ability
+/// to request a redraw.
+pub trait CanRedraw {
+    /// Access [`EventState`]
+    fn event_state(&self) -> &EventState;
+    /// Access [`EventState`], mutably
+    fn event_state_mut(&mut self) -> &mut EventState;
+
+    /// Access a [`SizeCx`]
+    fn size_cx<'b>(&'b mut self) -> SizeCx<'b>
+    where
+        Self: 'b;
+
+    /// Notify that a widget must be redrawn
+    ///
+    /// "The current widget" is inferred from the widget tree traversal through
+    /// which the `EventCx` is made accessible. The resize is handled locally
+    /// during the traversal unwind if possible.
+    fn redraw(&mut self);
+}
+
+impl<'a> Deref for dyn CanRedraw + 'a {
+    type Target = EventState;
+
+    #[inline]
+    fn deref(&self) -> &EventState {
+        self.event_state()
+    }
+}
+
+impl<'a> DerefMut for dyn CanRedraw + 'a {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut EventState {
+        self.event_state_mut()
+    }
+}

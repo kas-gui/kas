@@ -137,14 +137,14 @@ mod Gradient {
                 if let Some(handle) = self.sprite.handle()
                     && draw.image_size(handle) == Some(size)
                 {
-                    if let Ok(action) = draw.image_upload(handle, &buffer[..]) {
-                        cx.action_redraw(action);
+                    if let Ok(redraw) = draw.image_upload(handle, &buffer[..]) {
+                        cx.action(redraw);
                     }
                 } else {
                     if let Ok(handle) = draw.image_alloc(kas::draw::ImageFormat::Rgba8, size) {
-                        if let Ok(action) = draw.image_upload(&handle, &buffer[..]) {
+                        if let Ok(redraw) = draw.image_upload(&handle, &buffer[..]) {
                             self.sprite.set(cx, handle);
-                            cx.action_redraw(action);
+                            cx.action(redraw);
                         }
                     }
                 }

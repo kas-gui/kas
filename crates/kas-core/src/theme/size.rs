@@ -8,7 +8,7 @@
 use super::{Feature, FrameStyle, MarginStyle, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
-use crate::event::EventState;
+use crate::event::{CanRedraw, EventState};
 use crate::geom::Rect;
 use crate::layout::{AlignPair, FrameRules, LogicalBuilder, Margins, SizeRules};
 use std::ops::{Deref, DerefMut};
@@ -190,6 +190,29 @@ impl<'a> SizeCx<'a> {
     pub fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
         self.w.align_feature(feature, rect, align)
     }
+}
+
+/// [`SizeCx`] implements [`CanRedraw`] for compatibility with trait users
+///
+/// Since a redraw is implied after sizing, [`Self::redraw`] does nothing.
+impl<'a> CanRedraw for SizeCx<'a> {
+    #[inline]
+    fn event_state(&self) -> &EventState {
+        self.ev
+    }
+    #[inline]
+    fn event_state_mut(&mut self) -> &mut EventState {
+        self.ev
+    }
+    #[inline]
+    fn size_cx<'b>(&'b mut self) -> SizeCx<'b>
+    where
+        'a: 'b,
+    {
+        SizeCx::new(self.ev, self.w)
+    }
+    #[inline]
+    fn redraw(&mut self) {}
 }
 
 /// Theme sizing implementation

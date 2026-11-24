@@ -12,7 +12,9 @@
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
-pub use crate::event::{Command, ConfigCx, Event, EventCx, EventState, IsUsed, Unused, Used};
+pub use crate::event::{
+    CanRedraw, Command, ConfigCx, Event, EventCx, EventState, IsUsed, Unused, Used,
+};
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
@@ -22,8 +24,6 @@ pub use crate::layout::{Align, AlignHints, AlignPair, AxisInfo, SizeRules, Stret
 #[doc(no_inline)] pub use crate::widget_index;
 #[doc(no_inline)]
 pub use crate::window::{Properties, Window, WindowId};
-#[doc(no_inline)]
-pub use crate::{ActionMoved, ActionRedraw, ActionResize};
 #[doc(no_inline)] pub use crate::{ChildIndices, Node};
 #[doc(no_inline)]
 pub use crate::{Events, Layout, Role, RoleCx, RoleCxExt, Tile, TileExt, Viewport, Widget};

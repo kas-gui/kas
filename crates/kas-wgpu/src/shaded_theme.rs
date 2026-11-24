@@ -10,7 +10,6 @@ use std::f32;
 use std::time::Instant;
 
 use crate::{DrawShaded, DrawShadedImpl};
-use kas::Id;
 use kas::cast::{Ceil, Floor, traits::*};
 use kas::config::{Config, WindowConfig};
 use kas::dir::{Direction, Directional};
@@ -22,6 +21,7 @@ use kas::theme::dimensions as dim;
 use kas::theme::{Background, ThemeDraw, ThemeSize};
 use kas::theme::{ColorsLinear, FlatTheme, InputState, SimpleTheme, Theme};
 use kas::theme::{FrameStyle, MarkStyle};
+use kas::{ActionResize, Id};
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]
@@ -87,7 +87,11 @@ where
         dim::Window::new(&dimensions(), config)
     }
 
-    fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) -> bool {
+    fn update_window(
+        &mut self,
+        w: &mut Self::Window,
+        config: &WindowConfig,
+    ) -> Option<ActionResize> {
         self.base.cols = config.theme().get_active_scheme().into();
         w.update(&dimensions(), config)
     }

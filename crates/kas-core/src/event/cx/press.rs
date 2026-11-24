@@ -213,6 +213,9 @@ impl PressStart {
     /// grab's depress target. (This is done automatically for
     /// [`GrabMode::Click`], and ends automatically when the grab ends.)
     ///
+    /// Required: the target `id` is a descendant of the root window
+    /// (this includes popups but not other windows).
+    ///
     /// This method uses the builder pattern. On completion, [`Used`]
     /// is returned. It is expected that the requested press/pan events are all
     /// "used" ([`Used`]).
@@ -331,6 +334,8 @@ impl GrabBuilder {
             icon,
         } = self;
         log::trace!(target: "kas_core::event", "grab_press: start_id={id}, source={source:?}");
+        debug_assert!(Id::from(cx.window_id).is_ancestor_of(&id));
+
         let success = if let Some(button) = source.mouse_button() {
             cx.mouse.start_grab(
                 button,
@@ -450,7 +455,8 @@ impl<'a> EventCx<'a> {
     ///
     /// When a grab on mouse or touch input is in effect
     /// ([`PressStart::grab`]), the widget owning the grab may set itself
-    /// or any other widget as *depressed* ("pushed down"). Each grab depresses
+    /// or any other widget under the same root window (inclusive of popups)
+    /// as *depressed* ("pushed down"). Each grab depresses
     /// at most one widget, thus setting a new depress target clears any
     /// existing target. Initially a grab depresses its owner.
     ///
@@ -458,6 +464,8 @@ impl<'a> EventCx<'a> {
     /// grabs targets the widget to depress, or when a keyboard binding is used
     /// to activate a widget (for the duration of the key-press).
     ///
+    /// Required: the target [`Id`], if any, is a descendant of the root window
+    /// (this includes popups but not other windows).
     /// Assumption: this method will only be called by handlers of a grab (i.e.
     /// recipients of [`Event::PressStart`] after initiating a successful grab,
     /// [`Event::PressMove`] or [`Event::PressEnd`]).
@@ -465,6 +473,9 @@ impl<'a> EventCx<'a> {
     /// Queues a redraw and returns `true` if the depress target changes,
     /// otherwise returns `false`.
     pub fn set_grab_depress(&mut self, source: PressSource, target: Option<Id>) -> bool {
+        if let Some(id) = target.as_ref() {
+            debug_assert!(Id::from(self.window_id).is_ancestor_of(id));
+        }
         let mut old = None;
         let mut redraw = false;
         if source.is_mouse() {
@@ -485,8 +496,8 @@ impl<'a> EventCx<'a> {
 
         if redraw {
             log::trace!(target: "kas_core::event", "set_grab_depress: target={target:?}");
-            self.opt_redraw(old);
-            self.opt_redraw(target);
+            self.redraw_opt_target(old);
+            self.redraw_opt_target(target);
         }
         redraw
     }

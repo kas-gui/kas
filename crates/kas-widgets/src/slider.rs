@@ -218,7 +218,7 @@ mod Slider {
         /// Returns `true` if, after clamping to the supported range, `value`
         /// differs from the existing value.
         #[allow(clippy::neg_cmp_op_on_partial_ord)]
-        fn set_value(&mut self, cx: &mut EventState, value: T) -> bool {
+        fn set_value(&mut self, cx: &mut ConfigCx, value: T) -> bool {
             let value = if !(value >= self.range.0) {
                 self.range.0
             } else if !(value <= self.range.1) {

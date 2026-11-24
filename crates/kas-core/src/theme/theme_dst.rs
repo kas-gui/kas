@@ -8,6 +8,7 @@
 use std::cell::RefCell;
 
 use super::{Theme, Window};
+use crate::ActionResize;
 use crate::config::{Config, WindowConfig};
 use crate::draw::{DrawIface, DrawSharedImpl, color};
 use crate::event::EventState;
@@ -39,8 +40,12 @@ pub trait ThemeDst<DS: DrawSharedImpl> {
     ///
     /// See also [`Theme::update_window`].
     ///
-    /// Returns `true` when a resize is required based on changes to the scale factor or font size.
-    fn update_window(&mut self, window: &mut dyn Window, config: &WindowConfig) -> bool {
+    /// Returns whether a resize is required based on changes to the scale factor or font size.
+    fn update_window(
+        &mut self,
+        window: &mut dyn Window,
+        config: &WindowConfig,
+    ) -> Option<ActionResize> {
         let window = window.as_any_mut().downcast_mut().unwrap();
         self.update_window(window, config)
     }

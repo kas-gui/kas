@@ -7,9 +7,10 @@
 
 use std::borrow::Cow;
 
+use crate::WindowActions;
+use crate::event::ConfigCx;
 use crate::runner::RunnerT;
-use crate::window::WindowId;
-use crate::{event::EventState, window::Decorations};
+use crate::window::{Decorations, WindowId};
 use raw_window_handle::{self as rwh, HandleError, HasDisplayHandle, HasWindowHandle};
 use winit::icon::Icon;
 
@@ -60,30 +61,30 @@ impl<'a> HasDisplayHandle for CurrentWindow<'a> {
 }
 
 /// A handle to a top-level window
-pub struct TopWindow<'a> {
+pub struct TopWindow<'a, 'b: 'a> {
     pub(super) runner: &'a mut dyn RunnerT,
     pub(super) window: &'a dyn winit::window::Window,
-    pub(super) state: &'a mut EventState,
+    pub(super) cx: &'a mut ConfigCx<'b>,
 }
 
-impl<'a> TopWindow<'a> {
+impl<'a, 'b: 'a> TopWindow<'a, 'b> {
     /// Set the window title
     pub fn set_title<'s>(&'s mut self, title: impl Into<Cow<'s, str>>) {
         let title = title.into();
-        if self.state.decorations == Decorations::Server {
+        if self.cx.state.decorations == Decorations::Server {
             self.window.set_title(title.as_ref());
-        } else if self.state.decorations == Decorations::Toolkit {
-            self.state.window_title = title.into_owned();
-            self.runner.update(self.state.window_id);
+        } else if self.cx.state.decorations == Decorations::Toolkit {
+            self.cx.state.window_title = title.into_owned();
+            self.runner.update(self.cx.state.window_id);
         }
     }
 
     /// Set the window icon
     pub fn set_icon<'s>(&'s mut self, icon: impl Into<Icon>) {
         let icon = icon.into();
-        if self.state.decorations == Decorations::Server {
+        if self.cx.state.decorations == Decorations::Server {
             self.window.set_window_icon(Some(icon));
-        } else if self.state.decorations == Decorations::Toolkit {
+        } else if self.cx.state.decorations == Decorations::Toolkit {
             // TODO: set icon in toolkit titlebar
         }
     }
@@ -102,7 +103,7 @@ impl<'a> TopWindow<'a> {
     /// window.
     pub fn set_minimized(&mut self, minimized: bool) {
         if minimized {
-            self.state.close_all_popups(self.runner);
+            self.cx.state.close_all_popups(self.runner);
         }
         self.window.set_minimized(minimized);
     }
@@ -122,18 +123,18 @@ impl<'a> TopWindow<'a> {
     /// Request that the window be closed
     #[inline]
     pub fn close(&mut self) {
-        self.state.action_close = Some(crate::ActionClose);
+        self.cx.actions = WindowActions::Close;
     }
 }
 
-impl<'a> HasWindowHandle for TopWindow<'a> {
+impl<'a, 'b: 'a> HasWindowHandle for TopWindow<'a, 'b> {
     #[inline]
     fn window_handle(&self) -> Result<rwh::WindowHandle<'_>, HandleError> {
         self.window.window_handle()
     }
 }
 
-impl<'a> HasDisplayHandle for TopWindow<'a> {
+impl<'a, 'b: 'a> HasDisplayHandle for TopWindow<'a, 'b> {
     #[inline]
     fn display_handle(&self) -> Result<rwh::DisplayHandle<'_>, HandleError> {
         self.window.display_handle()

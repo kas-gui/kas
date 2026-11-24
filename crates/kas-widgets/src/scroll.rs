@@ -451,7 +451,7 @@ mod ScrollRegion {
             };
 
             let action = self.scroll.set_offset(offset);
-            cx.action_moved(action);
+            cx.action(action);
             self.inner
                 .update_offset(cx, data, self.inner.rect(), offset);
         }

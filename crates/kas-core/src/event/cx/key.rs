@@ -347,8 +347,13 @@ impl<'a> EventCx<'a> {
     /// may be changed by modifier keys.
     ///
     /// Does nothing when `code` is `None`.
+    ///
+    /// Required: the target `id` is a descendant of the root window
+    /// (this includes popups but not other windows).
     pub fn depress_with_key(&mut self, id: impl HasId, code: impl Into<Option<PhysicalKey>>) {
-        fn inner(state: &mut EventState, id: Id, code: PhysicalKey) {
+        fn inner(state: &mut EventCx, id: Id, code: PhysicalKey) {
+            debug_assert!(Id::from(state.window_id).is_ancestor_of(&id));
+
             if state
                 .key_depress
                 .get(&code)
@@ -359,7 +364,7 @@ impl<'a> EventCx<'a> {
             }
 
             state.key_depress.insert(code, id.clone());
-            state.redraw(id);
+            state.redraw_target(id);
         }
 
         if let Some(code) = code.into() {

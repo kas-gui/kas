@@ -6,6 +6,7 @@
 //! Wrapper around multiple themes, supporting run-time switching
 
 use super::{ColorsLinear, Theme, ThemeDst, Window};
+use crate::ActionResize;
 use crate::config::{Config, WindowConfig};
 use crate::draw::{DrawIface, DrawSharedImpl, color};
 use crate::event::EventState;
@@ -98,7 +99,11 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         self.themes[self.active].new_window(config)
     }
 
-    fn update_window(&mut self, window: &mut Self::Window, config: &WindowConfig) -> bool {
+    fn update_window(
+        &mut self,
+        window: &mut Self::Window,
+        config: &WindowConfig,
+    ) -> Option<ActionResize> {
         self.themes[self.active].update_window(window, config)
     }
 

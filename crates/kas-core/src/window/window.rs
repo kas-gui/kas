@@ -71,7 +71,8 @@ pub(crate) trait WindowWidget: WindowErased + Widget {
     /// Trigger closure of a pop-up
     ///
     /// If the given `id` refers to a pop-up, it should be closed.
-    fn remove_popup(&mut self, cx: &mut SizeCx, id: WindowId);
+    /// Returns `true` on success, `false` if the popup is not found.
+    fn remove_popup(&mut self, id: WindowId) -> bool;
 
     /// Resize popups
     ///
@@ -559,17 +560,16 @@ impl<Data: AppData> WindowWidget for Window<Data> {
         };
 
         self.resize_popup(cx, data, index);
-        cx.region_moved();
     }
 
-    fn remove_popup(&mut self, cx: &mut SizeCx, id: WindowId) {
+    fn remove_popup(&mut self, id: WindowId) -> bool {
         for i in 0..self.popups.len() {
             if id == self.popups[i].id {
                 self.popups.remove(i);
-                cx.region_moved();
-                return;
+                return true;
             }
         }
+        false
     }
 
     fn resize_popups(&mut self, cx: &mut SizeCx, data: &Data) {

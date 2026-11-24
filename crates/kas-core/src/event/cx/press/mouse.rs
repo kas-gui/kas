@@ -11,7 +11,7 @@ use crate::event::{
 };
 use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::window::WindowErased;
-use crate::{ActionRedraw, Id, Node, Tile, TileExt};
+use crate::{Id, Node, Tile, TileExt};
 use cast::{CastApprox, CastTo, Nearest};
 use std::time::{Duration, Instant};
 use winit::cursor::CursorIcon;
@@ -111,7 +111,7 @@ impl Mouse {
     }
 
     /// Call on frame to detect change in mouse pointer icon
-    pub(in crate::event::cx) fn update_pointer_icon(&mut self) -> Option<CursorIcon> {
+    pub(crate) fn update_pointer_icon(&mut self) -> Option<CursorIcon> {
         let icon = self
             .grab
             .as_ref()
@@ -125,6 +125,13 @@ impl Mouse {
         }
     }
 
+    #[inline]
+    pub fn needs_frame_update(&self) -> bool {
+        self.grab
+            .as_ref()
+            .map(|grab| matches!(&grab.details, GrabDetails::Pan(_)))
+            .unwrap_or(false)
+    }
     pub fn frame_update(&mut self) -> Option<(Id, Affine)> {
         if let Some(grab) = self.grab.as_mut()
             && let GrabDetails::Pan(details) = &mut grab.details
@@ -151,26 +158,6 @@ impl Mouse {
     /// Identifier of widget under the mouse
     pub(crate) fn over_id(&self) -> Option<Id> {
         self.over.clone()
-    }
-
-    fn update_grab(&mut self) -> (bool, Option<ActionRedraw>) {
-        let (mut cancel, mut redraw) = (false, None);
-        if let Some(grab) = self.grab.as_mut() {
-            cancel = grab.cancel;
-            if let GrabDetails::Click = grab.details {
-                let over = self.over.as_ref();
-                if grab.start_id == over {
-                    if grab.depress.as_ref() != over {
-                        grab.depress = over.cloned();
-                        redraw = Some(ActionRedraw);
-                    }
-                } else if grab.depress.is_some() {
-                    grab.depress = None;
-                    redraw = Some(ActionRedraw);
-                }
-            }
-        }
-        (cancel, redraw)
     }
 
     /// Returns `true` on success
@@ -222,6 +209,11 @@ impl Mouse {
         true
     }
 
+    pub(in crate::event::cx) fn handle_moved(&mut self, node: Node<'_>) -> Option<Option<Id>> {
+        let over = node.try_probe(self.last_position.cast_to(Nearest));
+        (over != self.over).then_some(over)
+    }
+
     pub(in crate::event::cx) fn tooltip_popup_close(&mut self, id: &Id) {
         if self.tooltip_source.as_ref() == Some(id) {
             self.tooltip_source = None;
@@ -258,7 +250,7 @@ fn has_tooltip(window: &dyn Tile, id: Option<&Id>) -> bool {
 impl<'a> EventCx<'a> {
     // Clear old `over` id, set new `over`, send events.
     // If there is a popup, only permit descendants of that.
-    fn set_over(&mut self, mut window: Node<'_>, w_id: Option<Id>) {
+    pub(crate) fn set_mouse_over(&mut self, mut window: Node<'_>, w_id: Option<Id>) {
         if self.mouse.over != w_id {
             log::trace!("set_over: w_id={w_id:?}");
             if let Some(id) = self.mouse.over.take() {
@@ -343,21 +335,31 @@ impl<'a> EventCx<'a> {
             self.send_event(window, id, event);
         }
         self.mouse.last_pin = last_pin;
-        self.opt_redraw(redraw);
+        self.redraw_opt_target(redraw);
 
         self.mouse.grab = None;
     }
 
     pub(in crate::event::cx) fn mouse_handle_pending(&mut self, mut node: Node<'_>) {
-        let (cancel, redraw) = self.mouse.update_grab();
+        let mut cancel = false;
+        if let Some(grab) = self.cx.state.mouse.grab.as_mut() {
+            cancel = grab.cancel;
+            if let GrabDetails::Click = grab.details {
+                let over = self.cx.state.mouse.over.as_ref();
+                if grab.start_id == over {
+                    if grab.depress.as_ref() != over {
+                        grab.depress = over.cloned();
+                        self.redraw();
+                    }
+                } else if grab.depress.is_some() {
+                    grab.depress = None;
+                    self.redraw();
+                }
+            }
+        }
+
         if cancel {
             self.remove_mouse_grab(node.re(), false);
-        }
-        self.action_redraw(redraw);
-
-        if self.action_moved.is_some() {
-            let over = node.try_probe(self.mouse.last_position.cast_to(Nearest));
-            self.set_over(node, over);
         }
     }
 
@@ -382,7 +384,7 @@ impl<'a> EventCx<'a> {
         }
         self.mouse.last_position = position;
 
-        self.set_over(window.re(), id.clone());
+        self.set_mouse_over(window.re(), id.clone());
 
         if let Some(grab) = self.mouse.grab.as_mut() {
             match &mut grab.details {
@@ -433,7 +435,7 @@ impl<'a> EventCx<'a> {
         self.mouse.last_click_button = None;
 
         if self.mouse.grab.is_none() {
-            self.set_over(window, None);
+            self.set_mouse_over(window, None);
         }
     }
 
@@ -543,13 +545,12 @@ impl<'a> EventCx<'a> {
     }
 
     fn tooltip_motion(&mut self, tile: &dyn Tile, id: &Option<Id>) {
-        if let Some(source) = &mut self.mouse.tooltip_source
+        if let Some(source) = &self.mouse.tooltip_source
             && *source != id
             && let Some(id) = id.as_ref()
             && let Some(text) = tile.find_tile(id).and_then(|tile| tile.tooltip())
         {
             self.runner.show_tooltip(id.clone(), text.to_string());
-            self.post_recursion();
             self.mouse.tooltip_source = Some(id.clone());
         }
     }

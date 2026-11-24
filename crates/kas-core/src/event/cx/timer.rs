@@ -6,7 +6,11 @@
 //! Event context: timers
 
 use super::{EventCx, EventState};
-use crate::{Id, Node, event::Event};
+use crate::event::Event;
+use crate::runner::{RunnerT, WindowDataErased};
+use crate::theme::{SizeCx, ThemeSize};
+use crate::window::WindowWidget;
+use crate::{Id, Node, WindowActions};
 use std::time::{Duration, Instant};
 
 /// A timer identifier
@@ -108,29 +112,68 @@ impl EventState {
         debug_assert!(timer.earliest());
         self.frame_updates.insert((id, timer));
     }
-}
 
-impl<'a> EventCx<'a> {
     /// Pre-draw / pre-sleep
     ///
     /// This method should be called once per frame as well as after the last
     /// frame before a long sleep.
-    pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
+    pub(crate) fn frame_update<A>(
+        &mut self,
+        runner: &mut dyn RunnerT,
+        theme: &dyn ThemeSize,
+        window: &mut dyn WindowDataErased,
+        widget: &mut dyn WindowWidget<Data = A>,
+        data: &A,
+    ) -> WindowActions {
         self.need_frame_update = false;
         log::trace!(target: "kas_core::event", "Processing frame update");
-        if let Some((target, affine)) = self.mouse.frame_update() {
-            self.send_event(widget.re(), target, Event::Pan(affine));
-        }
-        self.touch_frame_update(widget.re());
 
-        let frame_updates = std::mem::take(&mut self.frame_updates);
-        for (id, timer) in frame_updates.into_iter() {
-            self.send_event(widget.re(), id, Event::Timer(timer));
+        let mut actions = WindowActions::None;
+        if self.mouse.needs_frame_update()
+            || self.touch.needs_frame_update()
+            || !self.frame_updates.is_empty()
+        {
+            actions = self.with(runner, theme, window, |cx| {
+                if let Some((target, affine)) = cx.mouse.frame_update() {
+                    cx.send_event(widget.as_node(data), target, Event::Pan(affine));
+                }
+                cx.touch_frame_update(widget.as_node(data));
+
+                let frame_updates = std::mem::take(&mut cx.frame_updates);
+                for (id, timer) in frame_updates.into_iter() {
+                    cx.send_event(widget.as_node(data), id, Event::Timer(timer));
+                }
+            });
+
+            let (resize, reprobe) = match actions {
+                WindowActions::None | WindowActions::Redraw => (false, false),
+                WindowActions::Moved => (false, true),
+                WindowActions::Resize => (true, true),
+                WindowActions::Close => return actions,
+            };
+
+            if resize {
+                let solve_cache = window.solve_cache();
+                let mut cx = SizeCx::new(self, theme);
+                solve_cache.find_constraints(widget.as_node(data), &mut cx);
+                let rect = widget.rect();
+                solve_cache.apply_rect(widget.as_node(data), &mut cx, rect, true);
+                debug_assert!(solve_cache.min(false) <= solve_cache.ideal(false));
+                widget.resize_popups(&mut cx, data);
+            }
+            actions = if reprobe {
+                self.reprobe_coordinates(runner, theme, window, widget.as_node(data))
+            } else {
+                WindowActions::None
+            }
         }
 
-        self.cx.input.frame_update(self.window, widget.as_tile());
+        self.input.frame_update(window, widget.as_tile());
+        actions
     }
+}
 
+impl<'a> EventCx<'a> {
     /// Update widgets due to timer
     pub(crate) fn update_timer(&mut self, mut widget: Node<'_>) {
         let now = Instant::now();

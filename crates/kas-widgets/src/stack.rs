@@ -421,7 +421,7 @@ impl<A> Stack<A> {
     ///
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
-    pub fn pop(&mut self, cx: &mut EventState) -> Option<Page<A>> {
+    pub fn pop(&mut self, cx: &mut ConfigCx) -> Option<Page<A>> {
         let result = self.widgets.pop().map(|w| w.0);
         if result.is_some() {
             if self.active > 0 && self.active == self.widgets.len() {
@@ -454,7 +454,7 @@ impl<A> Stack<A> {
     ///
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
-    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> Page<A> {
+    pub fn remove(&mut self, cx: &mut ConfigCx, index: usize) -> Page<A> {
         let w = self.widgets.remove(index);
 
         if self.active == index {

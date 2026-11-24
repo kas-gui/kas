@@ -8,11 +8,12 @@
 use super::common::{RunError, WindowSurface};
 use super::shared::Shared;
 use super::{AppData, GraphicsInstance, Platform};
+use crate::action::WindowActions;
 use crate::cast::Cast;
 use crate::config::{Config, WindowConfig};
 use crate::draw::PassType;
 use crate::draw::color::Rgba;
-use crate::event::{ConfigCx, CursorIcon, EventState, InputEvent};
+use crate::event::{ConfigCx, EventState, InputEvent};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::Erased;
@@ -21,9 +22,7 @@ use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, Window as _};
 use crate::window::{
     Decorations, PopupDescriptor, Properties, WindowErased, WindowId, WindowWidget,
 };
-use crate::{
-    ActionClose, ActionResize, ConfigAction, Id, Layout, Tile, Widget, WindowActions, autoimpl,
-};
+use crate::{ActionClose, ActionResize, ConfigAction, Id, Layout, Tile, Widget, autoimpl};
 use std::cell::RefCell;
 use std::mem::take;
 use std::rc::Rc;
@@ -44,7 +43,6 @@ struct WindowData<G: GraphicsInstance> {
 
     // NOTE: cached components could be here or in Window
     solve_cache: SolveCache,
-    need_redraw: bool,
 }
 
 impl<G: GraphicsInstance> WindowData<G> {
@@ -60,6 +58,7 @@ impl<G: GraphicsInstance> WindowData<G> {
 #[autoimpl(Debug ignore self.widget, self.ev_state, self.surface)]
 pub struct Window<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     surface: Option<(T::Window, WindowData<G>)>,
+    actions: WindowActions,
     ev_state: EventState,
     pub(super) widget: crate::window::Window<A>,
 }
@@ -79,6 +78,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let config = WindowConfig::new(config);
         Box::new(Window {
             surface: None,
+            actions: WindowActions::None,
             ev_state: EventState::new(window_id, config, platform),
             widget: crate::window::Window::new(widget, title, props),
         })
@@ -110,7 +110,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut theme = shared.theme.new_window(config);
 
         let node = self.widget.as_node(data);
-        let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node);
+        let _: WindowActions = self.ev_state.full_configure(theme.size(), node);
 
         let props = self.widget.properties();
         let transparent = props.transparent;
@@ -144,7 +144,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
             // Update text size which is assigned during configure
             let node = self.widget.as_node(data);
-            let _: Option<ActionResize> = self.ev_state.full_configure(theme.size(), node);
+            let _: WindowActions = self.ev_state.full_configure(theme.size(), node);
         }
 
         let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
@@ -221,8 +221,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             accesskit,
 
             solve_cache,
-            need_redraw: true,
         };
+        self.actions = WindowActions::Redraw;
         self.surface = Some((theme, window));
 
         self.apply_size(data, true, false);
@@ -242,13 +242,20 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state.suspended(shared);
 
             let id = self.ev_state.window_id;
-            let awh = ActiveWindowHandle { id, window, el };
-            let actions =
-                self.ev_state
-                    .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
+            let mut awh = ActiveWindowHandle { id, window, el };
+            let actions = self.ev_state.flush_pending(
+                shared,
+                theme.size(),
+                &mut awh,
+                self.widget.as_node(data),
+            );
 
-            // NOTE: ignore resize, redraw actions
-            actions.close
+            if actions == WindowActions::Close {
+                Some(ActionClose)
+            } else {
+                // ignore resize, redraw actions
+                None
+            }
         } else {
             None
         }
@@ -332,7 +339,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             WindowEvent::RedrawRequested => return self.do_draw(shared, data, el).is_err(),
 
             WindowEvent::CloseRequested => {
-                self.ev_state.close_own_window();
+                self.actions = WindowActions::Close;
                 return false;
             }
             WindowEvent::Focused(state) => InputEvent::Focused(state),
@@ -399,11 +406,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         let id = self.ev_state.window_id;
-        let awh = ActiveWindowHandle { id, window, el };
-        let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
+        let mut awh = ActiveWindowHandle { id, window, el };
+        let actions = self.ev_state.with(shared, theme.size(), &mut awh, |cx| {
             cx.input_event(self.widget.as_node(data), event)
         });
-        self.apply_size(data, false, resize.is_some());
+        self.actions.upgrade(actions);
         false
     }
 
@@ -413,29 +420,20 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         shared: &mut Shared<A, G, T>,
         data: &A,
         el: &dyn ActiveEventLoop,
-    ) -> (WindowActions, Option<Instant>) {
+    ) -> (Option<ActionClose>, Option<Instant>) {
         let Some((ref theme, ref mut window)) = self.surface else {
-            return (WindowActions::default(), None);
+            return (None, None);
         };
 
         let id = self.ev_state.window_id;
-        let awh = ActiveWindowHandle { id, window, el };
+        let mut awh = ActiveWindowHandle { id, window, el };
         let actions =
             self.ev_state
-                .flush_pending(shared, theme.size(), &awh, self.widget.as_node(data));
-        if actions.resize.is_some() {
-            self.apply_size(data, false, true);
-        }
-
-        if actions.close.is_some() {
-            return (actions, None);
-        }
-
-        let Some((_, ref mut window)) = self.surface else {
-            unreachable!();
-        };
-        if actions != WindowActions::default() {
-            window.need_redraw = true;
+                .flush_pending(shared, theme.size(), &mut awh, self.widget.as_node(data));
+        self.actions.upgrade(actions);
+        let actions = std::mem::take(&mut self.actions);
+        if actions.is_close() {
+            return (Some(ActionClose), None);
         }
 
         let resume = match (
@@ -448,13 +446,36 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             (Some(a), Some(b)) => Some(a.min(b)),
         };
 
+        if actions.resize() {
+            self.apply_size(data, false, true);
+        }
+        let Some((ref mut theme, ref mut window)) = self.surface else {
+            unreachable!();
+        };
+        if actions >= WindowActions::Moved {
+            let mut awh = ActiveWindowHandle { id, window, el };
+            let acts = self.ev_state.reprobe_coordinates(
+                shared,
+                theme.size(),
+                &mut awh,
+                self.widget.as_node(data),
+            );
+            if acts > WindowActions::Moved {
+                // Resize and Close actions are unlikely here; delay handling
+                self.actions = acts;
+            }
+        }
+        if let Some(icon) = self.ev_state.mouse.update_pointer_icon() {
+            window.window().set_cursor(icon.into());
+        }
+
         // NOTE: need_frame_update() does not imply a need to redraw, but other
         // approaches do not yield good frame timing for e.g. kinetic scrolling.
-        if window.need_redraw || self.ev_state.need_frame_update() {
+        if actions.redraw() || self.ev_state.need_frame_update() {
             window.window().request_redraw();
         }
 
-        (actions, resume)
+        (None, resume)
     }
 
     /// Send an erased message
@@ -478,21 +499,17 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 .update_config(window.window().scale_factor() as f32);
         }
 
-        let resize = if action.contains(ConfigAction::THEME_SWITCH) {
+        if action.contains(ConfigAction::THEME_SWITCH) {
             let config = self.ev_state.config();
             *theme = shared.theme.new_window(config);
-            true
+            self.actions.upgrade(ActionResize);
         } else if action.contains(ConfigAction::THEME) {
             let config = self.ev_state.config();
-            shared.theme.update_window(theme, config)
-        } else {
-            false
-        };
+            let actions = shared.theme.update_window(theme, config);
+            self.actions.upgrade(actions);
+        }
 
         self.reconfigure(data);
-        if resize {
-            self.apply_size(data, false, true);
-        }
     }
 
     #[cfg(feature = "accesskit")]
@@ -515,9 +532,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
                     cx.handle_accesskit_action(self.widget.as_node(data), request);
                 });
-                if resize.is_some() {
-                    self.apply_size(data, false, true);
-                }
+                window.resize = window.resize.or(resize);
             }
             WE::AccessibilityDeactivated => {
                 self.ev_state.disable_accesskit();
@@ -536,8 +551,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        if window.graphical.common_mut().immediate_redraw() {
-            window.need_redraw = true;
+        if let Some(_redraw) = window.graphical.common_mut().immediate_redraw() {
             window.window().request_redraw();
         }
 
@@ -545,13 +559,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         if Some(requested_resume) == self.ev_state.next_resume() {
             let id = self.ev_state.window_id;
-            let awh = ActiveWindowHandle { id, window, el };
-            let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
+            let mut awh = ActiveWindowHandle { id, window, el };
+            let actions = self.ev_state.with(shared, theme.size(), &mut awh, |cx| {
                 cx.update_timer(widget);
             });
-            if resize.is_some() {
-                self.apply_size(data, false, true);
-            }
+            self.actions.upgrade(actions);
         } else {
             #[allow(clippy::drop_non_drop)]
             drop(widget); // make the borrow checker happy
@@ -570,11 +582,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         let id = self.ev_state.window_id;
-        let awh = ActiveWindowHandle { id, window, el };
-        let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
+        let mut awh = ActiveWindowHandle { id, window, el };
+        let actions = self.ev_state.with(shared, theme.size(), &mut awh, |cx| {
             self.widget.show_tooltip(cx, target, text)
         });
-        debug_assert!(resize.is_none());
+        self.actions.upgrade(actions);
     }
 
     /// Add or update a popup with the given `id` and `popup` descriptor
@@ -585,15 +597,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
         self.widget.add_or_update_popup(&mut cx, data, id, popup);
+        self.actions.upgrade(WindowActions::Moved);
     }
 
     pub(super) fn send_close(&mut self, id: WindowId) {
         if id == self.ev_state.window_id {
-            self.ev_state.close_own_window();
-        } else if let Some((ref theme, _)) = self.surface {
-            let widget = &mut self.widget;
-            let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
-            widget.remove_popup(&mut cx, id);
+            self.actions = WindowActions::Close;
+        } else if self.widget.remove_popup(id) {
+            self.actions.upgrade(WindowActions::Moved);
         }
     }
 }
@@ -606,30 +617,24 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        let resize: Option<ActionResize> = self
+        let actions = self
             .ev_state
             .full_configure(theme.size(), self.widget.as_node(data));
-        if resize.is_some() {
-            self.apply_size(data, false, true);
-        }
+        self.actions.upgrade(actions);
 
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 
     pub(super) fn update(&mut self, data: &A) {
         let time = Instant::now();
-        let Some((ref theme, ref mut window)) = self.surface else {
+        let Some((ref theme, _)) = self.surface else {
             return;
         };
 
         let size = theme.size();
         let mut cx = ConfigCx::new(&size, &mut self.ev_state);
         cx.update(self.widget.as_node(data));
-        if cx.needs_resize() {
-            self.apply_size(data, false, true);
-        } else if cx.needs_redraw() {
-            window.window().request_redraw();
-        }
+        self.actions.upgrade(cx.take_actions());
 
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
     }
@@ -691,18 +696,18 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         el: &dyn ActiveEventLoop,
     ) -> Result<(), ()> {
         let start = Instant::now();
-        let Some((ref theme, ref window)) = self.surface else {
+        let Some((ref theme, ref mut window)) = self.surface else {
             return Ok(());
         };
 
-        let widget = self.widget.as_node(data);
         let id = self.ev_state.window_id;
-        let awh = ActiveWindowHandle { id, window, el };
-        let resize = self.ev_state.with(shared, theme.size(), &awh, |cx| {
-            cx.frame_update(widget);
-        });
-        if resize.is_some() {
-            self.apply_size(data, false, true);
+        let mut awh = ActiveWindowHandle { id, window, el };
+        let actions =
+            self.ev_state
+                .frame_update(shared, theme.size(), &mut awh, &mut self.widget, data);
+        self.actions.upgrade(actions);
+        if self.actions == WindowActions::Redraw {
+            self.actions = WindowActions::None;
         }
         let Some((ref mut theme, ref mut window)) = self.surface else {
             unreachable!();
@@ -734,8 +739,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
         let time2 = Instant::now();
 
-        window.need_redraw = window.graphical.common_mut().immediate_redraw();
-        self.ev_state.action_redraw = None;
+        self.actions
+            .upgrade(window.graphical.common_mut().immediate_redraw());
         // NOTE: we used to return Err(()) if !action.is_empty() here, e.g. if a
         // widget requested a resize during draw. Likely it's better not to do
         // this even if the frame is imperfect.
@@ -783,7 +788,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                     .configure(&mut shared.draw.as_mut().unwrap().draw, size);
             }
             PresentResult::Fatal => {
-                self.ev_state.close_own_window();
+                self.actions = WindowActions::Close;
             }
         };
 
@@ -794,7 +799,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 #[autoimpl(Deref, DerefMut using self.window)]
 struct ActiveWindowHandle<'a, G: GraphicsInstance> {
     id: WindowId,
-    window: &'a WindowData<G>,
+    window: &'a mut WindowData<G>,
     el: &'a dyn ActiveEventLoop,
 }
 
@@ -803,12 +808,6 @@ pub(crate) trait WindowDataErased {
     /// Access the [`ActiveEventLoop`]
     fn event_loop(&self) -> &dyn ActiveEventLoop {
         self.el
-    }
-
-    /// Set the mouse pointer icon
-    #[inline]
-    fn set_pointer_icon(&self, icon: CursorIcon) {
-        self.window().set_cursor(icon.into());
     }
 
     /// Enable / update / disable the Input Method Editor
@@ -840,5 +839,9 @@ pub(crate) trait WindowDataErased {
     ))]
     fn has_primary_selection(&self) -> bool {
         self.el.primary_selection_ext().is_some()
+    }
+
+    fn solve_cache(&mut self) -> &mut SolveCache {
+        &mut self.window.solve_cache
     }
 }
