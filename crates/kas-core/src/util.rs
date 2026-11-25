@@ -253,50 +253,6 @@ impl<T: PartialEq> UndoStack<T> {
     }
 }
 
-impl<K: Eq, S> UndoStack<(K, S)> {
-    /// Clear historical states for `key`
-    ///
-    /// Typically used for `K` = [`Id`].
-    pub fn clear_for_key(&mut self, key: K) {
-        let mut i = 0;
-        while i < self.states.len() {
-            if self.states[i].0 == key {
-                self.states.remove(i);
-                if i < self.head {
-                    self.head -= 1;
-                }
-            } else {
-                i += 1;
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod undo_stack_tests {
-    use super::UndoStack;
-
-    #[test]
-    fn clear_for_key_removes_redo_entries_without_moving_head() {
-        let mut stack = UndoStack::new();
-        stack.try_push((0, "a"));
-        stack.try_push((1, "b"));
-        stack.try_push((2, "c"));
-        assert_eq!(stack.undo_or_redo(false), Some(&(1, "b")));
-        stack.clear_for_key(2);
-        assert_eq!(stack.undo_or_redo(false), Some(&(0, "a")));
-        assert_eq!(stack.undo_or_redo(true), Some(&(1, "b")));
-        stack.clear_for_key(1);
-        stack.clear_for_key(0);
-        stack.try_push((3, "d"));
-        stack.try_push((4, "e"));
-        assert_eq!(stack.undo_or_redo(false), Some(&(3, "d")));
-        stack.clear_for_key(3);
-        stack.clear_for_key(4);
-        assert_eq!(stack.undo_or_redo(true), None);
-    }
-}
-
 /// Log a warning regarding an error message
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
