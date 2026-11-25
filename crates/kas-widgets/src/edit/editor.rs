@@ -1974,9 +1974,11 @@ impl Common {
         };
         if let Some(current) = self.undo_stack.current_mut()
             && current.texts.len() == item.texts.len()
-            && current.texts.iter().zip(&item.texts).all(|((a, al), (b, bl))| {
-                al == bl && (Rc::ptr_eq(a, b) || a == b)
-            })
+            && current
+                .texts
+                .iter()
+                .zip(&item.texts)
+                .all(|((a, al), (b, bl))| al == bl && (Rc::ptr_eq(a, b) || a == b))
         {
             current.cursor = item.cursor;
         } else {
@@ -2009,7 +2011,10 @@ impl Common {
         let mut target_end = target_len;
         while current_end > start
             && target_end > start
-            && matches(parts.get(current_end - 1), &item.texts[usize::conv(target_end - 1)])
+            && matches(
+                parts.get(current_end - 1),
+                &item.texts[usize::conv(target_end - 1)],
+            )
         {
             current_end -= 1;
             target_end -= 1;
@@ -2512,204 +2517,6 @@ impl Common {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn edit(
-        common: &mut Common,
-        parts: &mut impl PartList,
-        range: Range<TextIndex>,
-        text: &str,
-        op: EditOp,
-    ) {
-        common.save_undo_state(parts, Some(op));
-        let cursor = common.replace_range(parts, range, text);
-        common.set_cursor_(parts, cursor);
-    }
-
-    #[test]
-    fn history_groups_edits_and_preserves_redo_until_new_edit() {
-        let mut common = Common::new(false);
-        let mut part = Part::new("a", LineBreakBytes::NONE);
-        common.cursor.set_position(TextIndex::new(0, 1));
-        for (start, text) in [(1, "b"), (2, "c")] {
-            edit(
-                &mut common,
-                &mut part,
-                TextIndex::new(0, start)..TextIndex::new(0, start),
-                text,
-                EditOp::KeyInput(0, 0),
-            );
-        }
-        common.save_undo_state(&part, Some(EditOp::Cursor));
-        common.set_cursor_(&part, TextIndex::new(0, 1));
-        edit(
-            &mut common,
-            &mut part,
-            TextIndex::new(0, 1)..TextIndex::new(0, 1),
-            "X",
-            EditOp::KeyInput(0, 0),
-        );
-        assert_eq!(part.as_str(), "aXbc");
-
-        assert!(common.apply_undo_redo(&mut part, false));
-        assert_eq!(part.as_str(), "abc");
-        assert_eq!(common.cursor.cursor.byte(), 1);
-        assert!(common.apply_undo_redo(&mut part, false));
-        assert_eq!(part.as_str(), "a");
-        assert!(!common.apply_undo_redo(&mut part, false));
-        assert!(common.apply_undo_redo(&mut part, true));
-        assert_eq!(part.as_str(), "abc");
-
-        common.save_undo_state(&part, Some(EditOp::Cursor));
-        common.set_cursor_(&part, TextIndex::new(0, 0));
-        assert!(common.apply_undo_redo(&mut part, true));
-        assert_eq!(part.as_str(), "aXbc");
-
-        assert!(common.apply_undo_redo(&mut part, false));
-        edit(
-            &mut common,
-            &mut part,
-            TextIndex::new(0, 1)..TextIndex::new(0, 1),
-            "Y",
-            EditOp::Replace(0, 0),
-        );
-        assert!(!common.apply_undo_redo(&mut part, true));
-        assert_eq!(part.as_str(), "aYbc");
-        assert!(common.apply_undo_redo(&mut part, false));
-        assert_eq!(part.as_str(), "abc");
-        assert!(common.apply_undo_redo(&mut part, true));
-        assert_eq!(part.as_str(), "aYbc");
-    }
-
-    #[test]
-    fn history_restores_multipart_text_line_breaks_and_selection() {
-        let mut common = Common::new(true);
-        let mut parts = vec![
-            Part::new("first", LineBreakBytes::LF),
-            Part::new("second", LineBreakBytes::LF),
-            Part::new("third", LineBreakBytes::NONE),
-        ];
-        common.cursor = CursorRange {
-            anchor: TextIndex::new(2, 2),
-            cursor: TextIndex::new(1, 2),
-        };
-        let selection = common.cursor.to_range();
-        edit(
-            &mut common,
-            &mut parts,
-            selection,
-            "X\r\nY\nZ",
-            EditOp::Replace(1, 2),
-        );
-        let texts = |parts: &[Part]| {
-            parts
-                .iter()
-                .map(|p| (p.as_str().to_string(), p.line_break))
-                .collect::<Vec<_>>()
-        };
-        let edited = texts(&parts);
-        assert_eq!(parts.len(), 4);
-        assert!(common.apply_undo_redo(&mut parts, false));
-        assert_eq!(
-            texts(&parts),
-            vec![
-                ("first".into(), LineBreakBytes::LF),
-                ("second".into(), LineBreakBytes::LF),
-                ("third".into(), LineBreakBytes::NONE),
-            ]
-        );
-        assert_eq!(common.cursor.anchor, TextIndex::new(2, 2));
-        assert_eq!(common.cursor.cursor, TextIndex::new(1, 2));
-        assert!(common.apply_undo_redo(&mut parts, true));
-        assert_eq!(texts(&parts), edited);
-    }
-
-    #[test]
-    fn history_restores_line_break_when_text_is_shared() {
-        let mut common = Common::new(true);
-        let mut parts = vec![Part::new("a", LineBreakBytes::LF), Part::empty()];
-        common.save_undo_state(&parts, Some(EditOp::Replace(0, 0)));
-        parts[0].line_break = LineBreakBytes::CR_LF;
-        assert!(common.apply_undo_redo(&mut parts, false));
-        assert_eq!(parts[0].line_break, LineBreakBytes::LF);
-        assert!(common.apply_undo_redo(&mut parts, true));
-        assert_eq!(parts[0].line_break, LineBreakBytes::CR_LF);
-    }
-
-    #[test]
-    fn history_preserves_unchanged_parts_after_insertions_and_deletions() {
-        for insert in [true, false] {
-            let mut common = Common::new(true);
-            let mut parts: Vec<_> = (0..100)
-                .map(|i| Part::new(format!("line {i}"), LineBreakBytes::LF))
-                .collect();
-            parts.last_mut().unwrap().line_break = LineBreakBytes::NONE;
-            let original_len = parts.len();
-            let range = if insert {
-                TextIndex::new(0, 0)..TextIndex::new(0, 0)
-            } else {
-                TextIndex::new(0, 0)..TextIndex::new(2, 0)
-            };
-            edit(
-                &mut common,
-                &mut parts,
-                range,
-                if insert { "new\n" } else { "" },
-                EditOp::Replace(0, if insert { 0 } else { 2 }),
-            );
-            let edited_len = parts.len();
-            let tail: Vec<_> = parts[edited_len - 90..]
-                .iter_mut()
-                .map(|part| {
-                    part.status = Status::Ready;
-                    part.rect.pos = Coord(73, 42);
-                    part.clone_text()
-                })
-                .collect();
-
-            for (redo, expected_len) in [(false, original_len), (true, edited_len)] {
-                assert!(common.apply_undo_redo(&mut parts, redo));
-                assert_eq!(parts.len(), expected_len);
-                for (part, text) in parts[expected_len - 90..].iter().zip(&tail) {
-                    assert!(Rc::ptr_eq(&part.text, text));
-                    assert_eq!(part.status, Status::Ready);
-                    assert_eq!(part.rect.pos, Coord(73, 42));
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn history_groups_deletions_and_ignores_noop_edits() {
-        let mut common = Common::new(false);
-        let mut part = Part::new("abcd", LineBreakBytes::NONE);
-        common.cursor.set_position(TextIndex::new(0, 4));
-        for start in [3, 2] {
-            edit(
-                &mut common,
-                &mut part,
-                TextIndex::new(0, start)..TextIndex::new(0, start + 1),
-                "",
-                EditOp::KeyDelete(0, 0),
-            );
-        }
-        assert!(common.apply_undo_redo(&mut part, false));
-        assert_eq!(part.as_str(), "abcd");
-        edit(
-            &mut common,
-            &mut part,
-            TextIndex::new(0, 0)..TextIndex::new(0, 0),
-            "",
-            EditOp::Replace(0, 0),
-        );
-        assert!(common.apply_undo_redo(&mut part, true));
-        assert_eq!(part.as_str(), "ab");
-        assert!(!common.apply_undo_redo(&mut part, true));
-    }
-}
-
 /// Text editor interface
 impl Editor {
     /// Get a reference to the widget's identifier
@@ -2945,5 +2752,200 @@ impl Editor {
     pub fn set_error(&mut self, cx: &mut ConfigCx, message: Option<Cow<'static, str>>) {
         self.error_state = Some(message);
         cx.redraw();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn edit(
+        common: &mut Common,
+        parts: &mut impl PartList,
+        range: Range<TextIndex>,
+        text: &str,
+        op: EditOp,
+    ) {
+        common.save_undo_state(parts, Some(op));
+        let cursor = common.replace_range(parts, range, text);
+        common.set_cursor_(parts, cursor);
+    }
+
+    #[test]
+    fn history_groups_edits_and_preserves_redo_until_new_edit() {
+        let mut common = Common::new(false);
+        let mut part = Part::new("a", LineBreakBytes::NONE);
+        common.cursor.set_position(TextIndex::new(0, 1));
+        for (start, text) in [(1, "b"), (2, "c")] {
+            edit(
+                &mut common,
+                &mut part,
+                TextIndex::new(0, start)..TextIndex::new(0, start),
+                text,
+                EditOp::KeyInput(0, 0),
+            );
+        }
+        common.save_undo_state(&part, Some(EditOp::Cursor));
+        common.set_cursor_(&part, TextIndex::new(0, 1));
+        edit(
+            &mut common,
+            &mut part,
+            TextIndex::new(0, 1)..TextIndex::new(0, 1),
+            "X",
+            EditOp::KeyInput(0, 0),
+        );
+        assert_eq!(part.as_str(), "aXbc");
+
+        assert!(common.apply_undo_redo(&mut part, false));
+        assert_eq!(part.as_str(), "abc");
+        assert_eq!(common.cursor.cursor.byte(), 1);
+        assert!(common.apply_undo_redo(&mut part, false));
+        assert_eq!(part.as_str(), "a");
+        assert!(!common.apply_undo_redo(&mut part, false));
+        assert!(common.apply_undo_redo(&mut part, true));
+        assert_eq!(part.as_str(), "abc");
+
+        common.save_undo_state(&part, Some(EditOp::Cursor));
+        common.set_cursor_(&part, TextIndex::new(0, 0));
+        assert!(common.apply_undo_redo(&mut part, true));
+        assert_eq!(part.as_str(), "aXbc");
+
+        assert!(common.apply_undo_redo(&mut part, false));
+        edit(
+            &mut common,
+            &mut part,
+            TextIndex::new(0, 1)..TextIndex::new(0, 1),
+            "Y",
+            EditOp::Replace(0, 0),
+        );
+        assert!(!common.apply_undo_redo(&mut part, true));
+        assert_eq!(part.as_str(), "aYbc");
+        assert!(common.apply_undo_redo(&mut part, false));
+        assert_eq!(part.as_str(), "abc");
+        assert!(common.apply_undo_redo(&mut part, true));
+        assert_eq!(part.as_str(), "aYbc");
+    }
+
+    #[test]
+    fn history_restores_multipart_text_line_breaks_and_selection() {
+        let mut common = Common::new(true);
+        let mut parts = vec![
+            Part::new("first", LineBreakBytes::LF),
+            Part::new("second", LineBreakBytes::LF),
+            Part::new("third", LineBreakBytes::NONE),
+        ];
+        common.cursor = CursorRange {
+            anchor: TextIndex::new(2, 2),
+            cursor: TextIndex::new(1, 2),
+        };
+        let selection = common.cursor.to_range();
+        edit(
+            &mut common,
+            &mut parts,
+            selection,
+            "X\r\nY\nZ",
+            EditOp::Replace(1, 2),
+        );
+        let texts = |parts: &[Part]| {
+            parts
+                .iter()
+                .map(|p| (p.as_str().to_string(), p.line_break))
+                .collect::<Vec<_>>()
+        };
+        let edited = texts(&parts);
+        assert_eq!(parts.len(), 4);
+        assert!(common.apply_undo_redo(&mut parts, false));
+        assert_eq!(texts(&parts), vec![
+            ("first".into(), LineBreakBytes::LF),
+            ("second".into(), LineBreakBytes::LF),
+            ("third".into(), LineBreakBytes::NONE),
+        ]);
+        assert_eq!(common.cursor.anchor, TextIndex::new(2, 2));
+        assert_eq!(common.cursor.cursor, TextIndex::new(1, 2));
+        assert!(common.apply_undo_redo(&mut parts, true));
+        assert_eq!(texts(&parts), edited);
+    }
+
+    #[test]
+    fn history_restores_line_break_when_text_is_shared() {
+        let mut common = Common::new(true);
+        let mut parts = vec![Part::new("a", LineBreakBytes::LF), Part::empty()];
+        common.save_undo_state(&parts, Some(EditOp::Replace(0, 0)));
+        parts[0].line_break = LineBreakBytes::CR_LF;
+        assert!(common.apply_undo_redo(&mut parts, false));
+        assert_eq!(parts[0].line_break, LineBreakBytes::LF);
+        assert!(common.apply_undo_redo(&mut parts, true));
+        assert_eq!(parts[0].line_break, LineBreakBytes::CR_LF);
+    }
+
+    #[test]
+    fn history_preserves_unchanged_parts_after_insertions_and_deletions() {
+        for insert in [true, false] {
+            let mut common = Common::new(true);
+            let mut parts: Vec<_> = (0..100)
+                .map(|i| Part::new(format!("line {i}"), LineBreakBytes::LF))
+                .collect();
+            parts.last_mut().unwrap().line_break = LineBreakBytes::NONE;
+            let original_len = parts.len();
+            let range = if insert {
+                TextIndex::new(0, 0)..TextIndex::new(0, 0)
+            } else {
+                TextIndex::new(0, 0)..TextIndex::new(2, 0)
+            };
+            edit(
+                &mut common,
+                &mut parts,
+                range,
+                if insert { "new\n" } else { "" },
+                EditOp::Replace(0, if insert { 0 } else { 2 }),
+            );
+            let edited_len = parts.len();
+            let tail: Vec<_> = parts[edited_len - 90..]
+                .iter_mut()
+                .map(|part| {
+                    part.status = Status::Ready;
+                    part.rect.pos = Coord(73, 42);
+                    part.clone_text()
+                })
+                .collect();
+
+            for (redo, expected_len) in [(false, original_len), (true, edited_len)] {
+                assert!(common.apply_undo_redo(&mut parts, redo));
+                assert_eq!(parts.len(), expected_len);
+                for (part, text) in parts[expected_len - 90..].iter().zip(&tail) {
+                    assert!(Rc::ptr_eq(&part.text, text));
+                    assert_eq!(part.status, Status::Ready);
+                    assert_eq!(part.rect.pos, Coord(73, 42));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn history_groups_deletions_and_ignores_noop_edits() {
+        let mut common = Common::new(false);
+        let mut part = Part::new("abcd", LineBreakBytes::NONE);
+        common.cursor.set_position(TextIndex::new(0, 4));
+        for start in [3, 2] {
+            edit(
+                &mut common,
+                &mut part,
+                TextIndex::new(0, start)..TextIndex::new(0, start + 1),
+                "",
+                EditOp::KeyDelete(0, 0),
+            );
+        }
+        assert!(common.apply_undo_redo(&mut part, false));
+        assert_eq!(part.as_str(), "abcd");
+        edit(
+            &mut common,
+            &mut part,
+            TextIndex::new(0, 0)..TextIndex::new(0, 0),
+            "",
+            EditOp::Replace(0, 0),
+        );
+        assert!(common.apply_undo_redo(&mut part, true));
+        assert_eq!(part.as_str(), "ab");
+        assert!(!common.apply_undo_redo(&mut part, true));
     }
 }
