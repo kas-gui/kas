@@ -163,7 +163,7 @@ mod ScrollTextCore {
             }
 
             self.text.prepare();
-            self.selection.set_max_len(self.text.str_len());
+            self.selection.fix_for_text(self.text.as_str());
             true
         }
 

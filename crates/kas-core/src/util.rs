@@ -214,6 +214,25 @@ impl<T: PartialEq> UndoStack<T> {
         self.head = 0;
     }
 
+    /// The number of saved states
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.states.len()
+    }
+
+    /// The index of the current state, if any
+    #[inline]
+    pub fn head(&self) -> Option<usize> {
+        self.head.checked_sub(1)
+    }
+
+    /// Access the current state, if any
+    pub fn current_mut(&mut self) -> Option<&mut T> {
+        self.head
+            .checked_sub(1)
+            .and_then(|i| self.states.get_mut(i))
+    }
+
     /// Push a new state
     ///
     /// Tries pushing a new state, failing if the new state is identical to the current one.
@@ -243,25 +262,6 @@ impl<T: PartialEq> UndoStack<T> {
 
         self.head = j;
         Some(&self.states[j - 1])
-    }
-}
-
-impl<K: Eq, S> UndoStack<(K, S)> {
-    /// Clear historical states for `key`
-    ///
-    /// Typically used for `K` = [`Id`].
-    pub fn clear_for_key(&mut self, key: K) {
-        let mut i = 0;
-        while i < self.states.len() {
-            if self.states[i].0 == key {
-                self.states.remove(i);
-                if i <= self.head {
-                    self.head -= 1;
-                }
-            } else {
-                i += 1;
-            }
-        }
     }
 }
 
