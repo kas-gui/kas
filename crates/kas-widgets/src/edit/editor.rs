@@ -157,8 +157,8 @@ pub struct Common {
     has_key_focus: bool,
     edit_x_coord: Option<f32>,
     cursor: CursorRange<TextIndex>,
-    last_edit: Option<EditOp>,
-    history_dirty: bool,
+    last_edit: EditOp,
+    last_is_mergeable: bool,
     undo_stack: UndoStack<StackItem>,
     current: CurrentAction,
     input_handler: TextInput,
@@ -180,8 +180,8 @@ impl Common {
             has_key_focus: false,
             edit_x_coord: None,
             cursor: CursorRange::default(),
-            last_edit: Some(EditOp::Initial),
-            history_dirty: false,
+            last_edit: EditOp::Initial,
+            last_is_mergeable: false,
             undo_stack: UndoStack::new(),
             current: CurrentAction::None,
             input_handler: Default::default(),
@@ -283,11 +283,8 @@ impl Common {
         range: impl Into<CursorRange<TextIndex>>,
     ) -> Option<ActionPrepare> {
         let action = self.cancel_current_action(parts, cx);
-        let previous = self.cursor;
         self.set_cursor_(parts, range);
-        if self.cursor != previous {
-            self.last_edit = Some(EditOp::Cursor);
-        }
+        self.last_is_mergeable = false;
         action
     }
 
@@ -298,18 +295,16 @@ impl Common {
     /// calling this method.
     fn set_cursor_(&mut self, parts: &impl PartList, range: impl Into<CursorRange<TextIndex>>) {
         let range = range.into();
-        if range != self.cursor {
-            self.validate_range(parts, range.to_range());
-            self.cursor = range;
-            self.edit_x_coord = None;
-        }
+        self.validate_range(parts, range.to_range());
+        self.cursor = range;
+        self.edit_x_coord = None;
     }
 
     /// Checks whether any edits have landed
     ///
     /// This method may be used in sanity checks.
     pub fn is_unedited(&self) -> bool {
-        self.last_edit == Some(EditOp::Initial)
+        self.last_edit == EditOp::Initial
     }
 }
 
@@ -718,12 +713,18 @@ impl Part {
 
     /// Construct a part with given text and terminating line-break
     pub fn new(text: impl ToString, line_break: LineBreakBytes) -> Self {
+        Part::new_rc(Rc::new(text.to_string()), line_break)
+    }
+
+    /// Construct a part with given text and terminating line-break
+    #[inline]
+    pub fn new_rc(text: Rc<String>, line_break: LineBreakBytes) -> Self {
         Part {
             rect: Rect::ZERO,
             status: Status::Empty,
             forme: Forme::default(),
             highlight: Default::default(),
-            text: Rc::new(text.to_string()),
+            text,
             line_break,
         }
     }
@@ -1573,7 +1574,7 @@ impl Common {
                 let action = self.cancel_current_action(parts, cx);
 
                 if !self.cursor.is_empty() {
-                    self.save_undo_state(parts, None);
+                    self.save_undo_state(parts, EditOp::Cursor);
                     self.cursor.clear_selection();
                     cx.redraw();
                 }
@@ -1610,13 +1611,7 @@ impl Common {
                     };
 
                     let selection = self.cursor.to_range();
-                    self.save_undo_state(
-                        parts,
-                        Some(EditOp::Replace(
-                            selection.start.part(),
-                            selection.end.part(),
-                        )),
-                    );
+                    self.save_undo_state(parts, EditOp::Replace);
                     let cursor = self.replace_range(parts, selection, &value[range]);
                     self.set_cursor_(parts, cursor);
 
@@ -1643,13 +1638,7 @@ impl Common {
                     }
 
                     let selection = self.cursor.to_range();
-                    self.save_undo_state(
-                        parts,
-                        Some(EditOp::KeyInput(
-                            selection.start.part(),
-                            selection.end.part(),
-                        )),
-                    );
+                    self.save_undo_state(parts, EditOp::KeyInput);
 
                     let end = self.replace_range(parts, selection.clone(), text);
                     self.set_cursor_(parts, end);
@@ -1704,13 +1693,10 @@ impl Common {
                         // be to clear an existing selection.
                         return EventAction::Used;
                     }
-                    _ if !self.cursor.is_empty() => {
-                        let range = self.cursor.to_range();
-                        Some(Some(EditOp::Replace(range.start.part, range.end.part)))
-                    }
+                    _ if !self.cursor.is_empty() => Some(Some(EditOp::Replace)),
                     Ime::Preedit { .. } => Some(None),
-                    Ime::DeleteSurrounding { .. } => Some(Some(EditOp::Replace(p, p))),
-                    Ime::Commit { .. } => Some(Some(EditOp::Ime(p))),
+                    Ime::DeleteSurrounding { .. } => Some(Some(EditOp::Replace)),
+                    Ime::Commit { .. } => Some(Some(EditOp::Ime)),
                 };
 
                 if let Some(opt_op) = opt_opt_op {
@@ -1721,17 +1707,13 @@ impl Common {
                             .get_mut(p)
                             .replace_range(edit_range.clone().cast(), "");
                         let b = edit_range.start;
-                        let end = edit_range.end;
-                        for index in [&mut self.cursor.anchor, &mut self.cursor.cursor] {
-                            if index.part == p && index.byte > b {
-                                index.byte =
-                                    if index.byte < end { b } else { index.byte - (end - b) };
-                            }
-                        }
                         *edit_range = b..b;
+                        self.set_cursor_(parts, TextIndex::new(p, b));
                     }
 
-                    self.save_undo_state(parts, opt_op);
+                    if let Some(op) = opt_op {
+                        self.save_undo_state(parts, op);
+                    }
 
                     if let CurrentAction::ImeStart(part) = &self.current {
                         debug_assert_eq!(p, *part);
@@ -1772,7 +1754,7 @@ impl Common {
                 }
                 let preedit = self.cancel_current_action(parts, cx).is_some();
 
-                self.save_undo_state(parts, Some(EditOp::Cursor));
+                self.save_undo_state(parts, EditOp::Cursor);
                 self.set_cursor_(parts, cursor);
                 if let Some(id) = cx.get_primary_plain_text(self.id.clone()) {
                     let source = FocusSource::Pointer;
@@ -1809,7 +1791,7 @@ impl Common {
                     } else {
                         None
                     };
-                    self.save_undo_state(parts, Some(EditOp::Cursor));
+                    self.save_undo_state(parts, EditOp::Cursor);
                     self.current = CurrentAction::Selection;
 
                     let mut anchor = if clear { cursor } else { self.cursor.anchor };
@@ -1890,7 +1872,7 @@ impl Common {
                         None
                     };
 
-                    self.save_undo_state(parts, Some(EditOp::Cursor));
+                    self.save_undo_state(parts, EditOp::Cursor);
                     if let Some(index) = opt_index {
                         self.set_cursor_(parts, index);
                     } else {
@@ -1942,29 +1924,30 @@ impl Common {
         action
     }
 
-    /// Call before an edit to save its initial state, unless it merges with the last edit.
+    /// Call before an edit to save the editor's state
+    ///
+    /// Where `op` is mergeable (see [`EditOp`] docs), the current editor
+    /// contents are saved to the undo stack. Note that this doesn't always
+    /// create a new node on the undo stack: when the contents that of the
+    /// current item on the undo stack, this item is updated (i.e. the new
+    /// cursor position is saved) instead of creating a new item. Note also that
+    /// stack items are saved as late as possible: cursor motion does not by
+    /// itself create a new item on the stack, but does ensure that the next
+    /// edit operation is not mergeable with the previous operation.
     ///
     /// The IME pre-edit should be cleared before calling this method.
-    ///
-    /// Call with [`None`] to end the current edit group.
-    fn save_undo_state(&mut self, parts: &impl PartList, edit: Option<EditOp>) {
-        if let Some(op) = edit
-            && op.try_merge(&mut self.last_edit)
-        {
+    fn save_undo_state(&mut self, parts: &impl PartList, op: EditOp) {
+        if self.last_is_mergeable && self.last_edit == op && op.is_mergeable() {
+            return;
+        } else if op == EditOp::Cursor {
+            self.last_is_mergeable = false;
             return;
         }
 
-        self.last_edit = edit;
-        if matches!(edit, None | Some(EditOp::Initial | EditOp::Cursor)) {
-            return;
-        }
+        self.last_edit = op;
+        self.last_is_mergeable = true;
 
-        self.push_undo_state(parts);
-        self.history_dirty = true;
-    }
-
-    fn push_undo_state(&mut self, parts: &impl PartList) {
-        // Full snapshots allow arbitrary undo/redo traversal; text allocations are shared.
+        // Update the current snapshot where text contents are equal
         let item = StackItem {
             texts: parts
                 .iter()
@@ -1986,14 +1969,11 @@ impl Common {
         }
     }
 
-    fn apply_undo_redo(&mut self, parts: &mut impl PartList, redo: bool) -> bool {
-        if self.history_dirty {
-            self.push_undo_state(parts);
-            self.history_dirty = false;
-        }
-        self.last_edit = None;
+    fn apply_undo_redo(&mut self, parts: &mut impl PartList, redo: bool) -> Option<ActionPrepare> {
+        self.save_undo_state(parts, EditOp::Replace);
+        self.last_is_mergeable = false;
         let Some(item) = self.undo_stack.undo_or_redo(redo) else {
-            return false;
+            return None;
         };
 
         let current_len = parts.len();
@@ -2020,17 +2000,14 @@ impl Common {
             target_end -= 1;
         }
 
-        if current_end - start > target_end - start {
+        if current_end > target_end {
             parts.delete(target_end..current_end);
             current_end = target_end;
         }
         for p in start..target_end {
             let (text, lb) = &item.texts[usize::conv(p)];
             if p >= current_end {
-                let mut part = Part::empty();
-                part.text = Rc::clone(text);
-                part.line_break = *lb;
-                parts.insert(p, part);
+                parts.insert(p, Part::new_rc(Rc::clone(text), *lb));
             } else {
                 let part = parts.get_mut(p);
                 if !Rc::ptr_eq(&part.text, text) || part.line_break != *lb {
@@ -2044,21 +2021,21 @@ impl Common {
         let cursor = item.cursor;
         self.edit_x_coord = None;
         self.set_cursor_(parts, cursor);
-        true
+        Some(ActionPrepare)
     }
 
     /// Undo or redo an edit, cancelling any ongoing input action.
     ///
-    /// If this returns `Some`, the caller must re-prepare the parts and request
-    /// a redraw. This does not call any widget edit handler.
+    /// If this returns `Some(action)`, the caller must re-prepare the parts and
+    /// request a redraw. This does not call any widget edit handler.
     pub fn undo_or_redo(
         &mut self,
         parts: &mut impl PartList,
         cx: &mut EventState,
         redo: bool,
     ) -> Option<ActionPrepare> {
-        let cancelled = self.cancel_current_action(parts, cx).is_some();
-        (self.apply_undo_redo(parts, redo) || cancelled).then_some(ActionPrepare)
+        let action = self.cancel_current_action(parts, cx);
+        self.apply_undo_redo(parts, redo).or(action)
     }
 
     /// Request key and IME focus
@@ -2399,23 +2376,13 @@ impl Common {
         let is_deselect = matches!(action, Action::Deselect);
 
         let edit_op = match action {
-            Action::Deselect | Action::Move(_, _) => Some(EditOp::Cursor),
-            Action::Activate | Action::UndoRedo(_) => None,
-            Action::Insert(_, false) => Some(EditOp::Replace(
-                selection.start.part(),
-                selection.end.part(),
-            )),
-            Action::Paste(_) => None,
-            Action::Insert(_, true) => Some(EditOp::KeyInput(
-                selection.start.part(),
-                selection.end.part(),
-            )),
-            Action::Delete(ref range, false) => {
-                Some(EditOp::Replace(range.start.part(), range.end.part()))
-            }
-            Action::Delete(ref range, true) => {
-                Some(EditOp::KeyDelete(range.start.part(), range.end.part()))
-            }
+            Action::Deselect | Action::Move(_, _) => EditOp::Cursor,
+            Action::Activate | Action::UndoRedo(_) => EditOp::Cursor,
+            Action::Insert(_, false) => EditOp::Replace,
+            Action::Paste(_) => EditOp::Cursor,
+            Action::Insert(_, true) => EditOp::KeyInput,
+            Action::Delete(_, false) => EditOp::Replace,
+            Action::Delete(_, true) => EditOp::KeyDelete,
         };
         self.save_undo_state(parts, edit_op);
 
@@ -2452,7 +2419,7 @@ impl Common {
                 EventAction::Cursor { preedit: false }
             }
             Action::UndoRedo(redo) => {
-                if self.apply_undo_redo(parts, redo) {
+                if self.apply_undo_redo(parts, redo).is_some() {
                     EventAction::Edit {
                         is_key_input: false,
                     }
@@ -2563,8 +2530,8 @@ impl Editor {
     /// Clear text contents and undo history
     #[inline]
     pub fn clear(&mut self, cx: &mut EventState) {
-        self.common.last_edit = Some(EditOp::Initial);
-        self.common.history_dirty = false;
+        self.common.last_edit = EditOp::Initial;
+        self.common.last_is_mergeable = false;
         self.common.undo_stack.clear();
         let _ = self.common.cancel_current_action(&mut self.part, cx);
 
@@ -2624,20 +2591,18 @@ impl Editor {
     fn set_text_unchecked(&mut self, cx: &mut EventState, text: Rc<String>) {
         let _ = self.common.cancel_current_action(&mut self.part, cx);
 
-        self.common
-            .save_undo_state(&self.part, Some(EditOp::Replace(0, 0)));
+        self.common.save_undo_state(&self.part, EditOp::Replace);
 
         self.part.text = text;
         self.part.require_reprepare();
 
         let text = self.part.as_str();
-        self.common.cursor.anchor.byte = text
-            .floor_char_boundary(self.common.cursor.anchor.byte())
-            .cast();
-        self.common.cursor.cursor.byte = text
-            .floor_char_boundary(self.common.cursor.cursor.byte())
-            .cast();
-        self.common.edit_x_coord = None;
+        let mut cursor = self.cursor_range();
+        cursor.fix_for_text(text);
+        self.common.set_cursor_(&self.part, CursorRange {
+            anchor: TextIndex::new(0, cursor.anchor),
+            cursor: TextIndex::new(0, cursor.cursor),
+        });
         self.error_state = None;
     }
 
@@ -2648,8 +2613,7 @@ impl Editor {
     pub fn replace_selected_text(&mut self, cx: &mut EventState, text: &str) {
         let _ = self.common.cancel_current_action(&mut self.part, cx);
 
-        self.common
-            .save_undo_state(&self.part, Some(EditOp::Replace(0, 0)));
+        self.common.save_undo_state(&self.part, EditOp::Replace);
 
         let selection = self.common.cursor.to_range();
         let start = selection.start.byte();
@@ -2662,8 +2626,8 @@ impl Editor {
 
     /// Undo or redo an edit, without calling the guard's edit handler.
     ///
-    /// If this returns `Some`, the caller must re-prepare the editor and
-    /// request a redraw.
+    /// If this returns `Some(action)`, the caller must re-prepare the editor
+    /// and request a redraw.
     pub fn undo_or_redo(&mut self, cx: &mut EventState, redo: bool) -> Option<ActionPrepare> {
         let action = self.common.undo_or_redo(&mut self.part, cx, redo);
         if action.is_some() {
@@ -2766,7 +2730,7 @@ mod tests {
         text: &str,
         op: EditOp,
     ) {
-        common.save_undo_state(parts, Some(op));
+        common.save_undo_state(parts, op);
         let cursor = common.replace_range(parts, range, text);
         common.set_cursor_(parts, cursor);
     }
@@ -2782,47 +2746,47 @@ mod tests {
                 &mut part,
                 TextIndex::new(0, start)..TextIndex::new(0, start),
                 text,
-                EditOp::KeyInput(0, 0),
+                EditOp::KeyInput,
             );
         }
-        common.save_undo_state(&part, Some(EditOp::Cursor));
+        common.save_undo_state(&part, EditOp::Cursor);
         common.set_cursor_(&part, TextIndex::new(0, 1));
         edit(
             &mut common,
             &mut part,
             TextIndex::new(0, 1)..TextIndex::new(0, 1),
             "X",
-            EditOp::KeyInput(0, 0),
+            EditOp::KeyInput,
         );
         assert_eq!(part.as_str(), "aXbc");
 
-        assert!(common.apply_undo_redo(&mut part, false));
+        assert!(common.apply_undo_redo(&mut part, false).is_some());
         assert_eq!(part.as_str(), "abc");
         assert_eq!(common.cursor.cursor.byte(), 1);
-        assert!(common.apply_undo_redo(&mut part, false));
+        assert!(common.apply_undo_redo(&mut part, false).is_some());
         assert_eq!(part.as_str(), "a");
-        assert!(!common.apply_undo_redo(&mut part, false));
-        assert!(common.apply_undo_redo(&mut part, true));
+        assert!(!common.apply_undo_redo(&mut part, false).is_some());
+        assert!(common.apply_undo_redo(&mut part, true).is_some());
         assert_eq!(part.as_str(), "abc");
 
-        common.save_undo_state(&part, Some(EditOp::Cursor));
+        common.save_undo_state(&part, EditOp::Cursor);
         common.set_cursor_(&part, TextIndex::new(0, 0));
-        assert!(common.apply_undo_redo(&mut part, true));
+        assert!(common.apply_undo_redo(&mut part, true).is_some());
         assert_eq!(part.as_str(), "aXbc");
 
-        assert!(common.apply_undo_redo(&mut part, false));
+        assert!(common.apply_undo_redo(&mut part, false).is_some());
         edit(
             &mut common,
             &mut part,
             TextIndex::new(0, 1)..TextIndex::new(0, 1),
             "Y",
-            EditOp::Replace(0, 0),
+            EditOp::Replace,
         );
-        assert!(!common.apply_undo_redo(&mut part, true));
+        assert!(!common.apply_undo_redo(&mut part, true).is_some());
         assert_eq!(part.as_str(), "aYbc");
-        assert!(common.apply_undo_redo(&mut part, false));
+        assert!(common.apply_undo_redo(&mut part, false).is_some());
         assert_eq!(part.as_str(), "abc");
-        assert!(common.apply_undo_redo(&mut part, true));
+        assert!(common.apply_undo_redo(&mut part, true).is_some());
         assert_eq!(part.as_str(), "aYbc");
     }
 
@@ -2844,7 +2808,7 @@ mod tests {
             &mut parts,
             selection,
             "X\r\nY\nZ",
-            EditOp::Replace(1, 2),
+            EditOp::Replace,
         );
         let texts = |parts: &[Part]| {
             parts
@@ -2854,7 +2818,7 @@ mod tests {
         };
         let edited = texts(&parts);
         assert_eq!(parts.len(), 4);
-        assert!(common.apply_undo_redo(&mut parts, false));
+        assert!(common.apply_undo_redo(&mut parts, false).is_some());
         assert_eq!(texts(&parts), vec![
             ("first".into(), LineBreakBytes::LF),
             ("second".into(), LineBreakBytes::LF),
@@ -2862,7 +2826,7 @@ mod tests {
         ]);
         assert_eq!(common.cursor.anchor, TextIndex::new(2, 2));
         assert_eq!(common.cursor.cursor, TextIndex::new(1, 2));
-        assert!(common.apply_undo_redo(&mut parts, true));
+        assert!(common.apply_undo_redo(&mut parts, true).is_some());
         assert_eq!(texts(&parts), edited);
     }
 
@@ -2870,11 +2834,11 @@ mod tests {
     fn history_restores_line_break_when_text_is_shared() {
         let mut common = Common::new(true);
         let mut parts = vec![Part::new("a", LineBreakBytes::LF), Part::empty()];
-        common.save_undo_state(&parts, Some(EditOp::Replace(0, 0)));
+        common.save_undo_state(&parts, EditOp::Replace);
         parts[0].line_break = LineBreakBytes::CR_LF;
-        assert!(common.apply_undo_redo(&mut parts, false));
+        assert!(common.apply_undo_redo(&mut parts, false).is_some());
         assert_eq!(parts[0].line_break, LineBreakBytes::LF);
-        assert!(common.apply_undo_redo(&mut parts, true));
+        assert!(common.apply_undo_redo(&mut parts, true).is_some());
         assert_eq!(parts[0].line_break, LineBreakBytes::CR_LF);
     }
 
@@ -2897,7 +2861,7 @@ mod tests {
                 &mut parts,
                 range,
                 if insert { "new\n" } else { "" },
-                EditOp::Replace(0, if insert { 0 } else { 2 }),
+                EditOp::Replace,
             );
             let edited_len = parts.len();
             let tail: Vec<_> = parts[edited_len - 90..]
@@ -2910,7 +2874,7 @@ mod tests {
                 .collect();
 
             for (redo, expected_len) in [(false, original_len), (true, edited_len)] {
-                assert!(common.apply_undo_redo(&mut parts, redo));
+                assert!(common.apply_undo_redo(&mut parts, redo).is_some());
                 assert_eq!(parts.len(), expected_len);
                 for (part, text) in parts[expected_len - 90..].iter().zip(&tail) {
                     assert!(Rc::ptr_eq(&part.text, text));
@@ -2932,20 +2896,20 @@ mod tests {
                 &mut part,
                 TextIndex::new(0, start)..TextIndex::new(0, start + 1),
                 "",
-                EditOp::KeyDelete(0, 0),
+                EditOp::KeyDelete,
             );
         }
-        assert!(common.apply_undo_redo(&mut part, false));
+        assert!(common.apply_undo_redo(&mut part, false).is_some());
         assert_eq!(part.as_str(), "abcd");
         edit(
             &mut common,
             &mut part,
             TextIndex::new(0, 0)..TextIndex::new(0, 0),
             "",
-            EditOp::Replace(0, 0),
+            EditOp::Replace,
         );
-        assert!(common.apply_undo_redo(&mut part, true));
+        assert!(common.apply_undo_redo(&mut part, true).is_some());
         assert_eq!(part.as_str(), "ab");
-        assert!(!common.apply_undo_redo(&mut part, true));
+        assert!(!common.apply_undo_redo(&mut part, true).is_some());
     }
 }

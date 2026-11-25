@@ -79,14 +79,16 @@ impl<Index: Copy + Eq + Ord> CursorRange<Index> {
         self.anchor = index;
         self.cursor = index;
     }
+}
 
-    /// Apply new limit to the maximum length
+impl CursorRange<usize> {
+    /// Fix selection for updated text
     ///
-    /// Call this method if the string changes under the selection to ensure
-    /// that the selection does not exceed the length of the new string.
+    /// This method ensures that indices lie on char boundaries and are not
+    /// beyond the end of the text.
     #[inline]
-    pub fn set_max_len(&mut self, len: Index) {
-        self.cursor = self.cursor.min(len);
-        self.anchor = self.anchor.min(len);
+    pub fn fix_for_text(&mut self, text: &str) {
+        self.cursor = text.floor_char_boundary(self.cursor);
+        self.anchor = text.floor_char_boundary(self.anchor);
     }
 }

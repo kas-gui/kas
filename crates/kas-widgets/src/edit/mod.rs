@@ -25,35 +25,41 @@ use std::fmt::Debug;
 use std::ops::Range;
 
 /// Describes the change source of a history (undo) state
-///
-/// Many variants include the `part` or part `range` affected.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum EditOp {
     /// Initial state
+    ///
+    /// This is a distinct "operation" to ensure that the initial state gets
+    /// saved on the first edit.
     Initial,
     /// Cursor movement or selection adjustment
+    ///
+    /// This is a special "operation": it does not by itself cause a new state
+    /// to be saved, but does ensure that other operations such as `KeyDelete`
+    /// cannot be merged when separated by a `Cursor` operation.
     Cursor,
-    /// Keyboard
-    KeyInput(u32, u32),
+    /// Keyboard input
+    ///
+    /// This is mergeable with itself.
+    KeyInput,
     /// Input Method Editor
-    Ime(u32),
+    ///
+    /// This is mergeable with itself.
+    Ime,
     /// Deletion due to key press
-    KeyDelete(u32, u32),
-    /// Replacement of a range, e.g. via the clipboard. Does not merge.
-    Replace(u32, u32),
+    ///
+    /// This is mergeable with itself.
+    KeyDelete,
+    /// Replacement of a range, e.g. via the clipboard.
+    ///
+    /// This is never mergeable.
+    Replace,
 }
 
 impl EditOp {
-    /// An edit may be merged with a previous one if both are equal and this method returns `true`
-    fn try_merge(self, last_op: &mut Option<Self>) -> bool {
-        match (self, last_op) {
-            (EditOp::Cursor, Some(last)) => {
-                *last = self;
-                true
-            }
-            (EditOp::KeyInput(_, _) | EditOp::KeyDelete(_, _), Some(last)) if self == *last => true,
-            _ => false,
-        }
+    /// Whether the operation is mergeable with itself
+    fn is_mergeable(self) -> bool {
+        matches!(self, EditOp::KeyInput | EditOp::Ime | EditOp::KeyDelete)
     }
 }
 

@@ -214,6 +214,18 @@ impl<T: PartialEq> UndoStack<T> {
         self.head = 0;
     }
 
+    /// The number of saved states
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.states.len()
+    }
+
+    /// The index of the current state, if any
+    #[inline]
+    pub fn head(&self) -> Option<usize> {
+        self.head.checked_sub(1)
+    }
+
     /// Access the current state, if any
     pub fn current_mut(&mut self) -> Option<&mut T> {
         self.head
