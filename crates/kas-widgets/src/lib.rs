@@ -64,6 +64,7 @@ pub mod adapt;
 pub use adapt::{Adapt, AdaptWidget, AdaptWidgetAny};
 
 mod access_label;
+mod block;
 mod button;
 mod check_box;
 mod combobox;
@@ -94,6 +95,7 @@ mod text;
 #[doc(inline)] pub use kas::widgets::*;
 
 pub use access_label::AccessLabel;
+pub use block::Block;
 pub use button::Button;
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
