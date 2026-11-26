@@ -218,6 +218,47 @@ impl Window {
         ]);
     }
 
+    /// `m` is the mid-point of the circle/oval. `o` is the opposite point of
+    /// the axis-aligned bounding box within which the quarter circle is drawn.
+    ///
+    /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
+    pub fn quarter_circle(&mut self, pass: PassId, m: Vec2, o: Vec2, inner_radius: f32, col: Rgba) {
+        if m.0 == o.0 || m.1 == o.1 || col.a == 0.0 {
+            // zero size or transparent: nothing to draw
+            return;
+        }
+
+        let inner = inner_radius.clamp(0.0, 1.0);
+        let inner = inner * inner; // shader compares to square
+
+        let mut x = Vec2(m.0, o.1);
+        let mut y = Vec2(o.0, m.1);
+
+        let n_m = Vec2::splat(0.0);
+        let n_o = (o - m).sign();
+        let mut n_x = Vec2(n_m.0, n_o.1);
+        let mut n_y = Vec2(n_o.0, n_m.1);
+
+        if x > y || y > x {
+            // Swap to ensure we draw the correct face
+            std::mem::swap(&mut x, &mut y);
+            std::mem::swap(&mut n_x, &mut n_y);
+        }
+
+        let p = Vec2::ONE / (o - m) * AA_OFFSET;
+
+        let m = Vertex::new2(m, col, inner, n_m, p);
+        let o = Vertex::new2(o, col, inner, n_o, p);
+        let x = Vertex::new2(x, col, inner, n_x, p);
+        let y = Vertex::new2(y, col, inner, n_y, p);
+
+        #[rustfmt::skip]
+        self.add_vertices(pass.pass(), &[
+            x, m, o,
+            o, m, y,
+        ]);
+    }
+
     /// Bounds on input: `aa < cc < dd < bb`, `0 ≤ inner_radius ≤ 1`.
     pub fn rounded_frame(
         &mut self,
