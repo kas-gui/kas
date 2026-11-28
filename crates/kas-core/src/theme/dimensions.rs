@@ -6,10 +6,8 @@
 //! A shared implementation of [`ThemeSize`]
 
 use linearize::StaticMap;
-use std::any::Any;
 use std::f32;
 
-use super::anim::AnimState;
 use super::{BarStyle, BoxStyle, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
 use crate::ActionResize;
 use crate::cast::{Ceil, Nearest, traits::*};
@@ -158,17 +156,19 @@ impl Dimensions {
     }
 }
 
-/// A convenient implementation of [`crate::theme::Window`]
+/// Per-window theme data
 pub struct Window {
+    /// Dimensions, according to the current scale factor
     pub dims: Dimensions,
-    pub anim: AnimState,
+    /// Animation state
+    pub anim: super::anim::AnimState,
 }
 
 impl Window {
     pub fn new(dims: &Parameters, config: &WindowConfig) -> Self {
         Window {
             dims: Dimensions::new(dims, config),
-            anim: AnimState::new(&config.theme()),
+            anim: super::anim::AnimState::new(&config.theme()),
         }
     }
 
@@ -181,16 +181,6 @@ impl Window {
         self.dims = Dimensions::new(dims, config);
         (old_dims.scale != self.dims.scale || old_dims.dpem != self.dims.dpem)
             .then_some(ActionResize)
-    }
-}
-
-impl super::Window for Window {
-    fn size(&self) -> &dyn ThemeSize {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }
 

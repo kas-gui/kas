@@ -58,19 +58,18 @@ pub struct DrawHandle<'a, DS: DrawSharedImpl> {
 }
 
 impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme {
-    type Window = dim::Window;
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn init(&mut self, _: &RefCell<Config>) {}
 
-    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> dim::Window {
         self.cols = config.theme().get_active_scheme().into();
         dim::Window::new(&self.dims, config)
     }
 
     fn update_window(
         &mut self,
-        w: &mut Self::Window,
+        w: &mut dim::Window,
         config: &WindowConfig,
     ) -> Option<ActionResize> {
         self.cols = config.theme().get_active_scheme().into();
@@ -81,7 +80,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme {
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        w: &'a mut Self::Window,
+        w: &'a mut dim::Window,
     ) -> Self::Draw<'a> {
         w.anim.update();
 
@@ -96,7 +95,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme {
     fn draw_upcast<'a>(
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        w: &'a mut Self::Window,
+        w: &'a mut dim::Window,
         cols: &'a ColorsLinear,
     ) -> Self::Draw<'a> {
         DrawHandle { draw, ev, w, cols }

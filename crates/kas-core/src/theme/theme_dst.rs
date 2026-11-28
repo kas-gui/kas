@@ -7,7 +7,7 @@
 
 use std::cell::RefCell;
 
-use super::{Theme, Window};
+use super::{Theme, dimensions};
 use crate::ActionResize;
 use crate::config::{Config, WindowConfig};
 use crate::draw::{DrawIface, DrawSharedImpl, color};
@@ -31,9 +31,8 @@ pub trait ThemeDst<DS: DrawSharedImpl> {
     /// Construct per-window storage
     ///
     /// See also [`Theme::new_window`].
-    fn new_window(&mut self, config: &WindowConfig) -> Box<dyn Window> {
-        let window = <T as Theme<DS>>::new_window(self, config);
-        Box::new(window)
+    fn new_window(&mut self, config: &WindowConfig) -> dimensions::Window {
+        <T as Theme<DS>>::new_window(self, config)
     }
 
     /// Update a window created by [`Theme::new_window`]
@@ -43,20 +42,18 @@ pub trait ThemeDst<DS: DrawSharedImpl> {
     /// Returns whether a resize is required based on changes to the scale factor or font size.
     fn update_window(
         &mut self,
-        window: &mut dyn Window,
+        window: &mut dimensions::Window,
         config: &WindowConfig,
     ) -> Option<ActionResize> {
-        let window = window.as_any_mut().downcast_mut().unwrap();
-        self.update_window(window, config)
+        <T as Theme<DS>>::update_window(self, window, config)
     }
 
     fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        window: &'a mut dyn Window,
+        window: &'a mut dimensions::Window,
     ) -> Box<dyn ThemeDraw + 'a> {
-        let window = window.as_any_mut().downcast_mut().unwrap();
         Box::new(<T as Theme<DS>>::draw(self, draw, ev, window))
     }
 

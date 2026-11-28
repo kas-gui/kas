@@ -5,17 +5,15 @@
 
 //! "Handle" types used by themes
 
-use super::{BarStyle, BoxStyle, FrameStyle, MarginStyle, TextClass};
+use super::{BarStyle, BoxStyle, FrameStyle, MarginStyle, MarkStyle, TextClass};
 use crate::autoimpl;
 use crate::dir::{Direction, Directional};
 use crate::event::{CanRedraw, EventState};
 use crate::geom::Rect;
 use crate::layout::{AlignPair, FrameRules, LogicalBuilder, Margins, SizeRules};
-use crate::theme::MarkStyle;
 use std::ops::{Deref, DerefMut};
 
-#[allow(unused)]
-use crate::{event::ConfigCx, layout::Stretch, theme::DrawCx};
+#[allow(unused)] use super::DrawCx;
 
 /// Size and scaling interface
 ///

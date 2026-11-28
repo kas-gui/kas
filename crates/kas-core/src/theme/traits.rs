@@ -5,12 +5,11 @@
 
 //! Theme traits
 
-use super::{ColorsLinear, ThemeDraw, ThemeSize};
+use super::{ColorsLinear, ThemeDraw, dimensions};
 use crate::config::{Config, WindowConfig};
 use crate::draw::{DrawIface, DrawSharedImpl, color};
 use crate::event::EventState;
 use crate::{ActionResize, autoimpl};
-use std::any::Any;
 use std::cell::RefCell;
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -21,9 +20,6 @@ use std::cell::RefCell;
 /// large resources (e.g. fonts and icons) consider using external storage.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Theme<DS: DrawSharedImpl> {
-    /// The associated [`Window`] implementation.
-    type Window: Window;
-
     /// The associated [`ThemeDraw`] implementation.
     type Draw<'a>: ThemeDraw
     where
@@ -50,7 +46,7 @@ pub trait Theme<DS: DrawSharedImpl> {
     /// ```
     ///
     /// A reference to the draw backend is provided allowing configuration.
-    fn new_window(&mut self, config: &WindowConfig) -> Self::Window;
+    fn new_window(&mut self, config: &WindowConfig) -> dimensions::Window;
 
     /// Update a window created by [`Theme::new_window`]
     ///
@@ -59,7 +55,7 @@ pub trait Theme<DS: DrawSharedImpl> {
     /// Returns whether a resize is required based on changes to the scale factor or font size.
     fn update_window(
         &mut self,
-        window: &mut Self::Window,
+        window: &mut dimensions::Window,
         config: &WindowConfig,
     ) -> Option<ActionResize>;
 
@@ -77,7 +73,7 @@ pub trait Theme<DS: DrawSharedImpl> {
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        window: &'a mut Self::Window,
+        window: &'a mut dimensions::Window,
     ) -> Self::Draw<'a>;
 
     /// Construct a draw object from parts
@@ -87,7 +83,7 @@ pub trait Theme<DS: DrawSharedImpl> {
     fn draw_upcast<'a>(
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        w: &'a mut Self::Window,
+        w: &'a mut dimensions::Window,
         cols: &'a ColorsLinear,
     ) -> Self::Draw<'a>;
 
@@ -95,18 +91,4 @@ pub trait Theme<DS: DrawSharedImpl> {
     ///
     /// This is not used when the window is transparent.
     fn clear_color(&self) -> color::Rgba;
-}
-
-/// Per-window storage for the theme
-///
-/// Constructed via [`Theme::new_window`].
-///
-/// The main reason for this separation is to allow proper handling of
-/// multi-window applications across screens with differing DPIs.
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Window: 'static {
-    /// Construct a [`ThemeSize`] object
-    fn size(&self) -> &dyn ThemeSize;
-
-    fn as_any_mut(&mut self) -> &mut dyn Any;
 }

@@ -39,10 +39,7 @@ pub(super) struct Shared<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>
     pub(super) window_id_factory: WindowIdFactory,
 }
 
-impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Shared<A, G, T>
-where
-    T::Window: kas::theme::Window,
-{
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Shared<A, G, T> {
     /// Construct
     pub(super) fn new(
         platform: Platform,
