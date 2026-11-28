@@ -59,7 +59,7 @@ fn main() -> kas::runner::Result<()> {
 
     let ui = column![
         row!["From 1 to", EditBox::parser(SetLen)],
-        table.align(AlignHints::RIGHT),
+        table.h_align(Align::BR),
     ];
     let ui = ui
         .with_state(12)

@@ -18,6 +18,8 @@ use syn::{Expr, Ident, LitInt, LitStr, Token};
 #[allow(non_camel_case_types)]
 mod kw {
     syn::custom_keyword!(align);
+    syn::custom_keyword!(h_align);
+    syn::custom_keyword!(v_align);
     syn::custom_keyword!(pack);
     syn::custom_keyword!(with_stretch);
     syn::custom_keyword!(column);
@@ -158,6 +160,34 @@ impl Item {
                 let inner;
                 let _ = parenthesized!(inner in input);
                 let hints: Expr = inner.parse()?;
+
+                ty = quote! { ::kas::widgets::adapt::Align<#ty> };
+                def = quote! { ::kas::widgets::adapt::Align::new(#def, #hints) };
+            } else if input.peek(Token![.]) && input.peek2(kw::h_align) {
+                let _: Token![.] = input.parse()?;
+                let _: kw::h_align = input.parse()?;
+
+                let inner;
+                let _ = parenthesized!(inner in input);
+                let align: Expr = inner.parse()?;
+                let hints = quote! { ::kas::layout::AlignHints {
+                    horiz: Some(#align),
+                    vert: None,
+                } };
+
+                ty = quote! { ::kas::widgets::adapt::Align<#ty> };
+                def = quote! { ::kas::widgets::adapt::Align::new(#def, #hints) };
+            } else if input.peek(Token![.]) && input.peek2(kw::v_align) {
+                let _: Token![.] = input.parse()?;
+                let _: kw::v_align = input.parse()?;
+
+                let inner;
+                let _ = parenthesized!(inner in input);
+                let align: Expr = inner.parse()?;
+                let hints = quote! { ::kas::layout::AlignHints {
+                    horiz: None,
+                    vert: Some(#align),
+                } };
 
                 ty = quote! { ::kas::widgets::adapt::Align<#ty> };
                 def = quote! { ::kas::widgets::adapt::Align::new(#def, #hints) };

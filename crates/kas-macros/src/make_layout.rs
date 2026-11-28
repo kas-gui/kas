@@ -17,9 +17,12 @@ use syn::{braced, bracketed, parenthesized, parse_quote, parse2, token};
 
 #[allow(non_camel_case_types)]
 mod kw {
+    use super::*;
     use syn::custom_keyword;
 
     custom_keyword!(align);
+    custom_keyword!(h_align);
+    custom_keyword!(v_align);
     custom_keyword!(pack);
     custom_keyword!(with_stretch);
     custom_keyword!(with_margin_style);
@@ -32,6 +35,23 @@ mod kw {
     custom_keyword!(with_direction);
     custom_keyword!(with_style);
     custom_keyword!(with_background);
+
+    #[derive(Debug)]
+    pub enum Align {
+        HV(align),
+        H(h_align),
+        V(v_align),
+    }
+
+    impl ToTokens for Align {
+        fn to_tokens(&self, toks: &mut Toks) {
+            match self {
+                Align::HV(kw) => kw.to_tokens(toks),
+                Align::H(kw) => kw.to_tokens(toks),
+                Align::V(kw) => kw.to_tokens(toks),
+            }
+        }
+    }
 }
 
 #[derive(Default)]
@@ -198,7 +218,16 @@ impl Layout {
         loop {
             if let Ok(dot_token) = input.parse::<Token![.]>() {
                 if input.peek(kw::align) {
-                    let align = Align::parse(dot_token, input)?;
+                    let kw = kw::Align::HV(input.parse()?);
+                    let align = Align::parse(dot_token, kw, input)?;
+                    layout = Layout::Align(Box::new(layout), align);
+                } else if input.peek(kw::h_align) {
+                    let kw = kw::Align::H(input.parse()?);
+                    let align = Align::parse(dot_token, kw, input)?;
+                    layout = Layout::Align(Box::new(layout), align);
+                } else if input.peek(kw::v_align) {
+                    let kw = kw::Align::V(input.parse()?);
+                    let align = Align::parse(dot_token, kw, input)?;
                     layout = Layout::Align(Box::new(layout), align);
                 } else if input.peek(kw::pack) {
                     let pack = Pack::parse(dot_token, input, core_gen)?;
@@ -214,9 +243,9 @@ impl Layout {
                     layout = Layout::WithMarginStyle(Box::new(layout), expr);
                 } else if let Ok(ident) = input.parse::<Ident>() {
                     let note_msg = if matches!(&layout, &Layout::Frame(_, _, _, _)) {
-                        "supported methods on layout objects: `align`, `pack`, `with_style`, `with_background`"
+                        "supported methods on layout objects: `align`, `h_align`, `v_align`, `pack`, `with_style`, `with_background`"
                     } else {
-                        "supported methods on layout objects: `align`, `pack`"
+                        "supported methods on layout objects: `align`, `h_align`, `v_align`, `pack`"
                     };
                     emit_error!(
                         ident, "method not supported here";
@@ -387,20 +416,29 @@ impl ToTokens for Direction {
 #[allow(unused)]
 struct Align {
     pub dot_token: Token![.],
-    pub kw: kw::align,
+    pub kw: kw::Align,
     pub paren_token: token::Paren,
     pub hints: Expr,
 }
 impl Align {
-    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
-        let kw = input.parse::<kw::align>()?;
+    fn parse(dot_token: Token![.], kw: kw::Align, input: ParseStream) -> Result<Self> {
         let content;
         let paren_token = parenthesized!(content in input);
+        let arg = content.parse()?;
+        let hints = match kw {
+            kw::Align::HV(_) => arg,
+            kw::Align::H(_) => {
+                parse_quote! { ::kas::layout::AlignHints { horiz: Some(#arg), vert: None } }
+            }
+            kw::Align::V(_) => {
+                parse_quote! { ::kas::layout::AlignHints { horiz: None, vert: Some(#arg) } }
+            }
+        };
         Ok(Align {
             dot_token,
             kw,
             paren_token,
-            hints: content.parse()?,
+            hints,
         })
     }
 }

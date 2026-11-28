@@ -5,7 +5,7 @@
 
 //! Demonstration of widget and text layouts
 
-use kas::layout::AlignHints;
+use kas::layout::Align;
 use kas::widgets::{AdaptWidget, CheckBox, MultiPartEditor, ScrollLabel, grid};
 use kas::window::Properties;
 
@@ -19,8 +19,8 @@ fn main() -> kas::runner::Result<()> {
         (1, 0) => "Layout demo",
         (2, 0) => CheckBox::new(|_, _| true),
         (0..=2, 1) => ScrollLabel::new(LIPSUM),
-        (0, 2) => "abc אבג def".align(AlignHints::CENTER),
-        (1..=2, 3) => ScrollLabel::new(CRASIT).align(AlignHints::STRETCH),
+        (0, 2) => "abc אבג def".h_align(Align::Center),
+        (1..=2, 3) => ScrollLabel::new(CRASIT).h_align(Align::Stretch),
         (0, 3) => MultiPartEditor::new("A small\nsample\nof text"),
     };
 
