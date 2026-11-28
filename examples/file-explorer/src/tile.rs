@@ -184,7 +184,7 @@ mod DirItem {
     #[widget]
     #[layout(column![
         self.tile,
-        self.label.align(AlignHints::CENTER),
+        self.label.h_align(Align::Center),
     ].with_margin_style(MarginStyle::Huge)
     )]
     pub struct DirItem {

@@ -5,9 +5,8 @@
 
 //! Canvas widget
 
-use super::Scaling;
 use kas::draw::{ImageFormat, ImageHandle};
-use kas::layout::LogicalSize;
+use kas::layout::{LogicalSize, Scaling};
 use kas::prelude::*;
 use kas::theme::MarginStyle;
 use std::cell::RefCell;

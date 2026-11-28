@@ -5,10 +5,9 @@
 
 //! 2D pixmap widget
 
-use super::Scaling;
 use kas::cast::Nearest;
 use kas::draw::ImageHandle;
-use kas::layout::LogicalSize;
+use kas::layout::{LogicalSize, Scaling};
 use kas::prelude::*;
 use kas::theme::MarginStyle;
 

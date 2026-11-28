@@ -11,7 +11,7 @@ use kas::Widget;
 use kas::cast::{Cast, CastTo, Ceil};
 use kas::dir::Directional;
 use kas::geom::Vec2;
-use kas::layout::{AlignHints, AxisInfo, SizeRules};
+use kas::layout::{self, AlignHints, AxisInfo, SizeRules};
 use kas::text::AccessString;
 use kas::theme::{MarginStyle, SizeCx, TextClass};
 use std::fmt::Debug;
@@ -41,6 +41,36 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn align(self, hints: AlignHints) -> Align<Self> {
         Align::new(self, hints)
+    }
+
+    /// Adjust horizontal alignment
+    ///
+    /// This is essentially sugar over [`Self::align`], providing only a
+    /// horizontal alignment hint.
+    /// The inner widget chooses how to apply (or ignore) this hint.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn h_align(self, align: layout::Align) -> Align<Self> {
+        Align::new(self, AlignHints {
+            horiz: Some(align),
+            vert: None,
+        })
+    }
+
+    /// Adjust vertical alignment
+    ///
+    /// This is essentially sugar over [`Self::align`], providing only a
+    /// vertical alignment hint.
+    /// The inner widget chooses how to apply (or ignore) this hint.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn v_align(self, align: layout::Align) -> Align<Self> {
+        Align::new(self, AlignHints {
+            horiz: None,
+            vert: Some(align),
+        })
     }
 
     /// Apply an alignment hint, squash and align the result

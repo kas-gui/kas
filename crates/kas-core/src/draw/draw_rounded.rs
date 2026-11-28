@@ -50,6 +50,35 @@ pub trait DrawRounded: Draw {
         self.draw.circle_2col(self.pass, rect, col1, col2);
     }
 
+    /// Draw a quarter circle or oval with uniform colour
+    ///
+    /// This draws a quarter circle or oval whose mid-point is at `m` within the
+    /// axis-aligned box defined by `m` and `o`.
+    ///
+    /// The `inner_radius` parameter gives the inner radius relative to the
+    /// outer radius: a value of `0.0` will result in the whole shape being
+    /// painted, while `1.0` will result in a zero-width line on the outer edge.
+    fn quarter_circle(&mut self, m: Vec2, o: Vec2, inner_radius: f32, col: Rgba) {
+        self.draw.quarter_circle(self.pass, m, o, inner_radius, col);
+    }
+
+    /// Draw a rectangle with rounded corners
+    ///
+    /// `corner_radius` is the radius of the circle used to round off each
+    /// corner, in pixels.
+    fn rounded_rect(&mut self, rect: Quad, corner_radius: f32, col: Rgba) {
+        self.rounded_rect_2(rect, Vec2::splat(corner_radius), col);
+    }
+
+    /// Draw a rectangle with rounded corners
+    ///
+    /// `corner_radius` is the radius of the circle used to round off each
+    /// corner, horizontally and vertically, in pixels.
+    fn rounded_rect_2(&mut self, rect: Quad, corner_radius: Vec2, col: Rgba) {
+        self.draw
+            .rounded_rect_2(self.pass, rect, corner_radius, col);
+    }
+
     /// Draw a frame with rounded corners and uniform colour
     ///
     /// All drawing occurs within the `outer` rect and outside of the `inner`
@@ -95,6 +124,12 @@ pub trait DrawRoundedImpl: DrawImpl {
 
     /// Draw a circle or oval with two colours
     fn circle_2col(&mut self, pass: PassId, rect: Quad, col1: Rgba, col2: Rgba);
+
+    /// Draw a quarter circle or oval with uniform colour
+    fn quarter_circle(&mut self, pass: PassId, m: Vec2, o: Vec2, inner_radius: f32, col: Rgba);
+
+    /// Draw a rectangle with rounded corners
+    fn rounded_rect_2(&mut self, pass: PassId, rect: Quad, corner_radius: Vec2, col: Rgba);
 
     /// Draw a frame with rounded corners and uniform colour
     fn rounded_frame(&mut self, pass: PassId, outer: Quad, inner: Quad, r1: f32, col: Rgba);

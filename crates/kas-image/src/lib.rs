@@ -26,12 +26,6 @@ pub use canvas::{Canvas, CanvasProgram};
 pub use sprite::Sprite;
 #[cfg(feature = "svg")] pub use svg::Svg;
 
-use kas::cast::{Conv, ConvTo, Nearest};
-use kas::geom::{Rect, Vec2};
-use kas::impl_scope;
-use kas::layout::{AlignPair, AxisInfo, LogicalSize, SizeRules, Stretch};
-use kas::theme::{MarginStyle, SizeCx};
-
 /// Load a window icon from a path
 #[cfg(feature = "image")]
 pub fn window_icon_from_path<P: AsRef<std::path::Path>>(
@@ -46,65 +40,4 @@ pub fn window_icon_from_path<P: AsRef<std::path::Path>>(
     let (w, h) = im.dimensions();
     let icon = kas::window::icon::RgbaIcon::new(im.into_vec(), w, h)?;
     Ok(icon.into())
-}
-
-impl_scope! {
-    /// Control over image scaling
-    #[impl_default]
-    #[derive(Clone, Debug, PartialEq)]
-    struct Scaling {
-        /// Display size (logical pixels)
-        ///
-        /// This may be set by the providing type or by the user.
-        pub size: LogicalSize,
-        /// Margins
-        pub margins: MarginStyle,
-        /// If true, aspect ratio is fixed relative to [`Self::size`]
-        ///
-        /// Default: `true`
-        pub fix_aspect: bool = true,
-        /// Widget stretchiness
-        ///
-        /// If is `None`, max size is limited to ideal size.
-        ///
-        /// By default, this is `None`.
-        pub stretch: Stretch,
-    }
-}
-
-impl Scaling {
-    /// Generates [`SizeRules`] based on size
-    pub fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
-        let scale_factor = cx.scale_factor();
-        let ideal = self.size.to_physical(scale_factor).extract(axis);
-        SizeRules::new(ideal, ideal, self.stretch)
-            .with_margins(cx.margins(self.margins).extract(axis))
-    }
-
-    /// Constrains and aligns within the given `rect`
-    ///
-    /// This aligns content when using [`Stretch::None`] and when fixed-aspect
-    /// scaling constrains size.
-    pub fn align(&mut self, rect: Rect, align: AlignPair, scale_factor: f32) -> Rect {
-        let mut size = rect.size;
-
-        if self.stretch == Stretch::None {
-            let ideal = self.size.to_physical(scale_factor);
-            size = size.min(ideal);
-        }
-
-        if self.fix_aspect {
-            let logical_size = Vec2::from(self.size);
-            let Vec2(rw, rh) = Vec2::conv(size) / logical_size;
-
-            // Use smaller ratio, if any is finite
-            if rw < rh {
-                size.1 = i32::conv_to(Nearest, rw * logical_size.1);
-            } else if rh < rw {
-                size.0 = i32::conv_to(Nearest, rh * logical_size.0);
-            }
-        }
-
-        align.aligned_rect(size, rect)
-    }
 }

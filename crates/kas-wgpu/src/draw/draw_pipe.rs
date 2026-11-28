@@ -486,6 +486,49 @@ impl<CW: CustomWindow> DrawRoundedImpl for DrawWindow<CW> {
     }
 
     #[inline]
+    fn quarter_circle(&mut self, pass: PassId, m: Vec2, o: Vec2, inner_radius: f32, col: Rgba) {
+        self.flat_round
+            .quarter_circle(pass, m, o, inner_radius, col);
+    }
+
+    fn rounded_rect_2(&mut self, pass: PassId, outer: Quad, corner_radius: Vec2, col: Rgba) {
+        if !(outer.a < outer.b) || col.a == 0.0 {
+            // zero / negative size or transparent: nothing to draw
+            return;
+        }
+
+        let max_radius = (outer.b - outer.a) * Vec2::splat(0.5);
+        let radius = corner_radius.clamp(Vec2::ZERO, max_radius);
+
+        let out_ab = Vec2(outer.a.0, outer.b.1);
+        let out_ba = Vec2(outer.b.0, outer.a.1);
+        let inner = outer.shrink_vec(radius);
+        let in_ab = Vec2(inner.a.0, inner.b.1);
+        let in_ba = Vec2(inner.b.0, inner.a.1);
+        let out_a_in_a = Vec2(outer.a.0, inner.a.1);
+        let out_b_in_b = Vec2(outer.b.0, inner.b.1);
+        let in_a_out_a = Vec2(inner.a.0, outer.a.1);
+        let in_b_in_a = Vec2(inner.b.0, inner.a.1);
+        let in_a_in_b = Vec2(inner.a.0, inner.b.1);
+        let in_b_out_b = Vec2(inner.b.0, outer.b.1);
+
+        self.shaded_square
+            .rect(pass, Quad::from_coords(out_a_in_a, out_b_in_b), col);
+        self.shaded_square
+            .rect(pass, Quad::from_coords(in_a_out_a, in_b_in_a), col);
+        self.shaded_square
+            .rect(pass, Quad::from_coords(in_a_in_b, in_b_out_b), col);
+        self.flat_round
+            .quarter_circle(pass, inner.a, outer.a, 0.0, col);
+        self.flat_round
+            .quarter_circle(pass, in_ab, out_ab, 0.0, col);
+        self.flat_round
+            .quarter_circle(pass, inner.b, outer.b, 0.0, col);
+        self.flat_round
+            .quarter_circle(pass, in_ba, out_ba, 0.0, col);
+    }
+
+    #[inline]
     fn rounded_frame(&mut self, pass: PassId, outer: Quad, inner: Quad, r1: f32, col: Rgba) {
         self.flat_round.rounded_frame(pass, outer, inner, r1, col);
     }

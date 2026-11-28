@@ -11,6 +11,20 @@ use kas::prelude::*;
 mod Filler {
     /// A space filler
     ///
+    /// This is typically used to add an expansion point inside a row or column:
+    /// ```
+    /// # use kas::Widget;
+    /// # use kas_widgets::{column, Filler};
+    /// # fn widget() -> impl Widget<Data = ()> {
+    /// column![
+    ///     "First row",
+    ///     "Second row",
+    ///     Filler::new(),
+    ///     "Bottom",
+    /// ]
+    /// # }
+    /// ```
+    ///
     /// This widget has zero minimum size but can expand according to the given
     /// stretch priority.
     #[derive(Debug, Default)]

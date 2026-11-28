@@ -447,13 +447,16 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// > `W: Widget<Data = ()>`. This widget will be stored in a hidden field and
 /// > is accessible through `Tile::get_child` but does not receive input data.
 ///
-/// > _Call_ : (`.` ([`align`] | [`pack`] | [`with_stretch`] | [`with_margin_style`]) _MethodArgs_)\
+/// > _Call_ : (`.` ([`align`] | [`h_align`] | [`v_align`] | [`pack`] |
+/// > [`with_stretch`] | [`with_margin_style`]) _MethodArgs_)\
 /// > &nbsp;&nbsp; A method call modifying layout.
 ///
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
 /// [`MacroDefinedLayout`]: https://docs.rs/kas/latest/kas/trait.MacroDefinedLayout.html
 /// [macros in `kas::widgets`]: https://docs.rs/kas/latest/kas/widgets/#macros
 /// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
+/// [`h_align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.h_align
+/// [`v_align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.v_align
 /// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
 /// [`with_stretch`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_stretch
 /// [`with_margin_style`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.with_margin_style
