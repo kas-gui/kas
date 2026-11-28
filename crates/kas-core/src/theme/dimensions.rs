@@ -10,11 +10,11 @@ use std::any::Any;
 use std::f32;
 
 use super::anim::AnimState;
-use super::{Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
+use super::{BarStyle, BoxStyle, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
 use crate::ActionResize;
 use crate::cast::{Ceil, Nearest, traits::*};
 use crate::config::WindowConfig;
-use crate::dir::Directional;
+use crate::dir::{Direction, Directional};
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, FrameRules, Margins, SizeRules, Stretch};
 
@@ -246,51 +246,20 @@ impl ThemeSize for Window {
         }
     }
 
-    fn feature(&self, feature: Feature, axis_is_vertical: bool) -> SizeRules {
-        let dir_is_vertical;
-        let mut size;
+    fn bar(&self, style: BarStyle, dir: Direction, axis_is_vertical: bool) -> SizeRules {
         let mut ideal_mul = 3;
-        let m;
-
-        match feature {
-            Feature::Separator => {
-                return SizeRules::fixed(self.dims.frame);
-            }
-            Feature::Mark(style) => {
-                let w = match style {
-                    MarkStyle::Chevron(dir) => match dir.is_vertical() == axis_is_vertical {
-                        true => self.dims.mark / 2 + i32::conv_to(Ceil, self.dims.mark_line),
-                        false => self.dims.mark + i32::conv_to(Ceil, self.dims.mark_line),
-                    },
-                    MarkStyle::X | MarkStyle::Plus | MarkStyle::Minus => {
-                        self.dims.mark + i32::conv_to(Ceil, self.dims.mark_line)
-                    }
-                };
-                return SizeRules::fixed(w).with_margin(self.dims.m_tiny);
-            }
-            Feature::CheckBox | Feature::RadioBox => {
-                return SizeRules::fixed(self.dims.check_box).with_margin(self.dims.m_small);
-            }
-            Feature::ScrollBar(dir) => {
-                dir_is_vertical = dir.is_vertical();
-                size = self.dims.scroll_bar;
-                m = 0;
-            }
-            Feature::Slider(dir) => {
-                dir_is_vertical = dir.is_vertical();
-                size = self.dims.slider;
+        let (mut size, m) = match style {
+            BarStyle::Progress => (self.dims.progress_bar, self.dims.m_large),
+            BarStyle::Scroll => (self.dims.scroll_bar, 0),
+            BarStyle::Separator => return SizeRules::fixed(self.dims.frame),
+            BarStyle::Slider => {
                 ideal_mul = 5;
-                m = self.dims.m_large;
+                (self.dims.slider, self.dims.m_large)
             }
-            Feature::ProgressBar(dir) => {
-                dir_is_vertical = dir.is_vertical();
-                size = self.dims.progress_bar;
-                m = self.dims.m_large;
-            }
-        }
+        };
 
         let mut stretch = Stretch::High;
-        if dir_is_vertical != axis_is_vertical {
+        if dir.is_vertical() != axis_is_vertical {
             size = size.transpose();
             ideal_mul = 1;
             stretch = Stretch::None;
@@ -298,25 +267,49 @@ impl ThemeSize for Window {
         SizeRules::new(size.0, ideal_mul * size.0, stretch).with_margin(m)
     }
 
-    fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
-        let mut ideal_size = rect.size;
-        match feature {
-            Feature::Separator => (), // has no direction so we cannot align
-            Feature::Mark(_) => (),   // aligned when drawn instead
-            Feature::CheckBox | Feature::RadioBox => {
-                ideal_size = Size::splat(self.dims.check_box);
+    fn align_bar(&self, style: BarStyle, dir: Direction, Rect { mut pos, mut size }: Rect) -> Rect {
+        let ideal = match style {
+            BarStyle::Progress => self.dims.progress_bar.1,
+            BarStyle::Scroll => self.dims.scroll_bar.1,
+            BarStyle::Separator => self.dims.frame,
+            BarStyle::Slider => self.dims.slider.1,
+        };
+
+        match dir.is_vertical() {
+            false if ideal < size.1 => {
+                pos.1 += (size.1 - ideal) / 2;
+                size.1 = ideal;
             }
-            Feature::ScrollBar(dir) => {
-                ideal_size.set_component(dir.flipped(), self.dims.scroll_bar.1);
+            true if ideal < size.0 => {
+                pos.0 += (size.0 - ideal) / 2;
+                size.0 = ideal;
             }
-            Feature::Slider(dir) => {
-                ideal_size.set_component(dir.flipped(), self.dims.slider.1);
-            }
-            Feature::ProgressBar(dir) => {
-                ideal_size.set_component(dir.flipped(), self.dims.progress_bar.1);
-            }
-        }
+            _ => (),
+        };
+
+        Rect { pos, size }
+    }
+
+    fn r#box(&self, _: BoxStyle) -> SizeRules {
+        SizeRules::fixed(self.dims.check_box).with_margin(self.dims.m_small)
+    }
+
+    fn align_box(&self, _: BoxStyle, rect: Rect, align: AlignPair) -> Rect {
+        let ideal_size = Size::splat(self.dims.check_box);
         align.aligned_rect(ideal_size, rect)
+    }
+
+    fn mark(&self, style: MarkStyle, axis_is_vertical: bool) -> SizeRules {
+        let w = match style {
+            MarkStyle::Chevron(dir) => match dir.is_vertical() == axis_is_vertical {
+                true => self.dims.mark / 2 + i32::conv_to(Ceil, self.dims.mark_line),
+                false => self.dims.mark + i32::conv_to(Ceil, self.dims.mark_line),
+            },
+            MarkStyle::X | MarkStyle::Plus | MarkStyle::Minus => {
+                self.dims.mark + i32::conv_to(Ceil, self.dims.mark_line)
+            }
+        };
+        SizeRules::fixed(w).with_margin(self.dims.m_tiny)
     }
 
     fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {

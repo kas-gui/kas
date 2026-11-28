@@ -7,13 +7,14 @@
 
 use crate::menu::Menu;
 use kas::prelude::*;
+use kas::theme::BarStyle;
 use std::marker::PhantomData;
 
 #[impl_self]
 mod Separator {
     /// A separator
     ///
-    /// This widget draws a bar when in a list.
+    /// This widget is drawn as a bar with automatically-determined direction.
     #[autoimpl(Debug, Default)]
     #[widget]
     pub struct Separator<A> {
@@ -34,7 +35,17 @@ mod Separator {
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
-            cx.feature(kas::theme::Feature::Separator, axis)
+            cx.bar(BarStyle::Separator, axis.as_direction(), axis)
+        }
+
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
+            let dir = if rect.size.0 > rect.size.1 {
+                Direction::Right
+            } else {
+                Direction::Down
+            };
+            let rect = cx.align_bar(BarStyle::Separator, dir, rect);
+            self.core.set_rect(rect);
         }
 
         fn draw(&self, mut draw: DrawCx) {

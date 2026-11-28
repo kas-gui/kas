@@ -8,7 +8,7 @@
 use super::{GripMsg, GripPart};
 use kas::event::TimerId;
 use kas::prelude::*;
-use kas::theme::Feature;
+use kas::theme::BarStyle;
 use std::fmt::Debug;
 
 /// Scroll bar mode
@@ -319,15 +319,11 @@ mod ScrollBar {
     impl Layout for Self {
         fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let _ = self.grip.size_rules(cx, axis);
-            cx.feature(Feature::ScrollBar(self.direction()), axis)
+            cx.bar(BarStyle::Scroll, self.direction(), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            let align = match self.direction.is_vertical() {
-                false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
-                true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
-            };
-            let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, align);
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
+            let rect = cx.align_bar(BarStyle::Scroll, self.direction(), rect);
             self.core.set_rect(rect);
             self.grip.set_track(rect);
 

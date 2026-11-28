@@ -8,7 +8,7 @@
 use super::AccessLabel;
 use kas::cast::{Ceil, Floor};
 use kas::prelude::*;
-use kas::theme::Feature;
+use kas::theme::BoxStyle;
 use std::fmt::Debug;
 use std::time::Instant;
 
@@ -34,11 +34,11 @@ mod CheckBox {
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
-            cx.feature(Feature::CheckBox, axis)
+            cx.r#box(BoxStyle::CheckBox, axis)
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            let rect = cx.align_feature(Feature::CheckBox, rect, hints.complete_center());
+            let rect = cx.align_box(BoxStyle::CheckBox, rect, hints.complete_center());
             self.core.set_rect(rect);
         }
 

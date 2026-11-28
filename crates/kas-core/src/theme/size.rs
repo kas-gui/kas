@@ -5,12 +5,13 @@
 
 //! "Handle" types used by themes
 
-use super::{Feature, FrameStyle, MarginStyle, TextClass};
+use super::{BarStyle, BoxStyle, FrameStyle, MarginStyle, TextClass};
 use crate::autoimpl;
-use crate::dir::Directional;
+use crate::dir::{Direction, Directional};
 use crate::event::{CanRedraw, EventState};
 use crate::geom::Rect;
 use crate::layout::{AlignPair, FrameRules, LogicalBuilder, Margins, SizeRules};
+use crate::theme::MarkStyle;
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)]
@@ -120,7 +121,7 @@ impl<'a> SizeCx<'a> {
     ///
     /// This is the length in line with the control. The size on the opposite
     /// axis is assumed to be equal to the feature size as reported by
-    /// [`Self::feature`].
+    /// [`Self::bar`].
     #[inline]
     pub fn grip_len(&self) -> i32 {
         self.w.grip_len()
@@ -128,7 +129,7 @@ impl<'a> SizeCx<'a> {
 
     /// The width of a vertical scroll bar
     ///
-    /// This value is also available through [`Self::feature`].
+    /// This value is also available through [`Self::bar`].
     #[inline]
     pub fn scroll_bar_width(&self) -> i32 {
         self.w.scroll_bar_width()
@@ -170,25 +171,49 @@ impl<'a> SizeCx<'a> {
         self.w.margins(MarginStyle::Text)
     }
 
-    /// Size rules for a feature
+    /// Size rules for a bar feature with the given `dir`ection
     #[inline]
-    pub fn feature(&self, feature: Feature, axis: impl Directional) -> SizeRules {
-        self.w.feature(feature, axis.is_vertical())
+    pub fn bar(&self, style: BarStyle, dir: Direction, axis: impl Directional) -> SizeRules {
+        self.w.bar(style, dir, axis.is_vertical())
+    }
+
+    /// Align a bar within `rect`
+    ///
+    /// Bars always stretch in their given `dir`ection, and are centralised on
+    /// the opposite axis.
+    #[inline]
+    pub fn align_bar(&self, style: BarStyle, dir: Direction, rect: Rect) -> Rect {
+        self.w.align_bar(style, dir, rect)
+    }
+
+    /// Size rules for a box feature
+    ///
+    /// Note: since `box` is a reserved keyword, this method must be called
+    /// using raw identifier syntax: `cx.r#box(style, axis)`.
+    #[inline]
+    pub fn r#box(&self, style: BoxStyle, _axis: impl Directional) -> SizeRules {
+        self.w.r#box(style)
+    }
+
+    /// Align a box within `rect`
+    ///
+    /// In case the input `rect` is larger than desired on either axis, it is
+    /// reduced in size and offset within the original `rect` as is preferred.
+    #[inline]
+    pub fn align_box(&self, style: BoxStyle, rect: Rect, align: AlignPair) -> Rect {
+        self.w.align_box(style, rect, align)
+    }
+
+    /// Size rules for a mark
+    #[inline]
+    pub fn mark(&self, style: MarkStyle, axis: impl Directional) -> SizeRules {
+        self.w.mark(style, axis.is_vertical())
     }
 
     /// Size of a frame around another element
     #[inline]
     pub fn frame(&self, style: FrameStyle, axis: impl Directional) -> FrameRules {
         self.w.frame(style, axis.is_vertical())
-    }
-
-    /// Align a feature's rect
-    ///
-    /// In case the input `rect` is larger than desired on either axis, it is
-    /// reduced in size and offset within the original `rect` as is preferred.
-    #[inline]
-    pub fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
-        self.w.align_feature(feature, rect, align)
     }
 }
 
@@ -246,14 +271,23 @@ pub trait ThemeSize {
     /// Get margin size
     fn margins(&self, style: MarginStyle) -> Margins;
 
-    /// Size rules for a feature
-    fn feature(&self, feature: Feature, axis_is_vertical: bool) -> SizeRules;
+    /// Size rules for a bar feature
+    fn bar(&self, style: BarStyle, dir: Direction, axis_is_vertical: bool) -> SizeRules;
 
-    /// Align a feature's rect
+    /// Align a bar's rect
+    fn align_bar(&self, style: BarStyle, dir: Direction, rect: Rect) -> Rect;
+
+    /// Size rules for a box feature
+    fn r#box(&self, style: BoxStyle) -> SizeRules;
+
+    /// Align a box's rect
     ///
     /// In case the input `rect` is larger than desired on either axis, it is
     /// reduced in size and offset within the original `rect` as is preferred.
-    fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect;
+    fn align_box(&self, style: BoxStyle, rect: Rect, align: AlignPair) -> Rect;
+
+    /// Size rules for a mark
+    fn mark(&self, style: MarkStyle, axis_is_vertical: bool) -> SizeRules;
 
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
