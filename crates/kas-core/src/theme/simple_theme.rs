@@ -20,7 +20,7 @@ use crate::text::{Forme, format};
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};
-use crate::theme::{SelectionStyle, ThemeDraw, ThemeSize};
+use crate::theme::{SelectionStyle, ThemeDraw};
 use crate::{ActionResize, Id};
 
 /// A simple theme
@@ -30,7 +30,7 @@ use crate::{ActionResize, Id};
 #[derive(Clone, Debug)]
 pub struct SimpleTheme {
     pub cols: ColorsLinear,
-    dims: dim::Parameters,
+    dims: dim::Unscaled,
 }
 
 impl Default for SimpleTheme {
@@ -58,19 +58,18 @@ pub struct DrawHandle<'a, DS: DrawSharedImpl> {
 }
 
 impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme {
-    type Window = dim::Window;
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn init(&mut self, _: &RefCell<Config>) {}
 
-    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> dim::Window {
         self.cols = config.theme().get_active_scheme().into();
         dim::Window::new(&self.dims, config)
     }
 
     fn update_window(
         &mut self,
-        w: &mut Self::Window,
+        w: &mut dim::Window,
         config: &WindowConfig,
     ) -> Option<ActionResize> {
         self.cols = config.theme().get_active_scheme().into();
@@ -81,7 +80,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme {
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        w: &'a mut Self::Window,
+        w: &'a mut dim::Window,
     ) -> Self::Draw<'a> {
         w.anim.update();
 
@@ -96,7 +95,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme {
     fn draw_upcast<'a>(
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        w: &'a mut Self::Window,
+        w: &'a mut dim::Window,
         cols: &'a ColorsLinear,
     ) -> Self::Draw<'a> {
         DrawHandle { draw, ev, w, cols }
@@ -227,7 +226,7 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS> {
 }
 
 impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
-    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
+    fn components(&mut self) -> (&dim::Window, &mut dyn Draw, &mut EventState) {
         (self.w, &mut self.draw, self.ev)
     }
 

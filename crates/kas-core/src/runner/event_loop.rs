@@ -18,14 +18,11 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow};
 use winit::window as ww;
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(super) struct Loop<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>>
-where
-    T::Window: kas::theme::Window,
-{
+pub(super) struct Loop<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     /// State is suspended until we receive Event::Resumed
     suspended: bool,
     /// Window states
-    windows: HashMap<WindowId, Box<Window<A, G, T>>>,
+    windows: HashMap<WindowId, Box<Window<A, G>>>,
     popups: HashMap<WindowId, WindowId>,
     /// Translates our WindowId to winit's
     id_map: HashMap<ww::WindowId, WindowId>,
@@ -41,7 +38,6 @@ impl<A: AppData, G, T> ApplicationHandler for Loop<A, G, T>
 where
     G: GraphicsInstance,
     T: Theme<G::Shared>,
-    T::Window: kas::theme::Window,
 {
     fn new_events(&mut self, el: &dyn ActiveEventLoop, cause: StartCause) {
         el.set_control_flow(ControlFlow::Wait);
@@ -211,12 +207,9 @@ where
     }
 }
 
-impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Loop<A, G, T>
-where
-    T::Window: kas::theme::Window,
-{
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Loop<A, G, T> {
     pub(super) fn new(
-        mut windows: Vec<Box<Window<A, G, T>>>,
+        mut windows: Vec<Box<Window<A, G>>>,
         shared: Shared<A, G, T>,
         data: A,
     ) -> Self {
@@ -235,7 +228,7 @@ where
         &mut self,
         el: &dyn ActiveEventLoop,
         id: WindowId,
-        mut window: Box<Window<A, G, T>>,
+        mut window: Box<Window<A, G>>,
     ) {
         log::debug!("Pending: adding {}", window.widget.identify());
         if !self.suspended {

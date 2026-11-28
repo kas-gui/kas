@@ -7,7 +7,6 @@
 
 use winit::keyboard::Key;
 
-use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::color::{ParseError, Rgb};
 use crate::draw::{Draw, DrawIface, DrawRounded, DrawShared, DrawSharedImpl, ImageId, PassType};
@@ -16,7 +15,8 @@ use crate::event::EventState;
 use crate::geom::{Coord, Offset, Rect};
 #[allow(unused)] use crate::text::format::FormattableText;
 use crate::text::{Forme, format};
-use crate::theme::ColorsLinear;
+use crate::theme::dimensions::Window;
+use crate::theme::{ColorsLinear, FrameStyle, MarkStyle, SelectionStyle, SizeCx};
 use crate::{Id, Tile, autoimpl};
 #[allow(unused)] use crate::{Layout, theme::TextClass};
 use std::time::Instant;
@@ -444,8 +444,8 @@ impl<'a> DrawCx<'a> {
 /// </details>
 #[autoimpl(for<H: trait + ?Sized> Box<H>)]
 pub trait ThemeDraw {
-    /// Access components: [`ThemeSize`], [`Draw`], [`EventState`]
-    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState);
+    /// Access components: theme per-window data, [`Draw`], [`EventState`]
+    fn components(&mut self) -> (&Window, &mut dyn Draw, &mut EventState);
 
     /// Access theme colors
     fn colors(&self) -> &ColorsLinear;
@@ -475,7 +475,7 @@ pub trait ThemeDraw {
 
     /// Draw a frame inside the given `rect`
     ///
-    /// The frame dimensions are given by [`ThemeSize::frame`].
+    /// The frame dimensions are given by [`SizeCx::frame`].
     fn frame(&mut self, id: &Id, rect: Rect, style: FrameStyle, bg: Background);
 
     /// Draw a separator in the given `rect`

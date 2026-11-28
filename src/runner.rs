@@ -218,7 +218,7 @@ pub struct Runner<
     graphics: B::Instance,
     state: PreLaunchState,
     theme: T,
-    windows: Vec<Box<kas_core::runner::Window<Data, B::Instance, T>>>,
+    windows: Vec<Box<kas_core::runner::Window<Data, B::Instance>>>,
 }
 
 impl<Data: AppData> Runner<Data> {

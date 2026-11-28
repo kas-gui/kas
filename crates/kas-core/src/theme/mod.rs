@@ -35,8 +35,8 @@ pub use simple_theme::SimpleTheme;
 pub use size::SizeCx;
 pub use style::*;
 pub use theme_dst::ThemeDst;
-pub use traits::{Theme, Window};
+pub use traits::Theme;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use {draw::ThemeDraw, size::ThemeSize};
+pub use draw::ThemeDraw;

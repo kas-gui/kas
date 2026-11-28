@@ -12,7 +12,6 @@ use super::{GripMsg, GripPart};
 use kas::Collection;
 use kas::layout::{self, RowStorage, RulesSetter, RulesSolver};
 use kas::prelude::*;
-use kas::theme::Feature;
 
 #[impl_self]
 mod Splitter {
@@ -156,7 +155,7 @@ mod Splitter {
             }
             assert_eq!(self.grips.len() + 1, self.widgets.len());
 
-            let grip_rules = cx.feature(Feature::Separator, axis);
+            let grip_rules = cx.bar(kas::theme::BarStyle::Separator, axis.as_direction(), axis);
 
             let mut solver = layout::RowSolver::new(axis, self.dim(), &mut self.data);
 

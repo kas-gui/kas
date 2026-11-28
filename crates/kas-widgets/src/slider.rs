@@ -10,7 +10,7 @@ use kas::cast::Floor;
 use kas::event::FocusSource;
 use kas::messages::{DecrementStep, IncrementStep, SetValueF64};
 use kas::prelude::*;
-use kas::theme::Feature;
+use kas::theme::BarStyle;
 use std::fmt::Debug;
 use std::ops::{Add, RangeInclusive, Sub};
 
@@ -277,15 +277,11 @@ mod Slider {
     impl Layout for Self {
         fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
             let _ = self.grip.size_rules(cx, axis);
-            cx.feature(Feature::Slider(self.direction()), axis)
+            cx.bar(BarStyle::Slider, self.direction(), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            let align = match self.direction.is_vertical() {
-                false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
-                true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
-            };
-            let mut rect = cx.align_feature(Feature::Slider(self.direction()), rect, align);
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
+            let mut rect = cx.align_bar(BarStyle::Slider, self.direction(), rect);
             self.core.set_rect(rect);
             self.grip.set_track(rect);
 

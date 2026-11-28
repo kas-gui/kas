@@ -19,8 +19,7 @@ use crate::geom::*;
 use crate::text::Forme;
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
-use crate::theme::{ColorsLinear, InputState, Theme};
-use crate::theme::{ThemeDraw, ThemeSize};
+use crate::theme::{ColorsLinear, InputState, Theme, ThemeDraw};
 use crate::{ActionResize, Id};
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -63,8 +62,8 @@ impl FlatTheme {
     }
 }
 
-fn dimensions() -> dim::Parameters {
-    dim::Parameters {
+fn dimensions() -> dim::Unscaled {
+    dim::Unscaled {
         // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
         button_frame: 2.4,
         button_inner: 0.0,
@@ -86,21 +85,20 @@ impl<DS: DrawSharedImpl> Theme<DS> for FlatTheme
 where
     DS::Draw: DrawRoundedImpl,
 {
-    type Window = dim::Window;
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn init(&mut self, config: &RefCell<Config>) {
         <SimpleTheme as Theme<DS>>::init(&mut self.base, config)
     }
 
-    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> dim::Window {
         self.base.cols = config.theme().get_active_scheme().into();
         dim::Window::new(&dimensions(), config)
     }
 
     fn update_window(
         &mut self,
-        w: &mut Self::Window,
+        w: &mut dim::Window,
         config: &WindowConfig,
     ) -> Option<ActionResize> {
         self.base.cols = config.theme().get_active_scheme().into();
@@ -111,7 +109,7 @@ where
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        w: &'a mut Self::Window,
+        w: &'a mut dim::Window,
     ) -> Self::Draw<'a> {
         w.anim.update();
 
@@ -126,7 +124,7 @@ where
     fn draw_upcast<'a>(
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        w: &'a mut Self::Window,
+        w: &'a mut dim::Window,
         cols: &'a ColorsLinear,
     ) -> Self::Draw<'a> {
         DrawHandle { draw, ev, w, cols }
@@ -263,7 +261,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
+    fn components(&mut self) -> (&dim::Window, &mut dyn Draw, &mut EventState) {
         (self.w, &mut self.draw, self.ev)
     }
 

@@ -18,7 +18,7 @@ use kas::event::EventState;
 use kas::geom::*;
 use kas::text::Forme;
 use kas::theme::dimensions as dim;
-use kas::theme::{Background, ThemeDraw, ThemeSize};
+use kas::theme::{Background, ThemeDraw};
 use kas::theme::{ColorsLinear, FlatTheme, InputState, SimpleTheme, Theme};
 use kas::theme::{FrameStyle, MarkStyle};
 use kas::{ActionResize, Id};
@@ -43,8 +43,8 @@ impl ShadedTheme {
     }
 }
 
-fn dimensions() -> dim::Parameters {
-    dim::Parameters {
+fn dimensions() -> dim::Unscaled {
+    dim::Unscaled {
         m_large: 5.0,
         m_text: (3.4, 0.8),
         frame: 5.0,
@@ -75,21 +75,20 @@ impl<DS: DrawSharedImpl> Theme<DS> for ShadedTheme
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    type Window = dim::Window;
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn init(&mut self, config: &RefCell<Config>) {
         <SimpleTheme as Theme<DS>>::init(&mut self.base, config)
     }
 
-    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> dim::Window {
         self.base.cols = config.theme().get_active_scheme().into();
         dim::Window::new(&dimensions(), config)
     }
 
     fn update_window(
         &mut self,
-        w: &mut Self::Window,
+        w: &mut dim::Window,
         config: &WindowConfig,
     ) -> Option<ActionResize> {
         self.base.cols = config.theme().get_active_scheme().into();
@@ -100,7 +99,7 @@ where
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        w: &'a mut Self::Window,
+        w: &'a mut dim::Window,
     ) -> Self::Draw<'a> {
         w.anim.update();
 
@@ -115,7 +114,7 @@ where
     fn draw_upcast<'a>(
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        w: &'a mut Self::Window,
+        w: &'a mut dim::Window,
         cols: &'a ColorsLinear,
     ) -> Self::Draw<'a> {
         DrawHandle { draw, ev, w, cols }
@@ -181,7 +180,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
+    fn components(&mut self) -> (&dim::Window, &mut dyn Draw, &mut EventState) {
         (self.w, &mut self.draw, self.ev)
     }
 

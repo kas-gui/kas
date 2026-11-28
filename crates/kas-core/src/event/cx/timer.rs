@@ -8,7 +8,7 @@
 use super::{EventCx, EventState};
 use crate::event::Event;
 use crate::runner::{RunnerT, WindowDataErased};
-use crate::theme::{SizeCx, ThemeSize};
+use crate::theme::SizeCx;
 use crate::window::WindowWidget;
 use crate::{Id, Node, WindowActions};
 use std::time::{Duration, Instant};
@@ -120,7 +120,7 @@ impl EventState {
     pub(crate) fn frame_update<A>(
         &mut self,
         runner: &mut dyn RunnerT,
-        theme: &dyn ThemeSize,
+        theme: &crate::theme::dimensions::Window,
         window: &mut dyn WindowDataErased,
         widget: &mut dyn WindowWidget<Data = A>,
         data: &A,

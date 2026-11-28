@@ -61,24 +61,20 @@ pub enum MarkStyle {
     Minus,
 }
 
-/// Various features which may be sized and drawn
-///
-/// Includes most types of features excepting text and frames.
+/// Box-type features
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum Feature {
-    Separator,
-    Mark(MarkStyle),
+pub enum BoxStyle {
     CheckBox,
     RadioBox,
-    ScrollBar(Direction),
-    Slider(Direction),
-    ProgressBar(Direction),
 }
 
-impl From<MarkStyle> for Feature {
-    fn from(style: MarkStyle) -> Self {
-        Feature::Mark(style)
-    }
+/// Bar-type features
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum BarStyle {
+    Progress,
+    Scroll,
+    Separator,
+    Slider,
 }
 
 /// Style of a frame

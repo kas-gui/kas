@@ -6,7 +6,7 @@
 //! Progress bar
 
 use kas::prelude::*;
-use kas::theme::Feature;
+use kas::theme::BarStyle;
 
 #[impl_self]
 mod ProgressBar {
@@ -73,15 +73,11 @@ mod ProgressBar {
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
-            cx.feature(Feature::ProgressBar(self.direction()), axis)
+            cx.bar(BarStyle::Progress, self.direction(), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
-            let align = match self.direction.is_vertical() {
-                false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
-                true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
-            };
-            let rect = cx.align_feature(Feature::ProgressBar(self.direction()), rect, align);
+        fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, _: AlignHints) {
+            let rect = cx.align_bar(BarStyle::Progress, self.direction(), rect);
             self.core.set_rect(rect);
         }
 

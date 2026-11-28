@@ -229,6 +229,7 @@ fn widgets() -> Page<AppData> {
             "ProgressBar",
             ProgressBar::right(|_, data: &Data| data.ratio)
         ],
+        row!["Separator", Separator::new()],
         row![
             "SVG",
             img_rustacean

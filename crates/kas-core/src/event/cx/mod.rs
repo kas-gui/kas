@@ -25,7 +25,7 @@ use crate::geom::{Offset, Vec2};
 use crate::messages::Erased;
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 #[allow(unused)] use crate::theme::SizeCx;
-use crate::theme::ThemeSize;
+use crate::theme::dimensions::Window as ThemeWindow;
 use crate::window::{Decorations, PopupDescriptor, WindowId};
 use crate::{ConfigAction, Id, Node};
 use key::Input;
@@ -149,7 +149,7 @@ impl EventState {
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     #[must_use]
-    pub(crate) fn full_configure(&mut self, sizer: &dyn ThemeSize, node: Node) -> WindowActions {
+    pub(crate) fn full_configure(&mut self, sizer: &ThemeWindow, node: Node) -> WindowActions {
         let id = Id::from(self.window_id);
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
@@ -171,7 +171,7 @@ impl EventState {
     pub(crate) fn with<'a, F: FnOnce(&mut EventCx)>(
         &'a mut self,
         runner: &'a mut dyn RunnerT,
-        theme: &'a dyn ThemeSize,
+        theme: &'a ThemeWindow,
         window: &'a mut dyn WindowDataErased,
         f: F,
     ) -> WindowActions {
@@ -248,7 +248,7 @@ impl EventState {
 #[must_use]
 pub struct ConfigCx<'a> {
     state: &'a mut EventState,
-    theme: &'a dyn ThemeSize,
+    theme: &'a ThemeWindow,
     actions: WindowActions,
 }
 
@@ -290,7 +290,7 @@ impl<'a> ConfigCx<'a> {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    pub fn new(sh: &'a dyn ThemeSize, ev: &'a mut EventState) -> Self {
+    pub fn new(sh: &'a ThemeWindow, ev: &'a mut EventState) -> Self {
         ConfigCx {
             theme: sh,
             state: ev,

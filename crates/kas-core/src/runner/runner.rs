@@ -82,7 +82,7 @@ impl PreLaunchState {
         data: Data,
         graphical: G,
         theme: T,
-        windows: Vec<Box<super::Window<Data, G, T>>>,
+        windows: Vec<Box<super::Window<Data, G>>>,
     ) -> Result<()> {
         let shared = Shared::<Data, _, _>::new(
             self.platform,

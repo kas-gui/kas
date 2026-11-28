@@ -7,7 +7,7 @@
 
 use super::AccessLabel;
 use kas::prelude::*;
-use kas::theme::Feature;
+use kas::theme::BoxStyle;
 use std::fmt::Debug;
 use std::time::Instant;
 
@@ -32,12 +32,12 @@ mod RadioBox {
 
     impl Layout for Self {
         fn size_rules(&mut self, cx: &SizeCx, axis: AxisInfo) -> SizeRules {
-            cx.feature(Feature::RadioBox, axis)
+            cx.r#box(BoxStyle::RadioBox, axis)
         }
 
         fn set_rect(&mut self, cx: &mut SizeCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_center();
-            let rect = cx.align_feature(Feature::RadioBox, rect, align);
+            let rect = cx.align_box(BoxStyle::RadioBox, rect, align);
             self.core.set_rect(rect);
         }
 

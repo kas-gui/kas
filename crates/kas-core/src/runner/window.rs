@@ -18,7 +18,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::Erased;
 use crate::runner::PresentResult;
-use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, Window as _};
+use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, dimensions};
 use crate::window::{
     Decorations, PopupDescriptor, Properties, WindowErased, WindowId, WindowWidget,
 };
@@ -56,15 +56,15 @@ impl<G: GraphicsInstance> WindowData<G> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[autoimpl(Debug ignore self.widget, self.ev_state, self.surface)]
-pub struct Window<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
-    surface: Option<(T::Window, WindowData<G>)>,
+pub struct Window<A: AppData, G: GraphicsInstance> {
+    surface: Option<(dimensions::Window, WindowData<G>)>,
     actions: WindowActions,
     ev_state: EventState,
     pub(super) widget: crate::window::Window<A>,
 }
 
 // Public functions, for use by the toolkit
-impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
+impl<A: AppData, G: GraphicsInstance> Window<A, G> {
     /// Construct window state (widget)
     #[inline]
     pub fn new_boxed(
@@ -95,7 +95,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Open the window and create render surfaces
-    pub(super) fn create_surfaces(
+    pub(super) fn create_surfaces<T: Theme<G::Shared>>(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
@@ -110,7 +110,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut theme = shared.theme.new_window(config);
 
         let node = self.widget.as_node(data);
-        let _: WindowActions = self.ev_state.full_configure(theme.size(), node);
+        let _: WindowActions = self.ev_state.full_configure(&theme, node);
 
         let props = self.widget.properties();
         let transparent = props.transparent;
@@ -144,10 +144,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
             // Update text size which is assigned during configure
             let node = self.widget.as_node(data);
-            let _: WindowActions = self.ev_state.full_configure(theme.size(), node);
+            let _: WindowActions = self.ev_state.full_configure(&theme, node);
         }
 
-        let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
+        let mut cx = SizeCx::new(&mut self.ev_state, &theme);
         let mut solve_cache = SolveCache::default();
         solve_cache.find_constraints(self.widget.as_node(data), &mut cx);
 
@@ -232,7 +232,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Application suspended. Clean up temporary state.
-    pub(super) fn suspend(
+    pub(super) fn suspend<T: Theme<G::Shared>>(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
@@ -243,12 +243,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
             let id = self.ev_state.window_id;
             let mut awh = ActiveWindowHandle { id, window, el };
-            let actions = self.ev_state.flush_pending(
-                shared,
-                theme.size(),
-                &mut awh,
-                self.widget.as_node(data),
-            );
+            let actions =
+                self.ev_state
+                    .flush_pending(shared, theme, &mut awh, self.widget.as_node(data));
 
             if actions == WindowActions::Close {
                 Some(ActionClose)
@@ -269,7 +266,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Handle an event
     ///
     /// Returns `true` to force polling temporarily.
-    pub(super) fn handle_event(
+    pub(super) fn handle_event<T: Theme<G::Shared>>(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
@@ -315,7 +312,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 let Some((ref theme, ref mut window)) = self.surface else {
                     unreachable!()
                 };
-                let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
+                let mut cx = SizeCx::new(&mut self.ev_state, theme);
                 window
                     .solve_cache
                     .find_constraints(self.widget.as_node(data), &mut cx);
@@ -407,7 +404,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let id = self.ev_state.window_id;
         let mut awh = ActiveWindowHandle { id, window, el };
-        let actions = self.ev_state.with(shared, theme.size(), &mut awh, |cx| {
+        let actions = self.ev_state.with(shared, theme, &mut awh, |cx| {
             cx.input_event(self.widget.as_node(data), event)
         });
         self.actions.upgrade(actions);
@@ -415,7 +412,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Handle all pending items before event loop sleeps
-    pub(super) fn flush_pending(
+    pub(super) fn flush_pending<T: Theme<G::Shared>>(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
@@ -429,7 +426,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut awh = ActiveWindowHandle { id, window, el };
         let actions =
             self.ev_state
-                .flush_pending(shared, theme.size(), &mut awh, self.widget.as_node(data));
+                .flush_pending(shared, theme, &mut awh, self.widget.as_node(data));
         self.actions.upgrade(actions);
         let actions = std::mem::take(&mut self.actions);
         if actions.is_close() {
@@ -456,7 +453,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             let mut awh = ActiveWindowHandle { id, window, el };
             let acts = self.ev_state.reprobe_coordinates(
                 shared,
-                theme.size(),
+                theme,
                 &mut awh,
                 self.widget.as_node(data),
             );
@@ -484,7 +481,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Handle a configuration update
-    pub(super) fn config_update(
+    pub(super) fn config_update<T: Theme<G::Shared>>(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
@@ -513,7 +510,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     #[cfg(feature = "accesskit")]
-    pub(super) fn accesskit_event(
+    pub(super) fn accesskit_event<T: Theme<G::Shared>>(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
@@ -529,7 +526,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 .accesskit
                 .update_if_active(|| self.ev_state.accesskit_tree_update(&self.widget)),
             WE::ActionRequested(request) => {
-                let resize = self.ev_state.with(shared, theme.size(), window, |cx| {
+                let resize = self.ev_state.with(shared, theme, window, |cx| {
                     cx.handle_accesskit_action(self.widget.as_node(data), request);
                 });
                 window.resize = window.resize.or(resize);
@@ -540,7 +537,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
     }
 
-    pub(super) fn update_timer(
+    pub(super) fn update_timer<T: Theme<G::Shared>>(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
@@ -560,7 +557,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         if Some(requested_resume) == self.ev_state.next_resume() {
             let id = self.ev_state.window_id;
             let mut awh = ActiveWindowHandle { id, window, el };
-            let actions = self.ev_state.with(shared, theme.size(), &mut awh, |cx| {
+            let actions = self.ev_state.with(shared, theme, &mut awh, |cx| {
                 cx.update_timer(widget);
             });
             self.actions.upgrade(actions);
@@ -570,7 +567,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         }
     }
 
-    pub(super) fn show_tooltip(
+    pub(super) fn show_tooltip<T: Theme<G::Shared>>(
         &mut self,
         shared: &mut Shared<A, G, T>,
         el: &dyn ActiveEventLoop,
@@ -583,7 +580,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let id = self.ev_state.window_id;
         let mut awh = ActiveWindowHandle { id, window, el };
-        let actions = self.ev_state.with(shared, theme.size(), &mut awh, |cx| {
+        let actions = self.ev_state.with(shared, theme, &mut awh, |cx| {
             self.widget.show_tooltip(cx, target, text)
         });
         self.actions.upgrade(actions);
@@ -595,7 +592,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
+        let mut cx = SizeCx::new(&mut self.ev_state, theme);
         self.widget.add_or_update_popup(&mut cx, data, id, popup);
         self.actions.upgrade(WindowActions::Moved);
     }
@@ -610,7 +607,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 }
 
 // Internal functions
-impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
+impl<A: AppData, G: GraphicsInstance> Window<A, G> {
     fn reconfigure(&mut self, data: &A) {
         let time = Instant::now();
         let Some((ref theme, _)) = self.surface else {
@@ -619,7 +616,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let actions = self
             .ev_state
-            .full_configure(theme.size(), self.widget.as_node(data));
+            .full_configure(theme, self.widget.as_node(data));
         self.actions.upgrade(actions);
 
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
@@ -631,8 +628,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        let size = theme.size();
-        let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+        let mut cx = ConfigCx::new(theme, &mut self.ev_state);
         cx.update(self.widget.as_node(data));
         self.actions.upgrade(cx.take_actions());
 
@@ -649,7 +645,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut window.solve_cache;
-        let mut cx = SizeCx::new(&mut self.ev_state, theme.size());
+        let mut cx = SizeCx::new(&mut self.ev_state, theme);
         if resize {
             solve_cache.find_constraints(self.widget.as_node(data), &mut cx);
         }
@@ -689,7 +685,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     ///
     /// Returns an error when drawing is aborted and further event handling may
     /// be needed before a redraw.
-    pub(super) fn do_draw(
+    pub(super) fn do_draw<T: Theme<G::Shared>>(
         &mut self,
         shared: &mut Shared<A, G, T>,
         data: &A,
@@ -702,9 +698,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let id = self.ev_state.window_id;
         let mut awh = ActiveWindowHandle { id, window, el };
-        let actions =
-            self.ev_state
-                .frame_update(shared, theme.size(), &mut awh, &mut self.widget, data);
+        let actions = self
+            .ev_state
+            .frame_update(shared, theme, &mut awh, &mut self.widget, data);
         self.actions.upgrade(actions);
         if self.actions == WindowActions::Redraw {
             self.actions = WindowActions::None;

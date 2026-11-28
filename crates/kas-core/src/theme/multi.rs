@@ -5,12 +5,11 @@
 
 //! Wrapper around multiple themes, supporting run-time switching
 
-use super::{ColorsLinear, Theme, ThemeDst, Window};
+use super::{ColorsLinear, Theme, ThemeDraw, ThemeDst, dimensions::Window};
 use crate::ActionResize;
 use crate::config::{Config, WindowConfig};
 use crate::draw::{DrawIface, DrawSharedImpl, color};
 use crate::event::EventState;
-use crate::theme::ThemeDraw;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -61,7 +60,6 @@ impl<DS> MultiTheme<DS> {
 }
 
 impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
-    type Window = Box<dyn Window>;
     type Draw<'a> = Box<dyn ThemeDraw + 'a>;
 
     fn init(&mut self, config: &RefCell<Config>) {
@@ -87,7 +85,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         }
     }
 
-    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> Window {
         // We may switch themes here
         let theme = &config.theme().active_theme;
         if let Some(index) = self.names.get(theme).cloned()
@@ -101,7 +99,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
 
     fn update_window(
         &mut self,
-        window: &mut Self::Window,
+        window: &mut Window,
         config: &WindowConfig,
     ) -> Option<ActionResize> {
         self.themes[self.active].update_window(window, config)
@@ -111,7 +109,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        window: &'a mut Self::Window,
+        window: &'a mut Window,
     ) -> Box<dyn ThemeDraw + 'a> {
         self.themes[self.active].draw(draw, ev, window)
     }
@@ -119,7 +117,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     fn draw_upcast<'a>(
         _draw: DrawIface<'a, DS>,
         _ev: &'a mut EventState,
-        _w: &'a mut Self::Window,
+        _w: &'a mut Window,
         _cols: &'a ColorsLinear,
     ) -> Self::Draw<'a> {
         unimplemented!()
