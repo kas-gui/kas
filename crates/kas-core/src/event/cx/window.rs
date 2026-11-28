@@ -13,7 +13,7 @@ use crate::event::{Event, FocusSource};
 use crate::geom::DVec2;
 use crate::messages::Erased;
 use crate::runner::{AppData, Platform, RunnerT, WindowDataErased};
-use crate::theme::ThemeSize;
+use crate::theme::dimensions::Window as ThemeWindow;
 use crate::window::{PopupDescriptor, Properties, WindowId};
 use crate::{Id, Node, Widget, WindowActions};
 use linear_map::LinearMap;
@@ -129,7 +129,7 @@ impl EventState {
     pub(crate) fn flush_pending<'a>(
         &'a mut self,
         runner: &'a mut dyn RunnerT,
-        theme: &'a dyn ThemeSize,
+        theme: &'a ThemeWindow,
         window: &'a mut dyn WindowDataErased,
         mut node: Node,
     ) -> WindowActions {
@@ -173,7 +173,7 @@ impl EventState {
     pub(crate) fn reprobe_coordinates(
         &mut self,
         runner: &mut dyn RunnerT,
-        theme: &dyn ThemeSize,
+        theme: &ThemeWindow,
         window: &mut dyn WindowDataErased,
         mut node: Node,
     ) -> WindowActions {

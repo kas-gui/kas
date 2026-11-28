@@ -20,7 +20,7 @@ use crate::text::{Forme, format};
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
 use crate::theme::{ColorsLinear, InputState, Theme};
-use crate::theme::{SelectionStyle, ThemeDraw, ThemeSize};
+use crate::theme::{SelectionStyle, ThemeDraw};
 use crate::{ActionResize, Id};
 
 /// A simple theme
@@ -30,7 +30,7 @@ use crate::{ActionResize, Id};
 #[derive(Clone, Debug)]
 pub struct SimpleTheme {
     pub cols: ColorsLinear,
-    dims: dim::Parameters,
+    dims: dim::Unscaled,
 }
 
 impl Default for SimpleTheme {
@@ -226,7 +226,7 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS> {
 }
 
 impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS> {
-    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
+    fn components(&mut self) -> (&dim::Window, &mut dyn Draw, &mut EventState) {
         (self.w, &mut self.draw, self.ev)
     }
 

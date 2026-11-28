@@ -18,7 +18,7 @@ use kas::event::EventState;
 use kas::geom::*;
 use kas::text::Forme;
 use kas::theme::dimensions as dim;
-use kas::theme::{Background, ThemeDraw, ThemeSize};
+use kas::theme::{Background, ThemeDraw};
 use kas::theme::{ColorsLinear, FlatTheme, InputState, SimpleTheme, Theme};
 use kas::theme::{FrameStyle, MarkStyle};
 use kas::{ActionResize, Id};
@@ -43,8 +43,8 @@ impl ShadedTheme {
     }
 }
 
-fn dimensions() -> dim::Parameters {
-    dim::Parameters {
+fn dimensions() -> dim::Unscaled {
+    dim::Unscaled {
         m_large: 5.0,
         m_text: (3.4, 0.8),
         frame: 5.0,
@@ -180,7 +180,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
+    fn components(&mut self) -> (&dim::Window, &mut dyn Draw, &mut EventState) {
         (self.w, &mut self.draw, self.ev)
     }
 

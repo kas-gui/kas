@@ -39,4 +39,4 @@ pub use traits::Theme;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use {draw::ThemeDraw, size::ThemeSize};
+pub use draw::ThemeDraw;

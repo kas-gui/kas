@@ -7,12 +7,11 @@
 
 use std::cell::RefCell;
 
-use super::{Theme, dimensions};
 use crate::ActionResize;
 use crate::config::{Config, WindowConfig};
 use crate::draw::{DrawIface, DrawSharedImpl, color};
 use crate::event::EventState;
-use crate::theme::ThemeDraw;
+use crate::theme::{Theme, ThemeDraw, dimensions::Window};
 
 /// As [`Theme`], but without associated types
 ///
@@ -31,7 +30,7 @@ pub trait ThemeDst<DS: DrawSharedImpl> {
     /// Construct per-window storage
     ///
     /// See also [`Theme::new_window`].
-    fn new_window(&mut self, config: &WindowConfig) -> dimensions::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> Window {
         <T as Theme<DS>>::new_window(self, config)
     }
 
@@ -42,7 +41,7 @@ pub trait ThemeDst<DS: DrawSharedImpl> {
     /// Returns whether a resize is required based on changes to the scale factor or font size.
     fn update_window(
         &mut self,
-        window: &mut dimensions::Window,
+        window: &mut Window,
         config: &WindowConfig,
     ) -> Option<ActionResize> {
         <T as Theme<DS>>::update_window(self, window, config)
@@ -52,7 +51,7 @@ pub trait ThemeDst<DS: DrawSharedImpl> {
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
-        window: &'a mut dimensions::Window,
+        window: &'a mut Window,
     ) -> Box<dyn ThemeDraw + 'a> {
         Box::new(<T as Theme<DS>>::draw(self, draw, ev, window))
     }

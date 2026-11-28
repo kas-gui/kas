@@ -19,8 +19,7 @@ use crate::geom::*;
 use crate::text::Forme;
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle};
-use crate::theme::{ColorsLinear, InputState, Theme};
-use crate::theme::{ThemeDraw, ThemeSize};
+use crate::theme::{ColorsLinear, InputState, Theme, ThemeDraw};
 use crate::{ActionResize, Id};
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -63,8 +62,8 @@ impl FlatTheme {
     }
 }
 
-fn dimensions() -> dim::Parameters {
-    dim::Parameters {
+fn dimensions() -> dim::Unscaled {
+    dim::Unscaled {
         // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
         button_frame: 2.4,
         button_inner: 0.0,
@@ -262,7 +261,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
+    fn components(&mut self) -> (&dim::Window, &mut dyn Draw, &mut EventState) {
         (self.w, &mut self.draw, self.ev)
     }
 

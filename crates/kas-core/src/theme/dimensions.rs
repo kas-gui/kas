@@ -3,12 +3,12 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! A shared implementation of [`ThemeSize`]
+//! Theme dimensions and per-window data
 
 use linearize::StaticMap;
 use std::f32;
 
-use super::{BarStyle, BoxStyle, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
+use super::{BarStyle, BoxStyle, FrameStyle, MarginStyle, MarkStyle, TextClass};
 use crate::ActionResize;
 use crate::cast::{Ceil, Nearest, traits::*};
 use crate::config::WindowConfig;
@@ -17,7 +17,7 @@ use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, FrameRules, Margins, SizeRules, Stretch};
 
 crate::impl_scope! {
-    /// Parameterisation of [`Dimensions`]
+    /// Parameterisation of [`Scaled`]
     ///
     /// All dimensions are multiplied by the DPI factor, then rounded to the
     /// nearest integer. Example: `(2.0 * 1.25).round() = 3.0`.
@@ -25,7 +25,7 @@ crate::impl_scope! {
     /// "Reasonable defaults" are provided for all values.
     #[derive(Clone, Debug)]
     #[impl_default]
-    pub struct Parameters {
+    pub struct Unscaled {
         /// Inner margin, used to draw highlight/selection boxes
         ///
         /// Guide size: 1px at 100%, 2px at 125%, 2px at 150%, 3px at 200%.
@@ -84,7 +84,7 @@ crate::impl_scope! {
 
 /// Dimensions available within [`Window`]
 #[derive(Clone, Debug)]
-pub struct Dimensions {
+pub struct Scaled {
     /// Scale factor
     pub scale: f32,
     pub dpem: StaticMap<TextClass, f32>,
@@ -113,8 +113,8 @@ pub struct Dimensions {
     pub shadow_b: Vec2,
 }
 
-impl Dimensions {
-    pub fn new(params: &Parameters, config: &WindowConfig) -> Self {
+impl Scaled {
+    pub fn new(params: &Unscaled, config: &WindowConfig) -> Self {
         let scale = config.scale_factor();
         let font = config.font();
 
@@ -126,7 +126,7 @@ impl Dimensions {
 
         let mark_line = (1.6 * scale).round().max(1.0);
 
-        Dimensions {
+        Scaled {
             scale,
             dpem: StaticMap::from_fn(|class| scale * font.get_dpem(class)),
             mark_line,
@@ -159,15 +159,15 @@ impl Dimensions {
 /// Per-window theme data
 pub struct Window {
     /// Dimensions, according to the current scale factor
-    pub dims: Dimensions,
+    pub dims: Scaled,
     /// Animation state
     pub anim: super::anim::AnimState,
 }
 
 impl Window {
-    pub fn new(dims: &Parameters, config: &WindowConfig) -> Self {
+    pub fn new(dims: &Unscaled, config: &WindowConfig) -> Self {
         Window {
-            dims: Dimensions::new(dims, config),
+            dims: Scaled::new(dims, config),
             anim: super::anim::AnimState::new(&config.theme()),
         }
     }
@@ -176,33 +176,40 @@ impl Window {
     ///
     /// Returns whether a resize is needed based on changes to `config` data.
     /// Does not test whether `dims` have changed.
-    pub fn update(&mut self, dims: &Parameters, config: &WindowConfig) -> Option<ActionResize> {
+    pub fn update(&mut self, dims: &Unscaled, config: &WindowConfig) -> Option<ActionResize> {
         let old_dims = self.dims.clone();
-        self.dims = Dimensions::new(dims, config);
+        self.dims = Scaled::new(dims, config);
         (old_dims.scale != self.dims.scale || old_dims.dpem != self.dims.dpem)
             .then_some(ActionResize)
     }
-}
 
-impl ThemeSize for Window {
-    fn scale_factor(&self) -> f32 {
+    /// Get the scale factor
+    pub fn scale_factor(&self) -> f32 {
         self.dims.scale
     }
 
-    fn dpem(&self, class: TextClass) -> f32 {
+    /// Get the default font size for `class`
+    ///
+    /// Units are physical pixels per Em.
+    pub fn dpem(&self, class: TextClass) -> f32 {
         self.dims.dpem[class]
     }
 
-    fn wrapped_line_len(&self, _: TextClass, dpem: f32) -> (i32, i32) {
+    /// Get the `(min, ideal)` line length for text which wraps
+    pub fn wrapped_line_len(&self, _: TextClass, dpem: f32) -> (i32, i32) {
         let min: i32 = (self.dims.min_line_len_em * dpem).cast_to(Nearest);
         (min, 2 * min)
     }
 
-    fn min_element_size(&self) -> i32 {
+    /// The smallest reasonable size for a visible (non-frame) component
+    ///
+    /// This is used as a suggestion by some heuristics.
+    pub fn min_element_size(&self) -> i32 {
         (self.dims.scale * 8.0).cast_to(Nearest)
     }
 
-    fn min_scroll_size(&self, axis_is_vertical: bool, class: TextClass) -> i32 {
+    /// The minimum size of a scrollable area
+    pub fn min_scroll_size(&self, axis_is_vertical: bool, class: TextClass) -> i32 {
         let factor = if axis_is_vertical {
             3.0
         } else {
@@ -211,15 +218,18 @@ impl ThemeSize for Window {
         (self.dims.dpem[class] * factor).cast_to(Ceil)
     }
 
-    fn grip_len(&self) -> i32 {
+    /// The length of the grip (draggable handle) on a scroll bar or slider
+    pub fn grip_len(&self) -> i32 {
         self.dims.grip_len
     }
 
-    fn scroll_bar_width(&self) -> i32 {
+    /// The width of a vertical scroll bar
+    pub fn scroll_bar_width(&self) -> i32 {
         self.dims.scroll_bar.1
     }
 
-    fn margins(&self, style: MarginStyle) -> Margins {
+    /// Get margin size
+    pub fn margins(&self, style: MarginStyle) -> Margins {
         match style {
             MarginStyle::None => Margins::ZERO,
             MarginStyle::Inner => Margins::splat(self.dims.m_inner),
@@ -236,7 +246,8 @@ impl ThemeSize for Window {
         }
     }
 
-    fn bar(&self, style: BarStyle, dir: Direction, axis_is_vertical: bool) -> SizeRules {
+    /// Size rules for a bar feature
+    pub fn bar(&self, style: BarStyle, dir: Direction, axis_is_vertical: bool) -> SizeRules {
         let mut ideal_mul = 3;
         let (mut size, m) = match style {
             BarStyle::Progress => (self.dims.progress_bar, self.dims.m_large),
@@ -257,7 +268,13 @@ impl ThemeSize for Window {
         SizeRules::new(size.0, ideal_mul * size.0, stretch).with_margin(m)
     }
 
-    fn align_bar(&self, style: BarStyle, dir: Direction, Rect { mut pos, mut size }: Rect) -> Rect {
+    /// Align a bar's rect
+    pub fn align_bar(
+        &self,
+        style: BarStyle,
+        dir: Direction,
+        Rect { mut pos, mut size }: Rect,
+    ) -> Rect {
         let ideal = match style {
             BarStyle::Progress => self.dims.progress_bar.1,
             BarStyle::Scroll => self.dims.scroll_bar.1,
@@ -280,16 +297,22 @@ impl ThemeSize for Window {
         Rect { pos, size }
     }
 
-    fn r#box(&self, _: BoxStyle) -> SizeRules {
+    /// Size rules for a box feature
+    pub fn r#box(&self, _: BoxStyle) -> SizeRules {
         SizeRules::fixed(self.dims.check_box).with_margin(self.dims.m_small)
     }
 
-    fn align_box(&self, _: BoxStyle, rect: Rect, align: AlignPair) -> Rect {
+    /// Align a box's rect
+    ///
+    /// In case the input `rect` is larger than desired on either axis, it is
+    /// reduced in size and offset within the original `rect` as is preferred.
+    pub fn align_box(&self, _: BoxStyle, rect: Rect, align: AlignPair) -> Rect {
         let ideal_size = Size::splat(self.dims.check_box);
         align.aligned_rect(ideal_size, rect)
     }
 
-    fn mark(&self, style: MarkStyle, axis_is_vertical: bool) -> SizeRules {
+    /// Size rules for a mark
+    pub fn mark(&self, style: MarkStyle, axis_is_vertical: bool) -> SizeRules {
         let w = match style {
             MarkStyle::Chevron(dir) => match dir.is_vertical() == axis_is_vertical {
                 true => self.dims.mark / 2 + i32::conv_to(Ceil, self.dims.mark_line),
@@ -302,7 +325,8 @@ impl ThemeSize for Window {
         SizeRules::fixed(w).with_margin(self.dims.m_tiny)
     }
 
-    fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
+    /// Size of a frame around another element
+    pub fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
         let outer = self.dims.m_large;
         match style {
             FrameStyle::None => FrameRules::ZERO,

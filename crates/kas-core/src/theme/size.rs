@@ -6,11 +6,11 @@
 //! "Handle" types used by themes
 
 use super::{BarStyle, BoxStyle, FrameStyle, MarginStyle, MarkStyle, TextClass};
-use crate::autoimpl;
 use crate::dir::{Direction, Directional};
 use crate::event::{CanRedraw, EventState};
 use crate::geom::Rect;
 use crate::layout::{AlignPair, FrameRules, LogicalBuilder, Margins, SizeRules};
+use crate::theme::dimensions::Window;
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use super::DrawCx;
@@ -23,8 +23,7 @@ use std::ops::{Deref, DerefMut};
 /// may be drawn through [`DrawCx`].
 pub struct SizeCx<'a> {
     ev: &'a mut EventState,
-    // ThemeSize is implemented by super::dimensions::Window
-    w: &'a dyn ThemeSize,
+    w: &'a Window,
 }
 
 impl<'a> Deref for SizeCx<'a> {
@@ -40,11 +39,11 @@ impl<'a> DerefMut for SizeCx<'a> {
 }
 
 impl<'a> SizeCx<'a> {
-    /// Construct from [`EventState`] and a [`ThemeSize`]
+    /// Construct from [`EventState`] and theme window data
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     #[inline]
-    pub fn new(ev: &'a mut EventState, w: &'a dyn ThemeSize) -> Self {
+    pub fn new(ev: &'a mut EventState, w: &'a Window) -> Self {
         SizeCx { ev, w }
     }
 
@@ -236,57 +235,4 @@ impl<'a> CanRedraw for SizeCx<'a> {
     }
     #[inline]
     fn redraw(&mut self) {}
-}
-
-/// Theme sizing implementation
-#[autoimpl(for<S: trait + ?Sized, R: Deref<Target = S>> R)]
-pub trait ThemeSize {
-    /// Get the scale factor
-    fn scale_factor(&self) -> f32;
-
-    /// Get the default font size for `class`
-    ///
-    /// Units are physical pixels per Em.
-    fn dpem(&self, class: TextClass) -> f32;
-
-    /// Get the `(min, ideal)` line length for text which wraps
-    fn wrapped_line_len(&self, class: TextClass, dpem: f32) -> (i32, i32);
-
-    /// The smallest reasonable size for a visible (non-frame) component
-    ///
-    /// This is used as a suggestion by some heuristics.
-    fn min_element_size(&self) -> i32;
-
-    /// The minimum size of a scrollable area
-    fn min_scroll_size(&self, axis_is_vertical: bool, class: TextClass) -> i32;
-
-    /// The length of the grip (draggable handle) on a scroll bar or slider
-    fn grip_len(&self) -> i32;
-
-    /// The width of a vertical scroll bar
-    fn scroll_bar_width(&self) -> i32;
-
-    /// Get margin size
-    fn margins(&self, style: MarginStyle) -> Margins;
-
-    /// Size rules for a bar feature
-    fn bar(&self, style: BarStyle, dir: Direction, axis_is_vertical: bool) -> SizeRules;
-
-    /// Align a bar's rect
-    fn align_bar(&self, style: BarStyle, dir: Direction, rect: Rect) -> Rect;
-
-    /// Size rules for a box feature
-    fn r#box(&self, style: BoxStyle) -> SizeRules;
-
-    /// Align a box's rect
-    ///
-    /// In case the input `rect` is larger than desired on either axis, it is
-    /// reduced in size and offset within the original `rect` as is preferred.
-    fn align_box(&self, style: BoxStyle, rect: Rect, align: AlignPair) -> Rect;
-
-    /// Size rules for a mark
-    fn mark(&self, style: MarkStyle, axis_is_vertical: bool) -> SizeRules;
-
-    /// Size of a frame around another element
-    fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
 }
